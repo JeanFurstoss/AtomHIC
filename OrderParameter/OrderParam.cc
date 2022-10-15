@@ -183,6 +183,8 @@ int main(){
 			}
 		}
 	}
+	for(unsigned int i=0;i<nbAt;i++) cout << Nalpha[i].size()/2 << " ";
+	cout << endl;
 	}else{
 	cout << "we use cell list" << endl;
 	// Cell list algorithm for wider systems
@@ -275,6 +277,7 @@ int main(){
 					xpos = AtData[Cells[i*nbCellZ*nbCellY+j*nbCellZ+k][at1]][0];
 					ypos = AtData[Cells[i*nbCellZ*nbCellY+j*nbCellZ+k][at1]][1];
 					zpos = AtData[Cells[i*nbCellZ*nbCellY+j*nbCellZ+k][at1]][2];
+								cout << "Searching n" << endl;
 					for(int bx=-NeighCellX;bx<NeighCellX+1;bx++){
 						for(int by=-NeighCellY;by<NeighCellY+1;by++){
 							for(int bz=-NeighCellZ;bz<NeighCellZ+1;bz++){
@@ -287,26 +290,26 @@ int main(){
 								jby = by+j;
 								kbz = bz+k;
 								// border cells
-								if( i == nbCellX-1 && bx == 1 ){
+								if( (int) i >= ((int) nbCellX)-NeighCellX && bx >= 1 ){
 									ibx = 0;
-									Nclx = 1;
-								}else if( i == 0 && bx == -1 ){
+									Nclx = bx;
+								}else if( (int) i <= NeighCellX-1 && bx <= -1 ){
 									ibx = nbCellX-1;
-									Nclx = -1;
+									Nclx = bx;
 								}
-								if( j == nbCellY-1 && by == 1 ){
+								if( (int) j >= ((int) nbCellY)-NeighCellY && by >= 1 ){
 									jby = 0;
-									Ncly = 1;
-								}else if( j == 0 && by == -1 ){
+									Ncly = by;
+								}else if( (int) j <= NeighCellY-1  && by <= -1 ){
 									jby = nbCellY-1;
-									Ncly = -1;
+									Ncly = by;
 								}
-								if( k == nbCellZ-1 && bz == 1 ){
+								if( (int) k >= ((int) nbCellZ)-NeighCellZ && bz >= 1 ){
 									kbz = 0;
-									Nclz = 1;
-								}else if( k == 0 && bz == -1 ){
+									Nclz = bz;
+								}else if( (int) k <= NeighCellZ-1 && bz <= -1 ){
 									kbz = nbCellZ-1;
-									Nclz = -1;
+									Nclz = bz;
 								}
 								for(unsigned int at2=0;at2<Cells[ibx*nbCellZ*nbCellY+jby*nbCellZ+kbz].size();at2++){
 									d_squared = pow(AtData[Cells[ibx*nbCellY*nbCellZ+jby*nbCellZ+kbz][at2]][0]-xpos+Nclx*lx,2.)+pow(AtData[Cells[ibx*nbCellY*nbCellZ+jby*nbCellZ+kbz][at2]][1]-ypos+Ncly*ly,2.)+pow(AtData[Cells[ibx*nbCellZ*nbCellY+jby*nbCellZ+kbz][at2]][2]-zpos+Nclz*lz,2.);
@@ -334,6 +337,8 @@ int main(){
 	}
 	cout << endl;
 	} // end neighbor search
+	cout << endl;
+	for(unsigned int i=0;i<nbAt;i++) cout << Nalpha[i].size()/2 << " ";
 	cout << endl;
 	double stop_s=clock();
 	cout << "time = " << stop_s-start_s << endl;
