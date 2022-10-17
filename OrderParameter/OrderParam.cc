@@ -42,10 +42,10 @@ int main(){
 	double CellSizeX, CellSizeY, CellSizeZ;
 	vector<vector<unsigned int>> Cells; // contains ions id belonging to the different cells
 
-	char filename[15];
+	char filename[25];
 	char timestep_c[20];
 	strcpy(filename, "Order_");
-	char filename_distrib[30];
+	char filename_distrib[40];
 	strcpy(filename_distrib, "Disorder_");
 	vector<double> Mg1NormFac, Mg2NormFac, SiNormFac, O1NormFac, O2NormFac, O3NormFac, MgNormFac, ONormFac, buffer_vector; // normalization factors for the different species and sites
 	vector<unsigned int> buffer_vector_uint;
@@ -99,7 +99,7 @@ int main(){
 	unsigned int *AtSites = new unsigned int[nbAt];
 	double *Order = new double[nbAt];
 	double *Disorder = new double[nbAt];
-	int AtOverTen=(nbAt/200);
+	int BarAtFrac=1+(nbAt/200);
 	// wrap ions
 	for(unsigned int i=0;i<nbAt;i++){
 		if( ( AtData[i][0] < 0 ) || ( AtData[i][0] > lx ) ){
@@ -118,76 +118,8 @@ int main(){
 	}
 
 	// search neighbors and store their colatitude and azimuth
-	// decide using brute force or cell list algorithm for neighboring research
-	double AtDensity_Fo;
-	AtDensity_Fo = 28./(4.8435*10.1864*6.001);
-	unsigned int NbAt_CellList; // number of atom above which we use cell list algo for neigh search (correspond to 4 times 27 times a cell size)
-	NbAt_CellList = rc*rc*rc*27*2*AtDensity_Fo;
-	unsigned int BrutForce = 0;
-	unsigned int MulForCell = 1;
-	if( lx < rc ) MulForCell *= ceil(rc/lx);
-	if( ly < rc ) MulForCell *= ceil(rc/ly);
-	if( lz < rc ) MulForCell *= ceil(rc/lz);
-	cout << MulForCell << endl;
-	//if( nbAt > NbAt_CellList ) BrutForce = 0;
-	//else BrutForce = 1;
-	cout << NbAt_CellList << endl;
 	cout << "searching neigbors" << endl;
-	// Brut force algorithm for small systems
-	double start_s=clock();
-	if( BrutForce == 1 ){
-	cout << "we use brute force" << endl;
-	cout << "\r[" << string(bar_length*prog,'X') << string(bar_length*(1-prog),'-') << "] " << setprecision(3) << 100*prog << "%";
-	for(unsigned int i=0;i<nbAt;i++){
-		if(i%AtOverTen == 0){
-			prog = double(i)/double(nbAt);
-			cout << "\r[" << string(bar_length*prog,'X') << string(bar_length*(1-prog),'-') << "] " << setprecision(3) << 100*prog << "%";
-		}
-		h_lo = 0;
-		h_hi = 0;
-		k_lo = 0;
-		k_hi = 0;
-		l_lo = 0;
-		l_hi = 0;
-		Nalpha.push_back(vector<double>());
-		Malpha.push_back(vector<unsigned int>());
-		for(unsigned int k=0;k<nbPer+1;k++){
-                	if( (AtData[i][0]-rc) < -(k*lx) ) h_lo = -k-1;
-                	if( (AtData[i][0]+rc) > lx*(1+k) ) h_hi = k+1;
-                	if( (AtData[i][1]-rc) < -(k*ly) ) k_lo = -k-1;
-                	if( (AtData[i][1]+rc) > ly*(1+k) ) k_hi = k+1;
-                	if( (AtData[i][2]-rc) < -(k*lz) ) l_lo = -k-1;
-                	if( (AtData[i][2]+rc) > lz*(1+k) ) l_hi = k+1;
-		}
-		for(unsigned int j=0;j<nbAt;j++){
-			for(int xcl=h_lo;xcl<h_hi+1;xcl++){
-				for(int ycl=k_lo;ycl<k_hi+1;ycl++){
-					for(int zcl=l_lo;zcl<l_hi+1;zcl++){
-						d_squared = pow(AtData[j][0]-AtData[i][0]+(xcl*lx),2) + pow(AtData[j][1]-AtData[i][1]+(ycl*ly),2) + pow(AtData[j][2]-AtData[i][2]+(zcl*lz),2);
-						if( d_squared > zeronum && d_squared < rc_squared ){
-							colat = acos((AtData[j][2]-AtData[i][2]+(zcl*lz))/pow(d_squared,.5));
-							xp = AtData[j][0]-AtData[i][0]+(xcl*lx);
-							yp = AtData[j][1]-AtData[i][1]+(ycl*ly);
-				                        if( xp > 0 ) longit = atan(yp/xp);
-	                    				else if( ( xp < 0 ) && ( yp >= 0 ) ) longit = atan(yp/xp) + PI;
-	                    				else if( ( xp < 0 ) and ( yp < 0 ) ) longit = atan(yp/xp) - PI;
-	                    				else if( ( fabs(xp) < zeronum ) and ( yp > 0 ) ) longit = PI/2.;
-	                    				else if( ( fabs(xp) < zeronum ) and ( yp < 0 ) ) longit = -PI/2.;
-	                    				else if( ( fabs(xp) < zeronum ) and ( fabs(yp) < zeronum ) ) longit = 0.;
-							Nalpha[i].push_back(colat);
-							Nalpha[i].push_back(longit);
-							if( AtData[i][3] == AtData[j][3] ) Malpha[i].push_back(j);
-						}
-					}
-				}
-			}
-		}
-	}
-	for(unsigned int i=0;i<nbAt;i++) cout << Nalpha[i].size()/2 << " ";
-	cout << endl;
-	}else{
-	cout << "we use cell list" << endl;
-	// Cell list algorithm for wider systems
+	// Cell list algorithm
 	// construct cells
 	int NeighCellX, NeighCellY, NeighCellZ;
 	nbCellX = floor(lx/rc);
@@ -277,7 +209,6 @@ int main(){
 					xpos = AtData[Cells[i*nbCellZ*nbCellY+j*nbCellZ+k][at1]][0];
 					ypos = AtData[Cells[i*nbCellZ*nbCellY+j*nbCellZ+k][at1]][1];
 					zpos = AtData[Cells[i*nbCellZ*nbCellY+j*nbCellZ+k][at1]][2];
-								cout << "Searching n" << endl;
 					for(int bx=-NeighCellX;bx<NeighCellX+1;bx++){
 						for(int by=-NeighCellY;by<NeighCellY+1;by++){
 							for(int bz=-NeighCellZ;bz<NeighCellZ+1;bz++){
@@ -336,15 +267,9 @@ int main(){
 		}
 	}
 	cout << endl;
-	} // end neighbor search
-	cout << endl;
-	for(unsigned int i=0;i<nbAt;i++) cout << Nalpha[i].size()/2 << " ";
-	cout << endl;
-	double stop_s=clock();
-	cout << "time = " << stop_s-start_s << endl;
 	cout << "compute spherical harmonics" << endl;
 	for(unsigned int i=0;i<nbAt;i++){
-		if(i%AtOverTen == 0){
+		if(i%BarAtFrac == 0){
 			prog = double(i)/double(nbAt);
 			cout << "\r[" << string(bar_length*prog,'X') << string(bar_length*(1-prog),'-') << "] " << setprecision(3) << 100*prog << "%";
 		}
@@ -495,219 +420,15 @@ int main(){
 
 	// renormalize according to the different sites
 	// FIRST TEST : consider that sites established before are the right ones
-	countSi = 0;
-	countMg1 = 0;
-	countMg2 = 0;
-	countO1 = 0;
-	countO2 = 0;
-	countO3 = 0;
-	tolSites = 1e-2;
-	for(unsigned int i=0;i<nbAt;i++){
-		if(AtSites[i]==1){
-			if(countSi==0){
-				SiNormFac.push_back(Order[i]);
-				SiNormFac.push_back(1);
-				countSi += 1;
-			}else{
-				buffer_bool = false;
-				for(unsigned int j=0;j<SiNormFac.size()/2;j++){
-					if( fabs(Order[i]-SiNormFac[j*2]) < tolSites ){
-						SiNormFac[j*2] *= SiNormFac[j*2+1];
-						SiNormFac[j*2] += Order[i];
-						SiNormFac[j*2+1] += 1;
-						SiNormFac[j*2] /= SiNormFac[j*2+1];
-						buffer_bool = true;
-						break;
-					}
-				}
-				if(!buffer_bool){
-					SiNormFac.push_back(Order[i]);
-					SiNormFac.push_back(1);
-				}
-			}
-		}else if(AtSites[i]==2){
-			if(countMg1 ==0){
-				Mg1NormFac.push_back(Order[i]);
-				Mg1NormFac.push_back(1);
-				countMg1 += 1;
-			}else{
-				buffer_bool = false;
-				for(unsigned int j=0;j<Mg1NormFac.size()/2;j++){
-					if( fabs(Order[i]-Mg1NormFac[j*2]) < tolSites ){
-						Mg1NormFac[j*2] *= Mg1NormFac[j*2+1];
-						Mg1NormFac[j*2] += Order[i];
-						Mg1NormFac[j*2+1] += 1;
-						Mg1NormFac[j*2] /= Mg1NormFac[j*2+1];
-						buffer_bool = true;
-						break;
-					}
-				}
-				if(!buffer_bool){
-					Mg1NormFac.push_back(Order[i]);
-					Mg1NormFac.push_back(1);
-				}
-			}
-		}else if(AtSites[i]==3){
-			if(countMg2 ==0){
-				Mg2NormFac.push_back(Order[i]);
-				Mg2NormFac.push_back(1);
-				countMg2 += 1;
-			}else{
-				buffer_bool = false;
-				for(unsigned int j=0;j<Mg2NormFac.size()/2;j++){
-					if( fabs(Order[i]-Mg2NormFac[j*2]) < tolSites ){
-						Mg2NormFac[j*2] *= Mg2NormFac[j*2+1];
-						Mg2NormFac[j*2] += Order[i];
-						Mg2NormFac[j*2+1] += 1;
-						Mg2NormFac[j*2] /= Mg2NormFac[j*2+1];
-						buffer_bool = true;
-						break;
-					}
-				}
-				if(!buffer_bool){
-					Mg2NormFac.push_back(Order[i]);
-					Mg2NormFac.push_back(1);
-				}
-			}
-		}else if(AtSites[i]==4){
-			if(countO1 ==0){
-				O1NormFac.push_back(Order[i]);
-				O1NormFac.push_back(1);
-				countO1 += 1;
-			}else{
-				buffer_bool = false;
-				for(unsigned int j=0;j<O1NormFac.size()/2;j++){
-					if( fabs(Order[i]-O1NormFac[j*2]) < tolSites ){
-						O1NormFac[j*2] *= O1NormFac[j*2+1];
-						O1NormFac[j*2] += Order[i];
-						O1NormFac[j*2+1] += 1;
-						O1NormFac[j*2] /= O1NormFac[j*2+1];
-						buffer_bool = true;
-						break;
-					}
-				}
-				if(!buffer_bool){
-					O1NormFac.push_back(Order[i]);
-					O1NormFac.push_back(1);
-				}
-			}
-		}else if(AtSites[i]==5){
-			if(countO2 ==0){
-				O2NormFac.push_back(Order[i]);
-				O2NormFac.push_back(1);
-				countO2 += 1;
-			}else{
-				buffer_bool = false;
-				for(unsigned int j=0;j<O2NormFac.size()/2;j++){
-					if( fabs(Order[i]-O2NormFac[j*2]) < tolSites ){
-						O2NormFac[j*2] *= O2NormFac[j*2+1];
-						O2NormFac[j*2] += Order[i];
-						O2NormFac[j*2+1] += 1;
-						O2NormFac[j*2] /= O2NormFac[j*2+1];
-						buffer_bool = true;
-						break;
-					}
-				}
-				if(!buffer_bool){
-					O2NormFac.push_back(Order[i]);
-					O2NormFac.push_back(1);
-				}
-			}
-		}else if(AtSites[i]==6){
-			if(countO3 ==0){
-				O3NormFac.push_back(Order[i]);
-				O3NormFac.push_back(1);
-				countO3 += 1;
-			}else{
-				buffer_bool = false;
-				for(unsigned int j=0;j<O3NormFac.size()/2;j++){
-					if( fabs(Order[i]-O3NormFac[j*2]) < tolSites ){
-						O3NormFac[j*2] *= O3NormFac[j*2+1];
-						O3NormFac[j*2] += Order[i];
-						O3NormFac[j*2+1] += 1;
-						O3NormFac[j*2] /= O3NormFac[j*2+1];
-						buffer_bool = true;
-						break;
-					}
-				}
-				if(!buffer_bool){
-					O3NormFac.push_back(Order[i]);
-					O3NormFac.push_back(1);
-				}
-			}
-		}
-	}
-
-	// find the most represented norm factors
-	NormFac2_Si = SiNormFac[0];
-	buffer_d = SiNormFac[1];
-	for(unsigned int i=1;i<SiNormFac.size()/2;i++){
-		if( SiNormFac[i*2+1] >  buffer_d ){
-			buffer_d = SiNormFac[i*2+1];
-			NormFac2_Si = SiNormFac[i*2];
-		}
-	}
-	NormFac2_Mg1 = Mg1NormFac[0];
-	buffer_d = Mg1NormFac[1];
-	for(unsigned int i=1;i<Mg1NormFac.size()/2;i++){
-		if( Mg1NormFac[i*2+1] >  buffer_d ){
-			buffer_d = Mg1NormFac[i*2+1];
-			NormFac2_Mg1 = Mg1NormFac[i*2];
-		}
-	}
-	NormFac2_Mg2 = Mg2NormFac[0];
-	buffer_d = Mg2NormFac[1];
-	for(unsigned int i=1;i<Mg2NormFac.size()/2;i++){
-		if( Mg2NormFac[i*2+1] >  buffer_d ){
-			buffer_d = Mg2NormFac[i*2+1];
-			NormFac2_Mg2 = Mg2NormFac[i*2];
-		}
-	}
-	NormFac2_O1 = O1NormFac[0];
-	buffer_d = O1NormFac[1];
-	for(unsigned int i=1;i<O1NormFac.size()/2;i++){
-		if( O1NormFac[i*2+1] >  buffer_d ){
-			buffer_d = O1NormFac[i*2+1];
-			NormFac2_O1 = O1NormFac[i*2];
-		}
-	}
-	NormFac2_O2 = O2NormFac[0];
-	buffer_d = O2NormFac[1];
-	for(unsigned int i=1;i<O2NormFac.size()/2;i++){
-		if( O2NormFac[i*2+1] >  buffer_d ){
-			buffer_d = O2NormFac[i*2+1];
-			NormFac2_O2 = O2NormFac[i*2];
-		}
-	}
-	NormFac2_O3 = O3NormFac[0];
-	buffer_d = O3NormFac[1];
-	for(unsigned int i=1;i<O3NormFac.size()/2;i++){
-		if( O3NormFac[i*2+1] >  buffer_d ){
-			buffer_d = O3NormFac[i*2+1];
-			NormFac2_O3 = O3NormFac[i*2];
-		}
-	}
-	// and renormalize order parameters
-	for(unsigned int i=0;i<nbAt;i++){
-		if(AtSites[i]==1) Order[i] /= NormFac2_Si;
-		else if(AtSites[i]==2) Order[i] /= NormFac2_Mg1;
-		else if(AtSites[i]==3) Order[i] /= NormFac2_Mg2;
-		else if(AtSites[i]==4) Order[i] /= NormFac2_O1;
-		else if(AtSites[i]==5) Order[i] /= NormFac2_O2;
-		else if(AtSites[i]==6) Order[i] /= NormFac2_O3;
-	}
-
-
-	// END FIRST TEST
-	// SECOND TEST : reassign site by identifying the most represented order parameters
 	//countSi = 0;
-	//countMg = 0;
-	//countO = 0;
-	//tolSites = 1e-1;
-	//MgNormFac.clear();
-	//ONormFac.clear();
+	//countMg1 = 0;
+	//countMg2 = 0;
+	//countO1 = 0;
+	//countO2 = 0;
+	//countO3 = 0;
+	//tolSites = 1e-2;
 	//for(unsigned int i=0;i<nbAt;i++){
-	//	if(AtData[i][3]==2){
+	//	if(AtSites[i]==1){
 	//		if(countSi==0){
 	//			SiNormFac.push_back(Order[i]);
 	//			SiNormFac.push_back(1);
@@ -716,10 +437,10 @@ int main(){
 	//			buffer_bool = false;
 	//			for(unsigned int j=0;j<SiNormFac.size()/2;j++){
 	//				if( fabs(Order[i]-SiNormFac[j*2]) < tolSites ){
-	//					SiNormFac[j*2] *= SiNormFac[j*2+1];
-	//					SiNormFac[j*2] += Order[i];
+	//					//SiNormFac[j*2] *= SiNormFac[j*2+1];
+	//					//SiNormFac[j*2] += Order[i];
 	//					SiNormFac[j*2+1] += 1;
-	//					SiNormFac[j*2] /= SiNormFac[j*2+1];
+	//					//SiNormFac[j*2] /= SiNormFac[j*2+1];
 	//					buffer_bool = true;
 	//					break;
 	//				}
@@ -729,53 +450,120 @@ int main(){
 	//				SiNormFac.push_back(1);
 	//			}
 	//		}
-	//	}else if(AtData[i][3]==1){
-	//		if(countMg ==0){
-	//			MgNormFac.push_back(Order[i]);
-	//			MgNormFac.push_back(1);
-	//			countMg += 1;
+	//	}else if(AtSites[i]==2){
+	//		if(countMg1 ==0){
+	//			Mg1NormFac.push_back(Order[i]);
+	//			Mg1NormFac.push_back(1);
+	//			countMg1 += 1;
 	//		}else{
 	//			buffer_bool = false;
-	//			for(unsigned int j=0;j<MgNormFac.size()/2;j++){
-	//				if( fabs(Order[i]-MgNormFac[j*2]) < tolSites ){
-	//					MgNormFac[j*2] *= MgNormFac[j*2+1];
-	//					MgNormFac[j*2] += Order[i];
-	//					MgNormFac[j*2+1] += 1;
-	//					MgNormFac[j*2] /= MgNormFac[j*2+1];
+	//			for(unsigned int j=0;j<Mg1NormFac.size()/2;j++){
+	//				if( fabs(Order[i]-Mg1NormFac[j*2]) < tolSites ){
+	//					//Mg1NormFac[j*2] *= Mg1NormFac[j*2+1];
+	//					//Mg1NormFac[j*2] += Order[i];
+	//					Mg1NormFac[j*2+1] += 1;
+	//					//Mg1NormFac[j*2] /= Mg1NormFac[j*2+1];
 	//					buffer_bool = true;
 	//					break;
 	//				}
 	//			}
 	//			if(!buffer_bool){
-	//				MgNormFac.push_back(Order[i]);
-	//				MgNormFac.push_back(1);
+	//				Mg1NormFac.push_back(Order[i]);
+	//				Mg1NormFac.push_back(1);
 	//			}
 	//		}
-	//	}else if(AtData[i][3]==3){
-	//		if(countO ==0){
-	//			ONormFac.push_back(Order[i]);
-	//			ONormFac.push_back(1);
-	//			countO += 1;
+	//	}else if(AtSites[i]==3){
+	//		if(countMg2 ==0){
+	//			Mg2NormFac.push_back(Order[i]);
+	//			Mg2NormFac.push_back(1);
+	//			countMg2 += 1;
 	//		}else{
 	//			buffer_bool = false;
-	//			for(unsigned int j=0;j<ONormFac.size()/2;j++){
-	//				if( fabs(Order[i]-ONormFac[j*2]) < tolSites ){
-	//					ONormFac[j*2] *= ONormFac[j*2+1];
-	//					ONormFac[j*2] += Order[i];
-	//					ONormFac[j*2+1] += 1;
-	//					ONormFac[j*2] /= ONormFac[j*2+1];
+	//			for(unsigned int j=0;j<Mg2NormFac.size()/2;j++){
+	//				if( fabs(Order[i]-Mg2NormFac[j*2]) < tolSites ){
+	//					//Mg2NormFac[j*2] *= Mg2NormFac[j*2+1];
+	//					//Mg2NormFac[j*2] += Order[i];
+	//					Mg2NormFac[j*2+1] += 1;
+	//					//Mg2NormFac[j*2] /= Mg2NormFac[j*2+1];
 	//					buffer_bool = true;
 	//					break;
 	//				}
 	//			}
 	//			if(!buffer_bool){
-	//				ONormFac.push_back(Order[i]);
-	//				ONormFac.push_back(1);
+	//				Mg2NormFac.push_back(Order[i]);
+	//				Mg2NormFac.push_back(1);
+	//			}
+	//		}
+	//	}else if(AtSites[i]==4){
+	//		if(countO1 ==0){
+	//			O1NormFac.push_back(Order[i]);
+	//			O1NormFac.push_back(1);
+	//			countO1 += 1;
+	//		}else{
+	//			buffer_bool = false;
+	//			for(unsigned int j=0;j<O1NormFac.size()/2;j++){
+	//				if( fabs(Order[i]-O1NormFac[j*2]) < tolSites ){
+	//					//O1NormFac[j*2] *= O1NormFac[j*2+1];
+	//					//O1NormFac[j*2] += Order[i];
+	//					O1NormFac[j*2+1] += 1;
+	//					//O1NormFac[j*2] /= O1NormFac[j*2+1];
+	//					buffer_bool = true;
+	//					break;
+	//				}
+	//			}
+	//			if(!buffer_bool){
+	//				O1NormFac.push_back(Order[i]);
+	//				O1NormFac.push_back(1);
+	//			}
+	//		}
+	//	}else if(AtSites[i]==5){
+	//		if(countO2 ==0){
+	//			O2NormFac.push_back(Order[i]);
+	//			O2NormFac.push_back(1);
+	//			countO2 += 1;
+	//		}else{
+	//			buffer_bool = false;
+	//			for(unsigned int j=0;j<O2NormFac.size()/2;j++){
+	//				if( fabs(Order[i]-O2NormFac[j*2]) < tolSites ){
+	//					//O2NormFac[j*2] *= O2NormFac[j*2+1];
+	//					//O2NormFac[j*2] += Order[i];
+	//					O2NormFac[j*2+1] += 1;
+	//					//O2NormFac[j*2] /= O2NormFac[j*2+1];
+	//					buffer_bool = true;
+	//					break;
+	//				}
+	//			}
+	//			if(!buffer_bool){
+	//				O2NormFac.push_back(Order[i]);
+	//				O2NormFac.push_back(1);
+	//			}
+	//		}
+	//	}else if(AtSites[i]==6){
+	//		if(countO3 ==0){
+	//			O3NormFac.push_back(Order[i]);
+	//			O3NormFac.push_back(1);
+	//			countO3 += 1;
+	//		}else{
+	//			buffer_bool = false;
+	//			for(unsigned int j=0;j<O3NormFac.size()/2;j++){
+	//				if( fabs(Order[i]-O3NormFac[j*2]) < tolSites ){
+	//					//O3NormFac[j*2] *= O3NormFac[j*2+1];
+	//					//O3NormFac[j*2] += Order[i];
+	//					O3NormFac[j*2+1] += 1;
+	//					//O3NormFac[j*2] /= O3NormFac[j*2+1];
+	//					buffer_bool = true;
+	//					break;
+	//				}
+	//			}
+	//			if(!buffer_bool){
+	//				O3NormFac.push_back(Order[i]);
+	//				O3NormFac.push_back(1);
 	//			}
 	//		}
 	//	}
 	//}
 
+	//// find the most represented norm factors
 	//NormFac2_Si = SiNormFac[0];
 	//buffer_d = SiNormFac[1];
 	//for(unsigned int i=1;i<SiNormFac.size()/2;i++){
@@ -784,71 +572,208 @@ int main(){
 	//		NormFac2_Si = SiNormFac[i*2];
 	//	}
 	//}
-
-	//count = 0;
-	//for(unsigned int n=0;n<2;n++){
-	//	buffer_d = MgNormFac[1];
-	//	buffer_d_1 = MgNormFac[0];
-	//	buffer_d_2 = 0;
-	//	for(unsigned int i=1;i<MgNormFac.size()/2;i++){
-	//		if(MgNormFac[i*2+1] > buffer_d){
-	//			buffer_d = MgNormFac[i*2+1];
-	//			buffer_d_1 = MgNormFac[i*2];
-	//			buffer_d_2 = i*2;
-	//		}
+	//NormFac2_Mg1 = Mg1NormFac[0];
+	//buffer_d = Mg1NormFac[1];
+	//for(unsigned int i=1;i<Mg1NormFac.size()/2;i++){
+	//	if( Mg1NormFac[i*2+1] >  buffer_d ){
+	//		buffer_d = Mg1NormFac[i*2+1];
+	//		NormFac2_Mg1 = Mg1NormFac[i*2];
 	//	}
-	//	if(count==0) NormFac2_Mg1 = buffer_d_1;
-	//	else if(count==1) NormFac2_Mg2 = buffer_d_1;
-	//	MgNormFac.erase(MgNormFac.begin()+buffer_d_2+1);
-	//	MgNormFac.erase(MgNormFac.begin()+buffer_d_2);
-	//	count += 1;
 	//}
-
-	//count = 0;
-	//for(unsigned int n=0;n<3;n++){
-	//	buffer_d = ONormFac[1];
-	//	buffer_d_1 = ONormFac[0];
-	//	buffer_d_2 = 0;
-	//	for(unsigned int i=1;i<ONormFac.size()/2;i++){
-	//		if(ONormFac[i*2+1] > buffer_d){
-	//			buffer_d = ONormFac[i*2+1];
-	//			buffer_d_1 = ONormFac[i*2];
-	//			buffer_d_2 = i*2;
-	//		}
+	//NormFac2_Mg2 = Mg2NormFac[0];
+	//buffer_d = Mg2NormFac[1];
+	//for(unsigned int i=1;i<Mg2NormFac.size()/2;i++){
+	//	if( Mg2NormFac[i*2+1] >  buffer_d ){
+	//		buffer_d = Mg2NormFac[i*2+1];
+	//		NormFac2_Mg2 = Mg2NormFac[i*2];
 	//	}
-	//	if(count==0) NormFac2_O1 = buffer_d_1;
-	//	else if(count==1) NormFac2_O2 = buffer_d_1;
-	//	else if(count==2) NormFac2_O3 = buffer_d_1;
-	//	ONormFac.erase(ONormFac.begin()+buffer_d_2+1);
-	//	ONormFac.erase(ONormFac.begin()+buffer_d_2);
-	//	count += 1;
 	//}
-	//// renormalize by searching the closest normalization factor for the different species
-	//double tolRenorm = 1.05;
+	//NormFac2_O1 = O1NormFac[0];
+	//buffer_d = O1NormFac[1];
+	//for(unsigned int i=1;i<O1NormFac.size()/2;i++){
+	//	if( O1NormFac[i*2+1] >  buffer_d ){
+	//		buffer_d = O1NormFac[i*2+1];
+	//		NormFac2_O1 = O1NormFac[i*2];
+	//	}
+	//}
+	//NormFac2_O2 = O2NormFac[0];
+	//buffer_d = O2NormFac[1];
+	//for(unsigned int i=1;i<O2NormFac.size()/2;i++){
+	//	if( O2NormFac[i*2+1] >  buffer_d ){
+	//		buffer_d = O2NormFac[i*2+1];
+	//		NormFac2_O2 = O2NormFac[i*2];
+	//	}
+	//}
+	//NormFac2_O3 = O3NormFac[0];
+	//buffer_d = O3NormFac[1];
+	//for(unsigned int i=1;i<O3NormFac.size()/2;i++){
+	//	if( O3NormFac[i*2+1] >  buffer_d ){
+	//		buffer_d = O3NormFac[i*2+1];
+	//		NormFac2_O3 = O3NormFac[i*2];
+	//	}
+	//}
+	//// and renormalize order parameters
 	//for(unsigned int i=0;i<nbAt;i++){
-	//	if(AtData[i][3] == 1){
-	//		buffer_d = fabs(Order[i]-NormFac2_Mg1);
-	//		buffer_d_1 = NormFac2_Mg1;
-	//		if( ( (Order[i] < NormFac2_Mg2*tolRenorm) && ( fabs(Order[i]-NormFac2_Mg2) < buffer_d ) ) || (Order[i] > NormFac2_Mg1*tolRenorm) ) buffer_d_1 = NormFac2_Mg2;
-	//		Order[i] /= buffer_d_1;
-	//	}else if(AtData[i][3] == 2){
-	//		Order[i] /= NormFac2_Si;
-	//	}else if(AtData[i][3] == 3){
-	//		buffer_d = fabs(Order[i]-NormFac2_O1);
-	//		buffer_d_1 = NormFac2_O1;
-	//		buffer_d_2 = (NormFac2_O1*tolRenorm)-Order[i];
-	//		if( ( (Order[i] < NormFac2_O2*tolRenorm) && ( fabs(Order[i]-NormFac2_O2) < buffer_d ) ) || (0. > buffer_d_2) ){
-	//			buffer_d = fabs(Order[i]-NormFac2_O2);
-	//		        buffer_d_1 = NormFac2_Mg2;
-	//			buffer_d_2 = (NormFac2_O2*tolRenorm)-Order[i];
-	//		}
-	//		if( ( (Order[i] < NormFac2_O3*tolRenorm) && ( fabs(Order[i]-NormFac2_O3) < buffer_d ) ) || (0. > buffer_d_2) ){
-	//			buffer_d = fabs(Order[i]-NormFac2_O3);
-	//		        buffer_d_1 = NormFac2_O3;
-	//		}
-	//		Order[i] /= buffer_d_1;
-	//	}
+	//	if(AtSites[i]==1) Order[i] /= NormFac2_Si;
+	//	else if(AtSites[i]==2) Order[i] /= NormFac2_Mg1;
+	//	else if(AtSites[i]==3) Order[i] /= NormFac2_Mg2;
+	//	else if(AtSites[i]==4) Order[i] /= NormFac2_O1;
+	//	else if(AtSites[i]==5) Order[i] /= NormFac2_O2;
+	//	else if(AtSites[i]==6) Order[i] /= NormFac2_O3;
 	//}
+
+
+	// END FIRST TEST
+	// SECOND TEST : reassign site by identifying the most represented order parameters
+	countSi = 0;
+	countMg = 0;
+	countO = 0;
+	tolSites = 5e-2;
+	MgNormFac.clear();
+	ONormFac.clear();
+	for(unsigned int i=0;i<nbAt;i++){
+		if(AtData[i][3]==2){
+			if(countSi==0){
+				SiNormFac.push_back(Order[i]);
+				SiNormFac.push_back(1);
+				countSi += 1;
+			}else{
+				buffer_bool = false;
+				for(unsigned int j=0;j<SiNormFac.size()/2;j++){
+					if( fabs(Order[i]-SiNormFac[j*2]) < tolSites ){
+						//SiNormFac[j*2] *= SiNormFac[j*2+1];
+						//SiNormFac[j*2] += Order[i];
+						SiNormFac[j*2+1] += 1;
+						//SiNormFac[j*2] /= SiNormFac[j*2+1];
+						buffer_bool = true;
+						break;
+					}
+				}
+				if(!buffer_bool){
+					SiNormFac.push_back(Order[i]);
+					SiNormFac.push_back(1);
+				}
+			}
+		}else if(AtData[i][3]==1){
+			if(countMg ==0){
+				MgNormFac.push_back(Order[i]);
+				MgNormFac.push_back(1);
+				countMg += 1;
+			}else{
+				buffer_bool = false;
+				for(unsigned int j=0;j<MgNormFac.size()/2;j++){
+					if( fabs(Order[i]-MgNormFac[j*2]) < tolSites ){
+						//MgNormFac[j*2] *= MgNormFac[j*2+1];
+						//MgNormFac[j*2] += Order[i];
+						MgNormFac[j*2+1] += 1;
+						//MgNormFac[j*2] /= MgNormFac[j*2+1];
+						buffer_bool = true;
+						break;
+					}
+				}
+				if(!buffer_bool){
+					MgNormFac.push_back(Order[i]);
+					MgNormFac.push_back(1);
+				}
+			}
+		}else if(AtData[i][3]==3){
+			if(countO ==0){
+				ONormFac.push_back(Order[i]);
+				ONormFac.push_back(1);
+				countO += 1;
+			}else{
+				buffer_bool = false;
+				for(unsigned int j=0;j<ONormFac.size()/2;j++){
+					if( fabs(Order[i]-ONormFac[j*2]) < tolSites ){
+						//ONormFac[j*2] *= ONormFac[j*2+1];
+						//ONormFac[j*2] += Order[i];
+						ONormFac[j*2+1] += 1;
+						//ONormFac[j*2] /= ONormFac[j*2+1];
+						buffer_bool = true;
+						break;
+					}
+				}
+				if(!buffer_bool){
+					ONormFac.push_back(Order[i]);
+					ONormFac.push_back(1);
+				}
+			}
+		}
+	}
+
+	NormFac2_Si = SiNormFac[0];
+	buffer_d = SiNormFac[1];
+	for(unsigned int i=1;i<SiNormFac.size()/2;i++){
+		if( SiNormFac[i*2+1] >  buffer_d ){
+			buffer_d = SiNormFac[i*2+1];
+			NormFac2_Si = SiNormFac[i*2];
+		}
+	}
+
+	count = 0;
+	for(unsigned int n=0;n<2;n++){
+		buffer_d = MgNormFac[1];
+		buffer_d_1 = MgNormFac[0];
+		buffer_d_2 = 0;
+		for(unsigned int i=1;i<MgNormFac.size()/2;i++){
+			if(MgNormFac[i*2+1] > buffer_d){
+				buffer_d = MgNormFac[i*2+1];
+				buffer_d_1 = MgNormFac[i*2];
+				buffer_d_2 = i*2;
+			}
+		}
+		if(count==0) NormFac2_Mg1 = buffer_d_1;
+		else if(count==1) NormFac2_Mg2 = buffer_d_1;
+		MgNormFac.erase(MgNormFac.begin()+buffer_d_2+1);
+		MgNormFac.erase(MgNormFac.begin()+buffer_d_2);
+		count += 1;
+	}
+
+	count = 0;
+	for(unsigned int n=0;n<3;n++){
+		buffer_d = ONormFac[1];
+		buffer_d_1 = ONormFac[0];
+		buffer_d_2 = 0;
+		for(unsigned int i=1;i<ONormFac.size()/2;i++){
+			if(ONormFac[i*2+1] > buffer_d){
+				buffer_d = ONormFac[i*2+1];
+				buffer_d_1 = ONormFac[i*2];
+				buffer_d_2 = i*2;
+			}
+		}
+		if(count==0) NormFac2_O1 = buffer_d_1;
+		else if(count==1) NormFac2_O2 = buffer_d_1;
+		else if(count==2) NormFac2_O3 = buffer_d_1;
+		ONormFac.erase(ONormFac.begin()+buffer_d_2+1);
+		ONormFac.erase(ONormFac.begin()+buffer_d_2);
+		count += 1;
+	}
+	// renormalize by searching the closest normalization factor for the different species
+	double tolRenorm = 1.15;
+	for(unsigned int i=0;i<nbAt;i++){
+		if(AtData[i][3] == 1){
+			buffer_d = fabs(Order[i]-NormFac2_Mg1);
+			buffer_d_1 = NormFac2_Mg1;
+			if( ( (Order[i] < NormFac2_Mg2*tolRenorm) && ( fabs(Order[i]-NormFac2_Mg2) < buffer_d ) ) || (Order[i] > NormFac2_Mg1*tolRenorm) ) buffer_d_1 = NormFac2_Mg2;
+			Order[i] /= buffer_d_1;
+		}else if(AtData[i][3] == 2){
+			Order[i] /= NormFac2_Si;
+		}else if(AtData[i][3] == 3){
+			buffer_d = fabs(Order[i]-NormFac2_O1);
+			buffer_d_1 = NormFac2_O1;
+			buffer_d_2 = (NormFac2_O1*tolRenorm)-Order[i];
+			if( ( (Order[i] < NormFac2_O2*tolRenorm) && ( fabs(Order[i]-NormFac2_O2) < buffer_d ) ) || (0. > buffer_d_2) ){
+				buffer_d = fabs(Order[i]-NormFac2_O2);
+			        buffer_d_1 = NormFac2_Mg2;
+				buffer_d_2 = (NormFac2_O2*tolRenorm)-Order[i];
+			}
+			if( ( (Order[i] < NormFac2_O3*tolRenorm) && ( fabs(Order[i]-NormFac2_O3) < buffer_d ) ) || (0. > buffer_d_2) ){
+				buffer_d = fabs(Order[i]-NormFac2_O3);
+			        buffer_d_1 = NormFac2_O3;
+			}
+			Order[i] /= buffer_d_1;
+		}
+	}
 	// END SECOND TEST
 
 	for(unsigned int i=0;i<nbAt;i++){
@@ -857,21 +782,46 @@ int main(){
 	}
 	
 	// Compute z distribution of disorder assimiling each ion to gaussian
-	// get min and max z values 
-	double MinZ = AtData[0][2];
-	double MaxZ = AtData[0][2];
-	for(unsigned int i=1;i<nbAt;i++){
-		if(AtData[i][2] < MinZ) MinZ = AtData[i][2];
-		if(AtData[i][2] > MaxZ) MaxZ = AtData[i][2];
-	}
 	double sigma = 1.; // A	
 	unsigned int nbPts = 100;
 	double *z_pos = new double[nbPts];
 	double *diso_pos = new double[nbPts];
+	double *atDens = new double[nbPts];
 	double MinDiso;
 	double ZMaxDiso;
 	double MaxDiso;
 	double NormFacGauss;
+	double VacuumAtDens = 1e-1;
+	double VacuumZlo = lz;
+	double VacuumZhi = 0;
+	// get min and max z values
+	// search is there is vaccuum in the system by computing atomic density 
+	for(unsigned int i=0;i<nbPts;i++){
+	       atDens[i] = 0;
+	       z_pos[i] = i*lz/(nbPts-1.);
+	       for(unsigned int j=0;j<nbAt;j++){
+			atDens[i] += gaussian(z_pos[i], AtData[j][2], sigma);
+	       }
+	       if(atDens[i]<VacuumAtDens){
+			if(z_pos[i]<VacuumZlo) VacuumZlo = z_pos[i];
+			if(z_pos[i]>VacuumZhi) VacuumZhi = z_pos[i];
+	       }
+	}
+	double MinZ, MaxZ;
+	bool NotCentered;
+	if( fabs(VacuumZhi-VacuumZlo-lz) < 1. ){
+		NotCentered = false;
+		MinZ = AtData[0][2];
+		MaxZ = AtData[0][2];
+		for(unsigned int i=1;i<nbAt;i++){
+			if(AtData[i][2] < MinZ) MinZ = AtData[i][2];
+			if(AtData[i][2] > MaxZ) MaxZ = AtData[i][2];
+		}
+	}else{
+		NotCentered = true;
+		MinZ = 0.;
+		MaxZ = VacuumZlo;
+	}
 	for(unsigned int i=0;i<nbPts;i++){
 		z_pos[i] = MinZ+ (0.2*(MaxZ-MinZ)) + ( ( 0.6*(MaxZ-MinZ) )/(nbPts-1.))*i;
 		diso_pos[i] = 0.;
