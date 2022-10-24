@@ -7,3 +7,4 @@
 ######################################################################
 
 add_subdirectory(CreateCrystal)
+add_subdirectory(OrderParam)

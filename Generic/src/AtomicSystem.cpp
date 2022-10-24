@@ -1,5 +1,6 @@
 #include "AtomicSystem.h"
 #include "AtomHicConfig.h"
+#include "Crystal.h"
 #include <cmath>
 #include <sstream>
 #include <vector>
@@ -49,6 +50,19 @@ AtomicSystem::AtomicSystem(const string& filename)
 	this->G3[2] = this->H2[1]*this->H1[0]/det;
 	this->G3[0] = -(this->H2[1]*this->H3[0])/det;
 	this->G3[1] = 0.;
+}
+
+// TODO : add verification that AtomType_uint of _MyCrystal and correspond to the same atom type
+void AtomicSystem::setCrystal(Crystal* MyCrystal){
+	this->_MyCrystal = MyCrystal;
+	this->IsCrystalDefined = true;
+}
+
+// TODO : add verification that AtomType_uint of _MyCrystal and correspond to the same atom type
+void AtomicSystem::setCrystal(const std::string& CrystalName){
+	this->_MyCrystal = new Crystal(CrystalName);
+	this->IsCrystalDefined = true;
+	this->IsCrystalMine = true;
 }
 
 void AtomicSystem::computeWrap(){
@@ -587,4 +601,5 @@ AtomicSystem::~AtomicSystem(){
 		delete[] CLNeighbours;
 	}
 	if( IsSetAux ) for(unsigned int i=0;i<Aux.size();i++) delete[] Aux[i];
+	if( IsCrystalMine ) delete _MyCrystal;
 }

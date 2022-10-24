@@ -1,4 +1,5 @@
 #include "Crystal.h"
+#include "MyStructs.h"
 #include "AtomHicConfig.h"
 #include <iostream>
 #include <dirent.h>
@@ -58,6 +59,7 @@ Crystal::Crystal(const string& crystalName){
 		}else{
 			this->path2database = database+"/"+AvailableCrystals[crystal_index]+this->database_extension;
 		}
+		read_database();
 	}
 }
 
@@ -70,7 +72,6 @@ void Crystal::read_database(){
 	if(file){
 		while(file){
 			getline(file,line);
-
 			// find number of atom
 			pos_at=line.find("atoms");
 			if(pos_at!=string::npos){
@@ -112,6 +113,7 @@ void Crystal::read_database(){
 				this->nbAtomType = buffer_1;
 				AtomType = new string[this->nbAtomType];
 				AtomType_uint = new unsigned int[this->nbAtomType];
+				NbAtomSite = new unsigned int[this->nbAtomType];
 				AtomMass = new double[this->nbAtomType];
 			}
 
@@ -120,10 +122,11 @@ void Crystal::read_database(){
 			if(pos_Mass!=string::npos) line_Mass = count;
 			if( count > line_Mass+1 && count < line_Mass+2+this->nbAtomType ){
 				istringstream text(line);
-				text >> buffer_uint >> buffer_1 >> buffer_s_1 >> buffer_s;
+				text >> buffer_uint >> buffer_1 >> buffer_s_1 >> buffer_s >> buffer_uint_1;
 				this->AtomMass[buffer_uint-1] = buffer_1;
 				this->AtomType[buffer_uint-1] = buffer_s;
 				this->AtomType_uint[buffer_uint-1] = buffer_uint;
+				this->NbAtomSite[buffer_uint-1] = buffer_uint_1;
 			}
 			pos_At=line.find("Atoms");
 			if(pos_At!=string::npos){
@@ -159,8 +162,9 @@ void Crystal::read_database(){
 
 Crystal::~Crystal(){
 	delete[] CellParameters;
-	delete[] Motif;
 	delete[] AtomType;
 	delete[] AtomType_uint;
 	delete[] AtomMass;
+	delete[] NbAtomSite;
+	delete[] this->Motif;
 }
