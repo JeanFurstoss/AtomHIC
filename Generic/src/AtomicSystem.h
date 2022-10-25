@@ -3,6 +3,7 @@
 
 #include "AtomHicExport.h"
 #include "Crystal.h"
+#include "MathTools.h"
 #include "MyStructs.h"
 #include <string>
 #include <vector>
@@ -41,11 +42,12 @@ private:
 	std::vector<double*> Aux; // auxiliary atom properties
 	bool IsSetAux = false;
 	std::vector<std::string> Aux_name; // auxiliary atom properties
+	MathTools *MT;
 public:
 	AtomicSystem();
 	AtomicSystem(const std::string& filename); // construct AtomicSystem by reading file
 	// getters
-	int getNbAtom(){ return this->nbAtom; }
+	unsigned int getNbAtom(){ return this->nbAtom; }
 	Atom getAtom(const unsigned int Id){ return this->AtomList[Id]; }
 	double* getAux(const unsigned int AuxId){ return this->Aux[AuxId]; }
 	Position getWrappedPos(const unsigned int AuxId){ return this->WrappedPos[AuxId]; }
@@ -62,6 +64,8 @@ public:
 	double* getH3(){ return this->H3; }
 	// setters
 	void setAux(const double* aux, const std::string& AuxName);
+	void setAux(const unsigned int* aux, const std::string& AuxName);
+	void setAux(const int* aux, const std::string& AuxName);
 	void setCrystal(Crystal* MyCrystal);
 	void setCrystal(const std::string& CrystalName);
 	// methods

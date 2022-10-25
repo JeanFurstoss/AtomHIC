@@ -23,8 +23,12 @@ int main()
 	cout << "spherical harmonic degree : ";
 	cin >> l;	
 	MySystem.setAux(CompAux.BondOrientationalParameter(l,rc), "order");
+	unsigned int *nbNeigh = new unsigned int[MySystem.getNbAtom()];
+	for(unsigned int i=0;i<MySystem.getNbAtom();i++) nbNeigh[i] = MySystem.getNeighbours()[i*(MySystem.getNbMaxN()+1)];
+	MySystem.setAux(nbNeigh, "nbNeigh");
 	cout << "Output file name : ";
 	cin >> filename;
-	MySystem.printSystem_aux(filename,"order");
+	MySystem.printSystem_aux(filename,"order nbNeigh");
+	delete[] nbNeigh;
 	return 0;
 }

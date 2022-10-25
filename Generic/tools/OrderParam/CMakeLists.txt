@@ -15,6 +15,4 @@ file(GLOB SOURCES "*.cpp")
 
 #Generate executable
 add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS})
-
-#Link executable to oxford library
 target_link_libraries(${PROJECT_NAME} AtomHic)

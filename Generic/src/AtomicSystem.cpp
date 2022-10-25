@@ -34,9 +34,10 @@ AtomicSystem::AtomicSystem(const string& filename)
 		cerr << "The \"" << ext << "\" is unknown (known extension : lmp, cfg(or xsf)), aborting the construction of atomic system" << endl;
 	}
 	for(unsigned int i=0;i<this->nbAtom;i++){
-		this->AtomList[i].type = this->AtomType[this->AtomList[i].type_uint-1];
+		this->AtomList[i].type = this->AtomType[this->AtomList[i].type_uint-1]; //TODO not good
 		this->AtomList[i].mass = this->AtomMass[this->AtomList[i].type_uint-1];
 	}
+	MT = new MathTools;
 	G1 = new double[3];
 	G2 = new double[3];
 	G3 = new double[3];
@@ -44,12 +45,12 @@ AtomicSystem::AtomicSystem(const string& filename)
 	this->G1[0] = this->H2[1]*this->H3[2]/det;
 	this->G1[1] = 0.;
 	this->G1[2] = 0.;
+	this->G2[0] = -(this->H2[0]*this->H3[2])/det;
 	this->G2[1] = this->H1[0]*this->H3[2]/det;
-	this->G2[0] = ((this->H2[2]*this->H3[0])-(this->H2[0]*this->H3[2]))/det;
-	this->G2[2] = this->H1[0]*this->H2[2]/det;
+	this->G2[2] = -(this->H1[0]*this->H2[2])/det;
+	this->G3[0] = ((this->H2[0]*this->H3[1])-(this->H2[1]*this->H3[0]))/det;
+	this->G3[1] = -(this->H3[1]*this->H1[0])/det;
 	this->G3[2] = this->H2[1]*this->H1[0]/det;
-	this->G3[0] = -(this->H2[1]*this->H3[0])/det;
-	this->G3[1] = 0.;
 }
 
 // TODO : add verification that AtomType_uint of _MyCrystal and correspond to the same atom type
@@ -125,7 +126,41 @@ void AtomicSystem::searchNeighbours(const double& rc){
         }
 	vector<vector<unsigned int>> Cells;
 	if( this->IsTilted ){
-		cout << "the neighbouring search is not yet implemented for tilted systems" << endl;
+		// compute plane equations (as everywhere the only tilts considered are xy, yz, xz)
+		double H1H3_z;
+	        if(fabs(this->H3[2]) > 1e-6) H1H3_z = -(this->H3[1]/this->H3[2]);
+		else H1H3_z = 0.;
+		double H2H3_y = -(this->H2[0]/this->H2[1]); 
+		double H2H3_z = ((this->H2[0]*this->H3[1]/this->H2[1])-this->H3[0])/this->H3[2];
+		double planeH1H3, planeH2H3;
+		for(unsigned int i=0;i<nbCellX;i++){
+        	        for(unsigned int j=0;j<nbCellY;j++){
+        	                for(unsigned int k=0;k<nbCellZ;k++){
+        	                        Cells.push_back(vector<unsigned int>());
+        	                        for(unsigned at=0;at<this->nbAtom;at++){
+						planeH1H3 = this->WrappedPos[at].y+this->WrappedPos[at].z*H1H3_z;	
+						planeH2H3 = this->WrappedPos[at].x+this->WrappedPos[at].y*H2H3_y+this->WrappedPos[at].z*H2H3_z;	
+        	                        	if( (i == nbCellX-1) && (j == nbCellY-1) && (k == nbCellZ-1) ){
+        	                                        if( (planeH2H3>=i*CellSizeX) && (planeH2H3<=(i+1)*CellSizeX) && (planeH1H3>=j*CellSizeY) && (planeH1H3<=(j+1)*CellSizeY) &&  (this->WrappedPos[at].z>=k*CellSizeZ) && (this->WrappedPos[at].z<=(k+1)*CellSizeZ) ) Cells[i*nbCellY*nbCellZ+j*nbCellZ+k].push_back(at);
+        	                        	}else if( (i == nbCellX-1) && (j == nbCellY-1) ){
+        	                                        if( (planeH2H3>=i*CellSizeX) && (planeH2H3<=(i+1)*CellSizeX) && (planeH1H3>=j*CellSizeY) && (planeH1H3<=(j+1)*CellSizeY) &&  (this->WrappedPos[at].z>=k*CellSizeZ) && (this->WrappedPos[at].z<(k+1)*CellSizeZ) ) Cells[i*nbCellY*nbCellZ+j*nbCellZ+k].push_back(at);
+        	                        	}else if( (j == nbCellY-1) && (k == nbCellZ-1) ){
+        	                                        if( (planeH2H3>=i*CellSizeX) && (planeH2H3<(i+1)*CellSizeX) && (planeH1H3>=j*CellSizeY) && (planeH1H3<=(j+1)*CellSizeY) &&  (this->WrappedPos[at].z>=k*CellSizeZ) && (this->WrappedPos[at].z<=(k+1)*CellSizeZ) ) Cells[i*nbCellY*nbCellZ+j*nbCellZ+k].push_back(at);
+        	                        	}else if( (i == nbCellX-1) && (k == nbCellZ-1) ){
+        	                                        if( (planeH2H3>=i*CellSizeX) && (planeH2H3<=(i+1)*CellSizeX) && (planeH1H3>=j*CellSizeY) && (planeH1H3<(j+1)*CellSizeY) &&  (this->WrappedPos[at].z>=k*CellSizeZ) && (this->WrappedPos[at].z<=(k+1)*CellSizeZ) ) Cells[i*nbCellY*nbCellZ+j*nbCellZ+k].push_back(at);
+        	                        	}else if(i == nbCellX-1){
+        	                                        if( (planeH2H3>=i*CellSizeX) && (planeH2H3<=(i+1)*CellSizeX) && (planeH1H3>=j*CellSizeY) && (planeH1H3<(j+1)*CellSizeY) &&  (this->WrappedPos[at].z>=k*CellSizeZ) && (this->WrappedPos[at].z<(k+1)*CellSizeZ) ) Cells[i*nbCellY*nbCellZ+j*nbCellZ+k].push_back(at);
+        	                        	}else if(j == nbCellY-1){
+        	                                        if( (planeH2H3>=i*CellSizeX) && (planeH2H3<(i+1)*CellSizeX) && (planeH1H3>=j*CellSizeY) && (planeH1H3<=(j+1)*CellSizeY) &&  (this->WrappedPos[at].z>=k*CellSizeZ) && (this->WrappedPos[at].z<(k+1)*CellSizeZ) ) Cells[i*nbCellY*nbCellZ+j*nbCellZ+k].push_back(at);
+        	                        	}else if(k == nbCellZ-1){
+        	                                        if( (planeH2H3>=i*CellSizeX) && (planeH2H3<(i+1)*CellSizeX) && (planeH1H3>=j*CellSizeY) && (planeH1H3<(j+1)*CellSizeY) &&  (this->WrappedPos[at].z>=k*CellSizeZ) && (this->WrappedPos[at].z<=(k+1)*CellSizeZ) ) Cells[i*nbCellY*nbCellZ+j*nbCellZ+k].push_back(at);
+						}else{
+        	                                        if( (planeH2H3>=i*CellSizeX) && (planeH2H3<(i+1)*CellSizeX) && (planeH1H3>=j*CellSizeY) && (planeH1H3<(j+1)*CellSizeY) &&  (this->WrappedPos[at].z>=k*CellSizeZ) && (this->WrappedPos[at].z<(k+1)*CellSizeZ) ) Cells[i*nbCellY*nbCellZ+j*nbCellZ+k].push_back(at);
+						}
+					}
+				}
+			}
+		}
 	}else{
 		for(unsigned int i=0;i<nbCellX;i++){
         	        for(unsigned int j=0;j<nbCellY;j++){
@@ -260,6 +295,20 @@ void AtomicSystem::setAux(const double* aux, const string& AuxName){
 	for(unsigned int i=0;i<this->nbAtom;i++) Aux[Aux.size()-1][i] = aux[i];
 }
 
+void AtomicSystem::setAux(const int* aux, const string& AuxName){
+	IsSetAux = true;
+	this->Aux.push_back(new double[this->nbAtom]);
+	this->Aux_name.push_back(AuxName);
+	for(unsigned int i=0;i<this->nbAtom;i++) Aux[Aux.size()-1][i] = (double) aux[i];
+}
+
+void AtomicSystem::setAux(const unsigned int* aux, const string& AuxName){
+	IsSetAux = true;
+	this->Aux.push_back(new double[this->nbAtom]);
+	this->Aux_name.push_back(AuxName);
+	for(unsigned int i=0;i<this->nbAtom;i++) Aux[Aux.size()-1][i] = (double) aux[i];
+}
+
 void AtomicSystem::printSystem(const string& filename){
 	string ext=filename.substr(filename.find_last_of(".") + 1);
 	if( ext == "lmp" ){
@@ -276,6 +325,7 @@ void AtomicSystem::read_lmp_file(const string& filename){
 	size_t pos_at, pos_x, pos_y, pos_z, pos_tilt, pos_attype, pos_Mass, pos_At;
 	unsigned int line_Mass(1000), line_At(1000), buffer_uint, buffer_uint_1, count(0);
 	double buffer_1, buffer_2, buffer_3, buffer_4;
+	double xlo,xhi,ylo,yhi,zlo,zhi;
 	string buffer_s, buffer_s_1, buffer_s_2, line;
 	if(file){
 		while(file){
@@ -295,7 +345,8 @@ void AtomicSystem::read_lmp_file(const string& filename){
 			if(pos_x!=string::npos){
 				istringstream text(line);
 				text >> buffer_1 >> buffer_2;
-				this->H1[0] = buffer_2-buffer_1;
+				xhi = buffer_2;
+				xlo = buffer_1;
 			}
 
 			// find H2 vector
@@ -303,7 +354,8 @@ void AtomicSystem::read_lmp_file(const string& filename){
 			if(pos_y!=string::npos){
 				istringstream text(line);
 				text >> buffer_1 >> buffer_2;
-				this->H2[1] = buffer_2-buffer_1;
+				yhi = buffer_2;
+				ylo = buffer_1;
 			}
 
 			// find H3 vector
@@ -311,7 +363,8 @@ void AtomicSystem::read_lmp_file(const string& filename){
 			if(pos_z!=string::npos){
 				istringstream text(line);
 				text >> buffer_1 >> buffer_2;
-				this->H3[2] = buffer_2-buffer_1;
+				zhi = buffer_2;
+				zlo = buffer_1;
 			}
 
 			// find tilts
@@ -343,7 +396,7 @@ void AtomicSystem::read_lmp_file(const string& filename){
 				this->AtomType[buffer_uint-1] = buffer_s;
 				this->AtomType_uint[buffer_uint-1] = buffer_uint;
 			}
-			pos_At=line.find("Atoms");
+			pos_At=line.find("Atoms #");
 			if(pos_At!=string::npos){
 				istringstream text(line);
 				text >> buffer_s_1 >> buffer_s_2 >> buffer_s;
@@ -369,6 +422,11 @@ void AtomicSystem::read_lmp_file(const string& filename){
 			}
 			count += 1;
 		}
+		// compute the cell vectors
+		double arr[4] = {0.,this->H2[0],this->H3[0],this->H2[0]+this->H3[0]};
+		this->H1[0] = xhi-xlo+this->MT->min(arr,4)-this->MT->max(arr,4);
+		double arr_2[2] = {0.,this->H3[1]};
+		this->H2[1] = yhi-ylo+this->MT->min(arr_2,2)-this->MT->max(arr_2,2);
 		file.close();
 	}else{
 		cout << "The file " << filename << " cannot be openned" << endl;
@@ -382,6 +440,7 @@ void AtomicSystem::read_cfg_file(const string& filename){
 		unsigned int line_dt(1000), line_At(1000), line_H_tilt(1000), line_H(1000), line_at(1000), buffer_uint, buffer_uint_1, count_H(0), count(0);
 		size_t pos_dt, pos_At, pos_H_tilt, pos_H, pos_charge, pos_at;
 		double buffer_1, buffer_2, buffer_3, buffer_4;
+		double xlo,xhi,ylo,yhi,zlo,zhi;
 		string buffer_s, buffer_s_1, buffer_s_2, line;
 		while(file){
 			getline(file,line);
@@ -417,12 +476,16 @@ void AtomicSystem::read_cfg_file(const string& filename){
 				istringstream text(line);
 				text >> buffer_1 >> buffer_2 >> buffer_3;
 				if( count_H == 0 ){
-					this->H1[0] = buffer_2-buffer_1;
+					xlo = buffer_1;
+					xhi = buffer_2;
 					this->H2[0] = buffer_3;
 				}else if( count_H == 1 ){
-					this->H2[1] = buffer_2-buffer_1;
+					ylo = buffer_1;
+					yhi = buffer_2;
 					this->H3[0] = buffer_3;
 				}else if( count_H == 2 ){
+					zlo = buffer_1;
+					zhi = buffer_2;
 					this->H3[2] = buffer_2-buffer_1;
 					this->H3[1] = buffer_3;
 				}
@@ -456,13 +519,18 @@ void AtomicSystem::read_cfg_file(const string& filename){
 			count += 1;
 		}
 		file.close();
-
+		// compute the cell vectors
+		double arr[4] = {0.,this->H2[0],this->H3[0],this->H2[0]+this->H3[0]};
+		this->H1[0] = xhi-xlo+this->MT->min(arr,4)-this->MT->max(arr,4);
+		double arr_2[2] = {0.,this->H3[1]};
+		this->H2[1] = yhi-ylo+this->MT->min(arr_2,2)-this->MT->max(arr_2,2);
 		// search the number of atom type
 		this->AtomType[0] = this->AtomList[0].type;
 		this->AtomType_uint[0] = this->AtomList[0].type_uint;
 		this->nbAtomType = 1;
-		bool IsStored = false;
+		bool IsStored;
 		for(unsigned int i=1;i<this->nbAtom;i++){
+			IsStored = false;
 			for(unsigned int j=0;j<this->nbAtomType;j++){
 				if( this->AtomType[j] == this->AtomList[i].type ){
 					IsStored = true;
@@ -542,7 +610,12 @@ void AtomicSystem::print_lmp(const string& filename){
 void AtomicSystem::print_cfg(const string& filename){
 	ofstream writefile(filename);
 	writefile << "ITEM: TIMESTEP\n" << (int) this->timestep << "\nITEM: NUMBER OF ATOMS\n" << this->nbAtom << "\nITEM: ";
-	if( IsTilted ) writefile << "BOX BOUNDS xy xz yz pp pp pp\n" << "0\t" << H1[0] << "\t" << H2[0] << "\n0\t" << H2[1] << "\t" << H3[0] << "\n0\t" << H3[2] << "\t" << H3[1] << "\n";
+	if( IsTilted ){
+		// compute the cell vectors
+		double arr[4] = {0.,this->H2[0],this->H3[0],this->H2[0]+this->H3[0]};
+		double arr_2[2] = {0.,this->H3[1]};
+	       	writefile << "BOX BOUNDS xy xz yz pp pp pp\n" << this->MT->min(arr,4) << "\t" << this->H1[0]+this->MT->max(arr,4) << "\t" << H2[0] << "\n" << this->MT->min(arr_2,2) << "\t" << this->H2[1]+this->MT->max(arr_2,2) << "\t" << H3[0] << "\n0\t" << H3[2] << "\t" << H3[1] << "\n";
+	}
 	else writefile << "BOX BOUNDS pp pp pp\n" << "0\t" << H1[0] << "\n0\t" << H2[1] << "\n0\t" << H3[2] << "\n";
 	writefile << "ITEM: ATOMS id type element xu yu zu q\n";
 	for(unsigned int i=0;i<this->nbAtom;i++) writefile << i+1 << " " << this->AtomList[i].type_uint << " " << this->AtomList[i].type << " " << this->AtomList[i].pos.x << " " << this->AtomList[i].pos.y << " " << this->AtomList[i].pos.z << " " << this->AtomList[i].charge << "\n";
@@ -571,7 +644,12 @@ void AtomicSystem::printSystem_aux(const string& filename, const string& AuxName
 	
 	ofstream writefile(filename);
 	writefile << "ITEM: TIMESTEP\n" << (int) this->timestep << "\nITEM: NUMBER OF ATOMS\n" << this->nbAtom << "\nITEM: ";
-	if( IsTilted ) writefile << "BOX BOUNDS xy xz yz pp pp pp\n" << "0\t" << H1[0] << "\t" << H2[0] << "\n0\t" << H2[1] << "\t" << H3[0] << "\n0\t" << H3[2] << "\t" << H3[1] << "\n";
+	if( IsTilted ){
+		// compute the cell vectors
+		double arr[4] = {0.,this->H2[0],this->H3[0],this->H2[0]+this->H3[0]};
+		double arr_2[2] = {0.,this->H3[1]};
+	       	writefile << "BOX BOUNDS xy xz yz pp pp pp\n" << this->MT->min(arr,4) << "\t" << this->H1[0]+this->MT->max(arr,4) << "\t" << H2[0] << "\n" << this->MT->min(arr_2,2) << "\t" << this->H2[1]+this->MT->max(arr_2,2) << "\t" << H3[0] << "\n0\t" << H3[2] << "\t" << H3[1] << "\n";
+	}
 	else writefile << "BOX BOUNDS pp pp pp\n" << "0\t" << H1[0] << "\n0\t" << H2[1] << "\n0\t" << H3[2] << "\n";
 	writefile << "ITEM: ATOMS id type element xu yu zu q";
         for(unsigned int i=0;i<AuxId.size();i++) writefile << " " << this->Aux_name[AuxId[i]];
@@ -595,6 +673,7 @@ AtomicSystem::~AtomicSystem(){
 	delete[] G1;
 	delete[] G2;
 	delete[] G3;
+	delete MT;
 	if( IsWrappedPos ) delete[] WrappedPos;
 	if( IsNeighbours ){
 		delete[] Neighbours;

@@ -6,6 +6,7 @@
 #include <iostream>
 #include <vector>
 #include <iomanip>
+#include <omp.h>
 
 using namespace std;
 
@@ -27,7 +28,6 @@ double* ComputeAuxiliary::BondOrientationalParameter(const int& l_sph, double& r
 	unsigned int id;
 	// if the crystal has been defined, search if it is a multisite one, wuthout crystal definition it is assumed as monosite
 	bool multiSite = false;
-	double *NormFacSite;
 	if( _MySystem->getIsCrystalDefined() ){
 		for(unsigned int i=0;i<_MySystem->getCrystal()->getNbAtomType();i++){
 			if(_MySystem->getCrystal()->getNbAtomSite(i) > 1){
@@ -39,23 +39,23 @@ double* ComputeAuxiliary::BondOrientationalParameter(const int& l_sph, double& r
 	}
 
 	// loop on all atoms and neighbours to compute Qalpha and store neighbour of the same species
-	// Here is the most time consuming loop of the function, display the progress bar
-	cout << "Computing bond orientation parameter" << endl;
-	cout << "\r[" << string(bar_length*prog,'X') << string(bar_length*(1-prog),'-') << "] " << setprecision(3) << 100*prog << "%";
+	// Here is the most time consuming loop of the function, use parallel computation
+	cout << "Computing bond orientation parameter.. ";
+	unsigned int j_loop;
+	int l_loop;
+	#pragma omp parallel for private(xpos,ypos,zpos,j_loop,id,xp,yp,zp,colat,longit,l_loop)
 	for(unsigned int i=0;i<nbAt;i++){
-		prog = double(i)/double(nbAt);
-		cout << "\r[" << string(floor(bar_length*prog),'X') << string(ceil(bar_length*(1-prog)),'-') << "] " << setprecision(3) << 100*prog << "%";
 		xpos = _MySystem->getWrappedPos(i).x;
 		ypos = _MySystem->getWrappedPos(i).y;
 		zpos = _MySystem->getWrappedPos(i).z;
 		Malpha[i*(nbNMax+1)] = 0; 
 		Calpha[i] = 0; 
-		for(unsigned int j=0;j<_MySystem->getNeighbours(i*(nbNMax+1));j++){
-			id = _MySystem->getNeighbours(i*(nbNMax+1)+j+1);
+		for(j_loop=0;j_loop<_MySystem->getNeighbours(i*(nbNMax+1));j_loop++){
+			id = _MySystem->getNeighbours(i*(nbNMax+1)+j_loop+1);
 			// get distance vector
-			xp = _MySystem->getWrappedPos(id).x+_MySystem->getCLNeighbours(i*nbNMax*3+j*3)*_MySystem->getH1()[0]+_MySystem->getCLNeighbours(i*nbNMax*3+j*3+1)*_MySystem->getH2()[0]+_MySystem->getCLNeighbours(i*nbNMax*3+j*3+2)*_MySystem->getH3()[0]-xpos;
-			yp = _MySystem->getWrappedPos(id).y+_MySystem->getCLNeighbours(i*nbNMax*3+j*3)*_MySystem->getH1()[1]+_MySystem->getCLNeighbours(i*nbNMax*3+j*3+1)*_MySystem->getH2()[1]+_MySystem->getCLNeighbours(i*nbNMax*3+j*3+2)*_MySystem->getH3()[1]-ypos;
-			zp = _MySystem->getWrappedPos(id).z+_MySystem->getCLNeighbours(i*nbNMax*3+j*3)*_MySystem->getH1()[2]+_MySystem->getCLNeighbours(i*nbNMax*3+j*3+1)*_MySystem->getH2()[2]+_MySystem->getCLNeighbours(i*nbNMax*3+j*3+2)*_MySystem->getH3()[2]-zpos;
+			xp = _MySystem->getWrappedPos(id).x+_MySystem->getCLNeighbours(i*nbNMax*3+j_loop*3)*_MySystem->getH1()[0]+_MySystem->getCLNeighbours(i*nbNMax*3+j_loop*3+1)*_MySystem->getH2()[0]+_MySystem->getCLNeighbours(i*nbNMax*3+j_loop*3+2)*_MySystem->getH3()[0]-xpos;
+			yp = _MySystem->getWrappedPos(id).y+_MySystem->getCLNeighbours(i*nbNMax*3+j_loop*3)*_MySystem->getH1()[1]+_MySystem->getCLNeighbours(i*nbNMax*3+j_loop*3+1)*_MySystem->getH2()[1]+_MySystem->getCLNeighbours(i*nbNMax*3+j_loop*3+2)*_MySystem->getH3()[1]-ypos;
+			zp = _MySystem->getWrappedPos(id).z+_MySystem->getCLNeighbours(i*nbNMax*3+j_loop*3)*_MySystem->getH1()[2]+_MySystem->getCLNeighbours(i*nbNMax*3+j_loop*3+1)*_MySystem->getH2()[2]+_MySystem->getCLNeighbours(i*nbNMax*3+j_loop*3+2)*_MySystem->getH3()[2]-zpos;
 			// compute colatitude and longitudinal angles
 			colat = acos(zp/sqrt(pow(xp,2.)+pow(yp,2.)+pow(zp,2.)));
 			if( xp > 0 ) longit = atan(yp/xp);
@@ -65,7 +65,7 @@ double* ComputeAuxiliary::BondOrientationalParameter(const int& l_sph, double& r
 	                else if( ( fabs(xp) < zeronum ) and ( yp < 0 ) ) longit = -M_PI/2.;
 	                else if( ( fabs(xp) < zeronum ) and ( fabs(yp) < zeronum ) ) longit = 0.;
 			// compute spherical harmonics
-			for(int l=-l_sph;l<l_sph+1;l++)	Qalpha[i*(l_sph*2+1)+l+l_sph] += spherical_harmonics((unsigned int) l_sph, l, colat, longit);
+			for(l_loop=-l_sph;l_loop<l_sph+1;l_loop++)	Qalpha[i*(l_sph*2+1)+l_loop+l_sph] += spherical_harmonics((unsigned int) l_sph, l_loop, colat, longit);
 			// Store the neighbour index into Malpha if it is of the same specy
 			if( _MySystem->getAtom(i).type == _MySystem->getAtom(id).type ){
 				Malpha[i*(nbNMax+1)] += 1;
@@ -75,7 +75,7 @@ double* ComputeAuxiliary::BondOrientationalParameter(const int& l_sph, double& r
 		// compute normalization factors
 		for(int l=-l_sph;l<l_sph+1;l++)	Calpha[i] += (pow(Qalpha[i*(l_sph*2+1)+l+l_sph].real(), 2.) + pow(Qalpha[i*(l_sph*2+1)+l+l_sph].imag(), 2.));
 	}
-	cout << endl;
+	cout << " Done !" << endl;
 	// compute the order parameter using the formulation presented in Chua et al. 2010
 	unsigned int NId, nbN;
 	for(unsigned int i=0;i<nbAt;i++){
@@ -91,9 +91,8 @@ double* ComputeAuxiliary::BondOrientationalParameter(const int& l_sph, double& r
 		else BondOriParam[i] /= nbN;
 	}
 
-	// in the case of mutlisite crystal, we should update the Malpha array by considering site instead of type
-	// first the most represented normalization factors are searched to attribute normalization factor to the different sites
-	// then the atom are sorted by site by searching the closest norm fac corresponding to a site
+	// in the case of mutlisite crystal and/or non-centrosymmetric crystal, each atom belonging to a site will have a given BondOriParam
+	// we then search the most represented BondOriParam and renormalize by the closest one 
 	// this method implies to consider that most of the atoms in the system are in perfect environment
 	if( multiSite ){
 		// Search the most represented normalization factors
@@ -178,6 +177,14 @@ double* ComputeAuxiliary::BondOrientationalParameter(const int& l_sph, double& r
 			}
 		}
 	} // end if multisite
+	for(unsigned int i=0;i<nbAt;i++){
+		if( BondOriParam[i] > 1. ) BondOriParam[i] = fabs(BondOriParam[i])-1.;
+		else BondOriParam[i] = 1.-fabs(BondOriParam[i]);
+	}
+	// free allocated memory
+	delete[] Malpha;
+	delete[] Qalpha;
+	delete[] Calpha;
 	IsBondOriParam = true;
 	return BondOriParam;
 
@@ -194,9 +201,6 @@ complex<double> ComputeAuxiliary::spherical_harmonics(const unsigned int& l, int
 }
 
 ComputeAuxiliary::~ComputeAuxiliary(){
-	if( IsBondOriParam ){
-		delete[] BondOriParam;
-
-	}
+	if( IsBondOriParam ) delete[] BondOriParam;
 }
 
