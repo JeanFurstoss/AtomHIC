@@ -1,19 +1,17 @@
-#ifndef ATOMHIC_ATOMICSYSTEM_H
-#define ATOMHIC_ATOMICSYSTEM_H
+#ifndef ATOMICSYSTEM_H
+#define ATOMICSYSTEM_H
 
 #include "AtomHicExport.h"
-#include "Crystal.h"
 #include "MathTools.h"
 #include "MyStructs.h"
 #include <string>
 #include <vector>
 #include <iostream>
 #include <fstream>
+#include "Crystal.h"
 
-/** Define an atomic system (i.e. a defined box containing atoms)
- */
 class ATOMHIC_EXPORT AtomicSystem {
-private:
+protected:
 	unsigned int nbAtom;
 	unsigned int nbAtomType;
 	unsigned int MaxAtomType=15;
@@ -38,13 +36,16 @@ private:
 	bool IsTilted;
 	bool IsCrystalDefined = false;
 	bool IsCrystalMine = false;
-	Crystal* _MyCrystal;	
+	Crystal *_MyCrystal;	
 	std::vector<double*> Aux; // auxiliary atom properties
 	bool IsSetAux = false;
 	std::vector<std::string> Aux_name; // auxiliary atom properties
 	MathTools *MT;
+	std::vector<double*> density_prof; // density_prof[i][j*2] = density of auxiliary property i at sampled point j, density_prof[i][j*2+1] = coordinate (in density_name[i*2+1] direction) of the sample point j
+	std::vector<int> density_nbPts; // density_nbPts[i] = number of sampled point
+	std::vector<std::string*> density_name; // auxiliary atom properties => density_name[i*2] = auxiliary property used to compute density, density_name[i*2+1] = direction along which the density has been computed
 public:
-	AtomicSystem();
+	AtomicSystem(){};
 	AtomicSystem(const std::string& filename); // construct AtomicSystem by reading file
 	// getters
 	unsigned int getNbAtom(){ return this->nbAtom; }
@@ -77,6 +78,8 @@ public:
 	void printSystem_aux(const std::string& filename, const std::string& AuxId);
 	void searchNeighbours(const double& rc);
 	void computeWrap();
+	void Compute1dDensity(std::string auxname, std::string dir, double sigma, unsigned int nbPts);
+	void Print1dDensity(std::string auxname, std::string filename);
 	~AtomicSystem();
 };
 

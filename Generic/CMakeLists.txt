@@ -22,9 +22,6 @@ option(BUILD_TOOLS true)
 #Enable or disable testing
 option(BUILD_TESTS false)
 
-#Enable or disable documentation
-option(BUILD_DOCUMENTATION false)
-
 # build type : Release or Debug
 set(CMAKE_BUILD_TYPE "Debug")
 
@@ -60,11 +57,6 @@ if(BUILD_TESTS)
   # Activate testing
   enable_testing()
   add_subdirectory(tests)
-endif()
-
-#Documentation
-if(BUILD_DOCUMENTATION)
-  add_subdirectory(doc)
 endif()
 
 ####################################################################

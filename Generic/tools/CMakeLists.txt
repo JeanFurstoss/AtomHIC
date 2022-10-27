@@ -7,4 +7,5 @@
 ######################################################################
 
 add_subdirectory(CreateCrystal)
+add_subdirectory(AnalyzeBicrystal)
 add_subdirectory(OrderParam)

@@ -1,7 +1,6 @@
 // AtomHic library files
 #include <AtomicSystem.h>
 #include <Crystal.h>
-#include <OrthorhombicCrystal.h>
 #include <stdlib.h>
 #include <iostream>
 #include <sstream>
@@ -12,7 +11,8 @@ using namespace std;
 int main()
 {
 	string filename="Forsterite";
-	//OrthorhombicCrystal MyCrystal(filename);
+	Crystal MyCrystal(filename);
+	cout << MyCrystal.getA1()[0] << " " << MyCrystal.getA1()[1] << " " << MyCrystal.getA1()[2] << endl; 
 	cout << "Atomic file name : " ;
 	cin >> filename;
 	AtomicSystem MySystem(filename);

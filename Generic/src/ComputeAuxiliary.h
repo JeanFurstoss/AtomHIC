@@ -1,5 +1,5 @@
-#ifndef ATOMHIC_COMPUTEAUXILIARY_H
-#define ATOMHIC_COMPUTEAUXILIARY_H
+#ifndef COMPUTEAUXILIARY_H
+#define COMPUTEAUXILIARY_H
 
 #include "AtomHicExport.h"
 #include "AtomicSystem.h"

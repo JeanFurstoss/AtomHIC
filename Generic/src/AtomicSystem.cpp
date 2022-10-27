@@ -53,6 +53,137 @@ AtomicSystem::AtomicSystem(const string& filename)
 	this->G3[2] = this->H2[1]*this->H1[0]/det;
 }
 
+void AtomicSystem::Compute1dDensity(std::string auxname, std::string dir, double sigma, unsigned int nbPts){
+	if( !IsWrappedPos ) computeWrap();
+	density_prof.push_back(new double[nbPts*2]);
+	int indexaux=-1;
+	for(unsigned int i=0;i<this->Aux_name.size();i++){
+		if( auxname == Aux_name[i] ){
+			indexaux=i;
+			break;
+		}
+	}
+	if( indexaux == -1 ){
+		if( auxname == "Mass" ){
+			if( dir == "x" ){
+				for(unsigned int i=0;i<nbPts;i++){
+					this->density_prof[this->density_prof.size()-1][i*2] = 0;
+					this->density_prof[this->density_prof.size()-1][i*2+1] = this->H1[0]*i/(nbPts-1.);
+					for(unsigned int j=0;j<this->nbAtom;j++) this->density_prof[this->density_prof.size()-1][i*2] += MT->gaussian(this->density_prof[this->density_prof.size()-1][i*2+1], this->WrappedPos[j].x, sigma)*(this->AtomList[j].mass);
+				}
+			}else if( dir == "y" ){
+				for(unsigned int i=0;i<nbPts;i++){
+					this->density_prof[this->density_prof.size()-1][i*2] = 0;
+					this->density_prof[this->density_prof.size()-1][i*2+1] = this->H2[1]*i/(nbPts-1.);
+					for(unsigned int j=0;j<this->nbAtom;j++) this->density_prof[this->density_prof.size()-1][i*2] += MT->gaussian(this->density_prof[this->density_prof.size()-1][i*2+1], this->WrappedPos[j].y, sigma)*(this->AtomList[j].mass);
+				}
+			}else if( dir == "z" ){
+				for(unsigned int i=0;i<nbPts;i++){
+					this->density_prof[this->density_prof.size()-1][i*2] = 0;
+					this->density_prof[this->density_prof.size()-1][i*2+1] = this->H3[2]*i/(nbPts-1.);
+					for(unsigned int j=0;j<this->nbAtom;j++) this->density_prof[this->density_prof.size()-1][i*2] += MT->gaussian(this->density_prof[this->density_prof.size()-1][i*2+1], this->WrappedPos[j].z, sigma)*(this->AtomList[j].mass);
+				}
+			}else{
+			        cout << "The provided direction \"" << dir << "\" for density computation has not been recognize" << endl;
+				return;
+			}
+		}else if( auxname == "Charge" ){
+			if( dir == "x" ){
+				for(unsigned int i=0;i<nbPts;i++){
+					this->density_prof[this->density_prof.size()-1][i*2] = 0;
+					this->density_prof[this->density_prof.size()-1][i*2+1] = this->H1[0]*i/(nbPts-1.);
+					for(unsigned int j=0;j<this->nbAtom;j++) this->density_prof[this->density_prof.size()-1][i*2] += MT->gaussian(this->density_prof[this->density_prof.size()-1][i*2+1], this->WrappedPos[j].x, sigma)*(this->AtomList[j].charge);
+				}
+			}else if( dir == "y" ){
+				for(unsigned int i=0;i<nbPts;i++){
+					this->density_prof[this->density_prof.size()-1][i*2] = 0;
+					this->density_prof[this->density_prof.size()-1][i*2+1] = this->H2[1]*i/(nbPts-1.);
+					for(unsigned int j=0;j<this->nbAtom;j++) this->density_prof[this->density_prof.size()-1][i*2] += MT->gaussian(this->density_prof[this->density_prof.size()-1][i*2+1], this->WrappedPos[j].y, sigma)*(this->AtomList[j].charge);
+				}
+			}else if( dir == "z" ){
+				for(unsigned int i=0;i<nbPts;i++){
+					this->density_prof[this->density_prof.size()-1][i*2] = 0;
+					this->density_prof[this->density_prof.size()-1][i*2+1] = this->H3[2]*i/(nbPts-1.);
+					for(unsigned int j=0;j<this->nbAtom;j++) this->density_prof[this->density_prof.size()-1][i*2] += MT->gaussian(this->density_prof[this->density_prof.size()-1][i*2+1], this->WrappedPos[j].z, sigma)*(this->AtomList[j].charge);
+				}
+			}else{
+			        cout << "The provided direction \"" << dir << "\" for density computation has not been recognize" << endl;
+				return;
+			}
+		}else if ( auxname == "Atomic" ){
+			if( dir == "x" ){
+				for(unsigned int i=0;i<nbPts;i++){
+					this->density_prof[this->density_prof.size()-1][i*2] = 0;
+					this->density_prof[this->density_prof.size()-1][i*2+1] = this->H1[0]*i/(nbPts-1.);
+					for(unsigned int j=0;j<this->nbAtom;j++) this->density_prof[this->density_prof.size()-1][i*2] += MT->gaussian(this->density_prof[this->density_prof.size()-1][i*2+1], this->WrappedPos[j].x, sigma);
+				}
+			}else if( dir == "y" ){
+				for(unsigned int i=0;i<nbPts;i++){
+					this->density_prof[this->density_prof.size()-1][i*2] = 0;
+					this->density_prof[this->density_prof.size()-1][i*2+1] = this->H2[1]*i/(nbPts-1.);
+					for(unsigned int j=0;j<this->nbAtom;j++) this->density_prof[this->density_prof.size()-1][i*2] += MT->gaussian(this->density_prof[this->density_prof.size()-1][i*2+1], this->WrappedPos[j].y, sigma);
+				}
+			}else if( dir == "z" ){
+				for(unsigned int i=0;i<nbPts;i++){
+					this->density_prof[this->density_prof.size()-1][i*2] = 0;
+					this->density_prof[this->density_prof.size()-1][i*2+1] = this->H3[2]*i/(nbPts-1.);
+					for(unsigned int j=0;j<this->nbAtom;j++) this->density_prof[this->density_prof.size()-1][i*2] += MT->gaussian(this->density_prof[this->density_prof.size()-1][i*2+1], this->WrappedPos[j].z, sigma);
+				}
+			}else{
+			        cout << "The provided direction \"" << dir << "\" for density computation has not been recognize (directions available : x y z)" << endl;
+				return;
+			}
+		}else{
+			cout << "The property used to compute density does not exist (properties available : Mass, Charge, Atomic";
+		        for(unsigned int i=0;i<Aux_name.size();i++) cout << ", " << Aux_name[i];
+	       	        cout << ")" << endl;
+			return;
+		}
+	}else{
+		if( dir == "x" ){
+			for(unsigned int i=0;i<nbPts;i++){
+				this->density_prof[this->density_prof.size()-1][i*2] = 0;
+				this->density_prof[this->density_prof.size()-1][i*2+1] = this->H1[0]*i/(nbPts-1.);
+				for(unsigned int j=0;j<this->nbAtom;j++) this->density_prof[this->density_prof.size()-1][i*2] += MT->gaussian(this->density_prof[this->density_prof.size()-1][i*2+1], this->WrappedPos[j].x, sigma)*(this->Aux[indexaux][j]);
+			}
+		}else if( dir == "y" ){
+			for(unsigned int i=0;i<nbPts;i++){
+				this->density_prof[this->density_prof.size()-1][i*2] = 0;
+				this->density_prof[this->density_prof.size()-1][i*2+1] = this->H2[1]*i/(nbPts-1.);
+				for(unsigned int j=0;j<this->nbAtom;j++) this->density_prof[this->density_prof.size()-1][i*2] += MT->gaussian(this->density_prof[this->density_prof.size()-1][i*2+1], this->WrappedPos[j].y, sigma)*(this->Aux[indexaux][j]);
+			}
+		}else if( dir == "z" ){
+			for(unsigned int i=0;i<nbPts;i++){
+				this->density_prof[this->density_prof.size()-1][i*2] = 0;
+				this->density_prof[this->density_prof.size()-1][i*2+1] = this->H3[2]*i/(nbPts-1.);
+				for(unsigned int j=0;j<this->nbAtom;j++) this->density_prof[this->density_prof.size()-1][i*2] += MT->gaussian(this->density_prof[this->density_prof.size()-1][i*2+1], this->WrappedPos[j].z, sigma)*(this->Aux[indexaux][j]);
+			}
+		}else{
+		        cout << "The provided direction \"" << dir << "\" for density computation has not been recognize (directions available : x y z)" << endl;
+			return;
+		}
+	}
+	this->density_name.push_back(new string[2]);
+	this->density_name[this->density_name.size()-1][0] = auxname;
+	this->density_name[this->density_name.size()-1][1] = dir;
+	this->density_nbPts.push_back(nbPts);
+}
+
+void AtomicSystem::Print1dDensity(string auxname, string filename){
+	int indexaux = -1;
+	for(unsigned int i=0;i<this->density_name.size();i++){
+		if( this->density_name[i][0] == auxname ){
+			indexaux = i;
+			break;
+		}
+	}
+	if( indexaux == -1 ) cout << "The density property to print does not exist" << endl;
+	ofstream writefile(filename);
+	writefile << this->density_name[indexaux][1] << " " << this->density_name[indexaux][0] << "Density" << endl;
+	for(unsigned int i=0;i<this->density_nbPts[indexaux];i++) writefile << this->density_prof[indexaux][i*2+1] << " " << this->density_prof[indexaux][i*2] << endl; 
+	writefile.close();
+}
+
 // TODO : add verification that AtomType_uint of _MyCrystal and correspond to the same atom type
 void AtomicSystem::setCrystal(Crystal* MyCrystal){
 	this->_MyCrystal = MyCrystal;
@@ -519,11 +650,13 @@ void AtomicSystem::read_cfg_file(const string& filename){
 			count += 1;
 		}
 		file.close();
-		// compute the cell vectors
-		double arr[4] = {0.,this->H2[0],this->H3[0],this->H2[0]+this->H3[0]};
-		this->H1[0] = xhi-xlo+this->MT->min(arr,4)-this->MT->max(arr,4);
-		double arr_2[2] = {0.,this->H3[1]};
-		this->H2[1] = yhi-ylo+this->MT->min(arr_2,2)-this->MT->max(arr_2,2);
+		if( IsTilted ){
+			// compute the cell vectors
+			double arr[4] = {0.,this->H2[0],this->H3[0],this->H2[0]+this->H3[0]};
+			this->H1[0] = xhi-xlo+this->MT->min(arr,4)-this->MT->max(arr,4);
+			double arr_2[2] = {0.,this->H3[1]};
+			this->H2[1] = yhi-ylo+this->MT->min(arr_2,2)-this->MT->max(arr_2,2);
+		}
 		// search the number of atom type
 		this->AtomType[0] = this->AtomList[0].type;
 		this->AtomType_uint[0] = this->AtomList[0].type_uint;

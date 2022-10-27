@@ -14,6 +14,7 @@ using namespace std;
 double* ComputeAuxiliary::BondOrientationalParameter(const int& l_sph, double& rc){
 	// if neighbours have not been searched perform the research
 	if( !_MySystem->getIsNeighbours() ) _MySystem->searchNeighbours(rc);
+	cout << "Computing bond orientation parameter.. ";
 	const unsigned int nbAt = _MySystem->getNbAtom();
 	const unsigned int nbNMax = _MySystem->getNbMaxN();
 	BondOriParam = new double[nbAt];
@@ -40,7 +41,6 @@ double* ComputeAuxiliary::BondOrientationalParameter(const int& l_sph, double& r
 
 	// loop on all atoms and neighbours to compute Qalpha and store neighbour of the same species
 	// Here is the most time consuming loop of the function, use parallel computation
-	cout << "Computing bond orientation parameter.. ";
 	unsigned int j_loop;
 	int l_loop;
 	#pragma omp parallel for private(xpos,ypos,zpos,j_loop,id,xp,yp,zp,colat,longit,l_loop)
@@ -75,7 +75,6 @@ double* ComputeAuxiliary::BondOrientationalParameter(const int& l_sph, double& r
 		// compute normalization factors
 		for(int l=-l_sph;l<l_sph+1;l++)	Calpha[i] += (pow(Qalpha[i*(l_sph*2+1)+l+l_sph].real(), 2.) + pow(Qalpha[i*(l_sph*2+1)+l+l_sph].imag(), 2.));
 	}
-	cout << " Done !" << endl;
 	// compute the order parameter using the formulation presented in Chua et al. 2010
 	unsigned int NId, nbN;
 	for(unsigned int i=0;i<nbAt;i++){
@@ -178,9 +177,10 @@ double* ComputeAuxiliary::BondOrientationalParameter(const int& l_sph, double& r
 		}
 	} // end if multisite
 	for(unsigned int i=0;i<nbAt;i++){
-		if( BondOriParam[i] > 1. ) BondOriParam[i] = fabs(BondOriParam[i])-1.;
-		else BondOriParam[i] = 1.-fabs(BondOriParam[i]);
+		if( BondOriParam[i] > 1. || BondOriParam[i] < -1. ) BondOriParam[i] = 1.;
+		BondOriParam[i] = 1.-fabs(BondOriParam[i]);
 	}
+	cout << " Done !" << endl;
 	// free allocated memory
 	delete[] Malpha;
 	delete[] Qalpha;
