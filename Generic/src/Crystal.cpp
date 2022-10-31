@@ -104,7 +104,7 @@ void Crystal::ConstructOrientedPlane(const int& h_p, const int& k_p, const int& 
 	double theta_z = -acos(normalDir[0]/sqrt(pow(normalDir[0],2.)+pow(normalDir[1],2.)));	
 	double theta_y = -acos(normalDir[0]/sqrt(pow(normalDir[0],2.)+pow(normalDir[1],2.)));	
 
-
+	delete[] normalDir;
 }
 
 void Crystal::computeReciproqual(){
@@ -121,6 +121,7 @@ void Crystal::computeReciproqual(){
 		this->a2_star[i] /= this->V;
 		this->a3_star[i] /= this->V;
 	}
+	delete[] mixedProd;
 }
 
 void Crystal::read_database(){
@@ -251,6 +252,7 @@ Crystal::~Crystal(){
 	delete[] a1_star;
 	delete[] a2_star;
 	delete[] a3_star;
+	delete MT;
 	delete[] AtomType;
 	delete[] AtomType_uint;
 	delete[] AtomMass;

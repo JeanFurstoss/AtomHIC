@@ -169,7 +169,7 @@ void AtomicSystem::Compute1dDensity(std::string auxname, std::string dir, double
 	this->density_nbPts.push_back(nbPts);
 }
 
-void AtomicSystem::Print1dDensity(string auxname, string filename){
+void AtomicSystem::Print1dDensity(string filename, string auxname){
 	int indexaux = -1;
 	for(unsigned int i=0;i<this->density_name.size();i++){
 		if( this->density_name[i][0] == auxname ){
@@ -814,4 +814,8 @@ AtomicSystem::~AtomicSystem(){
 	}
 	if( IsSetAux ) for(unsigned int i=0;i<Aux.size();i++) delete[] Aux[i];
 	if( IsCrystalMine ) delete _MyCrystal;
+	for(unsigned int i=0;i<density_prof.size();i++){
+		delete[] density_prof[i];
+		delete[] density_name[i];
+	}
 }

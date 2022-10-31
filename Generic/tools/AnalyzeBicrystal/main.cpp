@@ -15,8 +15,11 @@ int main()
 	cout << "output atomic file name : " ;
 	cin >> filename;
 	MySystem.printSystem_aux(filename, "Disorder");
-	cout << "output density file name : " ;
+	cout << "output GB profile file name : " ;
 	cin >> filename;
-	MySystem.Print1dDensity("Disorder", filename);
+	MySystem.Print1dDensity(filename, "GBProfile");
+	cout << "output estimated GB profile file name : " ;
+	cin >> filename;
+	MySystem.Print1dDensity(filename, "GBProfile_Gauss");
 	return 0;
 }

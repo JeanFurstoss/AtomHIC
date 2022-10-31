@@ -17,7 +17,7 @@ double* ComputeAuxiliary::BondOrientationalParameter(const int& l_sph, double& r
 	cout << "Computing bond orientation parameter.. ";
 	const unsigned int nbAt = _MySystem->getNbAtom();
 	const unsigned int nbNMax = _MySystem->getNbMaxN();
-	BondOriParam = new double[nbAt];
+	this->BondOriParam = new double[nbAt];
 	unsigned int *Malpha = new unsigned int[nbAt*(nbNMax+1)]; // array containing the index of neighbours of the same species (or same site in case of multisite crystal) with the first line corresponding to the number of neighbours, i.e. Malpha[i*(nbNMax+1)] = nb of neighbour of atom i, Malpha[i*(nbNMax+1)+j+1] = id of the jth neighbour of atom i
 	complex<double> *Qalpha = new complex<double>[nbAt*(l_sph*2+1)]; // complex array containing the spherical harmonic for the different modes
 	double *Calpha = new double[nbAt]; // normalization factor 

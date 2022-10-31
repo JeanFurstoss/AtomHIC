@@ -79,7 +79,7 @@ public:
 	void searchNeighbours(const double& rc);
 	void computeWrap();
 	void Compute1dDensity(std::string auxname, std::string dir, double sigma, unsigned int nbPts);
-	void Print1dDensity(std::string auxname, std::string filename);
+	void Print1dDensity(std::string filename, std::string auxname);
 	~AtomicSystem();
 };
 

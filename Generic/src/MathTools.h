@@ -17,6 +17,9 @@ public:
 	double dotProd(const double *vector1, const double *vector2);
 	void mixedProd(const double *vector1, const double *vector2, double *prod);
 	double gaussian(double x, double mu, double sigma);
+	double gaussian_prefac(double x, double mu, double sigma, double prefac);
+	void invert3x3(const double *mat, double *inv);
+	void gaussian_fit(const std::vector<double> data, double &mu, double &sigma, double &prefac);
 	~MathTools(){};
 };
 

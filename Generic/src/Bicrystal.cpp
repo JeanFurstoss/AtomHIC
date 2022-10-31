@@ -13,14 +13,26 @@ Bicrystal::Bicrystal(const string& filename, const string NormalDir, const strin
 	setCrystal(CrystalName);
 	this->NormalDir = NormalDir;
 	CA = new ComputeAuxiliary(this);
+	searchGBPos();
+}
+
+Bicrystal::Bicrystal(const string& filename, const string NormalDir):AtomicSystem(filename){
+	this->NormalDir = NormalDir;
+	CA = new ComputeAuxiliary(this);
+	searchGBPos();
+}
+
+void Bicrystal::searchGBPos(){
 	// Compute bond orientationnal order parameter to know where are the GBs and stored it into aux 1
 	int lsph = 20; // TODO maybe set a file reading sigma nbPts, lsph and rc for the different systems
 	double rc = 5.;
+	unsigned int nbPts_i = 1000;
+	double sigma = 2.;
 	setAux(this->CA->BondOrientationalParameter(lsph, rc),"Disorder");
 	// Compute density profile of bond ori param
-	Compute1dDensity("Disorder", NormalDir, 2., 100);
+	Compute1dDensity("Disorder", NormalDir, sigma, nbPts_i);
 	// Compute atomic density profile to know if there is vacuum
-	Compute1dDensity("Atomic", NormalDir, 2., 100);
+	Compute1dDensity("Atomic", NormalDir, sigma, nbPts_i);
 	double VacuumDens = 1e-2;
 	
 	if( NormalDir == "x" ) this->Ldir = this->H1[0];
@@ -35,6 +47,7 @@ Bicrystal::Bicrystal(const string& filename, const string NormalDir, const strin
 	this->IsVacuum = false;
 	this->IsVacuum = true;
 	double buffer;
+	vector<double> density_red;
 	for(unsigned int i=0;i<this->density_nbPts[1];i++){
 		if( this->density_prof[1][i*2] < VacuumDens ){
 			this->IsVacuum = true;
@@ -67,44 +80,67 @@ Bicrystal::Bicrystal(const string& filename, const string NormalDir, const strin
 		}
 		// Search GB position by computing the mean of gaussian distrib in the center of the system
 		// first loop to search the min order param
-		double MinDiso = 1;
+		double MinDiso = this->density_prof[0][0];
 		for(unsigned int i=0;i<this->density_nbPts[0];i++){
 			buffer = this->density_prof[0][i*2+1];
 			if( !IsCentered && buffer > this->VacuumHi ) buffer -= this->Ldir;
 			// account only for position 60% around the center of system
 			if( buffer > this->MinPos+0.2*(this->SystemLength) && buffer < this->MaxPos-0.2*(this->SystemLength) ){
+				density_red.push_back(this->density_prof[0][i*2]);
+				density_red.push_back(buffer);
 				if( this->density_prof[0][i*2] < MinDiso ) MinDiso = this->density_prof[0][i*2];
 			}
 		}
-		// second loop to normalize and shift the distrib of order param
+		// second loop to shift the distrib of order param and compute the normalization factor
 		double NormFacGauss = 0;
-		for(unsigned int i=0;i<this->density_nbPts[0];i++){
-			buffer = this->density_prof[0][i*2+1];
-			if( !IsCentered && buffer > this->VacuumHi ) buffer -= this->Ldir;
-			// account only for position 60% around the center of system
-			if( buffer > this->MinPos+0.2*(this->SystemLength) && buffer < this->MaxPos-0.2*(this->SystemLength) ) NormFacGauss += (this->density_prof[0][i*2]-MinDiso);
+		for(unsigned int i=0;i<(density_red.size()/2)-1;i++){
+			density_red[i*2] -= MinDiso;
+			NormFacGauss += density_red[i*2];
 		}
-		// third loop to compute the gaussian mean (GBPos)
-		this->GBPos1 = 0;
-		for(unsigned int i=0;i<this->density_nbPts[0];i++){
-			buffer = this->density_prof[0][i*2+1];
-			if( !IsCentered && buffer > this->VacuumHi ) buffer -= this->Ldir;
-			// account only for position 60% around the center of system
-			if( buffer > this->MinPos+0.2*(this->SystemLength) && buffer < this->MaxPos-0.2*(this->SystemLength) ) this->GBPos1 += buffer*(this->density_prof[0][i*2]-MinDiso)/NormFacGauss;
-		}
-		// fourth loop to compute the gaussian stdev (GBwidth)
-		this->GBwidth1 = 0;
-		for(unsigned int i=0;i<this->density_nbPts[0];i++){
-			buffer = this->density_prof[0][i*2+1];
-			if( !IsCentered && buffer > this->VacuumHi ) buffer -= this->Ldir;
-			// account only for position 60% around the center of system
-			if( buffer > this->MinPos+0.2*(this->SystemLength) && buffer < this->MaxPos-0.2*(this->SystemLength) ) this->GBwidth1 += pow((buffer*(this->density_prof[0][i*2]-MinDiso)/NormFacGauss)-GBPos1,2.);
-		}
-		this->GBwidth1 = sqrt(GBwidth1)/(this->density_nbPts[0]);
-	}
-	cout << "GB pos and width : " << GBPos1 << " " << GBwidth1 << endl;
+		// normalize the distribution
+		for(unsigned int i=0;i<(density_red.size()/2);i++) density_red[i*2] /= NormFacGauss;
 
+		// set the GB profile of AtomicSystem class
+		this->density_prof.push_back(new double[density_red.size()]);
+		for(unsigned int i=0;i<density_red.size();i++) this->density_prof[density_prof.size()-1][i] = density_red[i];
+		this->density_name.push_back(new string[2]);
+		this->density_name[density_name.size()-1][0] = "GBProfile";
+		this->density_name[density_name.size()-1][1] = this->NormalDir;
+		this->density_nbPts.push_back(density_red.size()/2);
+
+		// estimate the GB position 
+		this->GBPos1 = 0;
+		for(unsigned int i=0;i<(density_red.size()/2);i++) this->GBPos1 += density_red[i*2]*density_red[i*2+1];
+
+		// estimate the GB width 
+		this->GBwidth1 = 0;
+		for(unsigned int i=0;i<(density_red.size()/2);i++) this->GBwidth1 += density_red[i*2]*pow(density_red[i*2+1]-this->GBPos1,2.);
+		this->GBwidth1 = sqrt(this->GBwidth1);
+	}
+	double sigma_fit, mu_fit, prefac;
+	sigma_fit = this->GBwidth1;
+	mu_fit = this->GBPos1;
+	prefac = 1.;
+	// fit a gaussian to rafine the estimation of GB width and position
+	MT->gaussian_fit(density_red, mu_fit, sigma_fit, prefac);
+	this->GBwidth1 = sigma_fit;
+	this->GBPos1 = mu_fit;
+	// set the gaussian GB profile of AtomicSystem class
+	this->density_prof.push_back(new double[density_red.size()]);
+	for(unsigned int i=0;i<density_red.size()/2;i++){
+		this->density_prof[density_prof.size()-1][i*2] = MT->gaussian_prefac(density_red[i*2+1], mu_fit, sigma_fit, prefac);
+		this->density_prof[density_prof.size()-1][i*2+1] = density_red[i*2+1];
+	}
+	this->density_name.push_back(new string[2]);
+	this->density_name[density_name.size()-1][0] = "GBProfile_Gauss";
+	this->density_name[density_name.size()-1][1] = this->NormalDir;
+	this->density_nbPts.push_back(density_red.size()/2);
 }
+
 void Bicrystal::ComputeExcessVolume(){
 	cout << "Compute EV" << endl;
+}
+
+Bicrystal::~Bicrystal(){
+	delete CA;
 }
