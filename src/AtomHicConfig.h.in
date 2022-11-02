@@ -1,0 +1,14 @@
+/* AtomHicConfig.h.in ---
+ */
+
+/* Commentary:
+ *
+ */
+
+#ifndef ATOMHICCONFIG_H
+#define ATOMHICCONFIG_H
+
+#cmakedefine CRYSTAL_DATABASE "@CRYSTAL_DATABASE@"
+#cmakedefine MASSES_DATABASE "@MASSES_DATABASE@"
+
+#endif
