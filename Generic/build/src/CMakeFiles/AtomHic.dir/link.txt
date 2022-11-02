@@ -1,1 +1,0 @@
-/usr/bin/c++ -fPIC -g  -shared -Wl,-soname,libAtomHic.so -o ../lib/libAtomHic.so CMakeFiles/AtomHic.dir/AtomicSystem.cpp.o CMakeFiles/AtomHic.dir/ComputeAuxiliary.cpp.o CMakeFiles/AtomHic.dir/Crystal.cpp.o CMakeFiles/AtomHic.dir/OrthorhombicCrystal.cpp.o 
