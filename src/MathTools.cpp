@@ -5,6 +5,12 @@
 
 using namespace std;
 
+MathTools::MathTools(){
+	this->buffer_vec_1 = new double[3];
+	this->buffer_vec_2 = new double[3];
+	this->buffer_mat_1 = new double[9];
+	this->buffer_mat_2 = new double[9];
+}
 int MathTools::max(const int arr[], unsigned int size){
 	int max = arr[0];
 	for(unsigned int i=0;i<size;i++) if( arr[i] > max ) max = arr[i];
@@ -146,4 +152,81 @@ void MathTools::invert3x3(const double *mat, double *inv){
 	inv[6] = (mat[1]*mat[5]-(mat[2]*mat[4]))/det;
 	inv[7] = -(mat[0]*mat[5]-(mat[2]*mat[3]))/det;
 	inv[8] = (mat[0]*mat[4]-(mat[1]*mat[3]))/det;
+}
+
+void MathTools::Vec2rotMat(const double *vec, const double &theta, double *rotMat){
+	double c = cos(theta);
+	double s = sin(theta);
+	rotMat[0] = pow(vec[0],2.)*(1.-c)+c;
+	rotMat[1] = vec[0]*vec[1]*(1.-c)-(vec[2]*s);
+	rotMat[2] = vec[0]*vec[2]*(1.-c)+(vec[1]*s);
+	rotMat[3] = vec[0]*vec[1]*(1.-c)+(vec[2]*s);
+	rotMat[4] = pow(vec[1],2.)*(1.-c)+c;
+	rotMat[5] = vec[1]*vec[2]*(1.-c)-(vec[0]*s);
+	rotMat[6] = vec[0]*vec[2]*(1.-c)-(vec[1]*s);
+	rotMat[7] = vec[1]*vec[2]*(1.-c)+(vec[0]*s);
+	rotMat[8] = pow(vec[2],2.)*(1.-c)+c;
+}
+
+void MathTools::MatDotVec(const double *mat, const double *vec, double *prod){
+	for(unsigned int i=0;i<3;i++){
+		this->buffer_vec_1[i] = vec[i];
+		prod[i] = 0.;
+	}
+	for(unsigned int i=0;i<3;i++){
+		for(unsigned int j=0;j<3;j++) prod[i] += mat[i*3+j]*this->buffer_vec_1[j];
+	}
+}
+
+void MathTools::VecDotMat(const double *vec, const double *mat, double *prod){
+	for(unsigned int i=0;i<3;i++){
+		this->buffer_vec_1[i] = vec[i];
+		prod[i] = 0.;
+	}
+	for(unsigned int i=0;i<3;i++){
+		for(unsigned int j=0;j<3;j++) prod[i] += mat[j*3+i]*this->buffer_vec_1[j];
+	}
+}
+
+void MathTools::MatDotMat(const double *mat1, const double *mat2, double *prod){
+	for(unsigned int i=0;i<9;i++){
+		this->buffer_mat_1[i] = mat1[i];
+		this->buffer_mat_2[i] = mat2[i];
+	}
+	for(unsigned int i=0;i<3;i++){
+		for(unsigned int j=0;j<3;j++){
+			prod[i*3+j] = 0.;
+			for(unsigned int i_m=0;i_m<3;i_m++) prod[i*3+j] += this->buffer_mat_1[i_m*3+j]*this->buffer_mat_2[i*3+i_m];
+		}
+	}
+}
+
+void MathTools::printMat(const double *mat){
+	for(unsigned int i=0;i<3;i++){
+		for(unsigned int j=0;j<3;j++){
+			cout << mat[i*3+j] << " ";
+		}
+		cout << endl;
+	}
+}
+void MathTools::printVec(const double *vec){
+	for(unsigned int i=0;i<3;i++) cout << vec[i] << " " ;
+	cout << endl;
+}
+
+void MathTools::MatDotAt(const double *mat, const Atom &At, Atom &At_prod){
+	this->buffer_vec_2[0] = At.pos.x;
+	this->buffer_vec_2[1] = At.pos.y;
+	this->buffer_vec_2[2] = At.pos.z;
+	MatDotVec(mat,buffer_vec_2,buffer_vec_2);
+	At_prod.pos.x = this->buffer_vec_2[0];
+	At_prod.pos.y = this->buffer_vec_2[1];
+	At_prod.pos.z = this->buffer_vec_2[2];
+}
+
+MathTools::~MathTools(){
+	delete[] buffer_mat_1;
+	delete[] buffer_mat_2;
+	delete[] buffer_vec_1;
+	delete[] buffer_vec_2;
 }

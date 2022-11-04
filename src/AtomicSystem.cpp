@@ -8,6 +8,91 @@
 
 using namespace std;
 
+AtomicSystem::AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double zhi):_MyCrystal(_MyCrystal){
+	// Compute the number of atom and verify it gives an integer number
+	double nbAt_d = _MyCrystal->getNbAtom()*xhi*yhi*zhi/_MyCrystal->getVol();
+	if( fabs(nbAt_d-round(nbAt_d)) > 1e-3 ) cout << "Warning the cell dimension does not correspond to integer number of atom" << endl;
+	this->nbAtom = round(nbAt_d);
+	// initialize pointers
+	this->AtomList = new Atom[this->nbAtom];
+	this->H1 = new double[3]; 
+	this->H2 = new double[3]; 
+	this->H3 = new double[3]; 
+	this->H1[0] = xhi;
+	this->H1[1] = 0.;
+	this->H1[2] = 0.;
+	this->H2[0] = 0.;
+	this->H2[1] = yhi;
+	this->H2[2] = 0.;
+	this->H3[0] = 0.;
+	this->H3[1] = 0.;
+	this->H3[2] = zhi;
+	this->MT = new MathTools;
+	this->nbAtomType = _MyCrystal->getNbAtomType();
+	this->AtomType = new string[this->nbAtomType];
+	this->AtomType_uint = new unsigned int[this->nbAtomType];
+	this->AtomMass = new double[this->nbAtomType];
+	for(unsigned int i=0;i<this->nbAtomType;i++){
+		this->AtomType[i] = _MyCrystal->getAtomType(i);
+		this->AtomType_uint[i] = _MyCrystal->getAtomType_uint(i);
+		this->AtomMass[i] = _MyCrystal->getAtomMass(i);
+	}
+	this->IsCharge = _MyCrystal->getIsCharge();
+	this->IsTilted = false;
+	computeInverseCellVec();
+	// compute the atomic positions by testing linear combination of unit cell crystal
+	double cla1, cla2, cla3;
+       	int arr[3];
+	if( fabs(_MyCrystal->getA1()[0]) >1e-3 ) arr[0] = round(xhi/fabs(_MyCrystal->getA1()[0]));
+	else arr[0] = 0;
+	if( fabs(_MyCrystal->getA1()[1]) >1e-3 ) arr[1] = round(yhi/fabs(_MyCrystal->getA1()[1]));
+	else arr[1] = 0;
+	if( fabs(_MyCrystal->getA1()[2]) >1e-3 ) arr[2] = round(zhi/fabs(_MyCrystal->getA1()[2]));
+	else arr[2] = 0;
+	cla1 = MT->max(arr,3)+1;
+	if( fabs(_MyCrystal->getA2()[0]) >1e-3 ) arr[0] = round(xhi/fabs(_MyCrystal->getA2()[0]));
+	else arr[0] = 0;
+	if( fabs(_MyCrystal->getA2()[1]) >1e-3 ) arr[1] = round(yhi/fabs(_MyCrystal->getA2()[1]));
+	else arr[1] = 0;
+	if( fabs(_MyCrystal->getA2()[2]) >1e-3 ) arr[2] = round(zhi/fabs(_MyCrystal->getA2()[2]));
+	else arr[2] = 0;
+	cla2 = MT->max(arr,3)+1;
+	if( fabs(_MyCrystal->getA3()[0]) >1e-3 ) arr[0] = round(xhi/fabs(_MyCrystal->getA3()[0]));
+	else arr[0] = 0;
+	if( fabs(_MyCrystal->getA3()[1]) >1e-3 ) arr[1] = round(yhi/fabs(_MyCrystal->getA3()[1]));
+	else arr[1] = 0;
+	if( fabs(_MyCrystal->getA3()[2]) >1e-3 ) arr[2] = round(zhi/fabs(_MyCrystal->getA3()[2]));
+	else arr[2] = 0;
+	cla3 = MT->max(arr,3)+1;
+	double delta_x, delta_y, delta_z, xpos, ypos, zpos;
+	unsigned int count;
+	double tolIonPos = 1e-3;
+	count = 0;
+	for(int i=-cla1;i<cla1+1;i++){
+		for(int j=-cla2;j<cla2+1;j++){
+			for(int k=-cla3;k<cla3+1;k++){
+				delta_x = i*_MyCrystal->getA1()[0]+j*_MyCrystal->getA2()[0]+k*_MyCrystal->getA3()[0];
+				delta_y = i*_MyCrystal->getA1()[1]+j*_MyCrystal->getA2()[1]+k*_MyCrystal->getA3()[1];
+				delta_z = i*_MyCrystal->getA1()[2]+j*_MyCrystal->getA2()[2]+k*_MyCrystal->getA3()[2];
+				for(unsigned int n=0;n<_MyCrystal->getNbAtom();n++){
+					xpos = _MyCrystal->getMotif()[n].pos.x + delta_x;
+					ypos = _MyCrystal->getMotif()[n].pos.y + delta_y;
+					zpos = _MyCrystal->getMotif()[n].pos.z + delta_z;
+					if( xpos > -tolIonPos && xpos < xhi-tolIonPos && ypos > -tolIonPos && ypos < yhi-tolIonPos && zpos > -tolIonPos && zpos < zhi-tolIonPos ){
+						this->AtomList[count] = _MyCrystal->getMotif()[n];
+						this->AtomList[count].pos.x = xpos;
+						this->AtomList[count].pos.y = ypos;
+						this->AtomList[count].pos.z = zpos;
+						count += 1;
+					}
+					if( count > this->nbAtom ) cout << "warning there is more atom than expected !" << endl;
+				}
+			}
+		}
+	}
+		
+}
+
 // Constructor using the filename of an atomic file (.cfg, .lmp, .xsf,..)
 AtomicSystem::AtomicSystem(const string& filename)
 {
@@ -38,6 +123,10 @@ AtomicSystem::AtomicSystem(const string& filename)
 		this->AtomList[i].mass = this->AtomMass[this->AtomList[i].type_uint-1];
 	}
 	MT = new MathTools;
+	computeInverseCellVec();
+}
+
+void AtomicSystem::computeInverseCellVec(){
 	G1 = new double[3];
 	G2 = new double[3];
 	G3 = new double[3];

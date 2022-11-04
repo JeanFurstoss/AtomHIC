@@ -6,7 +6,117 @@
 using namespace std;
 
 Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, double theta, int h_p, int k_p, int l_p){
+	double GBspace = 1.; //TODO maybe define elsewhere (in a file in the main prog for example..)
 	setCrystal(crystalName);
+	this->MT = new MathTools;
+	// construct the first crystal with the wanted plane horyzontal
+	this->_MyCrystal->ConstructOrientedSystem(h_p,k_p,l_p);
+	// compute the rotation to be applied to the second grain
+	double *rot_ax = new double[3];
+	double NormRotAx = 0.;
+	// first rotation in the reference frame of the first crystal
+	for(unsigned int i=0;i<3;i++){
+		rot_ax[i] = this->_MyCrystal->getA1()[i]*h_a+this->_MyCrystal->getA2()[i]*k_a+this->_MyCrystal->getA3()[i]*l_a;
+		NormRotAx += pow(rot_ax[i],2.);
+	}
+	NormRotAx = sqrt(NormRotAx);
+	for(unsigned int i=0;i<3;i++) rot_ax[i] /= NormRotAx;
+	double *rot_mat = new double[9];
+	MT->Vec2rotMat(rot_ax,theta,rot_mat);
+	// add the second rotation to be in the cartesian frame
+	MT->MatDotMat(this->_MyCrystal->getRotMat(),rot_mat,rot_mat);
+	this->_MyCrystal2 = new Crystal(crystalName);
+	this->_MyCrystal2->ConstructOrientedSystem(rot_mat);
+	this->IsCrystal2 = true;
+	// search the number of linear combination for the two system to have the same x y length
+	double xl1, xl2, yl1, yl2;
+	double MaxMisfit = 0.02;
+	unsigned int MaxDup = 50;
+	unsigned int dupX1, dupX2, dupY1, dupY2;
+	xl1 = this->_MyCrystal->getOrientedSystem()->getH1()[0];
+	xl2 = this->_MyCrystal2->getOrientedSystem()->getH1()[0];
+	yl1 = this->_MyCrystal->getOrientedSystem()->getH2()[1];
+	yl2 = this->_MyCrystal2->getOrientedSystem()->getH2()[1];
+	bool find = false;
+	for(unsigned int i=0;i<MaxDup;i++){
+		for(unsigned int j=0;j<MaxDup;j++){
+			if( fabs(2*(xl1*i-xl2*j)/(xl1*i+xl2*j)) < MaxMisfit ){
+				dupX1 = i;
+				dupX2 = j;
+				find = true;
+				break;
+			}
+		}
+		if( find ) break;
+	}
+	find = false;
+	for(unsigned int i=0;i<MaxDup;i++){
+		for(unsigned int j=0;j<MaxDup;j++){
+			if( fabs(2*(yl1*i-yl2*j)/(yl1*i+yl2*j)) < MaxMisfit ){
+				dupY1 = i;
+				dupY2 = j;
+				find = true;
+				break;
+			}
+		}
+		if( find ) break;
+	}
+	double final_xbox = (xl1*dupX1 + xl2*dupX2)/2;
+    	double final_ybox = (yl1*dupY1 + yl2*dupY2)/2;
+    	double Mx1 = final_xbox / (xl1*dupX1);
+    	double My1 = final_ybox / (yl1*dupY1);
+    	double Mx2 = final_xbox / (xl2*dupX2);
+    	double My2 = final_ybox / (yl2*dupY2);
+	// initialize the variables and pointers
+	this->nbAtom = this->_MyCrystal->getOrientedSystem()->getNbAtom()*dupX1*dupY1 + this->_MyCrystal2->getOrientedSystem()->getNbAtom()*dupX2*dupY2;
+	this->AtomList = new Atom[this->nbAtom];
+	this->H1 = new double[3]; 
+	this->H2 = new double[3]; 
+	this->H3 = new double[3]; 
+	this->H1[0] = final_xbox;
+	this->H1[1] = 0.;
+	this->H1[2] = 0.;
+	this->H2[0] = 0.;
+	this->H2[1] = final_ybox;
+	this->H2[2] = 0.;
+	this->H3[0] = 0.;
+	this->H3[1] = 0.;
+	this->H3[2] = this->_MyCrystal->getOrientedSystem()->getH3()[2] + this->_MyCrystal2->getOrientedSystem()->getH3()[2]+GBspace;
+	this->nbAtomType = _MyCrystal->getNbAtomType();
+	this->AtomType = new string[this->nbAtomType];
+	this->AtomType_uint = new unsigned int[this->nbAtomType];
+	this->AtomMass = new double[this->nbAtomType];
+	for(unsigned int i=0;i<this->nbAtomType;i++){
+		this->AtomType[i] = _MyCrystal->getAtomType(i);
+		this->AtomType_uint[i] = _MyCrystal->getAtomType_uint(i);
+		this->AtomMass[i] = _MyCrystal->getAtomMass(i);
+	}
+	this->IsCharge = _MyCrystal->getIsCharge();
+	this->IsTilted = false;
+	computeInverseCellVec();
+	// paste the two grains
+	for(unsigned int i=0;i<dupX1;i++){
+		for(unsigned int j=0;j<dupY1;j++){
+			for(unsigned int n=0;n<this->_MyCrystal->getOrientedSystem()->getNbAtom();n++){
+				this->AtomList[n] = _MyCrystal->getOrientedSystem()->getAtom(n);
+				this->AtomList[n].pos.x = Mx1*(this->AtomList[n].pos.x + i*xl1);
+				this->AtomList[n].pos.y = My1*(this->AtomList[n].pos.y + j*yl1);
+			}
+		}
+	}
+	for(unsigned int i=0;i<dupX2;i++){
+		for(unsigned int j=0;j<dupY2;j++){
+			for(unsigned int n=0;n<this->_MyCrystal2->getOrientedSystem()->getNbAtom();n++){
+				this->AtomList[n] = _MyCrystal2->getOrientedSystem()->getAtom(n);
+				this->AtomList[n].pos.x = Mx2*(this->AtomList[n].pos.x + i*xl2);
+				this->AtomList[n].pos.y = My2*(this->AtomList[n].pos.y + j*yl2);
+				this->AtomList[n].pos.z += (this->_MyCrystal->getOrientedSystem()->getH3()[2]+GBspace);
+			}
+		}
+	}
+
+	delete[] rot_ax;
+	delete[] rot_mat;
 }
 
 Bicrystal::Bicrystal(const string& filename, const string NormalDir, const string CrystalName):AtomicSystem(filename){
@@ -22,6 +132,7 @@ Bicrystal::Bicrystal(const string& filename, const string NormalDir):AtomicSyste
 	this->NormalDir = NormalDir;
 	this->IsMassDensity = false;
 	CA = new ComputeAuxiliary(this);
+	this->IsCA = true;
 	searchGBPos();
 }
 
@@ -239,5 +350,6 @@ void Bicrystal::ComputeExcessVolume(){
 }
 
 Bicrystal::~Bicrystal(){
-	delete CA;
+	if( IsCrystal2 ) delete _MyCrystal2;
+	if( IsCA ) delete CA;
 }

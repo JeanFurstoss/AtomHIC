@@ -24,8 +24,11 @@ protected:
 	double MinPos; // min --
 	double SystemLength;
 	ComputeAuxiliary *CA;
+	bool IsCA = false;
 	double prefac_test;
 	bool IsMassDensity;
+	Crystal *_MyCrystal2;
+	bool IsCrystal2 = false;
 public:
 	// constructors
 	Bicrystal(){};

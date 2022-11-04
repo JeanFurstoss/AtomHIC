@@ -24,16 +24,18 @@ private:
 	double *a1;
 	double *a2;
 	double *a3;
-	double V; // elementary volum
 	// reciproqual lattice
 	double *a1_star;
 	double *a2_star;
 	double *a3_star;
+	double V; // elementary volum
 	Atom *Motif;
 	const std::string database_extension=".dat";
-	bool IsOrientedPlane;
-	AtomicSystem *OrientedPlane;
+	bool IsOrientedSystem;
+	AtomicSystem *OrientedSystem;
 	MathTools *MT;
+	double *rot_mat_total; // rotation matrix used to pass from the database oriented crystal to the current orientation
+	double *TiltTrans_xyz; // transformation matrix used to construct oriented systems 
 public:
 	// constructors
 	Crystal(){};
@@ -44,6 +46,8 @@ public:
 	const double* getA1(){ return this->a1; };
 	const double* getA2(){ return this->a2; };
 	const double* getA3(){ return this->a3; };
+	const double getVol(){ return this->V; };
+	const unsigned int getNbAtom(){ return this->nbAtom; }
 	const unsigned int getNbAtomType(){ return this->nbAtomType; }
 	const unsigned int getAtomType_uint(const unsigned int Id){ return this->AtomType_uint[Id]; }
 	inline const unsigned int getNbAtomSite(const unsigned int type_uint){
@@ -56,11 +60,17 @@ public:
 		}
 		return this->NbAtomSite[index];
 	}
-	const std::string* getAtomType(){ return this->AtomType; }
+	const std::string getAtomType(const unsigned int Id){ return this->AtomType[Id]; }
+	const double getAtomMass(const unsigned int Id){ return this->AtomMass[Id]; }
+	const bool getIsCharge(){ return this->IsCharge; }
+	AtomicSystem* getOrientedSystem(){ return this->OrientedSystem; } 
+	const double* getRotMat(){ return this->rot_mat_total; };
 	// methods
 	void read_database();
 	void computeReciproqual();
-	void ConstructOrientedPlane(const int& h_p, const int& k_p, const int& l_p);
+	void ConstructOrientedSystem(const int& h_p, const int& k_p, const int& l_p);
+	void ConstructOrientedSystem(const double *RotMat);
+	void RotateAndConstructOrthogonalCell(const double *RotMat, double &xbox, double &ybox, double &zbox);
 	// destructor
 	~Crystal();
 	

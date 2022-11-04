@@ -20,6 +20,27 @@ Crystal::Crystal(const string& crystalName){
 	this->a3_star = new double[3];
 	this->MT = new MathTools;
 	this->IsCharge = false;
+	// initialize these matrix as identity
+	this->rot_mat_total = new double[9];
+	this->rot_mat_total[0] = 1.;
+	this->rot_mat_total[1] = 0.;
+	this->rot_mat_total[2] = 0.;
+	this->rot_mat_total[3] = 0.;
+	this->rot_mat_total[4] = 1.;
+	this->rot_mat_total[5] = 0.;
+	this->rot_mat_total[6] = 0.;
+	this->rot_mat_total[7] = 0.;
+	this->rot_mat_total[8] = 1.;
+	this->TiltTrans_xyz = new double[9];
+	this->TiltTrans_xyz[0] = 1.;
+	this->TiltTrans_xyz[1] = 0.;
+	this->TiltTrans_xyz[2] = 0.;
+	this->TiltTrans_xyz[3] = 0.;
+	this->TiltTrans_xyz[4] = 1.;
+	this->TiltTrans_xyz[5] = 0.;
+	this->TiltTrans_xyz[6] = 0.;
+	this->TiltTrans_xyz[7] = 0.;
+	this->TiltTrans_xyz[8] = 1.;
 	// Read the crystal database
 	char *database_env = getenv("CRYSTAL_DATABASE");
 	string database;
@@ -73,24 +94,28 @@ Crystal::Crystal(const string& crystalName){
 }
 
 // construct a z oriented (hkl) unit cell plane
-void Crystal::ConstructOrientedPlane(const int& h_p, const int& k_p, const int& l_p){
+void Crystal::ConstructOrientedSystem(const int& h_p, const int& k_p, const int& l_p){
 	int arr[3] = {abs(h_p),abs(k_p),abs(l_p)};
 	int maxhkl = MT->max(arr,3)*5;
 	double tolScalarProd = 1e-3;
 	vector<double> buffer_vector_d;
 	vector<int> buffer_vector_i;
 	double *normalDir = new double[3];
-	
+	double *rot_mat = new double[9];
+	double *rot_axis = new double[3];
+	double *test_vec = new double[3];
+	double *orthoDir = new double[3];
+	double xbox,ybox,zbox; // box dimension
 	// direction normal to the wanted plane
-	normalDir[0] = h_p*this->a1_star[0] + k_p*this->a2_star[0] + l_p*this->a3_star[0];	
-	normalDir[1] = h_p*this->a1_star[1] + k_p*this->a2_star[1] + l_p*this->a3_star[1];	
-	normalDir[2] = h_p*this->a1_star[2] + k_p*this->a2_star[2] + l_p*this->a3_star[2];
+	normalDir[0] = h_p*(this->a1_star[0]) + k_p*(this->a2_star[0]) + l_p*(this->a3_star[0]);	
+	normalDir[1] = h_p*(this->a1_star[1]) + k_p*(this->a2_star[1]) + l_p*(this->a3_star[1]);	
+	normalDir[2] = h_p*(this->a1_star[2]) + k_p*(this->a2_star[2]) + l_p*(this->a3_star[2]);
 
 	// search the smallest orthogonal direction with integer Miller indices to the wanted one => to be aligned with the cartesian x axis
 	for(int i=-maxhkl;i<maxhkl;i++){
 		for(int j=-maxhkl;j<maxhkl;j++){
 			for(int k=-maxhkl;k<maxhkl;k++){
-				if( fabs(i*h_p+j*k_p+k*k_p) < tolScalarProd && ( i != 0 || j != 0 || k!= 0 ) ){
+				if( ( abs(i*h_p+j*k_p+k*l_p) < tolScalarProd ) && ( i != 0 || j != 0 || k!= 0 ) ){
 					buffer_vector_d.push_back(pow(i,2.)+pow(j,2.)+pow(k,2.));
 					buffer_vector_i.push_back(i);
 					buffer_vector_i.push_back(j);
@@ -100,11 +125,199 @@ void Crystal::ConstructOrientedPlane(const int& h_p, const int& k_p, const int& 
 		}
 	}
 	unsigned int minhkl = MT->min(buffer_vector_d);
+	orthoDir[0] = (buffer_vector_i[minhkl*3]*(this->a1[0])) + (buffer_vector_i[minhkl*3+1]*(this->a2[0])) + (buffer_vector_i[minhkl*3+2]*(this->a3[0]));
+	orthoDir[1] = (buffer_vector_i[minhkl*3]*(this->a1[1])) + (buffer_vector_i[minhkl*3+1]*(this->a2[1])) + (buffer_vector_i[minhkl*3+2]*(this->a3[1]));
+	orthoDir[2] = (buffer_vector_i[minhkl*3]*(this->a1[2])) + (buffer_vector_i[minhkl*3+1]*(this->a2[2])) + (buffer_vector_i[minhkl*3+2]*(this->a3[2]));
 	// compute the rotation angles needed to align the wanted direction with the cartesian z axis and have the x cartesian axis corresponding to the smallest crystallographic direction possible
-	double theta_z = -acos(normalDir[0]/sqrt(pow(normalDir[0],2.)+pow(normalDir[1],2.)));	
-	double theta_y = -acos(normalDir[0]/sqrt(pow(normalDir[0],2.)+pow(normalDir[1],2.)));	
+	// for rotation around the z axis to align the normal dir with x axis
+	double theta_z, theta_y;
+	if( (h_p == 0) && (k_p == 0) ) theta_z = 0.;
+ 	else if( k_p >= 0 ) theta_z = -acos(normalDir[0]/sqrt(pow(normalDir[0],2.)+pow(normalDir[1],2.)));
+	else if( k_p < 0 ) theta_z = acos(normalDir[0]/sqrt(pow(normalDir[0],2.)+pow(normalDir[1],2.))); 
+	rot_axis[0] = 0;
+	rot_axis[1] = 0;
+	rot_axis[2] = 1;
+       	MT->Vec2rotMat(rot_axis,theta_z,this->rot_mat_total);
+	for(unsigned int i=0;i<3;i++) test_vec[i] = normalDir[i];
+	MT->MatDotVec(this->rot_mat_total,test_vec,test_vec);
+	// second rotation around y to align the normal dir with the z axis
+	if( test_vec[0] >= 0 ) theta_y = -acos(normalDir[2]/sqrt(pow(normalDir[0],2.)+pow(normalDir[1],2.)+pow(normalDir[2],2.)));	
+	else theta_y = acos(normalDir[2]/sqrt(pow(normalDir[0],2.)+pow(normalDir[1],2.)+pow(normalDir[2],2.)));	
+	rot_axis[0] = 0;
+	rot_axis[1] = 1;
+	rot_axis[2] = 0;
+	MT->Vec2rotMat(rot_axis,theta_y,rot_mat);
+	MT->MatDotMat(this->rot_mat_total,rot_mat,this->rot_mat_total);
+	// last rotation about z axis to align the smallest orthogonal vector with the x direction
+	MT->MatDotVec(this->rot_mat_total,orthoDir,orthoDir);
+	if( orthoDir[1] <= 0. ) theta_z = acos(orthoDir[0]/sqrt(pow(orthoDir[0],2.)+pow(orthoDir[1],2.)+pow(orthoDir[2],2.)));
+	else theta_z = -acos(orthoDir[0]/sqrt(pow(orthoDir[0],2.)+pow(orthoDir[1],2.)+pow(orthoDir[2],2.)));
+	rot_axis[0] = 0;
+	rot_axis[1] = 0;
+	rot_axis[2] = 1;
+       	MT->Vec2rotMat(rot_axis,theta_z,rot_mat);
+	// last rotation for the orthoDir vector
+	MT->MatDotVec(rot_mat,orthoDir,orthoDir);
+	// compute the total rotation matrix
+	MT->MatDotMat(this->rot_mat_total,rot_mat,this->rot_mat_total);
+	// full rotation of the normal dir
+	MT->MatDotVec(this->rot_mat_total,normalDir,normalDir);
+	// verify is the rotation has been well achieved
+	if( fabs(normalDir[0]) > tolScalarProd || fabs(normalDir[1]) > tolScalarProd || fabs(orthoDir[1]) > tolScalarProd || fabs(orthoDir[2]) > tolScalarProd ){
+		cout << "The crystal basis cannot be aligned with the cartesian one, aborting calculation" << endl;
+		return;
+	}else cout << "We are constructing a system with the (" << h_p << k_p << l_p << ") plane parallel with (xy) plane and the [" << buffer_vector_i[minhkl*3] << buffer_vector_i[minhkl*3+1] << buffer_vector_i[minhkl*3+2] << "] direction aligned with the x axis" << endl;
 
+	RotateAndConstructOrthogonalCell(this->rot_mat_total, xbox, ybox, zbox);
+	this->OrientedSystem = new AtomicSystem(this, xbox, ybox, zbox);
+	// rescale the crystal vectors as they have been modified by the function
+	double *invTrans = new double[9];
+	MT->invert3x3(this->TiltTrans_xyz,invTrans);
+	MT->VecDotMat(this->a1,invTrans,this->a1);
+	MT->VecDotMat(this->a2,invTrans,this->a2);
+	MT->VecDotMat(this->a3,invTrans,this->a3);
+	
+	this->IsOrientedSystem = true;
+
+	delete[] orthoDir;
+	delete[] rot_mat;
+	delete[] rot_axis;
+	delete[] test_vec;
 	delete[] normalDir;
+	delete[] invTrans;
+}
+
+void Crystal::ConstructOrientedSystem(const double *RotMat){
+	for(unsigned int i=0;i<9;i++) this->rot_mat_total[i] = RotMat[i];
+	double xbox, ybox, zbox;
+	RotateAndConstructOrthogonalCell(this->rot_mat_total, xbox, ybox, zbox);
+	this->OrientedSystem = new AtomicSystem(this, xbox, ybox, zbox);
+	// rescale the crystal vectors as they have been modified by the function
+	double *invTrans = new double[9];
+	MT->invert3x3(this->TiltTrans_xyz,invTrans);
+	MT->VecDotMat(this->a1,invTrans,this->a1);
+	MT->VecDotMat(this->a2,invTrans,this->a2);
+	MT->VecDotMat(this->a3,invTrans,this->a3);
+
+	this->IsOrientedSystem = true;
+}
+
+void Crystal::RotateAndConstructOrthogonalCell(const double *RotMat, double &xbox, double &ybox, double &zbox){
+	double tolOrthoBox = 1.; // crucial parameter
+	double MinBoxL = 1.;
+	int CLsearch = 50;
+	for(unsigned int i=0;i<9;i++) this->rot_mat_total[i] = RotMat[i];
+	// rotate lattice vectors
+	MT->MatDotVec(RotMat,this->a1,this->a1);
+	MT->MatDotVec(RotMat,this->a2,this->a2);
+	MT->MatDotVec(RotMat,this->a3,this->a3);
+
+	// search the smallest orthogonal box for this orientation by testing linear combination of a1 a2 a3 giving cell vectors aligned with cartesian axis
+	// expect for the x axis which is already aligned with a crystallographic direction
+	vector<int> xh_list;
+	vector<int> yh_list;
+	vector<int> zh_list;
+	vector<double> buffer_vector_d_x, buffer_vector_d_y, buffer_vector_d_z;
+	double absX, absY, absZ;
+	for(int i=-CLsearch;i<CLsearch+1;i++){
+		for(int j=-CLsearch;j<CLsearch+1;j++){
+			for(int k=-CLsearch;k<CLsearch+1;k++){
+				absX = fabs(i*this->a1[0]+j*this->a2[0]+k*this->a3[0]);
+				absY = fabs(i*this->a1[1]+j*this->a2[1]+k*this->a3[1]);
+				absZ = fabs(i*this->a1[2]+j*this->a2[2]+k*this->a3[2]);
+				if( absY < tolOrthoBox && absZ < tolOrthoBox && i*this->a1[0]+j*this->a2[0]+k*this->a3[0] > MinBoxL ){
+					buffer_vector_d_x.push_back(absX);
+					xh_list.push_back(i);
+					xh_list.push_back(j);
+					xh_list.push_back(k);
+				}
+				if( absX < tolOrthoBox && absY < tolOrthoBox && i*this->a1[2]+j*this->a2[2]+k*this->a3[2] > MinBoxL ){
+					buffer_vector_d_z.push_back(absZ);
+					zh_list.push_back(i);
+					zh_list.push_back(j);
+					zh_list.push_back(k);
+				}
+				if( absX < tolOrthoBox && absZ < tolOrthoBox && i*this->a1[1]+j*this->a2[1]+k*this->a3[1] > MinBoxL ){
+					buffer_vector_d_y.push_back(absY);
+					yh_list.push_back(i);
+					yh_list.push_back(j);
+					yh_list.push_back(k);
+				}
+			}
+		}
+	}
+	if( xh_list.size() == 0 || yh_list.size() == 0 || zh_list.size() == 0 ){
+		cout << "There is no linear combination of crystal vectors giving an orthogonal cell, consider increase the tolerance or the number of CL used for the research" << endl;
+		return;
+	}
+
+	unsigned int ind_x, ind_y, ind_z;
+	ind_x = MT->min(buffer_vector_d_x);
+	ind_y = MT->min(buffer_vector_d_y);
+	ind_z = MT->min(buffer_vector_d_z);
+	double *xh = new double[3];
+	double *yh = new double[3];
+	double *zh = new double[3];
+	for(unsigned int i=0;i<3;i++){
+		xh[i] = this->a1[i]*xh_list[ind_x*3]+this->a2[i]*xh_list[ind_x*3+1]+this->a3[i]*xh_list[ind_x*3+2];
+		yh[i] = this->a1[i]*yh_list[ind_y*3]+this->a2[i]*yh_list[ind_y*3+1]+this->a3[i]*yh_list[ind_y*3+2];
+		zh[i] = this->a1[i]*zh_list[ind_z*3]+this->a2[i]*zh_list[ind_z*3+1]+this->a3[i]*zh_list[ind_z*3+2];
+	}
+
+	// box dimension
+	xbox = sqrt( pow(xh[0],2.) + pow(xh[1],2.) + pow(xh[2],2.));
+	ybox = sqrt( pow(yh[0],2.) + pow(yh[1],2.) + pow(yh[2],2.));
+	zbox = sqrt( pow(zh[0],2.) + pow(zh[1],2.) + pow(zh[2],2.));
+	// compute corrections to apply to the cell vectors and atomic positions to have an orthogonal cell
+	double *TiltTrans_yz = new double[9];
+	TiltTrans_yz[0] = 1.;
+	TiltTrans_yz[1] = -yh[0]/yh[1]+((zh[0]-(yh[0]*zh[1]/yh[1]))*yh[2]/((zh[2]-(yh[2]*zh[1]/yh[1]))*yh[1]));
+	TiltTrans_yz[2] = -(zh[0]-(yh[0]*zh[1]/yh[1]))/(zh[2]-(yh[2]*zh[1]/yh[1]));
+	TiltTrans_yz[3] = 0.;
+	TiltTrans_yz[4] = ybox/yh[1]+(zh[1]*(ybox/yh[1])*yh[2]/((zh[2]-(yh[2]*zh[1]/yh[1]))*yh[1]));
+	TiltTrans_yz[5] = -zh[1]*(ybox/yh[1])/(zh[2]-(yh[2]*zh[1]/yh[1]));
+	TiltTrans_yz[6] = 0.;
+	TiltTrans_yz[7] = -yh[2]*zbox/(yh[1]*(zh[2]-(yh[2]*zh[1]/yh[1])));
+	TiltTrans_yz[8] = zbox/(zh[2]-(yh[2]*zh[1]/yh[1]));
+	
+	TiltTrans_xyz[0] = xbox/(xh[0]+TiltTrans_yz[1]*xh[1]+TiltTrans_yz[2]*xh[2]);
+	TiltTrans_xyz[1] = TiltTrans_yz[1]*xbox/(xh[0]+TiltTrans_yz[1]*xh[1]+TiltTrans_yz[2]*xh[2]);
+	TiltTrans_xyz[2] = TiltTrans_yz[2]*xbox/(xh[0]+TiltTrans_yz[1]*xh[1]+TiltTrans_yz[2]*xh[2]);
+	TiltTrans_xyz[3] = -(xh[1]*TiltTrans_yz[4]+TiltTrans_yz[5]*xh[2])/(xh[0]+TiltTrans_yz[1]*xh[1]+TiltTrans_yz[2]*xh[2]);
+	TiltTrans_xyz[4] = TiltTrans_yz[4]-(xh[1]*TiltTrans_yz[4]+TiltTrans_yz[5]*xh[2])*TiltTrans_yz[1]/(xh[0]+TiltTrans_yz[1]*xh[1]+TiltTrans_yz[2]*xh[2]);
+	TiltTrans_xyz[5] = TiltTrans_yz[5]-(xh[1]*TiltTrans_yz[4]+TiltTrans_yz[5]*xh[2])*TiltTrans_yz[2]/(xh[0]+TiltTrans_yz[1]*xh[1]+TiltTrans_yz[2]*xh[2]);
+	TiltTrans_xyz[6] = -(xh[2]*TiltTrans_yz[8]+TiltTrans_yz[7]*xh[1])/(xh[0]+TiltTrans_yz[1]*xh[1]+TiltTrans_yz[2]*xh[2]);
+	TiltTrans_xyz[7] = TiltTrans_yz[7]-(xh[2]*TiltTrans_yz[8]+TiltTrans_yz[7]*xh[1])*TiltTrans_yz[1]/(xh[0]+TiltTrans_yz[1]*xh[1]+TiltTrans_yz[2]*xh[2]);
+	TiltTrans_xyz[8] = TiltTrans_yz[8]-(xh[2]*TiltTrans_yz[8]+TiltTrans_yz[7]*xh[1])*TiltTrans_yz[2]/(xh[0]+TiltTrans_yz[1]*xh[1]+TiltTrans_yz[2]*xh[2]);
+
+	// apply this transformation to the crystal vectors
+	MT->MatDotVec(TiltTrans_xyz,this->a1,this->a1);
+	MT->MatDotVec(TiltTrans_xyz,this->a2,this->a2);
+	MT->MatDotVec(TiltTrans_xyz,this->a3,this->a3);
+	// verify that the system has now an orthogonal cell
+	for(unsigned int i=0;i<3;i++){
+		xh[i] = this->a1[i]*xh_list[ind_x*3]+this->a2[i]*xh_list[ind_x*3+1]+this->a3[i]*xh_list[ind_x*3+2];
+		yh[i] = this->a1[i]*yh_list[ind_y*3]+this->a2[i]*yh_list[ind_y*3+1]+this->a3[i]*yh_list[ind_y*3+2];
+		zh[i] = this->a1[i]*zh_list[ind_z*3]+this->a2[i]*zh_list[ind_z*3+1]+this->a3[i]*zh_list[ind_z*3+2];
+	}
+	double tolBase = 1e-10;
+	if( fabs(xh[1]) > tolBase || fabs(xh[2]) > tolBase || fabs(yh[0]) > tolBase || fabs(yh[2]) > tolBase || fabs(zh[0]) > tolBase || fabs(zh[1]) > tolBase || fabs(xh[0]-xbox) > tolBase || fabs(yh[1]-ybox) > tolBase || fabs(zh[2]-zbox) > tolBase ){
+		cout << "Problem during the construction of orthogonal cell" << endl;
+		return;
+	}
+	// recompute reciproqual space as cell parameters may have changed
+	computeReciproqual();
+	// compute the total transformation matrix
+	double *TotalTrans = new double[9];
+	MT->MatDotMat(RotMat,TiltTrans_xyz,TotalTrans);
+	// rotate the motif
+	for(unsigned int i=0;i<this->nbAtom;i++) MT->MatDotAt(TotalTrans,Motif[i],Motif[i]);	
+	
+	delete[] TiltTrans_yz;
+	delete[] TotalTrans;
+	delete[] xh;
+	delete[] yh;
+	delete[] zh;
 }
 
 void Crystal::computeReciproqual(){
@@ -258,4 +471,7 @@ Crystal::~Crystal(){
 	delete[] AtomMass;
 	delete[] NbAtomSite;
 	delete[] this->Motif;
+	delete[] rot_mat_total;
+	delete[] TiltTrans_xyz;
+	if( IsOrientedSystem ) delete OrientedSystem;
 }
