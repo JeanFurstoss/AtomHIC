@@ -89,6 +89,7 @@ Crystal::Crystal(const string& crystalName){
 			this->path2database = database+"/"+AvailableCrystals[crystal_index]+this->database_extension;
 		}
 		read_database();
+		if( this->IsDoNotSep == true ) ConstructNotSepList();
 		computeReciproqual();
 	}
 }
@@ -202,8 +203,63 @@ void Crystal::ConstructOrientedSystem(const double *RotMat){
 	this->IsOrientedSystem = true;
 }
 
+void Crystal::ConstructNotSepList(){
+	// construct full neighbor list in a large cutoff radius
+	double rc_squared = pow(3.,2.);
+	double d_squared, xpos, ypos, zpos;
+	int cl = 4;
+	vector<vector<double>> buffer_vector_d;
+	vector<vector<int>> buffer_vector_int;
+	for(unsigned int i=0;i<this->nbAtom;i++){
+		this->NotSepList.push_back(vector<int> ());
+		buffer_vector_d.push_back(vector<double> ());
+		buffer_vector_int.push_back(vector<int> ());
+		for(int xcl=-cl;xcl<cl+1;xcl++){
+			for(int ycl=-cl;ycl<cl+1;ycl++){
+				for(int zcl=-cl;zcl<cl+1;zcl++){
+					for(unsigned int j=0;j<this->nbAtom;j++){
+						xpos = this->Motif[j].pos.x + this->a1[0]*xcl+this->a2[0]*ycl+this->a3[0]*zcl;
+						ypos = this->Motif[j].pos.y + this->a1[1]*xcl+this->a2[1]*ycl+this->a3[1]*zcl;
+						zpos = this->Motif[j].pos.z + this->a1[2]*xcl+this->a2[2]*ycl+this->a3[2]*zcl;
+						d_squared = pow(xpos-this->Motif[i].pos.x,2.) + pow(ypos-this->Motif[i].pos.y,2.) + pow(zpos-this->Motif[i].pos.z,2.); 
+						if( d_squared < rc_squared && d_squared > 1e-6 ){
+							buffer_vector_d[i].push_back(d_squared);
+							buffer_vector_int[i].push_back(j);
+							buffer_vector_int[i].push_back(xcl);
+							buffer_vector_int[i].push_back(ycl);
+							buffer_vector_int[i].push_back(zcl);
+						}
+					}
+				}
+			}
+		}
+	}
+	vector<unsigned int> sorted;
+	unsigned int count;
+	for(unsigned int i=0;i<this->nbAtom;i++){
+		sorted.resize(buffer_vector_d[i].size());
+		this->MT->sort(buffer_vector_d[i], sorted);
+		for(unsigned int j=0;j<this->DoNotSep.size();j++){
+			if( DoNotSep[j][0] == this->Motif[i].type_uint ){
+				count = 0;
+				for(unsigned int n=0;n<sorted.size();n++){
+					if( count == this->DoNotSep[j][1] ) break;
+					else if( this->Motif[sorted[n]].type_uint == DoNotSep[j][2] ){
+						count += 1;
+						NotSepList[i].push_back(buffer_vector_int[i][sorted[n]*4]);
+						NotSepList[i].push_back(buffer_vector_int[i][sorted[n]*4+1]);
+						NotSepList[i].push_back(buffer_vector_int[i][sorted[n]*4+2]);
+						NotSepList[i].push_back(buffer_vector_int[i][sorted[n]*4+3]);
+					}
+				}
+			}
+		}
+	}
+	cout << "test" << endl;
+}
+
 void Crystal::RotateAndConstructOrthogonalCell(const double *RotMat, double &xbox, double &ybox, double &zbox){
-	double tolOrthoBox = 1.; // crucial parameter
+	double tolOrthoBox = 0.2; // crucial parameter
 	double MinBoxL = 1.;
 	int CLsearch = 50;
 	for(unsigned int i=0;i<9;i++) this->rot_mat_total[i] = RotMat[i];
@@ -339,8 +395,8 @@ void Crystal::computeReciproqual(){
 
 void Crystal::read_database(){
 	ifstream file(this->path2database, ios::in);
-	size_t pos_at, pos_x, pos_y, pos_z, pos_attype, pos_Mass, pos_At, pos_Crystal, pos_tilt;
-	unsigned int line_Mass(1000), line_At(1000), buffer_uint, buffer_uint_1, count(0);
+	size_t pos_at, pos_x, pos_y, pos_z, pos_attype, pos_Mass, pos_At, pos_Crystal, pos_tilt, pos_DNS;
+	unsigned int line_Mass(1000), line_At(1000), buffer_uint, buffer_uint_1, buffer_uint_2, count(0);
 	double buffer_1, buffer_2, buffer_3, buffer_4;
 	string buffer_s, buffer_s_1, buffer_s_2, line;
 	if(file){
@@ -405,6 +461,18 @@ void Crystal::read_database(){
 				AtomType_uint = new unsigned int[this->nbAtomType];
 				NbAtomSite = new unsigned int[this->nbAtomType];
 				AtomMass = new double[this->nbAtomType];
+			}
+
+			// read DoNotSep array
+			pos_DNS = line.find("DONOTSEPARE");
+			if(pos_DNS!=string::npos){
+				this->IsDoNotSep = true;
+				istringstream text(line);
+				text >> buffer_s >> buffer_uint >> buffer_uint_1 >> buffer_uint_2;
+				this->DoNotSep.push_back(vector<unsigned int> ());
+				this->DoNotSep[this->DoNotSep.size()-1].push_back(buffer_uint);
+				this->DoNotSep[this->DoNotSep.size()-1].push_back(buffer_uint_1);
+				this->DoNotSep[this->DoNotSep.size()-1].push_back(buffer_uint_2);
 			}
 
 			// get lines where are the keywords Masses and Atoms to get atom type masses and positions

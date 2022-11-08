@@ -37,6 +37,7 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	xl2 = this->_MyCrystal2->getOrientedSystem()->getH1()[0];
 	yl1 = this->_MyCrystal->getOrientedSystem()->getH2()[1];
 	yl2 = this->_MyCrystal2->getOrientedSystem()->getH2()[1];
+	this->_MyCrystal2->getOrientedSystem()->print_lmp("test.lmp");
 	bool find = false;
 	for(unsigned int i=0;i<MaxDup;i++){
 		for(unsigned int j=0;j<MaxDup;j++){
@@ -68,7 +69,9 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
     	double Mx2 = final_xbox / (xl2*dupX2);
     	double My2 = final_ybox / (yl2*dupY2);
 	// initialize the variables and pointers
-	this->nbAtom = this->_MyCrystal->getOrientedSystem()->getNbAtom()*dupX1*dupY1 + this->_MyCrystal2->getOrientedSystem()->getNbAtom()*dupX2*dupY2;
+	unsigned int nbAtom1 = this->_MyCrystal->getOrientedSystem()->getNbAtom();
+	unsigned int nbAtom2 = this->_MyCrystal2->getOrientedSystem()->getNbAtom();
+	this->nbAtom = nbAtom1*dupX1*dupY1 + nbAtom2*dupX2*dupY2;
 	this->AtomList = new Atom[this->nbAtom];
 	this->H1 = new double[3]; 
 	this->H2 = new double[3]; 
@@ -97,20 +100,20 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	// paste the two grains
 	for(unsigned int i=0;i<dupX1;i++){
 		for(unsigned int j=0;j<dupY1;j++){
-			for(unsigned int n=0;n<this->_MyCrystal->getOrientedSystem()->getNbAtom();n++){
-				this->AtomList[n] = _MyCrystal->getOrientedSystem()->getAtom(n);
-				this->AtomList[n].pos.x = Mx1*(this->AtomList[n].pos.x + i*xl1);
-				this->AtomList[n].pos.y = My1*(this->AtomList[n].pos.y + j*yl1);
+			for(unsigned int n=0;n<nbAtom1;n++){
+				this->AtomList[i*dupY1*nbAtom1+j*nbAtom1+n] = this->_MyCrystal->getOrientedSystem()->getAtom(n);
+				this->AtomList[i*dupY1*nbAtom1+j*nbAtom1+n].pos.x = Mx1*(this->AtomList[n].pos.x + i*xl1);
+				this->AtomList[i*dupY1*nbAtom1+j*nbAtom1+n].pos.y = My1*(this->AtomList[n].pos.y + j*yl1);
 			}
 		}
 	}
 	for(unsigned int i=0;i<dupX2;i++){
 		for(unsigned int j=0;j<dupY2;j++){
-			for(unsigned int n=0;n<this->_MyCrystal2->getOrientedSystem()->getNbAtom();n++){
-				this->AtomList[n] = _MyCrystal2->getOrientedSystem()->getAtom(n);
-				this->AtomList[n].pos.x = Mx2*(this->AtomList[n].pos.x + i*xl2);
-				this->AtomList[n].pos.y = My2*(this->AtomList[n].pos.y + j*yl2);
-				this->AtomList[n].pos.z += (this->_MyCrystal->getOrientedSystem()->getH3()[2]+GBspace);
+			for(unsigned int n=0;n<nbAtom2;n++){
+				this->AtomList[nbAtom1*dupX1*dupY1+i*dupY2*nbAtom2+j*nbAtom2+n] = this->_MyCrystal2->getOrientedSystem()->getAtom(n);
+				this->AtomList[nbAtom1*dupX1*dupY1+i*dupY2*nbAtom2+j*nbAtom2+n].pos.x = Mx2*(this->AtomList[nbAtom1*dupX1*dupY1+i*dupY2*nbAtom2+j*nbAtom2+n].pos.x + i*xl2);
+				this->AtomList[nbAtom1*dupX1*dupY1+i*dupY2*nbAtom2+j*nbAtom2+n].pos.y = My2*(this->AtomList[nbAtom1*dupX1*dupY1+i*dupY2*nbAtom2+j*nbAtom2+n].pos.y + j*yl2);
+				this->AtomList[nbAtom1*dupX1*dupY1+i*dupY2*nbAtom2+j*nbAtom2+n].pos.z += (this->_MyCrystal->getOrientedSystem()->getH3()[2]+GBspace);
 			}
 		}
 	}

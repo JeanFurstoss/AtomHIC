@@ -34,6 +34,9 @@ private:
 	bool IsOrientedSystem;
 	AtomicSystem *OrientedSystem;
 	MathTools *MT;
+	std::vector<std::vector<unsigned int>> DoNotSep; // contain the number neighbour which should not be separe from a given atom type <=> do not separe atom type DoNotSep[i][0] from its DoNotSep[i][1] first neighbors of atom type DoNotSep[i][2]
+	std::vector<std::vector<int>> NotSepList; // contain the id of neighbors which should not be separe from the given atom, NotSepList[i][j*4] = id of neighbor j which should not be separe from atom i, NotSepList[i][j*4+k] = multiplicative coefficient with ak(a1, a2, a3) for this atom to be the neighbot
+	bool IsDoNotSep = false;
 	double *rot_mat_total; // rotation matrix used to pass from the database oriented crystal to the current orientation
 	double *TiltTrans_xyz; // transformation matrix used to construct oriented systems 
 public:
@@ -65,11 +68,14 @@ public:
 	const bool getIsCharge(){ return this->IsCharge; }
 	AtomicSystem* getOrientedSystem(){ return this->OrientedSystem; } 
 	const double* getRotMat(){ return this->rot_mat_total; };
+	unsigned int getNotSepList_size(const unsigned int i){ return this->NotSepList[i].size()/4; }
+	int getNotSepList(const unsigned int i, const unsigned int j){ return this->NotSepList[i][j]; }
 	// methods
 	void read_database();
 	void computeReciproqual();
 	void ConstructOrientedSystem(const int& h_p, const int& k_p, const int& l_p);
 	void ConstructOrientedSystem(const double *RotMat);
+	void ConstructNotSepList();
 	void RotateAndConstructOrthogonalCell(const double *RotMat, double &xbox, double &ybox, double &zbox);
 	// destructor
 	~Crystal();

@@ -224,6 +224,27 @@ void MathTools::MatDotAt(const double *mat, const Atom &At, Atom &At_prod){
 	At_prod.pos.z = this->buffer_vec_2[2];
 }
 
+void MathTools::sort(const vector<double> vec, vector<unsigned int> &sorted){
+	// this method is really not optimized, for larger array an other method should be implemented
+	bool already;
+	for(unsigned int i=0;i<vec.size();i++){
+		sorted[i] = i;
+		for(unsigned int j=0;j<vec.size();j++){
+			already = false;
+			for(unsigned int k=0;k<i;k++){
+				if( j == sorted[k] ){
+					already = true;
+					break;
+				}
+			}
+			if( already ) break;
+			else if( i==0 && vec[j] < vec[sorted[i]] ) sorted[i] = j;
+			else if( vec[j] < vec[sorted[i]] && vec[j] > vec[sorted[i-1]] ) sorted[i] = j;
+		}
+	}
+
+}
+
 MathTools::~MathTools(){
 	delete[] buffer_mat_1;
 	delete[] buffer_mat_2;
