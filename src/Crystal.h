@@ -24,6 +24,7 @@ private:
 	double *a1;
 	double *a2;
 	double *a3;
+	double a1length, a2length, a3length;
 	// reciproqual lattice
 	double *a1_star;
 	double *a2_star;
@@ -68,15 +69,17 @@ public:
 	const bool getIsCharge(){ return this->IsCharge; }
 	AtomicSystem* getOrientedSystem(){ return this->OrientedSystem; } 
 	const double* getRotMat(){ return this->rot_mat_total; };
+	bool getIsDoNotSep(){ return this->IsDoNotSep; }
 	unsigned int getNotSepList_size(const unsigned int i){ return this->NotSepList[i].size()/4; }
 	int getNotSepList(const unsigned int i, const unsigned int j){ return this->NotSepList[i][j]; }
+	std::vector<std::vector<unsigned int>> getDoNotSep(){ return this->DoNotSep; }
 	// methods
 	void read_database();
 	void computeReciproqual();
 	void ConstructOrientedSystem(const int& h_p, const int& k_p, const int& l_p);
 	void ConstructOrientedSystem(const double *RotMat);
 	void ConstructNotSepList();
-	void RotateAndConstructOrthogonalCell(const double *RotMat, double &xbox, double &ybox, double &zbox);
+	void RotateAndConstructOrthogonalCell(const double *RotMat, double &xbox, double &ybox, double &zbox, std::vector<int> &cl_box);
 	// destructor
 	~Crystal();
 	

@@ -11,6 +11,17 @@ MathTools::MathTools(){
 	this->buffer_mat_1 = new double[9];
 	this->buffer_mat_2 = new double[9];
 }
+unsigned int MathTools::max(const unsigned int arr[], unsigned int size){
+	unsigned int max = arr[0];
+	for(unsigned int i=0;i<size;i++) if( arr[i] > max ) max = arr[i];
+	return max;
+}
+
+unsigned int MathTools::min(const unsigned int arr[], unsigned int size){
+	unsigned int min = arr[0];
+	for(unsigned int i=0;i<size;i++) if( arr[i] < min ) min = arr[i];
+	return min;
+}
 int MathTools::max(const int arr[], unsigned int size){
 	int max = arr[0];
 	for(unsigned int i=0;i<size;i++) if( arr[i] > max ) max = arr[i];
@@ -22,7 +33,6 @@ int MathTools::min(const int arr[], unsigned int size){
 	for(unsigned int i=0;i<size;i++) if( arr[i] < min ) min = arr[i];
 	return min;
 }
-
 double MathTools::max(const double arr[], unsigned int size){
 	double max = arr[0];
 	for(unsigned int i=0;i<size;i++) if( arr[i] > max ) max = arr[i];
@@ -224,25 +234,20 @@ void MathTools::MatDotAt(const double *mat, const Atom &At, Atom &At_prod){
 	At_prod.pos.z = this->buffer_vec_2[2];
 }
 
-void MathTools::sort(const vector<double> vec, vector<unsigned int> &sorted){
-	// this method is really not optimized, for larger array an other method should be implemented
-	bool already;
-	for(unsigned int i=0;i<vec.size();i++){
-		sorted[i] = i;
-		for(unsigned int j=0;j<vec.size();j++){
-			already = false;
-			for(unsigned int k=0;k<i;k++){
-				if( j == sorted[k] ){
-					already = true;
-					break;
-				}
-			}
-			if( already ) break;
-			else if( i==0 && vec[j] < vec[sorted[i]] ) sorted[i] = j;
-			else if( vec[j] < vec[sorted[i]] && vec[j] > vec[sorted[i-1]] ) sorted[i] = j;
+void MathTools::sort(const vector<double> vec, const unsigned int col, const unsigned int NbCol, vector<double> &sorted){
+	vector<double> vec_j = vec;
+	unsigned int init_size = vec.size()/NbCol;
+	unsigned int jmin;
+	for(unsigned int i=0;i<init_size;i++){
+		jmin = 0;
+		for(unsigned int j=0;j<vec_j.size()/NbCol;j++) if( vec_j[j*NbCol+col] < vec_j[jmin*NbCol+col] ) jmin = j;
+		for(unsigned int n=0;n<NbCol;n++){
+			sorted[i*NbCol+n] = vec_j[jmin*NbCol+n];
+		}
+		for(unsigned int n=0;n<NbCol;n++){
+			vec_j.erase(vec_j.begin()+jmin*NbCol);
 		}
 	}
-
 }
 
 MathTools::~MathTools(){

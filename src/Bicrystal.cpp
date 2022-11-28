@@ -37,7 +37,6 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	xl2 = this->_MyCrystal2->getOrientedSystem()->getH1()[0];
 	yl1 = this->_MyCrystal->getOrientedSystem()->getH2()[1];
 	yl2 = this->_MyCrystal2->getOrientedSystem()->getH2()[1];
-	this->_MyCrystal2->getOrientedSystem()->print_lmp("test.lmp");
 	bool find = false;
 	for(unsigned int i=0;i<MaxDup;i++){
 		for(unsigned int j=0;j<MaxDup;j++){

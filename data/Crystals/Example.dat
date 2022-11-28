@@ -1,0 +1,23 @@
+ # Name_of_crystal chemical_formula
+
+CRYSTAL Crystallographic_structure // could be Cubic, Hexagonal, Orthorhombic
+DONOTSEPARE i n_1 j // do not separe atom of type i from its n_1 first neighbors of atom j during construction of oriented system (free surface) or GBs
+DONOTSEPARE k n_2 l 
+DONOTSEPARE ..
+
+	N atoms // where N is the number of atom in the unit cell motif
+	n atom types // where n is the number of atom type
+
+	0.00 a xlo xhi // where a is the first cell parameter
+	0.00 b ylo yhi // where b is the second cell parameter
+	0.00 c zlo zhi // where c is the third cell parameter
+Masses
+
+	i masse_i # element_name number_of_site // where masse1 is the mass of element i and number_of_site is the number of crystallographic site for element i
+	j masse_j ...
+
+Atoms # charge/atomic // charge if the atoms have a charge, else atomic
+
+	N_i n_i (c_i) x_i y_i z_i // N_i id of atom i, n_i element number of atom i, c_i charge (is atoms are charged) of atom i, x_i y_i z_i cartesian coordinates of atom i
+	N_i+1 n_i+1 ..
+

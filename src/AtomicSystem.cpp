@@ -8,7 +8,7 @@
 
 using namespace std;
 
-AtomicSystem::AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double zhi):_MyCrystal(_MyCrystal){
+AtomicSystem::AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double zhi, vector<int> cl_box):_MyCrystal(_MyCrystal){
 	// Compute the number of atom and verify it gives an integer number
 	double nbAt_d = _MyCrystal->getNbAtom()*xhi*yhi*zhi/_MyCrystal->getVol();
 	if( fabs(nbAt_d-round(nbAt_d)) > 1e-3 ) cout << "Warning the cell dimension does not correspond to integer number of atom" << endl;
@@ -68,29 +68,168 @@ AtomicSystem::AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double z
 	unsigned int count;
 	double tolIonPos = 1e-3;
 	count = 0;
-	for(int i=-cla1;i<cla1+1;i++){
-		for(int j=-cla2;j<cla2+1;j++){
-			for(int k=-cla3;k<cla3+1;k++){
-				delta_x = i*_MyCrystal->getA1()[0]+j*_MyCrystal->getA2()[0]+k*_MyCrystal->getA3()[0];
-				delta_y = i*_MyCrystal->getA1()[1]+j*_MyCrystal->getA2()[1]+k*_MyCrystal->getA3()[1];
-				delta_z = i*_MyCrystal->getA1()[2]+j*_MyCrystal->getA2()[2]+k*_MyCrystal->getA3()[2];
-				for(unsigned int n=0;n<_MyCrystal->getNbAtom();n++){
-					xpos = _MyCrystal->getMotif()[n].pos.x + delta_x;
-					ypos = _MyCrystal->getMotif()[n].pos.y + delta_y;
-					zpos = _MyCrystal->getMotif()[n].pos.z + delta_z;
-					if( xpos > -tolIonPos && xpos < xhi-tolIonPos && ypos > -tolIonPos && ypos < yhi-tolIonPos && zpos > -tolIonPos && zpos < zhi-tolIonPos ){
-						this->AtomList[count] = _MyCrystal->getMotif()[n];
-						this->AtomList[count].pos.x = xpos;
-						this->AtomList[count].pos.y = ypos;
-						this->AtomList[count].pos.z = zpos;
-						count += 1;
+	if( !_MyCrystal->getIsDoNotSep() ){
+		// crystals where there is no constraints on atom separation
+		for(int i=-cla1;i<cla1+1;i++){
+			for(int j=-cla2;j<cla2+1;j++){
+				for(int k=-cla3;k<cla3+1;k++){
+					delta_x = i*_MyCrystal->getA1()[0]+j*_MyCrystal->getA2()[0]+k*_MyCrystal->getA3()[0];
+					delta_y = i*_MyCrystal->getA1()[1]+j*_MyCrystal->getA2()[1]+k*_MyCrystal->getA3()[1];
+					delta_z = i*_MyCrystal->getA1()[2]+j*_MyCrystal->getA2()[2]+k*_MyCrystal->getA3()[2];
+					for(unsigned int n=0;n<_MyCrystal->getNbAtom();n++){
+						xpos = _MyCrystal->getMotif()[n].pos.x + delta_x;
+						ypos = _MyCrystal->getMotif()[n].pos.y + delta_y;
+						zpos = _MyCrystal->getMotif()[n].pos.z + delta_z;
+						if( xpos > -tolIonPos && xpos < xhi-tolIonPos && ypos > -tolIonPos && ypos < yhi-tolIonPos && zpos > -tolIonPos && zpos < zhi-tolIonPos ){
+							this->AtomList[count] = _MyCrystal->getMotif()[n];
+							this->AtomList[count].pos.x = xpos;
+							this->AtomList[count].pos.y = ypos;
+							this->AtomList[count].pos.z = zpos;
+							count += 1;
+						}
+						if( count == this->nbAtom-1 ) cout << "warning there is more atom than expected !" << endl;
 					}
-					if( count > this->nbAtom ) cout << "warning there is more atom than expected !" << endl;
 				}
 			}
 		}
+	}else{
+		// crystals for which some atoms should not be separeted
+		// create array of already stored atoms
+		vector<vector<double>> AlreadyStored;
+		for(unsigned int i=0;i<_MyCrystal->getNbAtom();i++) AlreadyStored.push_back(vector<double> ());
+		// array of atom types which may be stored without being in the box
+		vector<unsigned int> AtType_stored;
+		for(unsigned int i=0;i<_MyCrystal->getDoNotSep().size();i++) AtType_stored.push_back(_MyCrystal->getDoNotSep()[i][2]);
+		bool ToStore, ToTreat, break_comp;
+		unsigned int id_s;
+		int cl_pos_n_i, cl_pos_n_j, cl_pos_n_k;
+		double xpos_n, ypos_n, zpos_n, xdiff, ydiff, zdiff, In;
+		unsigned int *cl_test = new unsigned int[3];
+		break_comp = false;
+		double tol = 1e-6;
+		// first loop to store atoms which should not be seperated
+		for(int i=-cla1;i<cla1+1;i++){
+			for(int j=-cla2;j<cla2+1;j++){
+				for(int k=-cla3;k<cla3+1;k++){
+					delta_x = i*_MyCrystal->getA1()[0]+j*_MyCrystal->getA2()[0]+k*_MyCrystal->getA3()[0];
+					delta_y = i*_MyCrystal->getA1()[1]+j*_MyCrystal->getA2()[1]+k*_MyCrystal->getA3()[1];
+					delta_z = i*_MyCrystal->getA1()[2]+j*_MyCrystal->getA2()[2]+k*_MyCrystal->getA3()[2];
+					for(unsigned int n=0;n<_MyCrystal->getNbAtom();n++){
+						ToTreat = true;
+						for(unsigned int sep=0;sep<AtType_stored.size();sep++){
+							if( _MyCrystal->getMotif()[n].type_uint == AtType_stored[sep] ){
+								ToTreat = false;
+								break;
+							}
+						}
+						if( ToTreat ){
+							xpos = _MyCrystal->getMotif()[n].pos.x + delta_x;
+							ypos = _MyCrystal->getMotif()[n].pos.y + delta_y;
+							zpos = _MyCrystal->getMotif()[n].pos.z + delta_z;
+							if( xpos > -tolIonPos && xpos < xhi-tolIonPos && ypos > -tolIonPos && ypos < yhi-tolIonPos && zpos > -tolIonPos && zpos < zhi-tolIonPos ){
+								if( count == this->nbAtom ){
+									break_comp = true;
+									break;
+								}
+								this->AtomList[count] = _MyCrystal->getMotif()[n];
+								this->AtomList[count].pos.x = xpos;
+								this->AtomList[count].pos.y = ypos;
+								this->AtomList[count].pos.z = zpos;
+								count += 1;
+								// store all its neighboring atoms which should not be separeted from him
+								for(unsigned int s=0;s<_MyCrystal->getNotSepList_size(n);s++){
+									id_s = _MyCrystal->getNotSepList(n,s*4);
+									xpos_n = _MyCrystal->getMotif()[id_s].pos.x + (i+_MyCrystal->getNotSepList(n,s*4+1))*_MyCrystal->getA1()[0] + (j+_MyCrystal->getNotSepList(n,s*4+2))*_MyCrystal->getA2()[0] + (k+_MyCrystal->getNotSepList(n,s*4+3))*_MyCrystal->getA3()[0];
+									ypos_n = _MyCrystal->getMotif()[id_s].pos.y + (i+_MyCrystal->getNotSepList(n,s*4+1))*_MyCrystal->getA1()[1] + (j+_MyCrystal->getNotSepList(n,s*4+2))*_MyCrystal->getA2()[1] + (k+_MyCrystal->getNotSepList(n,s*4+3))*_MyCrystal->getA3()[1];
+									zpos_n = _MyCrystal->getMotif()[id_s].pos.z + (i+_MyCrystal->getNotSepList(n,s*4+1))*_MyCrystal->getA1()[2] + (j+_MyCrystal->getNotSepList(n,s*4+2))*_MyCrystal->getA2()[2] + (k+_MyCrystal->getNotSepList(n,s*4+3))*_MyCrystal->getA3()[2];
+									if( xpos_n > -tolIonPos && xpos_n < xhi-tolIonPos && ypos_n > -tolIonPos && ypos_n < yhi-tolIonPos && zpos_n > -tolIonPos && zpos_n < zhi-tolIonPos ) In = 1.;
+									else In = 0.;
+									ToStore = true;
+									for(unsigned int t=0;t<AlreadyStored[id_s].size()/4;t++){
+										xdiff = fabs(xpos_n-AlreadyStored[id_s][t*4]);
+										ydiff = fabs(ypos_n-AlreadyStored[id_s][t*4+1]);
+										zdiff = fabs(zpos_n-AlreadyStored[id_s][t*4+2]);
+										if( ( xdiff < tol && ydiff < tol && zdiff < tol ) || ( fabs(In-AlreadyStored[id_s][t*4+3]) > tol && ( fabs(xdiff-xhi) < tol || fabs(ydiff-yhi) < tol || fabs(zdiff-zhi) < tol ) ) ){ 
+											ToStore = false;
+											break;
+										}
+									}
+									if( !ToStore ) continue;
+									if( count == this->nbAtom ){
+										break_comp = true;
+										break;
+									}
+									this->AtomList[count] = _MyCrystal->getMotif()[id_s];
+									AlreadyStored[id_s].push_back(xpos_n);
+									AlreadyStored[id_s].push_back(ypos_n);
+									AlreadyStored[id_s].push_back(zpos_n);
+									AlreadyStored[id_s].push_back(In);
+									this->AtomList[count].pos.x = xpos_n;
+									this->AtomList[count].pos.y = ypos_n;
+									this->AtomList[count].pos.z = zpos_n;
+									count += 1;
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		// second loop to store atoms which may have not been stored
+		if( count < this->nbAtom-1 ){
+			for(int i=-cla1;i<cla1+1;i++){
+				for(int j=-cla2;j<cla2+1;j++){
+					for(int k=-cla3;k<cla3+1;k++){
+						delta_x = i*_MyCrystal->getA1()[0]+j*_MyCrystal->getA2()[0]+k*_MyCrystal->getA3()[0];
+						delta_y = i*_MyCrystal->getA1()[1]+j*_MyCrystal->getA2()[1]+k*_MyCrystal->getA3()[1];
+						delta_z = i*_MyCrystal->getA1()[2]+j*_MyCrystal->getA2()[2]+k*_MyCrystal->getA3()[2];
+						for(unsigned int n=0;n<_MyCrystal->getNbAtom();n++){
+							ToTreat = false;
+							for(unsigned int sep=0;sep<AtType_stored.size();sep++){
+								if( _MyCrystal->getMotif()[n].type_uint == AtType_stored[sep] ){
+									ToTreat = true;
+									break;
+								}
+							}
+							if( ToTreat ){
+								xpos = _MyCrystal->getMotif()[n].pos.x + delta_x;
+								ypos = _MyCrystal->getMotif()[n].pos.y + delta_y;
+								zpos = _MyCrystal->getMotif()[n].pos.z + delta_z;
+								if( xpos > -tolIonPos && xpos < xhi-tolIonPos && ypos > -tolIonPos && ypos < yhi-tolIonPos && zpos > -tolIonPos && zpos < zhi-tolIonPos ){
+								// search if this atom type is one of atom which could be stored without being inside the box
+									ToStore = true;
+									for(unsigned int t=0;t<AlreadyStored[n].size()/3;t++){
+										xdiff = fabs(xpos-AlreadyStored[n][t*4]);
+										ydiff = fabs(ypos-AlreadyStored[n][t*4+1]);
+										zdiff = fabs(zpos-AlreadyStored[n][t*4+2]);
+										if( ( xdiff < tol && ydiff < tol && zdiff < tol ) || ( fabs(AlreadyStored[n][t*4+3]) < tol && ( fabs(xdiff-xhi) < tol || fabs(ydiff-yhi) < tol || fabs(zdiff-zhi) < tol ) ) ){ 
+											ToStore = false;
+											break;
+										}
+									}
+									// if not store it
+									if( ToStore ){
+										if( count == this->nbAtom ){
+											break_comp = true;
+											break;
+										}
+										this->AtomList[count] = _MyCrystal->getMotif()[n];
+										this->AtomList[count].pos.x = xpos;
+										this->AtomList[count].pos.y = ypos;
+										this->AtomList[count].pos.z = zpos;
+										count += 1;
+									}
+								}
+							}
+						}
+					if( break_comp) break;
+					}
+				if( break_comp) break;
+				}
+			if( break_comp) break;
+			}
+		}
 	}
-		
 }
 
 // Constructor using the filename of an atomic file (.cfg, .lmp, .xsf,..)

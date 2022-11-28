@@ -13,6 +13,8 @@ protected:
 public:
 	MathTools();
 	// those functions return the max/min of a given array
+	unsigned int max(const unsigned int arr[], unsigned int size);
+	unsigned int min(const unsigned int arr[], unsigned int size);
 	int max(const int arr[], unsigned int size);
 	int min(const int arr[], unsigned int size);
 	double max(const double arr[], unsigned int size);
@@ -33,7 +35,7 @@ public:
 	void MatDotMat(const double *mat1, const double *mat2, double *prod);
 	void printMat(const double *mat);
 	void printVec(const double *vec);
-	void sort(const std::vector<double> vec, std::vector<unsigned int> &sorted);
+	void sort(const std::vector<double> vec, const unsigned int col, const unsigned int NbCol, std::vector<double> &sorted);
 	~MathTools();
 };
 

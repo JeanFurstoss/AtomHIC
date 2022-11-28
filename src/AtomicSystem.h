@@ -46,7 +46,7 @@ protected:
 	std::vector<std::string*> density_name; // auxiliary atom properties => density_name[i*2] = auxiliary property used to compute density, density_name[i*2+1] = direction along which the density has been computed
 public:
 	AtomicSystem(){};
-	AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double zhi); // construct atomic system from crystal and cell size
+	AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double zhi, std::vector<int> cl_box); // construct atomic system from crystal and cell size
 	AtomicSystem(const std::string& filename); // construct AtomicSystem by reading file
 	// getters
 	unsigned int getNbAtom(){ return this->nbAtom; }

@@ -89,6 +89,9 @@ Crystal::Crystal(const string& crystalName){
 			this->path2database = database+"/"+AvailableCrystals[crystal_index]+this->database_extension;
 		}
 		read_database();
+		this->a1length = sqrt(pow(this->a1[0],2.)+pow(this->a1[1],2.)+pow(this->a1[2],2.));
+		this->a2length = sqrt(pow(this->a2[0],2.)+pow(this->a2[1],2.)+pow(this->a2[2],2.));
+		this->a3length = sqrt(pow(this->a3[0],2.)+pow(this->a3[1],2.)+pow(this->a3[2],2.));
 		if( this->IsDoNotSep == true ) ConstructNotSepList();
 		computeReciproqual();
 	}
@@ -169,8 +172,9 @@ void Crystal::ConstructOrientedSystem(const int& h_p, const int& k_p, const int&
 		return;
 	}else cout << "We are constructing a system with the (" << h_p << k_p << l_p << ") plane parallel with (xy) plane and the [" << buffer_vector_i[minhkl*3] << buffer_vector_i[minhkl*3+1] << buffer_vector_i[minhkl*3+2] << "] direction aligned with the x axis" << endl;
 
-	RotateAndConstructOrthogonalCell(this->rot_mat_total, xbox, ybox, zbox);
-	this->OrientedSystem = new AtomicSystem(this, xbox, ybox, zbox);
+	vector<int> cl_box;
+	RotateAndConstructOrthogonalCell(this->rot_mat_total, xbox, ybox, zbox, cl_box);
+	this->OrientedSystem = new AtomicSystem(this, xbox, ybox, zbox, cl_box);
 	// rescale the crystal vectors as they have been modified by the function
 	double *invTrans = new double[9];
 	MT->invert3x3(this->TiltTrans_xyz,invTrans);
@@ -191,8 +195,9 @@ void Crystal::ConstructOrientedSystem(const int& h_p, const int& k_p, const int&
 void Crystal::ConstructOrientedSystem(const double *RotMat){
 	for(unsigned int i=0;i<9;i++) this->rot_mat_total[i] = RotMat[i];
 	double xbox, ybox, zbox;
-	RotateAndConstructOrthogonalCell(this->rot_mat_total, xbox, ybox, zbox);
-	this->OrientedSystem = new AtomicSystem(this, xbox, ybox, zbox);
+	vector<int> cl_box;
+	RotateAndConstructOrthogonalCell(this->rot_mat_total, xbox, ybox, zbox, cl_box);
+	this->OrientedSystem = new AtomicSystem(this, xbox, ybox, zbox, cl_box);
 	// rescale the crystal vectors as they have been modified by the function
 	double *invTrans = new double[9];
 	MT->invert3x3(this->TiltTrans_xyz,invTrans);
@@ -205,15 +210,14 @@ void Crystal::ConstructOrientedSystem(const double *RotMat){
 
 void Crystal::ConstructNotSepList(){
 	// construct full neighbor list in a large cutoff radius
-	double rc_squared = pow(3.,2.);
+	double arr[3] = {this->a1length, this->a2length, this->a3length};
+	double rc_squared = pow(this->MT->max(arr,3),2.);
 	double d_squared, xpos, ypos, zpos;
 	int cl = 4;
 	vector<vector<double>> buffer_vector_d;
-	vector<vector<int>> buffer_vector_int;
 	for(unsigned int i=0;i<this->nbAtom;i++){
 		this->NotSepList.push_back(vector<int> ());
 		buffer_vector_d.push_back(vector<double> ());
-		buffer_vector_int.push_back(vector<int> ());
 		for(int xcl=-cl;xcl<cl+1;xcl++){
 			for(int ycl=-cl;ycl<cl+1;ycl++){
 				for(int zcl=-cl;zcl<cl+1;zcl++){
@@ -224,41 +228,51 @@ void Crystal::ConstructNotSepList(){
 						d_squared = pow(xpos-this->Motif[i].pos.x,2.) + pow(ypos-this->Motif[i].pos.y,2.) + pow(zpos-this->Motif[i].pos.z,2.); 
 						if( d_squared < rc_squared && d_squared > 1e-6 ){
 							buffer_vector_d[i].push_back(d_squared);
-							buffer_vector_int[i].push_back(j);
-							buffer_vector_int[i].push_back(xcl);
-							buffer_vector_int[i].push_back(ycl);
-							buffer_vector_int[i].push_back(zcl);
+							buffer_vector_d[i].push_back(j);
+							buffer_vector_d[i].push_back(xcl);
+							buffer_vector_d[i].push_back(ycl);
+							buffer_vector_d[i].push_back(zcl);
 						}
 					}
 				}
 			}
 		}
 	}
-	vector<unsigned int> sorted;
 	unsigned int count;
+	bool Continue;
 	for(unsigned int i=0;i<this->nbAtom;i++){
-		sorted.resize(buffer_vector_d[i].size());
-		this->MT->sort(buffer_vector_d[i], sorted);
+		this->MT->sort(buffer_vector_d[i], 0, 5, buffer_vector_d[i]);
 		for(unsigned int j=0;j<this->DoNotSep.size();j++){
 			if( DoNotSep[j][0] == this->Motif[i].type_uint ){
 				count = 0;
-				for(unsigned int n=0;n<sorted.size();n++){
+				for(unsigned int n=0;n<buffer_vector_d[i].size()/5;n++){
 					if( count == this->DoNotSep[j][1] ) break;
-					else if( this->Motif[sorted[n]].type_uint == DoNotSep[j][2] ){
+					else if( this->Motif[(int) buffer_vector_d[i][n*5+1]].type_uint == DoNotSep[j][2] ){
+						// verify that this atom has been stored before
+						Continue = false;
+						for(unsigned int s_1=0;s_1<NotSepList.size();s_1++){
+							for(unsigned int s_2=0;s_2<NotSepList[s_1].size()/4;s_2++){
+								if( round(buffer_vector_d[i][n*5+1]) == NotSepList[s_1][s_2*4] && round(buffer_vector_d[i][n*5+2]) == NotSepList[s_1][s_2*4+1] && round(buffer_vector_d[i][n*5+3]) == NotSepList[s_1][s_2*4+2] && round(buffer_vector_d[i][n*5+4]) == NotSepList[s_1][s_2*4+3] ){
+									Continue = true;
+									break;
+								}
+							}
+							if( Continue ) break;
+						}
+						if( Continue ) continue;
 						count += 1;
-						NotSepList[i].push_back(buffer_vector_int[i][sorted[n]*4]);
-						NotSepList[i].push_back(buffer_vector_int[i][sorted[n]*4+1]);
-						NotSepList[i].push_back(buffer_vector_int[i][sorted[n]*4+2]);
-						NotSepList[i].push_back(buffer_vector_int[i][sorted[n]*4+3]);
+						NotSepList[i].push_back(round(buffer_vector_d[i][n*5+1]));
+						NotSepList[i].push_back(round(buffer_vector_d[i][n*5+2]));
+						NotSepList[i].push_back(round(buffer_vector_d[i][n*5+3]));
+						NotSepList[i].push_back(round(buffer_vector_d[i][n*5+4]));
 					}
 				}
 			}
 		}
 	}
-	cout << "test" << endl;
 }
 
-void Crystal::RotateAndConstructOrthogonalCell(const double *RotMat, double &xbox, double &ybox, double &zbox){
+void Crystal::RotateAndConstructOrthogonalCell(const double *RotMat, double &xbox, double &ybox, double &zbox, vector<int> &cl_box){
 	double tolOrthoBox = 0.2; // crucial parameter
 	double MinBoxL = 1.;
 	int CLsearch = 50;
@@ -311,6 +325,10 @@ void Crystal::RotateAndConstructOrthogonalCell(const double *RotMat, double &xbo
 	ind_x = MT->min(buffer_vector_d_x);
 	ind_y = MT->min(buffer_vector_d_y);
 	ind_z = MT->min(buffer_vector_d_z);
+	// fill the cl_box array
+	for(unsigned int i=0;i<3;i++) cl_box.push_back(xh_list[ind_x*3+i]);
+	for(unsigned int i=0;i<3;i++) cl_box.push_back(yh_list[ind_x*3+i]);
+	for(unsigned int i=0;i<3;i++) cl_box.push_back(zh_list[ind_x*3+i]);
 	double *xh = new double[3];
 	double *yh = new double[3];
 	double *zh = new double[3];
