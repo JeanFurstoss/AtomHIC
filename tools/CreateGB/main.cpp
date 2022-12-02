@@ -10,8 +10,13 @@ using namespace std;
 
 int main(int argc, char *argv[])
 {
+	if( argc < 8 ){
+		cerr << "Usage: CreateGB h_RotAxis k_RotAxis l_RotAxis RotAngle h_GBPlane k_GBPlane l_GBPlane CrystalName" << endl;
+		return EXIT_FAILURE;
+	}
 	int h_a, k_a ,l_a, h_p, k_p, l_p;
 	double theta;
+	string crystalName;
 	istringstream iss_ha(argv[1]);
 	iss_ha >> h_a;
 	istringstream iss_ka(argv[2]);
@@ -26,8 +31,10 @@ int main(int argc, char *argv[])
 	iss_kp >> k_p;
 	istringstream iss_lp(argv[7]);
 	iss_lp >> l_p;
-	string filename="Forsterite";
-	Bicrystal MyGB(filename,h_a,k_a,l_a,theta,h_p,k_p,l_p);
-	MyGB.print_lmp("file.lmp");
+	istringstream iss_cn(argv[8]);
+	iss_cn >> crystalName;
+	Bicrystal MyGB(crystalName,h_a,k_a,l_a,theta,h_p,k_p,l_p);
+	MyGB.print_lmp("GB.lmp");
+	MyGB.print_Grains();
 	return 0;
 }

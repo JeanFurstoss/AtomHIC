@@ -1,7 +1,7 @@
  # Name_of_crystal chemical_formula
 
 CRYSTAL Crystallographic_structure // could be Cubic, Hexagonal, Orthorhombic
-DONOTSEPARE i n_1 j // do not separe atom of type i from its n_1 first neighbors of atom j during construction of oriented system (free surface) or GBs
+DONOTSEPARE i n_1 j // (optional) do not separe atom of type i from its n_1 first neighbors of atom j during construction of oriented system (free surface) or GBs
 DONOTSEPARE k n_2 l 
 DONOTSEPARE ..
 

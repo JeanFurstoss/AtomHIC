@@ -52,8 +52,10 @@ Crystal::Crystal(const string& crystalName){
 		database = CRYSTAL_DATABASE;
 		#endif
 	}
-	if( database.empty() ) cout << "Warning database environment for crystal is empty" << endl;
-	else{
+	if( database.empty() ){
+		cerr << "Warning database environment for crystal is empty" << endl;
+		exit(EXIT_FAILURE);
+	} else {
 		DIR *dir;
 		struct dirent *diread;
 		vector<string> AvailableCrystals;
@@ -89,11 +91,13 @@ Crystal::Crystal(const string& crystalName){
 			this->path2database = database+"/"+AvailableCrystals[crystal_index]+this->database_extension;
 		}
 		read_database();
-		this->a1length = sqrt(pow(this->a1[0],2.)+pow(this->a1[1],2.)+pow(this->a1[2],2.));
-		this->a2length = sqrt(pow(this->a2[0],2.)+pow(this->a2[1],2.)+pow(this->a2[2],2.));
-		this->a3length = sqrt(pow(this->a3[0],2.)+pow(this->a3[1],2.)+pow(this->a3[2],2.));
+		this->alength = new double[3];
+		this->alength[0] = sqrt(pow(this->a1[0],2.)+pow(this->a1[1],2.)+pow(this->a1[2],2.));
+		this->alength[1] = sqrt(pow(this->a2[0],2.)+pow(this->a2[1],2.)+pow(this->a2[2],2.));
+		this->alength[2] = sqrt(pow(this->a3[0],2.)+pow(this->a3[1],2.)+pow(this->a3[2],2.));
 		if( this->IsDoNotSep == true ) ConstructNotSepList();
 		computeReciproqual();
+		computeStoich();
 	}
 }
 
@@ -206,11 +210,12 @@ void Crystal::ConstructOrientedSystem(const double *RotMat){
 	MT->VecDotMat(this->a3,invTrans,this->a3);
 
 	this->IsOrientedSystem = true;
+	delete[] invTrans;
 }
 
 void Crystal::ConstructNotSepList(){
 	// construct full neighbor list in a large cutoff radius
-	double arr[3] = {this->a1length, this->a2length, this->a3length};
+	double arr[3] = {this->alength[0], this->alength[1], this->alength[2]};
 	double rc_squared = pow(this->MT->max(arr,3),2.);
 	double d_squared, xpos, ypos, zpos;
 	int cl = 4;
@@ -252,7 +257,10 @@ void Crystal::ConstructNotSepList(){
 						Continue = false;
 						for(unsigned int s_1=0;s_1<NotSepList.size();s_1++){
 							for(unsigned int s_2=0;s_2<NotSepList[s_1].size()/4;s_2++){
-								if( round(buffer_vector_d[i][n*5+1]) == NotSepList[s_1][s_2*4] && round(buffer_vector_d[i][n*5+2]) == NotSepList[s_1][s_2*4+1] && round(buffer_vector_d[i][n*5+3]) == NotSepList[s_1][s_2*4+2] && round(buffer_vector_d[i][n*5+4]) == NotSepList[s_1][s_2*4+3] ){
+								// Case where all the motif is not necessarily get
+								// if( round(buffer_vector_d[i][n*5+1]) == NotSepList[s_1][s_2*4] && round(buffer_vector_d[i][n*5+2]) == NotSepList[s_1][s_2*4+1] && round(buffer_vector_d[i][n*5+3]) == NotSepList[s_1][s_2*4+2] && round(buffer_vector_d[i][n*5+4]) == NotSepList[s_1][s_2*4+3] ){
+								// Case to have the all motif
+								if( round(buffer_vector_d[i][n*5+1]) == NotSepList[s_1][s_2*4] ){
 									Continue = true;
 									break;
 								}
@@ -273,9 +281,10 @@ void Crystal::ConstructNotSepList(){
 }
 
 void Crystal::RotateAndConstructOrthogonalCell(const double *RotMat, double &xbox, double &ybox, double &zbox, vector<int> &cl_box){
-	double tolOrthoBox = 0.2; // crucial parameter
-	double MinBoxL = 1.;
-	int CLsearch = 50;
+	double tolOrthoBox = 0.1; // crucial parameter
+	double MinBoxH = 15.;
+	double MinBoxAside = 4.;
+	int CLsearch = 150;
 	for(unsigned int i=0;i<9;i++) this->rot_mat_total[i] = RotMat[i];
 	// rotate lattice vectors
 	MT->MatDotVec(RotMat,this->a1,this->a1);
@@ -295,19 +304,19 @@ void Crystal::RotateAndConstructOrthogonalCell(const double *RotMat, double &xbo
 				absX = fabs(i*this->a1[0]+j*this->a2[0]+k*this->a3[0]);
 				absY = fabs(i*this->a1[1]+j*this->a2[1]+k*this->a3[1]);
 				absZ = fabs(i*this->a1[2]+j*this->a2[2]+k*this->a3[2]);
-				if( absY < tolOrthoBox && absZ < tolOrthoBox && i*this->a1[0]+j*this->a2[0]+k*this->a3[0] > MinBoxL ){
+				if( absY < tolOrthoBox && absZ < tolOrthoBox && i*this->a1[0]+j*this->a2[0]+k*this->a3[0] > MinBoxAside ){
 					buffer_vector_d_x.push_back(absX);
 					xh_list.push_back(i);
 					xh_list.push_back(j);
 					xh_list.push_back(k);
 				}
-				if( absX < tolOrthoBox && absY < tolOrthoBox && i*this->a1[2]+j*this->a2[2]+k*this->a3[2] > MinBoxL ){
+				if( absX < tolOrthoBox && absY < tolOrthoBox && i*this->a1[2]+j*this->a2[2]+k*this->a3[2] > MinBoxH ){
 					buffer_vector_d_z.push_back(absZ);
 					zh_list.push_back(i);
 					zh_list.push_back(j);
 					zh_list.push_back(k);
 				}
-				if( absX < tolOrthoBox && absZ < tolOrthoBox && i*this->a1[1]+j*this->a2[1]+k*this->a3[1] > MinBoxL ){
+				if( absX < tolOrthoBox && absZ < tolOrthoBox && i*this->a1[1]+j*this->a2[1]+k*this->a3[1] > MinBoxAside ){
 					buffer_vector_d_y.push_back(absY);
 					yh_list.push_back(i);
 					yh_list.push_back(j);
@@ -317,8 +326,8 @@ void Crystal::RotateAndConstructOrthogonalCell(const double *RotMat, double &xbo
 		}
 	}
 	if( xh_list.size() == 0 || yh_list.size() == 0 || zh_list.size() == 0 ){
-		cout << "There is no linear combination of crystal vectors giving an orthogonal cell, consider increase the tolerance or the number of CL used for the research" << endl;
-		return;
+		cerr << "There is no linear combination of crystal vectors giving an orthogonal cell, consider increase the tolerance or the number of CL used for the research, aborting computation" << endl;
+		exit(EXIT_FAILURE);
 	}
 
 	unsigned int ind_x, ind_y, ind_z;
@@ -376,8 +385,7 @@ void Crystal::RotateAndConstructOrthogonalCell(const double *RotMat, double &xbo
 	}
 	double tolBase = 1e-10;
 	if( fabs(xh[1]) > tolBase || fabs(xh[2]) > tolBase || fabs(yh[0]) > tolBase || fabs(yh[2]) > tolBase || fabs(zh[0]) > tolBase || fabs(zh[1]) > tolBase || fabs(xh[0]-xbox) > tolBase || fabs(yh[1]-ybox) > tolBase || fabs(zh[2]-zbox) > tolBase ){
-		cout << "Problem during the construction of orthogonal cell" << endl;
-		return;
+		cout << "Warning there were issues during the construction of orthogonal cell" << endl;
 	}
 	// recompute reciproqual space as cell parameters may have changed
 	computeReciproqual();
@@ -520,12 +528,16 @@ void Crystal::read_database(){
 					this->Motif[buffer_uint-1].pos.z = buffer_4;
 					this->Motif[buffer_uint-1].type_uint = buffer_uint_1;
 					this->Motif[buffer_uint-1].charge = buffer_1;
+					this->Motif[buffer_uint-1].type = this->AtomType[buffer_uint_1-1];
+					this->Motif[buffer_uint-1].mass = this->AtomMass[buffer_uint_1-1];
 				}else{
 					text >> buffer_uint >> buffer_uint_1 >> buffer_2 >> buffer_3 >> buffer_4;
 					this->Motif[buffer_uint-1].pos.x = buffer_2;
 					this->Motif[buffer_uint-1].pos.y = buffer_3;
 					this->Motif[buffer_uint-1].pos.z = buffer_4;
 					this->Motif[buffer_uint-1].type_uint = buffer_uint_1;
+					this->Motif[buffer_uint-1].type = this->AtomType[buffer_uint_1-1];
+					this->Motif[buffer_uint-1].mass = this->AtomMass[buffer_uint_1-1];
 				}
 			}
 			count += 1;
@@ -544,6 +556,20 @@ void Crystal::read_database(){
 	}
 }
 
+void Crystal::computeStoich(){
+	this->Stoichiometry = new unsigned int[this->nbAtomType];
+	for(unsigned int i=0;i<this->nbAtomType;i++) this->Stoichiometry[i] = 0;
+	for(unsigned int i=0;i<this->nbAtom;i++){
+		for(unsigned int t=0;t<this->nbAtomType;t++){
+			if( this->Motif[i].type_uint == this->AtomType_uint[t] ){
+				this->Stoichiometry[t] += 1;
+				break;
+			}
+		}
+	}
+}
+
+
 Crystal::~Crystal(){
 	delete[] a1;
 	delete[] a2;
@@ -559,5 +585,7 @@ Crystal::~Crystal(){
 	delete[] this->Motif;
 	delete[] rot_mat_total;
 	delete[] TiltTrans_xyz;
+	delete[] alength;
+	delete[] Stoichiometry;
 	if( IsOrientedSystem ) delete OrientedSystem;
 }

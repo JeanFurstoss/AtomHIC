@@ -39,6 +39,10 @@ AtomicSystem::AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double z
 	}
 	this->IsCharge = _MyCrystal->getIsCharge();
 	this->IsTilted = false;
+	this->G1 = new double[3];
+	this->G2 = new double[3];
+	this->G3 = new double[3];
+	this->IsG = true;
 	computeInverseCellVec();
 	// compute the atomic positions by testing linear combination of unit cell crystal
 	double cla1, cla2, cla3;
@@ -66,7 +70,8 @@ AtomicSystem::AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double z
 	cla3 = MT->max(arr,3)+1;
 	double delta_x, delta_y, delta_z, xpos, ypos, zpos;
 	unsigned int count;
-	double tolIonPos = 1e-3;
+	double tolIonPos = 1e-9;
+	bool break_comp = false;
 	count = 0;
 	if( !_MyCrystal->getIsDoNotSep() ){
 		// crystals where there is no constraints on atom separation
@@ -81,16 +86,22 @@ AtomicSystem::AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double z
 						ypos = _MyCrystal->getMotif()[n].pos.y + delta_y;
 						zpos = _MyCrystal->getMotif()[n].pos.z + delta_z;
 						if( xpos > -tolIonPos && xpos < xhi-tolIonPos && ypos > -tolIonPos && ypos < yhi-tolIonPos && zpos > -tolIonPos && zpos < zhi-tolIonPos ){
+							if( count == this->nbAtom ){
+								break_comp = true;
+								break;
+							}
 							this->AtomList[count] = _MyCrystal->getMotif()[n];
 							this->AtomList[count].pos.x = xpos;
 							this->AtomList[count].pos.y = ypos;
 							this->AtomList[count].pos.z = zpos;
 							count += 1;
 						}
-						if( count == this->nbAtom-1 ) cout << "warning there is more atom than expected !" << endl;
 					}
+					if( break_comp) break;
 				}
+				if( break_comp) break;
 			}
+			if( break_comp) break;
 		}
 	}else{
 		// crystals for which some atoms should not be separeted
@@ -100,13 +111,15 @@ AtomicSystem::AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double z
 		// array of atom types which may be stored without being in the box
 		vector<unsigned int> AtType_stored;
 		for(unsigned int i=0;i<_MyCrystal->getDoNotSep().size();i++) AtType_stored.push_back(_MyCrystal->getDoNotSep()[i][2]);
-		bool ToStore, ToTreat, break_comp;
+		bool ToStore, ToTreat;
 		unsigned int id_s;
-		int cl_pos_n_i, cl_pos_n_j, cl_pos_n_k;
-		double xpos_n, ypos_n, zpos_n, xdiff, ydiff, zdiff, In;
+		int cl_pos_n_i, cl_pos_n_j, cl_pos_n_k, id_notsep;
+		double xpos_n, ypos_n, zpos_n, xdiff, ydiff, zdiff, xpos_n_w, ypos_n_w, zpos_n_w;
 		unsigned int *cl_test = new unsigned int[3];
-		break_comp = false;
-		double tol = 1e-6;
+		double tol = 1e-2;
+		// initialize the NotSepTag array
+		this->NotSepTag = new vector<int>[this->nbAtom];
+		this->IsNotSepTag = true;
 		// first loop to store atoms which should not be seperated
 		for(int i=-cla1;i<cla1+1;i++){
 			for(int j=-cla2;j<cla2+1;j++){
@@ -135,6 +148,8 @@ AtomicSystem::AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double z
 								this->AtomList[count].pos.x = xpos;
 								this->AtomList[count].pos.y = ypos;
 								this->AtomList[count].pos.z = zpos;
+								this->NotSepTag[count].push_back(0);
+								id_notsep = count;
 								count += 1;
 								// store all its neighboring atoms which should not be separeted from him
 								for(unsigned int s=0;s<_MyCrystal->getNotSepList_size(n);s++){
@@ -142,14 +157,21 @@ AtomicSystem::AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double z
 									xpos_n = _MyCrystal->getMotif()[id_s].pos.x + (i+_MyCrystal->getNotSepList(n,s*4+1))*_MyCrystal->getA1()[0] + (j+_MyCrystal->getNotSepList(n,s*4+2))*_MyCrystal->getA2()[0] + (k+_MyCrystal->getNotSepList(n,s*4+3))*_MyCrystal->getA3()[0];
 									ypos_n = _MyCrystal->getMotif()[id_s].pos.y + (i+_MyCrystal->getNotSepList(n,s*4+1))*_MyCrystal->getA1()[1] + (j+_MyCrystal->getNotSepList(n,s*4+2))*_MyCrystal->getA2()[1] + (k+_MyCrystal->getNotSepList(n,s*4+3))*_MyCrystal->getA3()[1];
 									zpos_n = _MyCrystal->getMotif()[id_s].pos.z + (i+_MyCrystal->getNotSepList(n,s*4+1))*_MyCrystal->getA1()[2] + (j+_MyCrystal->getNotSepList(n,s*4+2))*_MyCrystal->getA2()[2] + (k+_MyCrystal->getNotSepList(n,s*4+3))*_MyCrystal->getA3()[2];
-									if( xpos_n > -tolIonPos && xpos_n < xhi-tolIonPos && ypos_n > -tolIonPos && ypos_n < yhi-tolIonPos && zpos_n > -tolIonPos && zpos_n < zhi-tolIonPos ) In = 1.;
-									else In = 0.;
+									if( xpos_n < -tolIonPos ) xpos_n_w = xpos_n+xhi;
+									else if(xpos_n > xhi-tolIonPos ) xpos_n_w = xpos_n-xhi;
+									else xpos_n_w = xpos_n;
+									if( ypos_n < -tolIonPos ) ypos_n_w = ypos_n+yhi;
+									else if(ypos_n > yhi-tolIonPos ) ypos_n_w = ypos_n-yhi;
+									else ypos_n_w = ypos_n;
+									if( zpos_n < -tolIonPos ) zpos_n_w = zpos_n+zhi;
+									else if(zpos_n > zhi-tolIonPos ) zpos_n_w = zpos_n-zhi;
+									else zpos_n_w = zpos_n;
 									ToStore = true;
-									for(unsigned int t=0;t<AlreadyStored[id_s].size()/4;t++){
-										xdiff = fabs(xpos_n-AlreadyStored[id_s][t*4]);
-										ydiff = fabs(ypos_n-AlreadyStored[id_s][t*4+1]);
-										zdiff = fabs(zpos_n-AlreadyStored[id_s][t*4+2]);
-										if( ( xdiff < tol && ydiff < tol && zdiff < tol ) || ( fabs(In-AlreadyStored[id_s][t*4+3]) > tol && ( fabs(xdiff-xhi) < tol || fabs(ydiff-yhi) < tol || fabs(zdiff-zhi) < tol ) ) ){ 
+									for(unsigned int t=0;t<AlreadyStored[id_s].size()/3;t++){
+										xdiff = fabs(xpos_n_w-AlreadyStored[id_s][t*3]);
+										ydiff = fabs(ypos_n_w-AlreadyStored[id_s][t*3+1]);
+										zdiff = fabs(zpos_n_w-AlreadyStored[id_s][t*3+2]);
+										if( xdiff < tol && ydiff < tol && zdiff < tol ){
 											ToStore = false;
 											break;
 										}
@@ -160,20 +182,26 @@ AtomicSystem::AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double z
 										break;
 									}
 									this->AtomList[count] = _MyCrystal->getMotif()[id_s];
-									AlreadyStored[id_s].push_back(xpos_n);
-									AlreadyStored[id_s].push_back(ypos_n);
-									AlreadyStored[id_s].push_back(zpos_n);
-									AlreadyStored[id_s].push_back(In);
+									AlreadyStored[id_s].push_back(xpos_n_w);
+									AlreadyStored[id_s].push_back(ypos_n_w);
+									AlreadyStored[id_s].push_back(zpos_n_w);
 									this->AtomList[count].pos.x = xpos_n;
 									this->AtomList[count].pos.y = ypos_n;
 									this->AtomList[count].pos.z = zpos_n;
+									this->NotSepTag[count].push_back(-1);
+									this->NotSepTag[id_notsep].push_back(count);
+									this->NotSepTag[id_notsep][0] += 1;
 									count += 1;
 								}
 							}
 						}
+						if( break_comp) break;
 					}
+					if( break_comp) break;
 				}
+				if( break_comp) break;
 			}
+			if( break_comp) break;
 		}
 		// second loop to store atoms which may have not been stored
 		if( count < this->nbAtom-1 ){
@@ -198,11 +226,11 @@ AtomicSystem::AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double z
 								if( xpos > -tolIonPos && xpos < xhi-tolIonPos && ypos > -tolIonPos && ypos < yhi-tolIonPos && zpos > -tolIonPos && zpos < zhi-tolIonPos ){
 								// search if this atom type is one of atom which could be stored without being inside the box
 									ToStore = true;
-									for(unsigned int t=0;t<AlreadyStored[n].size()/3;t++){
-										xdiff = fabs(xpos-AlreadyStored[n][t*4]);
-										ydiff = fabs(ypos-AlreadyStored[n][t*4+1]);
-										zdiff = fabs(zpos-AlreadyStored[n][t*4+2]);
-										if( ( xdiff < tol && ydiff < tol && zdiff < tol ) || ( fabs(AlreadyStored[n][t*4+3]) < tol && ( fabs(xdiff-xhi) < tol || fabs(ydiff-yhi) < tol || fabs(zdiff-zhi) < tol ) ) ){ 
+									for(unsigned int t=0;t<AlreadyStored[n].size()/3;t++){ //TODO case for which ion is in (0,0,0)
+										xdiff = fabs(xpos-AlreadyStored[n][t*3]);
+										ydiff = fabs(ypos-AlreadyStored[n][t*3+1]);
+										zdiff = fabs(zpos-AlreadyStored[n][t*3+2]);
+										if( ( xdiff < tol && ydiff < tol && zdiff < tol ) ){
 											ToStore = false;
 											break;
 										}
@@ -217,6 +245,7 @@ AtomicSystem::AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double z
 										this->AtomList[count].pos.x = xpos;
 										this->AtomList[count].pos.y = ypos;
 										this->AtomList[count].pos.z = zpos;
+										this->NotSepTag[count].push_back(0);
 										count += 1;
 									}
 								}
@@ -229,18 +258,53 @@ AtomicSystem::AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double z
 			if( break_comp) break;
 			}
 		}
-	}
+	} // END DoNotSep case
 }
-
+// construct AtomicSystem giving AtomList, number of atom and cell vectors 
+AtomicSystem::AtomicSystem(Atom *AtomList, unsigned int nbAtom, double *H1, double *H2, double *H3):AtomList(AtomList), nbAtom(nbAtom), H1(H1), H2(H2), H3(H3){
+	this->IsAtomListMine = false;
+	this->IsCellVecMine = false;
+	// search the number of atom type, get type, type_uint and mass
+	this->nbAtomType = 0;
+	this->AtomType = new string[this->MaxAtomType];
+	this->AtomType_uint = new unsigned int[this->MaxAtomType];
+	this->AtomMass = new double[this->MaxAtomType];
+	bool Already;
+	for(unsigned int i=0;i<nbAtom;i++){
+	       	Already = false;
+		for(unsigned int t=0;t<this->nbAtomType;t++){
+			if( this->AtomList[i].type_uint == AtomType_uint[t] ){
+				Already = true;
+				break;
+			}
+		}
+		if( !Already ){
+			this->AtomType[this->nbAtomType] = AtomList[i].type;
+			this->AtomType_uint[this->nbAtomType] = AtomList[i].type_uint;
+			this->AtomMass[this->nbAtomType] = AtomList[i].mass;
+			this->nbAtomType += 1;
+		}
+	}
+	if( AtomList[0].charge != 0. ) this->IsCharge = true;
+	else this->IsCharge = false;
+	if( H2[0] != 0 || H3[1] != 0 || H3[2] != 0 ) this->IsTilted = true;
+	else this->IsTilted = false;
+	this->MT = new MathTools;
+	this->G1 = new double[3];
+	this->G2 = new double[3];
+	this->G3 = new double[3];
+	this->IsG = true;
+	computeInverseCellVec();
+}
 // Constructor using the filename of an atomic file (.cfg, .lmp, .xsf,..)
 AtomicSystem::AtomicSystem(const string& filename)
 {
-	AtomType = new string[this->MaxAtomType];
-	AtomType_uint = new unsigned int[this->MaxAtomType];
-	AtomMass = new double[this->MaxAtomType];
-	H1 = new double[3];
-	H2 = new double[3];
-	H3 = new double[3];
+	this->AtomType = new string[this->MaxAtomType];
+	this->AtomType_uint = new unsigned int[this->MaxAtomType];
+	this->AtomMass = new double[this->MaxAtomType];
+	this->H1 = new double[3];
+	this->H2 = new double[3];
+	this->H3 = new double[3];
 	for(unsigned int i=0;i<3;i++){
 		this->H1[i] = 0.;
 		this->H2[i] = 0.;
@@ -261,14 +325,21 @@ AtomicSystem::AtomicSystem(const string& filename)
 		this->AtomList[i].type = this->AtomType[this->AtomList[i].type_uint-1]; //TODO not good
 		this->AtomList[i].mass = this->AtomMass[this->AtomList[i].type_uint-1];
 	}
-	MT = new MathTools;
+	this->MT = new MathTools;
+	this->G1 = new double[3];
+	this->G2 = new double[3];
+	this->G3 = new double[3];
+	this->IsG = true;
 	computeInverseCellVec();
 }
 
 void AtomicSystem::computeInverseCellVec(){
-	G1 = new double[3];
-	G2 = new double[3];
-	G3 = new double[3];
+	if( !this->IsG ){
+		this->G1 = new double[3];
+		this->G2 = new double[3];
+		this->G3 = new double[3];
+		this->IsG = true;
+	}
 	double det = this->H1[0]*this->H2[1]*this->H3[2];
 	this->G1[0] = this->H2[1]*this->H3[2]/det;
 	this->G1[1] = 0.;
@@ -955,10 +1026,18 @@ void AtomicSystem::read_cfg_file(const string& filename){
 
 void AtomicSystem::print_lmp(const string& filename){
 	ofstream writefile(filename);
-	writefile << " # File modified by AtomHic\n\t" << this->nbAtom << "\tatoms\n\t" << this->nbAtomType << "\tatom types\n\n\t0.000000000000\t" << this->H1[0] << "\txlo xhi\n\t0.000000000000\t" << H2[1] << "\tylo yhi\n\t0.000000000000\t" << H3[2] << "\tzlo zhi\n";
+	writefile << " # File generated using AtomHic\n";
+	writefile << this->File_Heading;
+        writefile << "\n\t" << this->nbAtom << "\tatoms\n\t" << this->nbAtomType << "\tatom types\n\n\t0.000000000000\t" << this->H1[0] << "\txlo xhi\n\t0.000000000000\t" << H2[1] << "\tylo yhi\n\t0.000000000000\t" << H3[2] << "\tzlo zhi\n";
 	if( this->IsTilted ) writefile << "\t" << H2[0] << "\t" << H3[0] << "\t" << H3[1] << "\txy xz yz\n";
 	writefile << "\nMasses\n\n";
-	for(unsigned int i=0;i<this->nbAtomType;i++) writefile << "\t" << this->AtomType_uint[i] << "\t" << this->AtomMass[i] << "\t# " << this->AtomType[i] << "\n";
+	vector<double> sortedType;
+	for(unsigned int i=0;i<this->nbAtomType;i++){
+		sortedType.push_back(this->AtomType_uint[i]);
+		sortedType.push_back(i);
+	}
+	this->MT->sort(sortedType,0,2,sortedType);
+	for(unsigned int i=0;i<this->nbAtomType;i++) writefile << "\t" << this->AtomType_uint[(unsigned int) round(sortedType[i*2+1])] << "\t" << this->AtomMass[(unsigned int) round(sortedType[i*2+1])] << "\t# " << this->AtomType[(unsigned int) round(sortedType[i*2+1])] << "\n";
 	if( IsCharge ){
 		writefile << "\nAtoms\t# charge\n\n";
 		for(unsigned int i=0;i<this->nbAtom;i++) writefile << i+1 << "\t" << this->AtomList[i].type_uint << "\t" << this->AtomList[i].charge << "\t" << this->AtomList[i].pos.x << "\t" << this->AtomList[i].pos.y << "\t" << this->AtomList[i].pos.z << "\n"; 
@@ -1025,13 +1104,17 @@ void AtomicSystem::printSystem_aux(const string& filename, const string& AuxName
 }
 
 AtomicSystem::~AtomicSystem(){
-	delete[] AtomList;
+	if( this->IsAtomListMine ){
+		delete[] AtomList;
+	}
 	delete[] AtomType;
 	delete[] AtomType_uint;
 	delete[] AtomMass;
-	delete[] H1;
-	delete[] H2;
-	delete[] H3;
+	if( this->IsCellVecMine ){
+		delete[] H1;
+		delete[] H2;
+		delete[] H3;
+	}
 	delete[] G1;
 	delete[] G2;
 	delete[] G3;
@@ -1047,4 +1130,5 @@ AtomicSystem::~AtomicSystem(){
 		delete[] density_prof[i];
 		delete[] density_name[i];
 	}
+	if( this->IsNotSepTag ) delete[] NotSepTag;
 }

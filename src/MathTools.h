@@ -35,7 +35,7 @@ public:
 	void MatDotMat(const double *mat1, const double *mat2, double *prod);
 	void printMat(const double *mat);
 	void printVec(const double *vec);
-	void sort(const std::vector<double> vec, const unsigned int col, const unsigned int NbCol, std::vector<double> &sorted);
+	void sort(const std::vector<double> vec, const unsigned int col, const unsigned int NbCol, std::vector<double> &sorted); // sort a vector with respect to a given column (col), giving the number of column in the vector
 	~MathTools();
 };
 

@@ -24,7 +24,7 @@ private:
 	double *a1;
 	double *a2;
 	double *a3;
-	double a1length, a2length, a3length;
+	double *alength;
 	// reciproqual lattice
 	double *a1_star;
 	double *a2_star;
@@ -39,7 +39,8 @@ private:
 	std::vector<std::vector<int>> NotSepList; // contain the id of neighbors which should not be separe from the given atom, NotSepList[i][j*4] = id of neighbor j which should not be separe from atom i, NotSepList[i][j*4+k] = multiplicative coefficient with ak(a1, a2, a3) for this atom to be the neighbot
 	bool IsDoNotSep = false;
 	double *rot_mat_total; // rotation matrix used to pass from the database oriented crystal to the current orientation
-	double *TiltTrans_xyz; // transformation matrix used to construct oriented systems 
+	double *TiltTrans_xyz; // transformation matrix used to construct oriented systems
+        unsigned int *Stoichiometry;	
 public:
 	// constructors
 	Crystal(){};
@@ -50,6 +51,7 @@ public:
 	const double* getA1(){ return this->a1; };
 	const double* getA2(){ return this->a2; };
 	const double* getA3(){ return this->a3; };
+	const double* getALength(){ return this->alength; };
 	const double getVol(){ return this->V; };
 	const unsigned int getNbAtom(){ return this->nbAtom; }
 	const unsigned int getNbAtomType(){ return this->nbAtomType; }
@@ -64,6 +66,7 @@ public:
 		}
 		return this->NbAtomSite[index];
 	}
+	const double* getTiltTrans(){ return this->TiltTrans_xyz; }
 	const std::string getAtomType(const unsigned int Id){ return this->AtomType[Id]; }
 	const double getAtomMass(const unsigned int Id){ return this->AtomMass[Id]; }
 	const bool getIsCharge(){ return this->IsCharge; }
@@ -73,6 +76,7 @@ public:
 	unsigned int getNotSepList_size(const unsigned int i){ return this->NotSepList[i].size()/4; }
 	int getNotSepList(const unsigned int i, const unsigned int j){ return this->NotSepList[i][j]; }
 	std::vector<std::vector<unsigned int>> getDoNotSep(){ return this->DoNotSep; }
+	unsigned int *getStoich(){ return this->Stoichiometry; }
 	// methods
 	void read_database();
 	void computeReciproqual();
@@ -80,6 +84,7 @@ public:
 	void ConstructOrientedSystem(const double *RotMat);
 	void ConstructNotSepList();
 	void RotateAndConstructOrthogonalCell(const double *RotMat, double &xbox, double &ybox, double &zbox, std::vector<int> &cl_box);
+	void computeStoich();
 	// destructor
 	~Crystal();
 	
