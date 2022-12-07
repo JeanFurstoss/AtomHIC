@@ -36,5 +36,6 @@ int main(int argc, char *argv[])
 	Bicrystal MyGB(crystalName,h_a,k_a,l_a,theta,h_p,k_p,l_p);
 	MyGB.print_lmp("GB.lmp");
 	MyGB.print_Grains();
+	cout << "Success" << endl;
 	return 0;
 }

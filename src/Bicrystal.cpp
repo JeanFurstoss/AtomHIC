@@ -450,6 +450,7 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	double GBspace = 1.; //TODO maybe define elsewhere (in a file in the main prog for example..)
 	double MaxMisfit = 0.02;
 	unsigned int MaxDup = 50;
+	bool FullGrains = true; // TODO as the variables above
 	this->MT = new MathTools;
 	setOrientedCrystals(crystalName, h_a, k_a, l_a, theta, h_p, k_p, l_p);
 	// search the number of linear combination for the two system to have the same x y length
@@ -492,6 +493,7 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	// initialize the variables and pointers
 	unsigned int nbAtom1 = this->_MyCrystal->getOrientedSystem()->getNbAtom();
 	unsigned int nbAtom2 = this->_MyCrystal2->getOrientedSystem()->getNbAtom();
+	unsigned int nbAtom1_G, nbAtom2_G;
 	this->nbAtom = nbAtom1*dupX1*dupY1 + nbAtom2*dupX2*dupY2;
 	this->AtomList = new Atom[this->nbAtom];
 	this->H1 = new double[3]; 
@@ -503,8 +505,6 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	this->H1_G2 = new double[3];
 	this->H2_G2 = new double[3];
 	this->H3_G2 = new double[3];
-	this->AtomList_G1 = new Atom[nbAtom1];
-	this->AtomList_G2 = new Atom[nbAtom2];
 	this->H1[0] = final_xbox;
 	this->H1[1] = 0.;
 	this->H1[2] = 0.;
@@ -514,24 +514,37 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	this->H3[0] = 0.;
 	this->H3[1] = 0.;
 	this->H3[2] = this->_MyCrystal->getOrientedSystem()->getH3()[2] + this->_MyCrystal2->getOrientedSystem()->getH3()[2]+GBspace;
-	this->H1_G1[0] = Mx1*xl1;
 	this->H1_G1[1] = 0.;
 	this->H1_G1[2] = 0.;
 	this->H2_G1[0] = 0.;
-	this->H2_G1[1] = My1*yl1;
 	this->H2_G1[2] = 0.;
 	this->H3_G1[0] = 0.;
 	this->H3_G1[1] = 0.;
 	this->H3_G1[2] = this->_MyCrystal->getOrientedSystem()->getH3()[2];
-	this->H1_G2[0] = Mx2*xl2;
 	this->H1_G2[1] = 0.;
 	this->H1_G2[2] = 0.;
 	this->H2_G2[0] = 0.;
-	this->H2_G2[1] = My2*yl2;
 	this->H2_G2[2] = 0.;
 	this->H3_G2[0] = 0.;
 	this->H3_G2[1] = 0.;
 	this->H3_G2[2] = this->_MyCrystal2->getOrientedSystem()->getH3()[2];
+	if( FullGrains ){
+		this->H1_G1[0] = Mx1*xl1*dupX1;
+		this->H2_G1[1] = My1*yl1*dupY1;
+		this->H1_G2[0] = Mx2*xl2*dupX2;
+		this->H2_G2[1] = My2*yl2*dupY2;
+		nbAtom1_G = nbAtom1*dupX1*dupY1;
+		nbAtom2_G = nbAtom2*dupX2*dupY2;
+	}else{
+		this->H1_G1[0] = Mx1*xl1;
+		this->H2_G1[1] = My1*yl1;
+		this->H1_G2[0] = Mx2*xl2;
+		this->H2_G2[1] = My2*yl2;
+		nbAtom1_G = nbAtom1;
+		nbAtom2_G = nbAtom2;
+	}
+	this->AtomList_G1 = new Atom[nbAtom1_G];
+	this->AtomList_G2 = new Atom[nbAtom2_G];
 	this->nbAtomType = _MyCrystal->getNbAtomType();
 	this->AtomType = new string[this->nbAtomType];
 	this->AtomType_uint = new unsigned int[this->nbAtomType];
@@ -551,7 +564,8 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 				this->AtomList[i*dupY1*nbAtom1+j*nbAtom1+n] = this->_MyCrystal->getOrientedSystem()->getAtom(n);
 				this->AtomList[i*dupY1*nbAtom1+j*nbAtom1+n].pos.x = Mx1*(this->AtomList[n].pos.x + i*xl1);
 				this->AtomList[i*dupY1*nbAtom1+j*nbAtom1+n].pos.y = My1*(this->AtomList[n].pos.y + j*yl1);
-				if( i == 0 && j == 0 ) this->AtomList_G1[n] = this->AtomList[n];
+				if( !FullGrains && i == 0 && j == 0 ) this->AtomList_G1[n] = this->AtomList[n];
+				else this->AtomList_G1[i*dupY1*nbAtom1+j*nbAtom1+n] = this->AtomList[i*dupY1*nbAtom1+j*nbAtom1+n];
 			}
 		}
 	}
@@ -561,14 +575,15 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 				this->AtomList[nbAtom1*dupX1*dupY1+i*dupY2*nbAtom2+j*nbAtom2+n] = this->_MyCrystal2->getOrientedSystem()->getAtom(n);
 				this->AtomList[nbAtom1*dupX1*dupY1+i*dupY2*nbAtom2+j*nbAtom2+n].pos.x = Mx2*(this->AtomList[nbAtom1*dupX1*dupY1+i*dupY2*nbAtom2+j*nbAtom2+n].pos.x + i*xl2);
 				this->AtomList[nbAtom1*dupX1*dupY1+i*dupY2*nbAtom2+j*nbAtom2+n].pos.y = My2*(this->AtomList[nbAtom1*dupX1*dupY1+i*dupY2*nbAtom2+j*nbAtom2+n].pos.y + j*yl2);
+				if( !FullGrains && i == 0 && j == 0 ) this->AtomList_G2[n] = this->AtomList[nbAtom1*dupX1*dupY1+n];
+				else this->AtomList_G2[i*dupY2*nbAtom2+j*nbAtom2+n] = this->AtomList[nbAtom1*dupX1*dupY1+i*dupY2*nbAtom2+j*nbAtom2+n];
 				this->AtomList[nbAtom1*dupX1*dupY1+i*dupY2*nbAtom2+j*nbAtom2+n].pos.z += (this->_MyCrystal->getOrientedSystem()->getH3()[2]+GBspace);
-				if( i == 0 && j == 0 ) this->AtomList_G2[n] = this->AtomList[nbAtom1*dupX1*dupY1+n];
 			}
 		}
 	}
 	// construct the two grains
-	this->Grain1 = new AtomicSystem(this->AtomList_G1,nbAtom1,this->H1_G1,this->H2_G1,this->H3_G1);
-	this->Grain2 = new AtomicSystem(this->AtomList_G2,nbAtom2,this->H1_G2,this->H2_G2,this->H3_G2);
+	this->Grain1 = new AtomicSystem(this->AtomList_G1,nbAtom1_G,this->H1_G1,this->H2_G1,this->H3_G1);
+	this->Grain2 = new AtomicSystem(this->AtomList_G2,nbAtom2_G,this->H1_G2,this->H2_G2,this->H3_G2);
 	this->AreGrainsDefined = true;
 	string h_a_str = to_string(h_a);
 	string k_a_str = to_string(k_a);
