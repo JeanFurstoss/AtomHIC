@@ -598,7 +598,7 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 }
 
 Bicrystal::Bicrystal(const string& filename, const string NormalDir, const string CrystalName):AtomicSystem(filename){
-	if( NormalDir != "z" || NormalDir != "y" || NormalDir != "x" || NormalDir != "Z" || NormalDir != "Y" || NormalDir != "X" ){
+	if( NormalDir != "z" && NormalDir != "y" && NormalDir != "x" && NormalDir != "Z" && NormalDir != "Y" && NormalDir != "X" ){
 		cerr << "The direction normal to the GB have to be : x,X,y,Y,z or Z" << endl;
 		exit(EXIT_FAILURE);
 	}
@@ -611,7 +611,7 @@ Bicrystal::Bicrystal(const string& filename, const string NormalDir, const strin
 }
 
 Bicrystal::Bicrystal(const string& filename, const string NormalDir):AtomicSystem(filename){
-	if( NormalDir != "z" || NormalDir != "y" || NormalDir != "x" || NormalDir != "Z" || NormalDir != "Y" || NormalDir != "X" ){
+	if( NormalDir != "z" && NormalDir != "y" && NormalDir != "x" && NormalDir != "Z" && NormalDir != "Y" && NormalDir != "X" ){
 		cerr << "The direction normal to the GB have to be : x,X,y,Y,z or Z" << endl;
 		exit(EXIT_FAILURE);
 	}
@@ -673,7 +673,6 @@ void Bicrystal::searchGBPos(){
 	this->VacuumHi = 0.;
 	this->MaxPos = 0.;
 	this->IsVacuum = false;
-	this->IsVacuum = true;
 	double buffer;
 	vector<double> density_red;
 	vector<double> density_red_forfit;
@@ -683,7 +682,7 @@ void Bicrystal::searchGBPos(){
 			if( this->density_prof[ind_AtDens][i*2+1] > this->VacuumHi ) this->VacuumHi = this->density_prof[ind_AtDens][i*2+1];
 			if( this->density_prof[ind_AtDens][i*2+1] < this->VacuumLo ) this->VacuumLo = this->density_prof[ind_AtDens][i*2+1];
 		}
-	}
+	} // TODO non vacuum case ?
 	if( this->IsVacuum ){
 		if( NormalDir == "x" ){
 			for(unsigned int i=0;i<this->nbAtom;i++){
@@ -744,8 +743,6 @@ void Bicrystal::searchGBPos(){
 		}
 		// if one of the two is higher than the mean we are in local minimum inside the GB
 		// => search the second minimum
-		cout << MeanDiso << endl;
-		cout << leftMin << " " << rightMin << endl;
 		if( rightMin > MeanDiso ){
 			bool maxfound = false;
 			for(unsigned int i=indRight;i<(density_red.size()/2)-1;i++){
@@ -808,7 +805,7 @@ void Bicrystal::searchGBPos(){
 		this->GBwidth1 = 0;
 		for(unsigned int i=0;i<(density_red_forfit.size()/2);i++) this->GBwidth1 += density_red_forfit[i*2]*pow(density_red_forfit[i*2+1]-this->GBPos1,2.);
 		this->GBwidth1 = sqrt(this->GBwidth1);
-	}
+	} // end if IsVacuum
 	double sigma_fit, mu_fit, prefac;
 	sigma_fit = this->GBwidth1;
 	mu_fit = this->GBPos1;
@@ -817,7 +814,7 @@ void Bicrystal::searchGBPos(){
 	MT->gaussian_fit(density_red_forfit, mu_fit, sigma_fit, prefac);
 	this->GBwidth1 = 2.*sigma_fit;
 	this->GBPos1 = mu_fit;
-	// set the gaussian GB profile of AtomicSystem class
+	// set the gaussian GB profile of AtomicSystem class (without prefac for the distribution to be normalized and for different system to be compared to each others)
 	this->density_prof.push_back(new double[density_red.size()]);
 	for(unsigned int i=0;i<density_red.size()/2;i++){
 		//this->density_prof[density_prof.size()-1][i*2] = MT->gaussian_prefac(density_red[i*2+1], mu_fit, sigma_fit, prefac);

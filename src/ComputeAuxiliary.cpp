@@ -138,7 +138,10 @@ double* ComputeAuxiliary::BondOrientationalParameter(const int& l_sph, double& r
 		for(unsigned int i=0;i<NormFactors.size();i++){
 			FinalNormFactors.push_back(vector<double>());
 			Index = (unsigned int) round(NormFactors[i][0]);
-			if( _MySystem->getCrystal()->getNbAtomSite(Index) > (NormFactors[i].size()-1)/2 ) cout << "Not enough sites have been found, consider decreasing tolSite" << endl;
+			if( _MySystem->getCrystal()->getNbAtomSite(Index) > (NormFactors[i].size()-1)/2 ){
+				cerr << "Not enough sites have been found, consider decreasing tolSite" << endl;
+				exit(EXIT_FAILURE);
+			}
 			for(unsigned int j=0;j<_MySystem->getCrystal()->getNbAtomSite(Index);j++) FinalNormFactors[i].push_back(0.);
 		}
 		// search the most represented norm factors

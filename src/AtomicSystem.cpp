@@ -858,6 +858,7 @@ void AtomicSystem::read_lmp_file(const string& filename){
 		this->H1[0] = xhi-xlo+this->MT->min(arr,4)-this->MT->max(arr,4);
 		double arr_2[2] = {0.,this->H3[1]};
 		this->H2[1] = yhi-ylo+this->MT->min(arr_2,2)-this->MT->max(arr_2,2);
+		this->H3[2] = zhi-zlo; // TODO verify if this is good for tilted box
 		file.close();
 	}else{
 		cout << "The file " << filename << " cannot be openned" << endl;
@@ -1039,10 +1040,10 @@ void AtomicSystem::print_lmp(const string& filename){
 	this->MT->sort(sortedType,0,2,sortedType);
 	for(unsigned int i=0;i<this->nbAtomType;i++) writefile << "\t" << this->AtomType_uint[(unsigned int) round(sortedType[i*2+1])] << "\t" << this->AtomMass[(unsigned int) round(sortedType[i*2+1])] << "\t# " << this->AtomType[(unsigned int) round(sortedType[i*2+1])] << "\n";
 	if( IsCharge ){
-		writefile << "\nAtoms\t# charge\n\n";
+		writefile << "\nAtoms # charge\n\n";
 		for(unsigned int i=0;i<this->nbAtom;i++) writefile << i+1 << "\t" << this->AtomList[i].type_uint << "\t" << this->AtomList[i].charge << "\t" << this->AtomList[i].pos.x << "\t" << this->AtomList[i].pos.y << "\t" << this->AtomList[i].pos.z << "\n"; 
 	}else{
-		writefile << "\nAtoms\t# atomic\n\n";
+		writefile << "\nAtoms # atomic\n\n";
 		for(unsigned int i=0;i<this->nbAtom;i++) writefile << i+1 << "\t" << this->AtomList[i].type_uint << "\t" << this->AtomList[i].pos.x << "\t" << this->AtomList[i].pos.y << "\t" << this->AtomList[i].pos.z << "\n"; 
 	}
 	writefile.close();
