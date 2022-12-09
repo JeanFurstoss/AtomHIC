@@ -2,6 +2,7 @@
 #include <iostream>
 #include <vector>
 #include "Bicrystal.h"
+#include <omp.h>
 
 using namespace std;
 
@@ -450,12 +451,13 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	
 // Constructor for bicrystal with plane GB with given misorientation and GB plane
 Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, double theta, int h_p, int k_p, int l_p){
-	double GBspace = 1.; //TODO maybe define elsewhere (in a file in the main prog for example..)
+	double GBspace = 0.; //TODO maybe define elsewhere (in a file in the main prog for example..)
 	double MaxMisfit = 0.02;
 	unsigned int MaxDup = 50;
 	bool FullGrains = true; // TODO as the variables above
 	this->MT = new MathTools;
 	setOrientedCrystals(crystalName, h_a, k_a, l_a, theta, h_p, k_p, l_p);
+	searchCSL();
 	// search the number of linear combination for the two system to have the same x y length
 	unsigned int dupX1, dupX2, dupY1, dupY2;
 	this->xl1 = this->_MyCrystal->getOrientedSystem()->getH1()[0];
@@ -628,6 +630,110 @@ Bicrystal::Bicrystal(const string& filename, const string NormalDir):AtomicSyste
 	searchGBPos();
 }
 
+void Bicrystal::searchCSL(){
+	double tolFracCSL = 0.02; // in fraction of minimum cell parameter length TODO set this param in exterior file
+	unsigned int MultCL = 1;
+	double MinLength;
+	MinLength = MT->min_p(this->_MyCrystal->getALength(),3);
+	double tolCSL_squared = pow(MinLength*tolFracCSL,2.);
+	vector<double*> CellVec1(3);
+	vector<double*> CellVec2(3);
+	vector<double*> Nodes1, Nodes2;
+	for(unsigned int i=0;i<3;i++){
+		CellVec1[i] = new double[3];
+		CellVec2[i] = new double[3];
+	}
+	MT->MatDotVec(this->_MyCrystal->getTiltTrans(), this->_MyCrystal->getA1(), CellVec1[0]);
+	MT->MatDotVec(this->_MyCrystal->getTiltTrans(), this->_MyCrystal->getA2(), CellVec1[1]);
+	MT->MatDotVec(this->_MyCrystal->getTiltTrans(), this->_MyCrystal->getA3(), CellVec1[2]);
+	MT->MatDotVec(this->_MyCrystal2->getTiltTrans(), this->_MyCrystal2->getA1(), CellVec2[0]);
+	MT->MatDotVec(this->_MyCrystal2->getTiltTrans(), this->_MyCrystal2->getA2(), CellVec2[1]);
+	MT->MatDotVec(this->_MyCrystal2->getTiltTrans(), this->_MyCrystal2->getA3(), CellVec2[2]);
+	double cl[3];
+       	int arr[3];
+	for(unsigned int i=0;i<3;i++){
+		if( fabs(CellVec1[i][0]) >1e-3 ) arr[0] = round(this->_MyCrystal->getOrientedSystem()->getH1()[0]/fabs(CellVec1[i][0]));
+		else arr[0] = 0;
+		if( fabs(CellVec1[i][1]) >1e-3 ) arr[1] = round(this->_MyCrystal->getOrientedSystem()->getH2()[1]/fabs(CellVec1[i][1]));
+		else arr[1] = 0;
+		if( fabs(CellVec1[i][2]) >1e-3 ) arr[2] = round(this->_MyCrystal->getOrientedSystem()->getH3()[2]/fabs(CellVec1[i][2]));
+		else arr[2] = 0;
+		cl[i] = MT->max(arr,3)+1;
+		cout << cl[i] << " ";
+	}
+	cout << endl;
+	for(unsigned int i=0;i<cl[0]*MultCL;i++){
+		for(unsigned int j=0;j<cl[1]*MultCL;j++){
+			for(unsigned int k=0;k<cl[2]*MultCL;k++){
+				Nodes1.push_back(new double[3]);
+				for(unsigned int d=0;d<3;d++) Nodes1[Nodes1.size()-1][d] = i*CellVec1[0][d] + j*CellVec1[1][d] + k*CellVec1[2][d];
+			}
+		}
+	}
+
+	for(unsigned int i=0;i<3;i++){
+		if( fabs(CellVec2[i][0]) >1e-1 ) arr[0] = round(this->_MyCrystal2->getOrientedSystem()->getH1()[0]/fabs(CellVec2[i][0]));
+		else arr[0] = 0;
+		if( fabs(CellVec2[i][1]) >1e-1 ) arr[1] = round(this->_MyCrystal2->getOrientedSystem()->getH2()[1]/fabs(CellVec2[i][1]));
+		else arr[1] = 0;
+		if( fabs(CellVec2[i][2]) >1e-1 ) arr[2] = round(this->_MyCrystal2->getOrientedSystem()->getH3()[2]/fabs(CellVec2[i][2]));
+		else arr[2] = 0;
+		cl[i] = MT->max(arr,3)+1;
+		cout << cl[i] << " ";
+	}
+	cout << endl;
+	for(unsigned int i=0;i<cl[0]*MultCL;i++){
+		for(unsigned int j=0;j<cl[1]*MultCL;j++){
+			for(unsigned int k=0;k<cl[2]*MultCL;k++){
+				Nodes2.push_back(new double[3]);
+				for(unsigned int d=0;d<3;d++) Nodes2[Nodes2.size()-1][d] = i*CellVec2[0][d] + j*CellVec2[1][d] + k*CellVec2[2][d];
+			}
+		}
+	}
+	cout << "computing CSL " << Nodes1.size() << endl;	
+	for(unsigned int i=0;i<Nodes1.size();i++){
+		cout << i << "/" << Nodes1.size() << endl;
+		for(unsigned int j=0;j<Nodes2.size();j++){
+			if( pow(Nodes1[i][0]-Nodes2[j][0],2.)+pow(Nodes1[i][1]-Nodes2[j][1],2.)+pow(Nodes1[i][2]-Nodes2[j][2],2.) < tolCSL_squared ){
+				CSL.push_back(new double[3]);
+				for(unsigned int d=0;d<3;d++) CSL[CSL.size()-1][d] = (Nodes1[i][d]+Nodes2[j][d])/2.;
+			}
+		}
+	}
+	cout << "done" << endl;	
+
+	for(unsigned int i=0;i<3;i++){
+		delete[] CellVec1[i];
+		delete[] CellVec2[i];
+	}
+}
+void Bicrystal::printCSL(const std::string filename){
+	ofstream writefile(filename);
+	writefile << " # File generated using AtomHic\n";
+	writefile << this->File_Heading;
+        writefile << "\n\t" << this->nbAtom+CSL.size() << "\tatoms\n\t" << this->nbAtomType+1 << "\tatom types\n\n\t0.000000000000\t" << this->H1[0] << "\txlo xhi\n\t0.000000000000\t" << H2[1] << "\tylo yhi\n\t0.000000000000\t" << H3[2] << "\tzlo zhi\n";
+	if( this->IsTilted ) writefile << "\t" << H2[0] << "\t" << H3[0] << "\t" << H3[1] << "\txy xz yz\n";
+	writefile << "\nMasses\n\n";
+	vector<double> sortedType;
+	for(unsigned int i=0;i<this->nbAtomType;i++){
+		sortedType.push_back(this->AtomType_uint[i]);
+		sortedType.push_back(i);
+	}
+	this->MT->sort(sortedType,0,2,sortedType);
+	for(unsigned int i=0;i<this->nbAtomType;i++) writefile << "\t" << this->AtomType_uint[(unsigned int) round(sortedType[i*2+1])] << "\t" << this->AtomMass[(unsigned int) round(sortedType[i*2+1])] << "\t# " << this->AtomType[(unsigned int) round(sortedType[i*2+1])] << "\n";
+	writefile << "\t" << this->AtomType_uint[(unsigned int) round(sortedType[this->nbAtomType*2+1])]+1 << "\t0\t# CSL\n";
+	if( IsCharge ){
+		writefile << "\nAtoms # charge\n\n";
+		for(unsigned int i=0;i<this->nbAtom;i++) writefile << i+1 << "\t" << this->AtomList[i].type_uint << "\t" << this->AtomList[i].charge << "\t" << this->AtomList[i].pos.x << "\t" << this->AtomList[i].pos.y << "\t" << this->AtomList[i].pos.z << "\n"; 
+		for(unsigned int i=0;i<CSL.size();i++) writefile << i+1+this->nbAtom << "\t" << this->AtomType_uint[(unsigned int) round(sortedType[this->nbAtomType*2+1])]+1 << "\t0\t" << CSL[i][0] << "\t" << CSL[i][1] << "\t" << CSL[i][2] << "\n";
+	}else{
+		writefile << "\nAtoms # atomic\n\n";
+		for(unsigned int i=0;i<this->nbAtom;i++) writefile << i+1 << "\t" << this->AtomList[i].type_uint << "\t" << this->AtomList[i].pos.x << "\t" << this->AtomList[i].pos.y << "\t" << this->AtomList[i].pos.z << "\n"; 
+		for(unsigned int i=0;i<CSL.size();i++) writefile << i+1+this->nbAtom << "\t" << this->AtomType_uint[(unsigned int) round(sortedType[this->nbAtomType*2+1])]+1 << "\t" << CSL[i][0] << "\t" << CSL[i][1] << "\t" << CSL[i][2] << "\n";
+	}
+	writefile.close();
+
+}
 void Bicrystal::setOrientedCrystals(const string& crystalName, int h_a, int k_a, int l_a, double theta, int h_p, int k_p, int l_p){
 	setCrystal(crystalName);
 	// construct the first crystal with the wanted plane horyzontal
@@ -892,4 +998,5 @@ Bicrystal::~Bicrystal(){
 		delete[] RotGrain1ToGrain2;
 		delete[] RotCartToGrain2;
 	}
+	if( IsCSL ) for(unsigned int i=0;i<CSL.size();i++) delete[] CSL[i];
 }

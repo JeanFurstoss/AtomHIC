@@ -45,6 +45,12 @@ double MathTools::min(const double arr[], unsigned int size){
 	return min;
 }
 
+double MathTools::min_p(const double* arr, unsigned int size){
+	double min = arr[0];
+	for(unsigned int i=0;i<size;i++) if( arr[i] < min ) min = arr[i];
+	return min;
+}
+
 unsigned int MathTools::max(vector<double> arr){
 	unsigned int imax = 0;
 	for(unsigned int i=1;i<arr.size();i++) if( arr[i] > arr[imax] ) imax = i;

@@ -40,6 +40,8 @@ protected:
 	bool AreGrainsDefined = false;
 	bool IsCrystal2 = false;
 	double xl1, xl2, yl1, yl2;
+	std::vector<double*> CSL;
+	bool IsCSL;
 public:
 	// constructors
 	Bicrystal(){};
@@ -60,8 +62,10 @@ public:
 	// methods
 	void print_Grains();
 	void searchGBPos();
-	void ComputeExcessVolume(); 
+	void ComputeExcessVolume();
+        void searchCSL();
 	void setOrientedCrystals(const std::string& crystalName, int h_a, int k_a, int l_a, double theta, int h_p, int k_p, int l_p); // method initializing 2 crystals with a given misorientation relationship and plane
+	void printCSL(const std::string filename);
 	// destructor
 	~Bicrystal();
 };

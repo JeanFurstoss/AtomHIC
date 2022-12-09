@@ -19,6 +19,7 @@ public:
 	int min(const int arr[], unsigned int size);
 	double max(const double arr[], unsigned int size);
 	double min(const double arr[], unsigned int size);
+	double min_p(const double* arr, unsigned int size);
 	// those functions return the indice of the max/min of the vector
 	unsigned int max(std::vector<double> arr);
 	unsigned int min(std::vector<double> arr);
