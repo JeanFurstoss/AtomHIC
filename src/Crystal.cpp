@@ -538,6 +538,7 @@ void Crystal::read_database(){
 					this->Motif[buffer_uint-1].type_uint = buffer_uint_1;
 					this->Motif[buffer_uint-1].type = this->AtomType[buffer_uint_1-1];
 					this->Motif[buffer_uint-1].mass = this->AtomMass[buffer_uint_1-1];
+					this->Motif[buffer_uint-1].charge = 0.;
 				}
 			}
 			count += 1;

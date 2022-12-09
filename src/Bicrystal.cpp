@@ -70,12 +70,11 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	double GBspace = 0.5; //TODO maybe define elsewhere (in a file in the main prog for example..)
 	double MaxMisfit = 0.02;
 	unsigned int MaxDup = 50;
-	double xl1, xl2, yl1, yl2;
 	unsigned int dupX1, dupX2, dupY1, dupY2;
-	xl1 = this->_MyCrystal->getOrientedSystem()->getH1()[0];
-	xl2 = this->_MyCrystal2->getOrientedSystem()->getH1()[0];
-	yl1 = this->_MyCrystal->getOrientedSystem()->getH2()[1];
-	yl2 = this->_MyCrystal2->getOrientedSystem()->getH2()[1];
+	this->xl1 = this->_MyCrystal->getOrientedSystem()->getH1()[0];
+	this->xl2 = this->_MyCrystal2->getOrientedSystem()->getH1()[0];
+	this->yl1 = this->_MyCrystal->getOrientedSystem()->getH2()[1];
+	this->yl2 = this->_MyCrystal2->getOrientedSystem()->getH2()[1];
 	bool find = false;
 	for(unsigned int i=0;i<MaxDup;i++){
 		for(unsigned int j=0;j<MaxDup;j++){
@@ -434,7 +433,11 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	this->File_Heading = " # ["+h_a_str+k_a_str+l_a_str+"]"+theta_str+"°("+h_p_str+k_p_str+l_p_str+") "+crystalName+" grain boundary\n # The grain boundary is faceted with ("+h_f1_str+k_f1_str+l_f1_str+") and ("+h_f2_str+k_f2_str+l_f2_str+") planes\n # The lower grain contains "+nbAt1_str+" atoms and the upper grain contains "+nbAt2_str+" atoms\n";
 	this->Grain1->set_File_Heading(" # Lower grain of the ["+h_a_str+k_a_str+l_a_str+"]"+theta_str+"°("+h_p_str+k_p_str+l_p_str+") "+crystalName+" grain boundary\n");
 	this->Grain2->set_File_Heading(" # Upper grain of the ["+h_a_str+k_a_str+l_a_str+"]"+theta_str+"°("+h_p_str+k_p_str+l_p_str+") "+crystalName+" grain boundary\n");
-	
+
+	this->xl1 *= Mx1; 
+	this->xl2 *= Mx2; 
+	this->yl1 *= My1; 
+	this->yl2 *= My2; 
 	// delete allocated memory
 	delete[] currentStoich;
 	delete[] AtomList_temp;
@@ -454,12 +457,11 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	this->MT = new MathTools;
 	setOrientedCrystals(crystalName, h_a, k_a, l_a, theta, h_p, k_p, l_p);
 	// search the number of linear combination for the two system to have the same x y length
-	double xl1, xl2, yl1, yl2;
 	unsigned int dupX1, dupX2, dupY1, dupY2;
-	xl1 = this->_MyCrystal->getOrientedSystem()->getH1()[0];
-	xl2 = this->_MyCrystal2->getOrientedSystem()->getH1()[0];
-	yl1 = this->_MyCrystal->getOrientedSystem()->getH2()[1];
-	yl2 = this->_MyCrystal2->getOrientedSystem()->getH2()[1];
+	this->xl1 = this->_MyCrystal->getOrientedSystem()->getH1()[0];
+	this->xl2 = this->_MyCrystal2->getOrientedSystem()->getH1()[0];
+	this->yl1 = this->_MyCrystal->getOrientedSystem()->getH2()[1];
+	this->yl2 = this->_MyCrystal2->getOrientedSystem()->getH2()[1];
 	bool find = false;
 	for(unsigned int i=0;i<MaxDup;i++){
 		for(unsigned int j=0;j<MaxDup;j++){
@@ -562,6 +564,8 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 		for(unsigned int j=0;j<dupY1;j++){
 			for(unsigned int n=0;n<nbAtom1;n++){
 				this->AtomList[i*dupY1*nbAtom1+j*nbAtom1+n] = this->_MyCrystal->getOrientedSystem()->getAtom(n);
+				//this->AtomList[i*dupY1*nbAtom1+j*nbAtom1+n].pos.x = Mx1*(this->AtomList[i*dupY1*nbAtom1+j*nbAtom1+n].pos.x + i*xl1);
+				//this->AtomList[i*dupY1*nbAtom1+j*nbAtom1+n].pos.y = My1*(this->AtomList[i*dupY1*nbAtom1+j*nbAtom1+n].pos.y + j*yl1);
 				this->AtomList[i*dupY1*nbAtom1+j*nbAtom1+n].pos.x = Mx1*(this->AtomList[n].pos.x + i*xl1);
 				this->AtomList[i*dupY1*nbAtom1+j*nbAtom1+n].pos.y = My1*(this->AtomList[n].pos.y + j*yl1);
 				if( !FullGrains && i == 0 && j == 0 ) this->AtomList_G1[n] = this->AtomList[n];
@@ -595,6 +599,10 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	this->File_Heading = " # ["+h_a_str+k_a_str+l_a_str+"]"+theta_str+"°("+h_p_str+k_p_str+l_p_str+") "+crystalName+" grain boundary\n";
 	this->Grain1->set_File_Heading(" # Lower grain of the ["+h_a_str+k_a_str+l_a_str+"]"+theta_str+"°("+h_p_str+k_p_str+l_p_str+") "+crystalName+" grain boundary\n");
 	this->Grain2->set_File_Heading(" # Upper grain of the ["+h_a_str+k_a_str+l_a_str+"]"+theta_str+"°("+h_p_str+k_p_str+l_p_str+") "+crystalName+" grain boundary\n");
+	this->xl1 *= Mx1; 
+	this->xl2 *= Mx2; 
+	this->yl1 *= My1; 
+	this->yl2 *= My2; 
 }
 
 Bicrystal::Bicrystal(const string& filename, const string NormalDir, const string CrystalName):AtomicSystem(filename){

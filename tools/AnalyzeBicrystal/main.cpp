@@ -14,15 +14,15 @@ int main()
 	Bicrystal MySystem(filename, "z", "Forsterite");
 	cout << "output atomic file name : " ;
 	cin >> filename;
-	MySystem.printSystem_aux(filename, "Disorder");
-	cout << "output GB profile file name : " ;
-	cin >> filename;
-	MySystem.Print1dDensity(filename, "GBProfile");
-	cout << "output estimated GB profile file name : " ;
-	cin >> filename;
-	MySystem.Print1dDensity(filename, "GBProfile_Gauss");
-	cout << "output density profile : " ;
-	cin >> filename;
-	MySystem.Print1dDensity(filename, "Mass");
+	MySystem.printSystem_aux(filename, "Disorder c_pe");
+	//cout << "output GB profile file name : " ;
+	//cin >> filename;
+	//MySystem.Print1dDensity(filename, "GBProfile");
+	//cout << "output estimated GB profile file name : " ;
+	//cin >> filename;
+	//MySystem.Print1dDensity(filename, "GBProfile_Gauss");
+	//cout << "output density profile : " ;
+	//cin >> filename;
+	//MySystem.Print1dDensity(filename, "Mass");
 	return 0;
 }

@@ -285,7 +285,7 @@ AtomicSystem::AtomicSystem(Atom *AtomList, unsigned int nbAtom, double *H1, doub
 			this->nbAtomType += 1;
 		}
 	}
-	if( AtomList[0].charge != 0. ) this->IsCharge = true;
+	if( fabs(AtomList[0].charge) > 1e-6 ) this->IsCharge = true;
 	else this->IsCharge = false;
 	if( H2[0] != 0 || H3[1] != 0 || H3[2] != 0 ) this->IsTilted = true;
 	else this->IsTilted = false;
@@ -849,6 +849,7 @@ void AtomicSystem::read_lmp_file(const string& filename){
 					this->AtomList[buffer_uint-1].pos.y = buffer_3;
 					this->AtomList[buffer_uint-1].pos.z = buffer_4;
 					this->AtomList[buffer_uint-1].type_uint = buffer_uint_1;
+					this->AtomList[buffer_uint-1].charge = 0.;
 				}
 			}
 			count += 1;
@@ -869,7 +870,7 @@ void AtomicSystem::read_lmp_file(const string& filename){
 void AtomicSystem::read_cfg_file(const string& filename){
 	ifstream file(filename, ios::in);
 	if(file){
-		unsigned int line_dt(1000), line_At(1000), line_H_tilt(1000), line_H(1000), line_at(1000), buffer_uint, buffer_uint_1, count_H(0), count(0);
+		unsigned int line_dt(1000), line_At(1000), line_H_tilt(1000), line_H(1000), line_at(1000), buffer_uint, buffer_uint_1, count_H(0), count(0), nbAux(0), aux_count;
 		size_t pos_dt, pos_At, pos_H_tilt, pos_H, pos_charge, pos_at;
 		double buffer_1, buffer_2, buffer_3, buffer_4;
 		double xlo,xhi,ylo,yhi,zlo,zhi;
@@ -937,7 +938,19 @@ void AtomicSystem::read_cfg_file(const string& filename){
 
 			// find and get atom positions
 			pos_at=line.find("ITEM: ATOMS");
-			if( pos_at!=string::npos ) line_at = count;
+			if( pos_at!=string::npos ){
+				istringstream text(line);
+				while(text >> buffer_s){
+					nbAux += 1;
+					if( nbAux > 9 ){
+					       this->IsSetAux = true;
+					       this->Aux_name.push_back(buffer_s);
+					       this->Aux.push_back(new double[this->nbAtom]);
+					}	       
+				}
+				line_at = count;
+				nbAux -= 9;
+			}
 			if( count > line_at ){
 				istringstream text(line);
 				text >> buffer_uint >> buffer_uint_1 >> buffer_s >> buffer_1 >> buffer_2 >> buffer_3 >> buffer_4;
@@ -947,6 +960,13 @@ void AtomicSystem::read_cfg_file(const string& filename){
 				this->AtomList[buffer_uint-1].charge = buffer_4;
 				this->AtomList[buffer_uint-1].type = buffer_s;
 				this->AtomList[buffer_uint-1].type_uint = buffer_uint_1;
+				if(nbAux>0){
+					aux_count = 0;
+					while(text >> buffer_4){
+						Aux[aux_count][buffer_uint-1] = buffer_4;
+						aux_count += 1;
+					}
+				}
 			}
 			count += 1;
 		}

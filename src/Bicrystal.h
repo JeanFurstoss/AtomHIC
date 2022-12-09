@@ -39,6 +39,7 @@ protected:
 	bool IsRotMatDefine = false;
 	bool AreGrainsDefined = false;
 	bool IsCrystal2 = false;
+	double xl1, xl2, yl1, yl2;
 public:
 	// constructors
 	Bicrystal(){};
@@ -51,6 +52,11 @@ public:
 	double getGBwidth1(){ return this->GBwidth1; }
 	double getPrefac1(){ return this->prefac_test; }
 	double getExcessVol() { return this->ExcessVol; }
+	Crystal* getCrystal2(){ return this->_MyCrystal2; }
+	double getxl1(){ return this->xl1; }
+	double getyl1(){ return this->yl1; }
+	double getxl2(){ return this->xl2; }
+	double getyl2(){ return this->yl2; }
 	// methods
 	void print_Grains();
 	void searchGBPos();
