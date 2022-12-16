@@ -41,6 +41,11 @@ private:
 	double *rot_mat_total; // rotation matrix used to pass from the database oriented crystal to the current orientation
 	double *TiltTrans_xyz; // transformation matrix used to construct oriented systems
         unsigned int *Stoichiometry;	
+	// Parameters to read
+	std::string FixedParam_Filename = "Fixed_Parameters.dat";
+	double TolOrthoBox;
+	double MinBoxHeight;
+	double MinBoxAside;
 public:
 	// constructors
 	Crystal(){};
@@ -78,12 +83,13 @@ public:
 	std::vector<std::vector<unsigned int>> getDoNotSep(){ return this->DoNotSep; }
 	unsigned int *getStoich(){ return this->Stoichiometry; }
 	// methods
+	void read_params();
 	void read_database();
 	void computeReciproqual();
-	void ConstructOrientedSystem(const int& h_p, const int& k_p, const int& l_p);
-	void ConstructOrientedSystem(const double *RotMat);
+	void RotateCrystal(const int& h_p, const int& k_p, const int& l_p);
+	void RotateCrystal(const double *RotMat);
 	void ConstructNotSepList();
-	void RotateAndConstructOrthogonalCell(const double *RotMat, double &xbox, double &ybox, double &zbox, std::vector<int> &cl_box);
+	void ConstructOrthogonalCell();
 	void computeStoich();
 	// destructor
 	~Crystal();

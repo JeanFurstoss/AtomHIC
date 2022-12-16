@@ -6,7 +6,9 @@
 #include <sstream>
 #include <string>
 #include "ComputeAuxiliary.h"
+
 using namespace std;
+
 
 int main(int argc, char *argv[])
 {

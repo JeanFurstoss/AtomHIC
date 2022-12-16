@@ -19,7 +19,8 @@ int main(int argc, char *argv[])
 	iss_l >> l;
 	string filename="Forsterite";
 	Crystal MyCrystal(filename);
-	MyCrystal.ConstructOrientedSystem(h,k,l);
+	MyCrystal.RotateCrystal(h,k,l);
+	MyCrystal.ConstructOrthogonalCell();
 	MyCrystal.getOrientedSystem()->print_lmp("test.lmp");
 	return 0;
 }

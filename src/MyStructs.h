@@ -3,6 +3,7 @@
 
 #include <iostream>
 
+
 struct Position{
 	double x;
 	double y;
