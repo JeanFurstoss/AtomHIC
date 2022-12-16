@@ -71,7 +71,6 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	double GBspace = 0.5; //TODO maybe define elsewhere (in a file in the main prog for example..)
 	double MaxMisfit = 0.02;
 	unsigned int MaxDup = 50;
-	unsigned int dupX1, dupX2, dupY1, dupY2;
 	this->xl1 = this->_MyCrystal->getOrientedSystem()->getH1()[0];
 	this->xl2 = this->_MyCrystal2->getOrientedSystem()->getH1()[0];
 	this->yl1 = this->_MyCrystal->getOrientedSystem()->getH2()[1];
@@ -102,10 +101,10 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	}
 	double final_xbox = (xl1*dupX1 + xl2*dupX2)/2;
     	double final_ybox = (yl1*dupY1 + yl2*dupY2)/2;
-    	double Mx1 = final_xbox / (xl1*dupX1);
-    	double My1 = final_ybox / (yl1*dupY1);
-    	double Mx2 = final_xbox / (xl2*dupX2);
-    	double My2 = final_ybox / (yl2*dupY2);
+    	Mx1 = final_xbox / (xl1*dupX1);
+    	My1 = final_ybox / (yl1*dupY1);
+    	Mx2 = final_xbox / (xl2*dupX2);
+    	My2 = final_ybox / (yl2*dupY2);
 	// initialize the variables and pointers
 	unsigned int nbAtom1 = this->_MyCrystal->getOrientedSystem()->getNbAtom();
 	unsigned int nbAtom2 = this->_MyCrystal2->getOrientedSystem()->getNbAtom();
@@ -456,10 +455,10 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	unsigned int MaxDup = 50;
 	bool FullGrains = true; // TODO as the variables above
 	this->MT = new MathTools;
+	cout << "constructing crystals, " ;
 	setOrientedCrystals(crystalName, h_a, k_a, l_a, theta, h_p, k_p, l_p);
-	searchCSL();
+	cout << "done" << endl;
 	// search the number of linear combination for the two system to have the same x y length
-	unsigned int dupX1, dupX2, dupY1, dupY2;
 	this->xl1 = this->_MyCrystal->getOrientedSystem()->getH1()[0];
 	this->xl2 = this->_MyCrystal2->getOrientedSystem()->getH1()[0];
 	this->yl1 = this->_MyCrystal->getOrientedSystem()->getH2()[1];
@@ -490,10 +489,12 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	}
 	double final_xbox = (xl1*dupX1 + xl2*dupX2)/2;
     	double final_ybox = (yl1*dupY1 + yl2*dupY2)/2;
-    	double Mx1 = final_xbox / (xl1*dupX1);
-    	double My1 = final_ybox / (yl1*dupY1);
-    	double Mx2 = final_xbox / (xl2*dupX2);
-    	double My2 = final_ybox / (yl2*dupY2);
+    	Mx1 = final_xbox / (xl1*dupX1);
+    	My1 = final_ybox / (yl1*dupY1);
+    	Mx2 = final_xbox / (xl2*dupX2);
+    	My2 = final_ybox / (yl2*dupY2);
+	searchCSL();
+	generateCSL();
 	// initialize the variables and pointers
 	unsigned int nbAtom1 = this->_MyCrystal->getOrientedSystem()->getNbAtom();
 	unsigned int nbAtom2 = this->_MyCrystal2->getOrientedSystem()->getNbAtom();
@@ -581,7 +582,7 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 				this->AtomList[nbAtom1*dupX1*dupY1+i*dupY2*nbAtom2+j*nbAtom2+n].pos.y = My2*(this->AtomList[nbAtom1*dupX1*dupY1+i*dupY2*nbAtom2+j*nbAtom2+n].pos.y + j*yl2);
 				if( !FullGrains && i == 0 && j == 0 ) this->AtomList_G2[n] = this->AtomList[nbAtom1*dupX1*dupY1+n];
 				else this->AtomList_G2[i*dupY2*nbAtom2+j*nbAtom2+n] = this->AtomList[nbAtom1*dupX1*dupY1+i*dupY2*nbAtom2+j*nbAtom2+n];
-				this->AtomList[nbAtom1*dupX1*dupY1+i*dupY2*nbAtom2+j*nbAtom2+n].pos.z += (this->_MyCrystal->getOrientedSystem()->getH3()[2]+GBspace);
+				this->AtomList[nbAtom1*dupX1*dupY1+i*dupY2*nbAtom2+j*nbAtom2+n].pos.z *= -1.;//+= (this->_MyCrystal->getOrientedSystem()->getH3()[2]+GBspace);
 			}
 		}
 	}
@@ -630,83 +631,248 @@ Bicrystal::Bicrystal(const string& filename, const string NormalDir):AtomicSyste
 	searchGBPos();
 }
 
-void Bicrystal::searchCSL(){
-	double tolFracCSL = 0.02; // in fraction of minimum cell parameter length TODO set this param in exterior file
-	unsigned int MultCL = 1;
-	double MinLength;
-	MinLength = MT->min_p(this->_MyCrystal->getALength(),3);
-	double tolCSL_squared = pow(MinLength*tolFracCSL,2.);
-	vector<double*> CellVec1(3);
-	vector<double*> CellVec2(3);
-	vector<double*> Nodes1, Nodes2;
-	for(unsigned int i=0;i<3;i++){
-		CellVec1[i] = new double[3];
-		CellVec2[i] = new double[3];
+// search CSL primitive lattice based on the work of Xie et al. 2020 and Bonnet and Rolland 1975
+void Bicrystal::searchCSL(unsigned int verbose){
+	this->CSL_Basis = new double[9]; 
+	this->IsCSL_Basis = true;
+	unsigned int SigmaMax = 1000;
+	double sigma;
+	double *a1 = new double[9]; // basis vector of lattice 1 
+	double *a1_exact = new double[9]; // basis vector of lattice 1 
+	double *a1_inv = new double[9]; // basis vector of lattice 1 
+	double *a2 = new double[9]; // basis vector of lattice 2 in coordinate of lattice 1 
+	double *a2_exact = new double[9]; // basis vector of lattice 2 in coordinate of lattice 1 
+	double *a2_a = new double[9]; // auxiliary lattice for CSL base computation 
+	double *U = new double[9]; 
+	double *U_inv = new double[9]; 
+	double *U_1 = new double[9]; 
+	double *U_2 = new double[9]; 
+	double *Ei = new double[9]; 
+	double *Ei_inv = new double[9]; 
+	double *Fi = new double[9]; 
+	double *Fi_inv = new double[9]; 
+	double *DSC_Basis = new double[9]; 
+	double *DSC_inv = new double[9]; 
+	double *U_a = new double[9];
+	double *searchVec = new double[3];
+	int *k = new int[3];
+	double *boxdim = new double[3];
+	boxdim[0] = this->_MyCrystal->getOrientedSystem()->getH1()[0]*dupX1;
+	boxdim[1] = this->_MyCrystal->getOrientedSystem()->getH2()[1]*dupY1;
+	if( this->_MyCrystal->getOrientedSystem()->getH3()[2] > this->_MyCrystal2->getOrientedSystem()->getH3()[2] ){
+		boxdim[2] = this->_MyCrystal2->getOrientedSystem()->getH3()[2];
+	}else{
+		boxdim[2] = this->_MyCrystal->getOrientedSystem()->getH3()[2];
 	}
-	MT->MatDotVec(this->_MyCrystal->getTiltTrans(), this->_MyCrystal->getA1(), CellVec1[0]);
-	MT->MatDotVec(this->_MyCrystal->getTiltTrans(), this->_MyCrystal->getA2(), CellVec1[1]);
-	MT->MatDotVec(this->_MyCrystal->getTiltTrans(), this->_MyCrystal->getA3(), CellVec1[2]);
-	MT->MatDotVec(this->_MyCrystal2->getTiltTrans(), this->_MyCrystal2->getA1(), CellVec2[0]);
-	MT->MatDotVec(this->_MyCrystal2->getTiltTrans(), this->_MyCrystal2->getA2(), CellVec2[1]);
-	MT->MatDotVec(this->_MyCrystal2->getTiltTrans(), this->_MyCrystal2->getA3(), CellVec2[2]);
-	double cl[3];
-       	int arr[3];
 	for(unsigned int i=0;i<3;i++){
-		if( fabs(CellVec1[i][0]) >1e-3 ) arr[0] = round(this->_MyCrystal->getOrientedSystem()->getH1()[0]/fabs(CellVec1[i][0]));
-		else arr[0] = 0;
-		if( fabs(CellVec1[i][1]) >1e-3 ) arr[1] = round(this->_MyCrystal->getOrientedSystem()->getH2()[1]/fabs(CellVec1[i][1]));
-		else arr[1] = 0;
-		if( fabs(CellVec1[i][2]) >1e-3 ) arr[2] = round(this->_MyCrystal->getOrientedSystem()->getH3()[2]/fabs(CellVec1[i][2]));
-		else arr[2] = 0;
-		cl[i] = MT->max(arr,3)+1;
-		cout << cl[i] << " ";
+		a1[i*3] = this->_MyCrystal->getA1()[i];
+		a1[i*3+1] = this->_MyCrystal->getA2()[i];
+		a1[i*3+2] = this->_MyCrystal->getA3()[i];
+		a2[i*3] = this->_MyCrystal2->getA1()[i];
+		a2[i*3+1] = this->_MyCrystal2->getA2()[i];
+		a2[i*3+2] = this->_MyCrystal2->getA3()[i];
 	}
-	cout << endl;
-	for(unsigned int i=0;i<cl[0]*MultCL;i++){
-		for(unsigned int j=0;j<cl[1]*MultCL;j++){
-			for(unsigned int k=0;k<cl[2]*MultCL;k++){
-				Nodes1.push_back(new double[3]);
-				for(unsigned int d=0;d<3;d++) Nodes1[Nodes1.size()-1][d] = i*CellVec1[0][d] + j*CellVec1[1][d] + k*CellVec1[2][d];
-			}
+	
+	MT->MatDotMat(this->_MyCrystal->getTiltTrans(),a1,a1_exact);
+	MT->MatDotMat(this->_MyCrystal2->getTiltTrans(),a2,a2_exact);
+	for(unsigned int i=0;i<3;i++){
+		a1_exact[i] *= Mx1;
+		a1_exact[3+i] *= My1;
+		a2_exact[i] *= Mx2;
+		a2_exact[3+i] *= My2;
+	}
+	unsigned int L, M, N;
+	bool BaseFound = false;
+	bool IsFindIntVec;
+	double tol_DSC = 1e-5;
+	double tolpos = 1e-1;
+	double tol_IntVec;
+	MT->invert3x3(a1,a1_inv);
+	MT->MatDotMat(a1_inv,a2,U);
+	MT->invert3x3(U,U_inv);
+	// Compute the symmetric of U with respect to second diag
+	MT->dia_sym_mtx(U,U_a);
+	// compute the auxiliary lattice
+	MT->MatDotMat(a1,U_a,a2_a);
+	double exp = 5;
+	// loop on tol_IntVec (increasing tolerance) until the primitive lattice vector of CSL fall within the box
+	while( exp > 0 and !BaseFound ){
+		tol_IntVec = pow(10.,-exp);
+		if( verbose == 2 ) cout << "Trying to find CSL base using a tolerance of : " << tol_IntVec << endl;
+		// search if a2_a_1 could be the basic vector for computing DSC lattice
+		for(unsigned int i=0;i<3;i++) searchVec[i] = a2_a[i*3];
+		MT->MatDotVec(a1_inv,searchVec,searchVec);
+		L = MT->find_integer_vector(searchVec,tol_IntVec,SigmaMax,k,IsFindIntVec);
+		if( !IsFindIntVec ){
+			cout << "Fail ! Increasing tolerance !" << endl;
+			if( exp > 1.5 )	exp -= .5;
+			else exp -= .1;
+			continue;
 		}
-	}
-
-	for(unsigned int i=0;i<3;i++){
-		if( fabs(CellVec2[i][0]) >1e-1 ) arr[0] = round(this->_MyCrystal2->getOrientedSystem()->getH1()[0]/fabs(CellVec2[i][0]));
-		else arr[0] = 0;
-		if( fabs(CellVec2[i][1]) >1e-1 ) arr[1] = round(this->_MyCrystal2->getOrientedSystem()->getH2()[1]/fabs(CellVec2[i][1]));
-		else arr[1] = 0;
-		if( fabs(CellVec2[i][2]) >1e-1 ) arr[2] = round(this->_MyCrystal2->getOrientedSystem()->getH3()[2]/fabs(CellVec2[i][2]));
-		else arr[2] = 0;
-		cl[i] = MT->max(arr,3)+1;
-		cout << cl[i] << " ";
-	}
-	cout << endl;
-	for(unsigned int i=0;i<cl[0]*MultCL;i++){
-		for(unsigned int j=0;j<cl[1]*MultCL;j++){
-			for(unsigned int k=0;k<cl[2]*MultCL;k++){
-				Nodes2.push_back(new double[3]);
-				for(unsigned int d=0;d<3;d++) Nodes2[Nodes2.size()-1][d] = i*CellVec2[0][d] + j*CellVec2[1][d] + k*CellVec2[2][d];
-			}
+		solve_DSC(k,L,a1,Ei,tol_DSC);
+		// search if this basis is also good for a2_a_2
+		for(unsigned int i=0;i<3;i++) searchVec[i] = a2_a[i*3+1];
+		MT->invert3x3(Ei,Ei_inv);
+		MT->MatDotVec(Ei_inv,searchVec,searchVec);
+		L = MT->find_integer_vector(searchVec,tol_IntVec,SigmaMax,k,IsFindIntVec);
+		if( !IsFindIntVec ){
+			cout << "Fail ! Increasing tolerance !" << endl;
+			if( exp > 1.5 )	exp -= .5;
+			else exp -= .1;
+			continue;
 		}
-	}
-	cout << "computing CSL " << Nodes1.size() << endl;	
-	for(unsigned int i=0;i<Nodes1.size();i++){
-		cout << i << "/" << Nodes1.size() << endl;
-		for(unsigned int j=0;j<Nodes2.size();j++){
-			if( pow(Nodes1[i][0]-Nodes2[j][0],2.)+pow(Nodes1[i][1]-Nodes2[j][1],2.)+pow(Nodes1[i][2]-Nodes2[j][2],2.) < tolCSL_squared ){
-				CSL.push_back(new double[3]);
-				for(unsigned int d=0;d<3;d++) CSL[CSL.size()-1][d] = (Nodes1[i][d]+Nodes2[j][d])/2.;
+		if( L == 1 ){
+			// Yes, test if the basis is also good for a2_a_3
+			for(unsigned int i=0;i<3;i++) searchVec[i] = a2_a[i*3+2];
+			MT->MatDotVec(Ei_inv,searchVec,searchVec);
+			M = MT->find_integer_vector(searchVec,tol_IntVec,SigmaMax,k,IsFindIntVec);
+			if( !IsFindIntVec ){
+				cout << "Fail ! Increasing tolerance !" << endl;
+				if( exp > 1.5 )	exp -= .5;
+				else exp -= .1;
+				continue;
 			}
+			if( M != 1 ) solve_DSC(k,M,Ei,DSC_Basis,tol_DSC); // No, use this vector for DSC basis
+			else for(unsigned int i=0;i<9;i++) DSC_Basis[i] = Ei[i];
+		}else{
+			// No, use this vector for DSC basis
+			solve_DSC(k,L,Ei,Fi,tol_DSC);
+			// search if this basis is also good for a2_a_2
+			for(unsigned int i=0;i<3;i++) searchVec[i] = a2_a[i*3+2];
+			MT->invert3x3(Fi,Fi_inv);
+			MT->MatDotVec(Fi_inv,searchVec,searchVec);
+			M = MT->find_integer_vector(searchVec,tol_IntVec,SigmaMax,k,IsFindIntVec);
+			if( !IsFindIntVec ){
+				cout << "Fail ! Increasing tolerance !" << endl;
+				if( exp > 1.5 )	exp -= .5;
+				else exp -= .1;
+				continue;
+			}
+			if( M != 1 ){
+				solve_DSC(k,M,Fi,DSC_Basis,tol_DSC); // No, use this vector for DSC basis
+			}
+			else for(unsigned int i=0;i<9;i++) DSC_Basis[i] = Fi[i];
 		}
+		MT->get_right_hand(DSC_Basis,DSC_Basis);
+		MT->LLL(DSC_Basis,DSC_Basis);
+		MT->invert3x3(DSC_Basis,DSC_inv);
+		MT->MatDotMat(DSC_inv,a2_a,U_1);
+		MT->dia_sym_mtx(U_1,U_1);
+		MT->MatDotMat(U_inv,U_1,U_2);
+		MT->MatDotMat(a1_exact,U_1,CSL_Basis);
+		//MT->MatDotMat(a2_exact,U_2,CSL_Basis);
+		MT->LLL(CSL_Basis,CSL_Basis);
+		if( CSL_Basis[0] == CSL_Basis[0] ){
+			BaseFound = true;
+			for(unsigned int i=0;i<3;i++){	
+				for(unsigned int j=0;j<3;j++){
+					if( CSL_Basis[i*3+j] < -boxdim[i]-tolpos || CSL_Basis[i*3+j] > boxdim[i]+tolpos ){
+						BaseFound = false;
+						cout << "breaking" << endl;
+						break;
+					}
+				}
+				if( !BaseFound ){
+					cout << "Fail ! Increasing tolerance !" << endl;
+					break;
+				}
+			}
+		}else cout << "Fail ! Increasing tolerance !" << endl;
+		if( exp > 1.5 )	exp -= .5;
+		else exp -= .1;
 	}
-	cout << "done" << endl;	
-
-	for(unsigned int i=0;i<3;i++){
-		delete[] CellVec1[i];
-		delete[] CellVec2[i];
+	if( BaseFound ){
+		sigma = fabs(MT->det(U_1));
+		//MT->MatDotMat(this->_MyCrystal2->getTiltTrans(),CSL_Basis,CSL_Basis);
+		//for(unsigned int i=0;i<3;i++){
+		//	CSL_Basis[i] *= Mx2;
+		//	CSL_Basis[3+i] *= My2;
+		//}
+		cout << "Success ! We find a CSL corresponding to sigma =" << sigma << endl;
+	}else{
+		cout << "Failed to find CSL basis, aborting computation !" << endl;
 	}
+	delete[] a1;
+	delete[] a1_inv;
+	delete[] a2;
+	delete[] a2_a;
+	delete[] U;
+	delete[] U_inv;
+	delete[] U_1;
+	delete[] U_2;
+	delete[] Ei;
+	delete[] Ei_inv;
+	delete[] Fi;
+	delete[] Fi_inv;
+	delete[] DSC_Basis;
+	delete[] DSC_inv;
+	delete[] U_a;
+	delete[] searchVec;
+	delete[] k;
+	delete[] boxdim;
 }
+
+// solve DSC equation based on the work of Bonnet and Durand 1975
+void Bicrystal::solve_DSC(const int *u, const unsigned int L, const double *B, double *DSC_Base, double tol){
+	unsigned int *GCD = new unsigned int[3];
+	unsigned int g_v, g_lambda, g_mu, gamma, alpha, beta;
+	double buffer;
+	bool found = false;
+	unsigned int count = 0;
+	g_v = L/MT->gcd(abs(u[2]), L);
+	GCD[0] = abs(u[1]);
+	GCD[1] = abs(u[2]);
+	GCD[2] = L;
+	g_lambda = MT->gcd_mult(GCD,3);
+	g_mu = MT->gcd(abs(u[2]), L)/g_lambda;
+	for(unsigned int i=0;i<g_v+1;i++){
+		gamma = i;
+		buffer = (double) ((int) g_mu*u[1]- (int) gamma*u[2])/ (int) L;
+		if( fabs(buffer-round(buffer)) < tol ) break;
+	}
+	alpha = 0;
+	while( !found && alpha < g_mu+1 ){
+		for(unsigned int i=0;i<g_v+1;i++){
+			beta = i;
+			buffer = (double) ((int) g_lambda*u[0] - (int) alpha*u[1] - (int) beta*u[2]) / (int) L;
+			if( fabs(buffer-round(buffer)) < tol ){
+				found = true;
+				break;
+			}
+		}
+		if( found ) break;
+		else alpha++;
+	}
+	if( !found ) cout << "Failed to find DSC basis !" << endl;
+	for(unsigned int i=0;i<3;i++){
+		DSC_Base[i*3] = B[i*3] / g_lambda;
+		DSC_Base[i*3+1] = (alpha*B[i*3]/(g_lambda * g_mu)) + B[i*3+1]/g_mu;
+		DSC_Base[i*3+2] = (B[i*3]*(alpha*gamma+beta*g_mu)/(g_mu*g_v*g_lambda)) + (B[i*3+1]*gamma/(g_mu*g_v)) + B[i*3+2]/g_v;
+	}
+
+	delete[] GCD;
+}
+void Bicrystal::generateCSL(){
+	int CLMax = 100;
+	double *pos = new double[3];
+	double xhi = this->_MyCrystal->getOrientedSystem()->getH1()[0]*dupX1;
+	double yhi = this->_MyCrystal->getOrientedSystem()->getH2()[1]*dupY1;
+	double zhi = this->_MyCrystal->getOrientedSystem()->getH3()[2]+this->_MyCrystal2->getOrientedSystem()->getH3()[2];
+	double tolpos = 1.e-1;
+	for(int i=-CLMax;i<CLMax;i++){
+		for(int j=-CLMax;j<CLMax;j++){
+			for(int k=-CLMax;k<CLMax;k++){
+				for(unsigned int ii=0;ii<3;ii++) pos[ii] = i*CSL_Basis[ii*3] + j*CSL_Basis[ii*3+1] + k*CSL_Basis[ii*3+2];
+				if( pos[0] < xhi+tolpos && pos[0] > -tolpos && pos[1] < yhi+tolpos && pos[1] > -tolpos && pos[2] > -zhi-tolpos && pos[2] < zhi+tolpos ){
+					CSL.push_back(new double[3]);
+					for(unsigned int ii=0;ii<3;ii++) CSL[CSL.size()-1][ii] = i*CSL_Basis[ii*3] + j*CSL_Basis[ii*3+1] + k*CSL_Basis[ii*3+2];
+				}
+			}
+		}
+	}
+	delete[] pos;
+}
+
 void Bicrystal::printCSL(const std::string filename){
 	ofstream writefile(filename);
 	writefile << " # File generated using AtomHic\n";
@@ -721,21 +887,23 @@ void Bicrystal::printCSL(const std::string filename){
 	}
 	this->MT->sort(sortedType,0,2,sortedType);
 	for(unsigned int i=0;i<this->nbAtomType;i++) writefile << "\t" << this->AtomType_uint[(unsigned int) round(sortedType[i*2+1])] << "\t" << this->AtomMass[(unsigned int) round(sortedType[i*2+1])] << "\t# " << this->AtomType[(unsigned int) round(sortedType[i*2+1])] << "\n";
-	writefile << "\t" << this->AtomType_uint[(unsigned int) round(sortedType[this->nbAtomType*2+1])]+1 << "\t0\t# CSL\n";
+	writefile << "\t" << this->AtomType_uint[(unsigned int) round(sortedType[(this->nbAtomType-1)*2+1])]+1 << "\t0\t# CSL\n";
 	if( IsCharge ){
 		writefile << "\nAtoms # charge\n\n";
 		for(unsigned int i=0;i<this->nbAtom;i++) writefile << i+1 << "\t" << this->AtomList[i].type_uint << "\t" << this->AtomList[i].charge << "\t" << this->AtomList[i].pos.x << "\t" << this->AtomList[i].pos.y << "\t" << this->AtomList[i].pos.z << "\n"; 
-		for(unsigned int i=0;i<CSL.size();i++) writefile << i+1+this->nbAtom << "\t" << this->AtomType_uint[(unsigned int) round(sortedType[this->nbAtomType*2+1])]+1 << "\t0\t" << CSL[i][0] << "\t" << CSL[i][1] << "\t" << CSL[i][2] << "\n";
+		for(unsigned int i=0;i<CSL.size();i++) writefile << i+1+this->nbAtom << "\t" << this->AtomType_uint[(unsigned int) round(sortedType[(this->nbAtomType-1)*2+1])]+1 << "\t0\t" << CSL[i][0] << "\t" << CSL[i][1] << "\t" << CSL[i][2] << "\n";
 	}else{
 		writefile << "\nAtoms # atomic\n\n";
 		for(unsigned int i=0;i<this->nbAtom;i++) writefile << i+1 << "\t" << this->AtomList[i].type_uint << "\t" << this->AtomList[i].pos.x << "\t" << this->AtomList[i].pos.y << "\t" << this->AtomList[i].pos.z << "\n"; 
-		for(unsigned int i=0;i<CSL.size();i++) writefile << i+1+this->nbAtom << "\t" << this->AtomType_uint[(unsigned int) round(sortedType[this->nbAtomType*2+1])]+1 << "\t" << CSL[i][0] << "\t" << CSL[i][1] << "\t" << CSL[i][2] << "\n";
+		for(unsigned int i=0;i<CSL.size();i++) writefile << i+1+this->nbAtom << "\t" << this->AtomType_uint[(unsigned int) round(sortedType[(this->nbAtomType-1)*2+1])]+1 << "\t" << CSL[i][0] << "\t" << CSL[i][1] << "\t" << CSL[i][2] << "\n";
 	}
 	writefile.close();
 
 }
 void Bicrystal::setOrientedCrystals(const string& crystalName, int h_a, int k_a, int l_a, double theta, int h_p, int k_p, int l_p){
 	setCrystal(crystalName);
+	this->RotCartToGrain2 = new double[9];
+	this->RotGrain1ToGrain2 = new double[9];
 	// construct the first crystal with the wanted plane horyzontal
 	this->_MyCrystal->ConstructOrientedSystem(h_p,k_p,l_p);
 	// compute the rotation to be applied to the second grain
@@ -748,12 +916,11 @@ void Bicrystal::setOrientedCrystals(const string& crystalName, int h_a, int k_a,
 	}
 	NormRotAx = sqrt(NormRotAx);
 	for(unsigned int i=0;i<3;i++) rot_ax[i] /= NormRotAx;
-	this->RotCartToGrain2 = new double[9];
-	this->RotGrain1ToGrain2 = new double[9];
 	MT->Vec2rotMat(rot_ax,theta,this->RotGrain1ToGrain2);
 	// add the second rotation to be in the cartesian frame
-	MT->MatDotMat(this->_MyCrystal->getRotMat(),this->RotGrain1ToGrain2,this->RotCartToGrain2);
+	MT->MatDotMat(this->RotGrain1ToGrain2,this->_MyCrystal->getRotMat(),this->RotCartToGrain2);
 	this->_MyCrystal2 = new Crystal(crystalName);
+	cout << "constructing second grain" << endl;
 	this->_MyCrystal2->ConstructOrientedSystem(this->RotCartToGrain2);
 	this->IsCrystal2 = true;
 	this->IsRotMatDefine = true;
@@ -999,4 +1166,5 @@ Bicrystal::~Bicrystal(){
 		delete[] RotCartToGrain2;
 	}
 	if( IsCSL ) for(unsigned int i=0;i<CSL.size();i++) delete[] CSL[i];
+	if( IsCSL_Basis ) delete[] CSL_Basis;
 }

@@ -155,7 +155,7 @@ void Crystal::ConstructOrientedSystem(const int& h_p, const int& k_p, const int&
 	rot_axis[1] = 1;
 	rot_axis[2] = 0;
 	MT->Vec2rotMat(rot_axis,theta_y,rot_mat);
-	MT->MatDotMat(this->rot_mat_total,rot_mat,this->rot_mat_total);
+	MT->MatDotMat(rot_mat,this->rot_mat_total,this->rot_mat_total);
 	// last rotation about z axis to align the smallest orthogonal vector with the x direction
 	MT->MatDotVec(this->rot_mat_total,orthoDir,orthoDir);
 	if( orthoDir[1] <= 0. ) theta_z = acos(orthoDir[0]/sqrt(pow(orthoDir[0],2.)+pow(orthoDir[1],2.)+pow(orthoDir[2],2.)));
@@ -167,7 +167,7 @@ void Crystal::ConstructOrientedSystem(const int& h_p, const int& k_p, const int&
 	// last rotation for the orthoDir vector
 	MT->MatDotVec(rot_mat,orthoDir,orthoDir);
 	// compute the total rotation matrix
-	MT->MatDotMat(this->rot_mat_total,rot_mat,this->rot_mat_total);
+	MT->MatDotMat(rot_mat,this->rot_mat_total,this->rot_mat_total);
 	// full rotation of the normal dir
 	MT->MatDotVec(this->rot_mat_total,normalDir,normalDir);
 	// verify is the rotation has been well achieved
@@ -182,9 +182,9 @@ void Crystal::ConstructOrientedSystem(const int& h_p, const int& k_p, const int&
 	// rescale the crystal vectors as they have been modified by the function
 	double *invTrans = new double[9];
 	MT->invert3x3(this->TiltTrans_xyz,invTrans);
-	MT->VecDotMat(this->a1,invTrans,this->a1);
-	MT->VecDotMat(this->a2,invTrans,this->a2);
-	MT->VecDotMat(this->a3,invTrans,this->a3);
+	MT->MatDotVec(invTrans,this->a1,this->a1);
+	MT->MatDotVec(invTrans,this->a2,this->a2);
+	MT->MatDotVec(invTrans,this->a3,this->a3);
 	
 	this->IsOrientedSystem = true;
 
@@ -205,9 +205,9 @@ void Crystal::ConstructOrientedSystem(const double *RotMat){
 	// rescale the crystal vectors as they have been modified by the function
 	double *invTrans = new double[9];
 	MT->invert3x3(this->TiltTrans_xyz,invTrans);
-	MT->VecDotMat(this->a1,invTrans,this->a1);
-	MT->VecDotMat(this->a2,invTrans,this->a2);
-	MT->VecDotMat(this->a3,invTrans,this->a3);
+	MT->MatDotVec(invTrans,this->a1,this->a1);
+	MT->MatDotVec(invTrans,this->a2,this->a2);
+	MT->MatDotVec(invTrans,this->a3,this->a3);
 
 	this->IsOrientedSystem = true;
 	delete[] invTrans;
@@ -290,7 +290,6 @@ void Crystal::RotateAndConstructOrthogonalCell(const double *RotMat, double &xbo
 	MT->MatDotVec(RotMat,this->a1,this->a1);
 	MT->MatDotVec(RotMat,this->a2,this->a2);
 	MT->MatDotVec(RotMat,this->a3,this->a3);
-
 	// search the smallest orthogonal box for this orientation by testing linear combination of a1 a2 a3 giving cell vectors aligned with cartesian axis
 	// expect for the x axis which is already aligned with a crystallographic direction
 	vector<int> xh_list;
@@ -391,7 +390,7 @@ void Crystal::RotateAndConstructOrthogonalCell(const double *RotMat, double &xbo
 	computeReciproqual();
 	// compute the total transformation matrix
 	double *TotalTrans = new double[9];
-	MT->MatDotMat(RotMat,TiltTrans_xyz,TotalTrans);
+	MT->MatDotMat(TiltTrans_xyz,RotMat,TotalTrans);
 	// rotate the motif
 	for(unsigned int i=0;i<this->nbAtom;i++) MT->MatDotAt(TotalTrans,Motif[i],Motif[i]);	
 	

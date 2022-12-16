@@ -68,7 +68,6 @@ AtomicSystem::AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double z
 	if( fabs(_MyCrystal->getA3()[2]) >1e-3 ) arr[2] = round(zhi/fabs(_MyCrystal->getA3()[2]));
 	else arr[2] = 0;
 	cla3 = MT->max(arr,3)+1;
-	cout << cla1 << " " << cla2 << " " << cla3 << endl;
 	double delta_x, delta_y, delta_z, xpos, ypos, zpos;
 	unsigned int count;
 	double tolIonPos = 1e-9;

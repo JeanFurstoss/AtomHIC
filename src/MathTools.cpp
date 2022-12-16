@@ -8,6 +8,8 @@ using namespace std;
 MathTools::MathTools(){
 	this->buffer_vec_1 = new double[3];
 	this->buffer_vec_2 = new double[3];
+	this->buffer_vec_3 = new double[3];
+	this->buffer_vec_4 = new double[3];
 	this->buffer_mat_1 = new double[9];
 	this->buffer_mat_2 = new double[9];
 }
@@ -49,6 +51,12 @@ double MathTools::min_p(const double* arr, unsigned int size){
 	double min = arr[0];
 	for(unsigned int i=0;i<size;i++) if( arr[i] < min ) min = arr[i];
 	return min;
+}
+
+double MathTools::max_p(const double* arr, unsigned int size){
+	double max = arr[0];
+	for(unsigned int i=0;i<size;i++) if( arr[i] > max ) max = arr[i];
+	return max;
 }
 
 unsigned int MathTools::max(vector<double> arr){
@@ -149,25 +157,37 @@ void MathTools::gaussian_fit(const vector<double> data, double &mu, double &sigm
 	delete[] JTR;
 }
 
-void MathTools::invert3x3(const double *mat, double *inv){
-	// compute determinant
+double MathTools::det(const double *mat){
 	double det = 0.;
 	det += mat[0]*(mat[4]*mat[8]-(mat[5]*mat[7]));
 	det -= mat[1]*(mat[3]*mat[8]-(mat[5]*mat[6]));
 	det += mat[2]*(mat[3]*mat[7]-(mat[4]*mat[6]));
-	if( fabs(det) < 1e-50 ){
+}
+void MathTools::invert3x3(const double *mat, double *inv){
+	// compute determinant
+	double deter = det(mat);
+	if( fabs(deter) < 1e-50 ){
 		cout << "Trying to inverse a null determinant matrix !" << endl;
 		return;
 	}
-	inv[0] = (mat[4]*mat[8]-(mat[5]*mat[7]))/det;
-	inv[1] = -(mat[3]*mat[8]-(mat[5]*mat[6]))/det;
-	inv[2] = (mat[3]*mat[7]-(mat[4]*mat[6]))/det;
-	inv[3] = -(mat[1]*mat[8]-(mat[2]*mat[7]))/det;
-	inv[4] = (mat[0]*mat[8]-(mat[2]*mat[6]))/det;
-	inv[5] = -(mat[0]*mat[7]-(mat[6]*mat[1]))/det;
-	inv[6] = (mat[1]*mat[5]-(mat[2]*mat[4]))/det;
-	inv[7] = -(mat[0]*mat[5]-(mat[2]*mat[3]))/det;
-	inv[8] = (mat[0]*mat[4]-(mat[1]*mat[3]))/det;
+	//inv[0] = (mat[4]*mat[8]-(mat[5]*mat[7]))/det; // to see if it has not change other results
+	//inv[1] = -(mat[3]*mat[8]-(mat[5]*mat[6]))/det;
+	//inv[2] = (mat[3]*mat[7]-(mat[4]*mat[6]))/det;
+	//inv[3] = -(mat[1]*mat[8]-(mat[2]*mat[7]))/det;
+	//inv[4] = (mat[0]*mat[8]-(mat[2]*mat[6]))/det;
+	//inv[5] = -(mat[0]*mat[7]-(mat[6]*mat[1]))/det;
+	//inv[6] = (mat[1]*mat[5]-(mat[2]*mat[4]))/det;
+	//inv[7] = -(mat[0]*mat[5]-(mat[2]*mat[3]))/det;
+	//inv[8] = (mat[0]*mat[4]-(mat[1]*mat[3]))/det;
+	inv[0] = (mat[4]*mat[8]-(mat[5]*mat[7]))/deter;
+	inv[3] = -(mat[3]*mat[8]-(mat[5]*mat[6]))/deter;
+	inv[6] = (mat[3]*mat[7]-(mat[4]*mat[6]))/deter;
+	inv[1] = -(mat[1]*mat[8]-(mat[2]*mat[7]))/deter;
+	inv[4] = (mat[0]*mat[8]-(mat[2]*mat[6]))/deter;
+	inv[7] = -(mat[0]*mat[7]-(mat[6]*mat[1]))/deter;
+	inv[2] = (mat[1]*mat[5]-(mat[2]*mat[4]))/deter;
+	inv[5] = -(mat[0]*mat[5]-(mat[2]*mat[3]))/deter;
+	inv[8] = (mat[0]*mat[4]-(mat[1]*mat[3]))/deter;
 }
 
 void MathTools::Vec2rotMat(const double *vec, const double &theta, double *rotMat){
@@ -212,7 +232,7 @@ void MathTools::MatDotMat(const double *mat1, const double *mat2, double *prod){
 	for(unsigned int i=0;i<3;i++){
 		for(unsigned int j=0;j<3;j++){
 			prod[i*3+j] = 0.;
-			for(unsigned int i_m=0;i_m<3;i_m++) prod[i*3+j] += this->buffer_mat_1[i_m*3+j]*this->buffer_mat_2[i*3+i_m];
+			for(unsigned int i_m=0;i_m<3;i_m++) prod[i*3+j] += this->buffer_mat_1[i*3+i_m]*this->buffer_mat_2[i_m*3+j];
 		}
 	}
 }
@@ -256,9 +276,187 @@ void MathTools::sort(const vector<double> vec, const unsigned int col, const uns
 	}
 }
 
+unsigned int MathTools::find_integer_vector(const double *vec, double tol, unsigned int sigma, int *int_vec, bool &IsFound){
+	bool Find = false;
+	unsigned int commonDenom;
+	double Res;
+	for(unsigned int i=1;i<sigma+1;i++){
+		if( fabs((double) i*vec[0]- (double) round((double) i*vec[0])) < tol && fabs((double) i*vec[1]-(double) round((double) i*vec[1])) < tol && fabs((double) i*vec[2]- (double) round((double) i*vec[2])) < tol ){
+			commonDenom = i;
+			Find = true;
+			break;
+		}
+	}
+	if( Find ){
+		for(unsigned int i=0;i<3;i++) int_vec[i] = round(commonDenom*vec[i]);
+		IsFound = true;
+		return commonDenom;
+	}else{
+		cout << "We don't find rationnal vector of : ";
+		printVec(vec);
+		cout << "within lcd = " << sigma << endl;
+		IsFound = false;
+		return 0;
+	}
+}
+
+unsigned int MathTools::gcd(const unsigned int nb1, const unsigned int nb2){
+	unsigned int HiNb, LoNb;
+	if( nb1 == 0 ) return nb2;
+	else if( nb2 == 0 ) return nb1;
+	else if( nb1 > nb2 ){
+		HiNb = nb1;
+		LoNb = nb2;
+	}else if( nb2 > nb1 ){
+		HiNb = nb2;
+		LoNb = nb1;
+	}else return nb1;
+	unsigned int Rem;
+	unsigned int count = 0;
+	unsigned int MaxCount = 10000;
+	Rem = HiNb%LoNb;
+	while( Rem != 0 && count < MaxCount ){
+		HiNb = LoNb;
+		LoNb = Rem;
+		Rem = HiNb%LoNb;
+		count++;
+	}
+	if( Rem == 0 ) return LoNb;
+	else{
+		cout << "We don't have find greatest common divisor of " << nb1 << " and " << nb2 << endl;
+		return 0;
+	}
+}
+
+unsigned int MathTools::gcd_mult(const unsigned int *arr, const unsigned int size){
+	unsigned int buffer1_gcd;
+	unsigned int buffer2_gcd;
+	buffer1_gcd = gcd(arr[0],arr[1]);
+	for(unsigned int i=0;i<size-2;i++){
+		buffer2_gcd = gcd(buffer1_gcd,arr[i+2]);
+		buffer1_gcd = buffer2_gcd;
+	}
+	return buffer1_gcd;		
+}
+
+// lattice reduction
+void MathTools::LLL(const double *Mat, double *Prod){
+	for(unsigned int i=0;i<9;i++) buffer_mat_1[i] = Mat[i];
+	Gram_Schmidt(buffer_mat_1,buffer_mat_2);
+	int k = 1;
+	unsigned int km1;
+	double delta = 3./4.;
+	double proj, norm, sp1, sp2;
+	unsigned int count = 0;
+	unsigned int MaxCount = 10;
+	while( k<=2 && count < MaxCount ){
+		for(int j=k-1;j>=0;j--){
+			norm = 0.;
+			proj = 0.;
+			for(unsigned int i=0;i<3;i++){
+				proj += buffer_mat_1[i*3+ (unsigned int) k]*buffer_mat_2[i*3+ (unsigned int) j];
+				norm += pow(buffer_mat_2[i*3+ (unsigned int) j],2.);
+			}
+			proj /= norm;
+			if( fabs(proj) > 1./2. ){
+				for(unsigned int i=0;i<3;i++) buffer_mat_1[i*3+k] -= round(proj)*buffer_mat_1[i*3+ (unsigned int) j];
+				Gram_Schmidt(buffer_mat_1,buffer_mat_2);
+			}
+		}
+		proj = 0.;
+		norm = 0.;
+		sp1 = 0.;
+		sp2 = 0.;
+		if( k <= 0 ) km1 = k+2;
+		else km1 = k-1;
+		for(unsigned int i=0;i<3;i++){
+			proj += buffer_mat_1[i*3+k]*buffer_mat_2[i*3+km1];
+			norm += pow(buffer_mat_2[i*3+km1],2.);
+			sp1 += buffer_mat_2[i*3+k]*buffer_mat_2[i*3+k];
+			sp2 += buffer_mat_2[i*3+km1]*buffer_mat_2[i*3+km1];
+		}
+		proj /= norm;
+		if( sp1 >= ( (delta-pow(proj,2.))*sp2 ) ) k += 1;
+		else{
+			// exchange col k and k-1 of buffer_mat_1
+			for(unsigned int i=0;i<3;i++){
+				buffer_vec_1[i] = buffer_mat_1[i*3+k];
+				buffer_mat_1[i*3+k] = buffer_mat_1[i*3+km1];
+				buffer_mat_1[i*3+km1] = buffer_vec_1[i];
+			}
+			Gram_Schmidt(buffer_mat_1,buffer_mat_2);
+			if( k > 0 ) k -= 1;
+			else k = 1;
+		}
+		count += 1;
+	}
+	for(unsigned int i=0;i<9;i++) Prod[i] = buffer_mat_1[i];
+}
+
+// orthogonalized basis
+void MathTools::Gram_Schmidt(const double *Mat, double *Prod){
+	double proj, norm;
+	for(unsigned int i=0;i<9;i++) buffer_mat_1[i] = Mat[i];
+	for(unsigned int i=0;i<3;i++){
+		for(unsigned int j=0;j<3;j++) Prod[j*3+i] = buffer_mat_1[j*3+i];
+		if( i != 0 ){
+			for(unsigned int j=0;j<3;j++){
+				for(unsigned int col=0;col<i;col++){
+					proj = 0.;
+					norm = 0.;
+					for(unsigned int jproj=0;jproj<3;jproj++){
+						proj += buffer_mat_1[jproj*3+i]*buffer_mat_1[jproj*3+col];
+						norm += pow(buffer_mat_1[jproj*3+col],2.);
+					}
+					proj /= norm;
+					Prod[j*3+i] -= proj*buffer_mat_1[j*3+col];
+				}
+			}
+		}
+	}
+}
+// compute the symmetric over the second diagonal
+void MathTools::dia_sym_mtx(const double *Mat, double *Prod){
+	for(unsigned int i=0;i<9;i++) buffer_mat_1[i] = Mat[i];
+	for(unsigned int i=0;i<3;i++){
+		for(unsigned int j=0;j<3;j++) Prod[i*3+j] = buffer_mat_1[(2-j)*3+(2-i)];
+	}
+}
+
+// cross product of two vectors //TODO verify if the two following function work well
+void MathTools::crossProd(const double *vec1, const double *vec2, double *Prod){
+	for(unsigned int i=0;i<3;i++){
+		buffer_vec_1[i] = vec1[i];
+		buffer_vec_2[i] = vec2[i];
+	}
+	Prod[0] = (buffer_vec_1[1]*buffer_vec_2[2]) - (buffer_vec_1[2]*buffer_vec_2[1]);
+	Prod[1] = (buffer_vec_1[2]*buffer_vec_2[0]) - (buffer_vec_1[0]*buffer_vec_2[2]);
+	Prod[0] = (buffer_vec_1[0]*buffer_vec_2[1]) - (buffer_vec_1[1]*buffer_vec_2[0]);
+}
+
+// get right handed lattice of Mat 
+void MathTools::get_right_hand(const double *Mat, double *Prod){
+	for(unsigned int i=0;i<9;i++){
+		buffer_mat_1[i] = Mat[i];
+		Prod[i] = Mat[i];
+	}
+	for(unsigned int i=0;i<3;i++){
+		buffer_vec_3[i] = buffer_mat_1[i*3];
+		buffer_vec_4[i] = buffer_mat_1[i*3+1];
+	}
+	crossProd(buffer_vec_3,buffer_vec_4,buffer_vec_3);
+	double sp = 0.;
+	for(unsigned int i=0;i<3;i++) sp += buffer_vec_4[i]*buffer_mat_1[i*3+2];
+	if( sp < 0 ){
+		for(unsigned int i=0;i<3;i++) Prod[i*3+2] = -buffer_mat_1[i*3+2];
+	}
+}
+
 MathTools::~MathTools(){
 	delete[] buffer_mat_1;
 	delete[] buffer_mat_2;
 	delete[] buffer_vec_1;
 	delete[] buffer_vec_2;
+	delete[] buffer_vec_3;
+	delete[] buffer_vec_4;
 }

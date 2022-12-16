@@ -41,7 +41,11 @@ protected:
 	bool IsCrystal2 = false;
 	double xl1, xl2, yl1, yl2;
 	std::vector<double*> CSL;
-	bool IsCSL;
+	double *CSL_Basis;
+	bool IsCSL = false;
+	bool IsCSL_Basis = false;
+	unsigned int dupX1, dupX2, dupY1, dupY2; // number of duplicate in X and Y dir for crystal 1 and 2 for constructing the bicrystal
+	double Mx1, Mx2, My1, My2; // misfit applied to crystal 1 and 2 in dir X and Y for constructing the bicrystal
 public:
 	// constructors
 	Bicrystal(){};
@@ -63,7 +67,9 @@ public:
 	void print_Grains();
 	void searchGBPos();
 	void ComputeExcessVolume();
-        void searchCSL();
+        void searchCSL(unsigned int verbose=0);
+	void generateCSL();
+	void solve_DSC(const int *u, const unsigned int L, const double *B, double *DSC_Base, double tol);
 	void setOrientedCrystals(const std::string& crystalName, int h_a, int k_a, int l_a, double theta, int h_p, int k_p, int l_p); // method initializing 2 crystals with a given misorientation relationship and plane
 	void printCSL(const std::string filename);
 	// destructor
