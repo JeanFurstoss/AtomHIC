@@ -22,6 +22,9 @@ protected:
 	double GBwidth2; // width of the second GB (if there is no vacuum)
 	double MaxPos; // maximum pos of atoms
 	double MinPos; // min --
+	int h_a, k_a, l_a; // miller indices of rotation axis
+	int h_p, k_p, l_p; // miller indices of GB plane
+        double theta; // misorientation angle
 	double SystemLength;
 	ComputeAuxiliary *CA;
 	bool IsCA = false;
@@ -51,7 +54,7 @@ public:
 	Bicrystal(){};
 	Bicrystal(const std::string& filename, const std::string NormalDir);
 	Bicrystal(const std::string& filename, const std::string NormalDir, const std::string CrystalName);
-	Bicrystal(const std::string& crystalName, int h_a, int k_a, int l_a, double theta, int h_p, int k_p, int l_p);// Constructor for bicrystal with plane GB with given misorientation and GB plane
+	Bicrystal(const std::string& crystalName, int h_a, int k_a, int l_a, double theta, int h_p, int k_p, int l_p, bool rationalize=true);// Constructor for bicrystal with plane GB with given misorientation and GB plane
 	Bicrystal(const std::string& crystalName, int h_a, int k_a, int l_a, double theta, int h_p, int k_p, int l_p, std::vector<int> FacetsType, unsigned int N_facet);// Constructor for bicrystal with facetted GB with given misorientation and GB plane and facet type
 	// getters
 	double getGBPos1(){ return this->GBPos1; }
@@ -67,10 +70,11 @@ public:
 	void print_Grains();
 	void searchGBPos();
 	void ComputeExcessVolume();
-        void searchCSL(unsigned int verbose=0);
+        void searchCSL(int h_a, int k_a, int l_a, double theta, int *CSL_vec, unsigned int verbose=0);
 	void generateCSL();
 	void solve_DSC(const int *u, const unsigned int L, const double *B, double *DSC_Base, double tol);
-	void setOrientedCrystals(const std::string& crystalName, int h_a, int k_a, int l_a, double theta, int h_p, int k_p, int l_p); // method initializing 2 crystals with a given misorientation relationship and plane
+	void setOrientedCrystals(const std::string& crystalName, bool rationalize); // method initializing 2 crystals with a given misorientation relationship and plane
+	double RationalizeOri(int h_a, int k_a, int l_a, double theta, int *CSL_vec);// return the rotation angle corresponding to the closest rational GB and a known CSL vector due to this rationalization
 	void printCSL(const std::string filename);
 	// destructor
 	~Bicrystal();

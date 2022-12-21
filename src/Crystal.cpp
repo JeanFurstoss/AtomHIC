@@ -119,7 +119,6 @@ void Crystal::RotateCrystal(const int& h_p, const int& k_p, const int& l_p){
 	normalDir[0] = h_p*(this->a1_star[0]) + k_p*(this->a2_star[0]) + l_p*(this->a3_star[0]);	
 	normalDir[1] = h_p*(this->a1_star[1]) + k_p*(this->a2_star[1]) + l_p*(this->a3_star[1]);	
 	normalDir[2] = h_p*(this->a1_star[2]) + k_p*(this->a2_star[2]) + l_p*(this->a3_star[2]);
-
 	// search the smallest orthogonal direction with integer Miller indices to the wanted one => to be aligned with the cartesian x axis
 	for(int i=-maxhkl;i<maxhkl;i++){
 		for(int j=-maxhkl;j<maxhkl;j++){
@@ -149,9 +148,9 @@ void Crystal::RotateCrystal(const int& h_p, const int& k_p, const int& l_p){
        	MT->Vec2rotMat(rot_axis,theta_z,this->rot_mat_total);
 	for(unsigned int i=0;i<3;i++) test_vec[i] = normalDir[i];
 	MT->MatDotVec(this->rot_mat_total,test_vec,test_vec);
-	// second rotation around y to align the normal dir with the z axis
-	if( test_vec[0] >= 0 ) theta_y = -acos(normalDir[2]/sqrt(pow(normalDir[0],2.)+pow(normalDir[1],2.)+pow(normalDir[2],2.)));	
-	else theta_y = acos(normalDir[2]/sqrt(pow(normalDir[0],2.)+pow(normalDir[1],2.)+pow(normalDir[2],2.)));	
+	// second rotation around y to align the normal dir with the z axis // I have remplaced normalDir by test_vec in the two following lines
+	if( test_vec[0] >= 0 ) theta_y = -acos(test_vec[2]/sqrt(pow(test_vec[0],2.)+pow(test_vec[1],2.)+pow(test_vec[2],2.)));	
+	else theta_y = acos(test_vec[2]/sqrt(pow(test_vec[0],2.)+pow(test_vec[1],2.)+pow(test_vec[2],2.)));	
 	rot_axis[0] = 0;
 	rot_axis[1] = 1;
 	rot_axis[2] = 0;
@@ -276,6 +275,7 @@ void Crystal::ConstructOrthogonalCell(){
 	vector<int> zh_list;
 	vector<double> buffer_vector_d_x, buffer_vector_d_y, buffer_vector_d_z;
 	double absX, absY, absZ;
+	cout << TolOrthoBox << " " << TolOrthoBoxZ << endl;
 	for(int i=-CLsearch;i<CLsearch+1;i++){
 		for(int j=-CLsearch;j<CLsearch+1;j++){
 			for(int k=-CLsearch;k<CLsearch+1;k++){
@@ -288,7 +288,7 @@ void Crystal::ConstructOrthogonalCell(){
 					xh_list.push_back(j);
 					xh_list.push_back(k);
 				}
-				if( absX < TolOrthoBox && absY < TolOrthoBox && i*this->a1[2]+j*this->a2[2]+k*this->a3[2] > MinBoxHeight ){
+				if( absX < TolOrthoBoxZ && absY < TolOrthoBoxZ && i*this->a1[2]+j*this->a2[2]+k*this->a3[2] > MinBoxHeight ){
 					buffer_vector_d_z.push_back(absZ);
 					zh_list.push_back(i);
 					zh_list.push_back(j);
@@ -562,15 +562,20 @@ void Crystal::computeStoich(){
 void Crystal::read_params(){
 	//string filename = "Fixed_Parameters.dat";
 	ifstream file(FixedParam_Filename, ios::in);
-	size_t pos_tolOrthoBox, pos_minBoxHeight, pos_minBoxAside;
+	size_t pos_tolOrthoBox, pos_tolOrthoBoxZ, pos_minBoxHeight, pos_minBoxAside;
 	string buffer_s, line;
 	if(file){
 		while(file){
 			getline(file,line);
-			pos_tolOrthoBox=line.find("TOL_ORTHO_BOX");
+			pos_tolOrthoBox=line.find("TOL_ORTHO_BOX ");
 			if(pos_tolOrthoBox!=string::npos){
 				istringstream text(line);
 				text >> buffer_s >> this->TolOrthoBox;
+			}
+			pos_tolOrthoBoxZ=line.find("TOL_ORTHO_BOX_Z ");
+			if(pos_tolOrthoBoxZ!=string::npos){
+				istringstream text(line);
+				text >> buffer_s >> this->TolOrthoBoxZ;
 			}
 			pos_minBoxHeight=line.find("MIN_BOX_HEIGHT");
 			if(pos_minBoxHeight!=string::npos){

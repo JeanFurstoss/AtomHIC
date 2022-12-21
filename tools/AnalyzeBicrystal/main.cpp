@@ -14,7 +14,7 @@ int main()
 	Bicrystal MySystem(filename, "z", "Forsterite");
 	cout << "output atomic file name : " ;
 	cin >> filename;
-	MySystem.printSystem_aux(filename, "Disorder c_pe");
+	MySystem.printSystem_aux(filename, "Disorder");
 	//cout << "output GB profile file name : " ;
 	//cin >> filename;
 	//MySystem.Print1dDensity(filename, "GBProfile");

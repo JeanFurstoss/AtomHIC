@@ -162,6 +162,7 @@ double MathTools::det(const double *mat){
 	det += mat[0]*(mat[4]*mat[8]-(mat[5]*mat[7]));
 	det -= mat[1]*(mat[3]*mat[8]-(mat[5]*mat[6]));
 	det += mat[2]*(mat[3]*mat[7]-(mat[4]*mat[6]));
+	return det;
 }
 void MathTools::invert3x3(const double *mat, double *inv){
 	// compute determinant
@@ -431,7 +432,7 @@ void MathTools::crossProd(const double *vec1, const double *vec2, double *Prod){
 	}
 	Prod[0] = (buffer_vec_1[1]*buffer_vec_2[2]) - (buffer_vec_1[2]*buffer_vec_2[1]);
 	Prod[1] = (buffer_vec_1[2]*buffer_vec_2[0]) - (buffer_vec_1[0]*buffer_vec_2[2]);
-	Prod[0] = (buffer_vec_1[0]*buffer_vec_2[1]) - (buffer_vec_1[1]*buffer_vec_2[0]);
+	Prod[2] = (buffer_vec_1[0]*buffer_vec_2[1]) - (buffer_vec_1[1]*buffer_vec_2[0]);
 }
 
 // get right handed lattice of Mat 

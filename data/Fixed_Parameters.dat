@@ -1,5 +1,5 @@
 // This file contains the different global variables used by the programm
-TOL_ORTHO_BOX 0.005 // tolerance (in A) for searching orthogonal box with inclined crystal cell vectors
+TOL_ORTHO_BOX 0.01 // tolerance (in A) for searching orthogonal box with inclined crystal cell vectors
 MIN_BOX_HEIGHT 15. // minimum box heigh (in A)
 MIN_BOX_ASIDE 4. // minimum box aside (in A)
 

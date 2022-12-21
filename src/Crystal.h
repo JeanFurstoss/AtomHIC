@@ -44,6 +44,7 @@ private:
 	// Parameters to read
 	std::string FixedParam_Filename = "Fixed_Parameters.dat";
 	double TolOrthoBox;
+	double TolOrthoBoxZ;
 	double MinBoxHeight;
 	double MinBoxAside;
 public:
@@ -56,6 +57,9 @@ public:
 	const double* getA1(){ return this->a1; };
 	const double* getA2(){ return this->a2; };
 	const double* getA3(){ return this->a3; };
+	const double* getA1_star(){ return this->a1_star; };
+	const double* getA2_star(){ return this->a2_star; };
+	const double* getA3_star(){ return this->a3_star; };
 	const double* getALength(){ return this->alength; };
 	const double getVol(){ return this->V; };
 	const unsigned int getNbAtom(){ return this->nbAtom; }
