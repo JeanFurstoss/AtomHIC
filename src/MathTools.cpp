@@ -10,9 +10,31 @@ MathTools::MathTools(){
 	this->buffer_vec_2 = new double[3];
 	this->buffer_vec_3 = new double[3];
 	this->buffer_vec_4 = new double[3];
+	this->buffer_vec_int = new int[3];
+	this->buffer_vec_uint = new unsigned int[3];
 	this->buffer_mat_1 = new double[9];
 	this->buffer_mat_2 = new double[9];
+	this->buffer_mat_uint = new unsigned int[9];
 }
+
+double MathTools::min_vec(const vector<double> arr){
+	double min = arr[0];
+	for(unsigned int i=0;i<arr.size()-1;i++) if( arr[i+1] < min ) min = arr[i+1];
+	return min;
+}
+
+double MathTools::min_vec_abs(const vector<double> arr){
+	double min = arr[0];
+	for(unsigned int i=0;i<arr.size()-1;i++) if( fabs(arr[i+1]) < fabs(min) ) min = arr[i+1];
+	return min;
+}
+
+double MathTools::max_vec(const vector<double> arr){
+	double max = arr[0];
+	for(unsigned int i=0;i<arr.size()-1;i++) if( arr[i+1] > max ) max = arr[i+1];
+	return max;
+}
+
 unsigned int MathTools::max(const unsigned int arr[], unsigned int size){
 	unsigned int max = arr[0];
 	for(unsigned int i=0;i<size;i++) if( arr[i] > max ) max = arr[i];
@@ -24,6 +46,7 @@ unsigned int MathTools::min(const unsigned int arr[], unsigned int size){
 	for(unsigned int i=0;i<size;i++) if( arr[i] < min ) min = arr[i];
 	return min;
 }
+
 int MathTools::max(const int arr[], unsigned int size){
 	int max = arr[0];
 	for(unsigned int i=0;i<size;i++) if( arr[i] > max ) max = arr[i];
@@ -59,6 +82,18 @@ double MathTools::max_p(const double* arr, unsigned int size){
 	return max;
 }
 
+unsigned int MathTools::min_p(const unsigned int* arr, unsigned int size){
+	unsigned min = arr[0];
+	for(unsigned int i=0;i<size;i++) if( arr[i] < min ) min = arr[i];
+	return min;
+}
+
+unsigned int MathTools::max_p(const unsigned int* arr, unsigned int size){
+	unsigned max = arr[0];
+	for(unsigned int i=0;i<size;i++) if( arr[i] > max ) max = arr[i];
+	return max;
+}
+
 unsigned int MathTools::max(vector<double> arr){
 	unsigned int imax = 0;
 	for(unsigned int i=1;i<arr.size();i++) if( arr[i] > arr[imax] ) imax = i;
@@ -68,6 +103,12 @@ unsigned int MathTools::max(vector<double> arr){
 unsigned int MathTools::min(vector<double> arr){
 	unsigned int imin = 0;
 	for(unsigned int i=1;i<arr.size();i++) if( arr[i] < arr[imin] ) imin = i;
+	return imin;
+}
+
+unsigned int MathTools::min_abs(vector<double> arr){
+	unsigned int imin = 0;
+	for(unsigned int i=1;i<arr.size();i++) if( fabs(arr[i]) < fabs(arr[imin]) ) imin = i;
 	return imin;
 }
 
@@ -277,6 +318,33 @@ void MathTools::sort(const vector<double> vec, const unsigned int col, const uns
 	}
 }
 
+void MathTools::sort_abs(const vector<double> vec, const unsigned int col, const unsigned int NbCol, vector<double> &sorted){
+	vector<double> vec_j = vec;
+	unsigned int init_size = vec.size()/NbCol;
+	unsigned int jmin;
+	for(unsigned int i=0;i<init_size;i++){
+		jmin = 0;
+		for(unsigned int j=0;j<vec_j.size()/NbCol;j++) if( fabs(vec_j[j*NbCol+col]) < fabs(vec_j[jmin*NbCol+col]) ) jmin = j;
+		for(unsigned int n=0;n<NbCol;n++){
+			sorted[i*NbCol+n] = vec_j[jmin*NbCol+n];
+		}
+		for(unsigned int n=0;n<NbCol;n++){
+			vec_j.erase(vec_j.begin()+jmin*NbCol);
+		}
+	}
+}
+
+
+void MathTools::reduce_vec(const int *vec1, int *vec2){
+	if( vec1[0] == 0 && vec1[1] == 0 && vec1[2] == 0 ) return;
+	for(unsigned int i=0;i<3;i++){
+		this->buffer_vec_uint[i] = abs(vec1[i]);
+		this->buffer_vec_int[i] = vec1[i];
+	}
+	unsigned int ComDen = gcd_mult(this->buffer_vec_uint,3);
+	for(unsigned int i=0;i<3;i++) vec2[i] = this->buffer_vec_int[i] / (int) ComDen;
+}
+
 unsigned int MathTools::find_integer_vector(const double *vec, double tol, unsigned int sigma, int *int_vec, bool &IsFound){
 	bool Find = false;
 	unsigned int commonDenom;
@@ -290,12 +358,13 @@ unsigned int MathTools::find_integer_vector(const double *vec, double tol, unsig
 	}
 	if( Find ){
 		for(unsigned int i=0;i<3;i++) int_vec[i] = round(commonDenom*vec[i]);
+		reduce_vec(int_vec,int_vec);
 		IsFound = true;
 		return commonDenom;
 	}else{
-		cout << "We don't find rationnal vector of : ";
-		printVec(vec);
-		cout << "within lcd = " << sigma << endl;
+		//cout << "We don't find rationnal vector of : ";
+		//printVec(vec);
+		//cout << "within lcd = " << sigma << endl;
 		IsFound = false;
 		return 0;
 	}
@@ -349,7 +418,7 @@ void MathTools::LLL(const double *Mat, double *Prod){
 	double delta = 3./4.;
 	double proj, norm, sp1, sp2;
 	unsigned int count = 0;
-	unsigned int MaxCount = 10;
+	unsigned int MaxCount = 100;
 	while( k<=2 && count < MaxCount ){
 		for(int j=k-1;j>=0;j--){
 			norm = 0.;
@@ -386,7 +455,7 @@ void MathTools::LLL(const double *Mat, double *Prod){
 				buffer_mat_1[i*3+km1] = buffer_vec_1[i];
 			}
 			Gram_Schmidt(buffer_mat_1,buffer_mat_2);
-			if( k > 0 ) k -= 1;
+			if( k > 2 ) k -= 1;
 			else k = 1;
 		}
 		count += 1;
@@ -452,12 +521,42 @@ void MathTools::get_right_hand(const double *Mat, double *Prod){
 		for(unsigned int i=0;i<3;i++) Prod[i*3+2] = -buffer_mat_1[i*3+2];
 	}
 }
+// compute a transformation matrix permitting to transform an inclined parallelepiped (with xh, yh and zh its cell parameters) into an orthogonal cell with dimension |xh| |yh| and |zh|
+void MathTools::computeTiltTrans(const double *xh, const double *yh, const double  *zh, double *TiltTrans){
+	// box dimension
+	double xbox = sqrt( pow(xh[0],2.) + pow(xh[1],2.) + pow(xh[2],2.));
+	double ybox = sqrt( pow(yh[0],2.) + pow(yh[1],2.) + pow(yh[2],2.));
+	double zbox = sqrt( pow(zh[0],2.) + pow(zh[1],2.) + pow(zh[2],2.));
+	// compute corrections to apply to the cell vectors and atomic positions to have an orthogonal cell
+	buffer_mat_1[0] = 1.;
+	buffer_mat_1[1] = -yh[0]/yh[1]+((zh[0]-(yh[0]*zh[1]/yh[1]))*yh[2]/((zh[2]-(yh[2]*zh[1]/yh[1]))*yh[1]));
+	buffer_mat_1[2] = -(zh[0]-(yh[0]*zh[1]/yh[1]))/(zh[2]-(yh[2]*zh[1]/yh[1]));
+	buffer_mat_1[3] = 0.;
+	buffer_mat_1[4] = ybox/yh[1]+(zh[1]*(ybox/yh[1])*yh[2]/((zh[2]-(yh[2]*zh[1]/yh[1]))*yh[1]));
+	buffer_mat_1[5] = -zh[1]*(ybox/yh[1])/(zh[2]-(yh[2]*zh[1]/yh[1]));
+	buffer_mat_1[6] = 0.;
+	buffer_mat_1[7] = -yh[2]*zbox/(yh[1]*(zh[2]-(yh[2]*zh[1]/yh[1])));
+	buffer_mat_1[8] = zbox/(zh[2]-(yh[2]*zh[1]/yh[1]));
+	
+	TiltTrans[0] = xbox/(xh[0]+buffer_mat_1[1]*xh[1]+buffer_mat_1[2]*xh[2]);
+	TiltTrans[1] = buffer_mat_1[1]*xbox/(xh[0]+buffer_mat_1[1]*xh[1]+buffer_mat_1[2]*xh[2]);
+	TiltTrans[2] = buffer_mat_1[2]*xbox/(xh[0]+buffer_mat_1[1]*xh[1]+buffer_mat_1[2]*xh[2]);
+	TiltTrans[3] = -(xh[1]*buffer_mat_1[4]+buffer_mat_1[5]*xh[2])/(xh[0]+buffer_mat_1[1]*xh[1]+buffer_mat_1[2]*xh[2]);
+	TiltTrans[4] = buffer_mat_1[4]-(xh[1]*buffer_mat_1[4]+buffer_mat_1[5]*xh[2])*buffer_mat_1[1]/(xh[0]+buffer_mat_1[1]*xh[1]+buffer_mat_1[2]*xh[2]);
+	TiltTrans[5] = buffer_mat_1[5]-(xh[1]*buffer_mat_1[4]+buffer_mat_1[5]*xh[2])*buffer_mat_1[2]/(xh[0]+buffer_mat_1[1]*xh[1]+buffer_mat_1[2]*xh[2]);
+	TiltTrans[6] = -(xh[2]*buffer_mat_1[8]+buffer_mat_1[7]*xh[1])/(xh[0]+buffer_mat_1[1]*xh[1]+buffer_mat_1[2]*xh[2]);
+	TiltTrans[7] = buffer_mat_1[7]-(xh[2]*buffer_mat_1[8]+buffer_mat_1[7]*xh[1])*buffer_mat_1[1]/(xh[0]+buffer_mat_1[1]*xh[1]+buffer_mat_1[2]*xh[2]);
+	TiltTrans[8] = buffer_mat_1[8]-(xh[2]*buffer_mat_1[8]+buffer_mat_1[7]*xh[1])*buffer_mat_1[2]/(xh[0]+buffer_mat_1[1]*xh[1]+buffer_mat_1[2]*xh[2]);
+}
 
 MathTools::~MathTools(){
 	delete[] buffer_mat_1;
 	delete[] buffer_mat_2;
+	delete[] buffer_mat_uint;
 	delete[] buffer_vec_1;
 	delete[] buffer_vec_2;
 	delete[] buffer_vec_3;
 	delete[] buffer_vec_4;
+	delete[] buffer_vec_uint;
+	delete[] buffer_vec_int;
 }

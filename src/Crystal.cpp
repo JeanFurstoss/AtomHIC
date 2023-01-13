@@ -180,6 +180,8 @@ void Crystal::RotateCrystal(const int& h_p, const int& k_p, const int& l_p){
 	MT->MatDotVec(this->rot_mat_total,this->a1,this->a1);
 	MT->MatDotVec(this->rot_mat_total,this->a2,this->a2);
 	MT->MatDotVec(this->rot_mat_total,this->a3,this->a3);
+	// recompute reciproqual space as cell parameters may have changed
+	computeReciproqual();
 
 	delete[] orthoDir;
 	delete[] rot_mat;
@@ -195,6 +197,8 @@ void Crystal::RotateCrystal(const double *RotMat){
 	MT->MatDotVec(RotMat,this->a1,this->a1);
 	MT->MatDotVec(RotMat,this->a2,this->a2);
 	MT->MatDotVec(RotMat,this->a3,this->a3);
+	// recompute reciproqual space as cell parameters may have changed
+	computeReciproqual();
 }
 
 
@@ -325,31 +329,11 @@ void Crystal::ConstructOrthogonalCell(){
 		zh[i] = this->a1[i]*zh_list[ind_z*3]+this->a2[i]*zh_list[ind_z*3+1]+this->a3[i]*zh_list[ind_z*3+2];
 	}
 
-	// box dimension
 	double xbox = sqrt( pow(xh[0],2.) + pow(xh[1],2.) + pow(xh[2],2.));
 	double ybox = sqrt( pow(yh[0],2.) + pow(yh[1],2.) + pow(yh[2],2.));
 	double zbox = sqrt( pow(zh[0],2.) + pow(zh[1],2.) + pow(zh[2],2.));
-	// compute corrections to apply to the cell vectors and atomic positions to have an orthogonal cell
-	double *TiltTrans_yz = new double[9];
-	TiltTrans_yz[0] = 1.;
-	TiltTrans_yz[1] = -yh[0]/yh[1]+((zh[0]-(yh[0]*zh[1]/yh[1]))*yh[2]/((zh[2]-(yh[2]*zh[1]/yh[1]))*yh[1]));
-	TiltTrans_yz[2] = -(zh[0]-(yh[0]*zh[1]/yh[1]))/(zh[2]-(yh[2]*zh[1]/yh[1]));
-	TiltTrans_yz[3] = 0.;
-	TiltTrans_yz[4] = ybox/yh[1]+(zh[1]*(ybox/yh[1])*yh[2]/((zh[2]-(yh[2]*zh[1]/yh[1]))*yh[1]));
-	TiltTrans_yz[5] = -zh[1]*(ybox/yh[1])/(zh[2]-(yh[2]*zh[1]/yh[1]));
-	TiltTrans_yz[6] = 0.;
-	TiltTrans_yz[7] = -yh[2]*zbox/(yh[1]*(zh[2]-(yh[2]*zh[1]/yh[1])));
-	TiltTrans_yz[8] = zbox/(zh[2]-(yh[2]*zh[1]/yh[1]));
-	
-	TiltTrans_xyz[0] = xbox/(xh[0]+TiltTrans_yz[1]*xh[1]+TiltTrans_yz[2]*xh[2]);
-	TiltTrans_xyz[1] = TiltTrans_yz[1]*xbox/(xh[0]+TiltTrans_yz[1]*xh[1]+TiltTrans_yz[2]*xh[2]);
-	TiltTrans_xyz[2] = TiltTrans_yz[2]*xbox/(xh[0]+TiltTrans_yz[1]*xh[1]+TiltTrans_yz[2]*xh[2]);
-	TiltTrans_xyz[3] = -(xh[1]*TiltTrans_yz[4]+TiltTrans_yz[5]*xh[2])/(xh[0]+TiltTrans_yz[1]*xh[1]+TiltTrans_yz[2]*xh[2]);
-	TiltTrans_xyz[4] = TiltTrans_yz[4]-(xh[1]*TiltTrans_yz[4]+TiltTrans_yz[5]*xh[2])*TiltTrans_yz[1]/(xh[0]+TiltTrans_yz[1]*xh[1]+TiltTrans_yz[2]*xh[2]);
-	TiltTrans_xyz[5] = TiltTrans_yz[5]-(xh[1]*TiltTrans_yz[4]+TiltTrans_yz[5]*xh[2])*TiltTrans_yz[2]/(xh[0]+TiltTrans_yz[1]*xh[1]+TiltTrans_yz[2]*xh[2]);
-	TiltTrans_xyz[6] = -(xh[2]*TiltTrans_yz[8]+TiltTrans_yz[7]*xh[1])/(xh[0]+TiltTrans_yz[1]*xh[1]+TiltTrans_yz[2]*xh[2]);
-	TiltTrans_xyz[7] = TiltTrans_yz[7]-(xh[2]*TiltTrans_yz[8]+TiltTrans_yz[7]*xh[1])*TiltTrans_yz[1]/(xh[0]+TiltTrans_yz[1]*xh[1]+TiltTrans_yz[2]*xh[2]);
-	TiltTrans_xyz[8] = TiltTrans_yz[8]-(xh[2]*TiltTrans_yz[8]+TiltTrans_yz[7]*xh[1])*TiltTrans_yz[2]/(xh[0]+TiltTrans_yz[1]*xh[1]+TiltTrans_yz[2]*xh[2]);
+
+	MT->computeTiltTrans(xh,yh,zh,this->TiltTrans_xyz);
 
 	// apply this transformation to the crystal vectors
 	MT->MatDotVec(TiltTrans_xyz,this->a1,this->a1);
@@ -381,10 +365,11 @@ void Crystal::ConstructOrthogonalCell(){
 	MT->MatDotVec(invTrans,this->a1,this->a1);
 	MT->MatDotVec(invTrans,this->a2,this->a2);
 	MT->MatDotVec(invTrans,this->a3,this->a3);
+	// recompute reciproqual space as cell parameters may have changed
+	computeReciproqual();
 
 	this->IsOrientedSystem = true;
 	delete[] invTrans;
-	delete[] TiltTrans_yz;
 	delete[] TotalTrans;
 	delete[] xh;
 	delete[] yh;

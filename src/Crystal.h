@@ -53,6 +53,7 @@ public:
 	Crystal(const std::string& crystalName); // constructor searching in the database the different parameter for the construction
 	// getters
 	const std::string& getName(){ return this->name; }
+	const std::string& getCrystallo(){ return this->crystallo; }
 	const Atom* getMotif(){ return this->Motif; }
 	const double* getA1(){ return this->a1; };
 	const double* getA2(){ return this->a2; };

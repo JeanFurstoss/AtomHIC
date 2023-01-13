@@ -10,8 +10,11 @@ protected:
 	double *buffer_vec_2;
 	double *buffer_vec_3;
 	double *buffer_vec_4;
+	unsigned int *buffer_vec_uint;
+	int *buffer_vec_int;
 	double *buffer_mat_1;
 	double *buffer_mat_2;
+	unsigned int *buffer_mat_uint;
 public:
 	MathTools();
 	// those functions return the max/min of a given array
@@ -23,11 +26,19 @@ public:
 	double min(const double arr[], unsigned int size);
 	double min_p(const double* arr, unsigned int size);
 	double max_p(const double* arr, unsigned int size);
+	unsigned int min_p(const unsigned int* arr, unsigned int size);
+	unsigned int max_p(const unsigned int* arr, unsigned int size);
 	// those functions return the indice of the max/min of the vector
 	unsigned int max(std::vector<double> arr);
 	unsigned int min(std::vector<double> arr);
+	unsigned int min_abs(std::vector<double> arr);
+	// those functions return the max/min of a double vector
+	double max_vec(const std::vector<double> arr);
+	double min_vec(const std::vector<double> arr);
+	double min_vec_abs(const std::vector<double> arr);
 	double dotProd(const double *vector1, const double *vector2);
 	void mixedProd(const double *vector1, const double *vector2, double *prod);
+	void reduce_vec(const int *vec1, int *vec2);
 	double gaussian(double x, double mu, double sigma);
 	double gaussian_prefac(double x, double mu, double sigma, double prefac);
 	double det(const double *mat);
@@ -49,6 +60,8 @@ public:
 	void LLL(const double *Mat, double *Prod); //lattice reduction
 	void Gram_Schmidt(const double *Mat, double *Prod); // orthogonalized basis
 	void sort(const std::vector<double> vec, const unsigned int col, const unsigned int NbCol, std::vector<double> &sorted); // sort a vector with respect to a given column (col), giving the number of column in the vector
+	void sort_abs(const std::vector<double> vec, const unsigned int col, const unsigned int NbCol, std::vector<double> &sorted); // sort a vector with respect to a given column (col), giving the number of column in the vector
+	void computeTiltTrans(const double *xh, const double *yh, const double  *zh, double *TiltTrans); // compute a transformation matrix permitting to transform an inclined parallelepiped (with xh, yh and zh its cell parameters) into an orthogonal cell with dimension |xh| |yh| and |zh|
 	~MathTools();
 };
 

@@ -1,5 +1,16 @@
 // This file contains the different global variables used by the programm
-TOL_ORTHO_BOX 0.01 // tolerance (in A) for searching orthogonal box with inclined crystal cell vectors
+
+// Parameters for constructing crystals and bicrystals
+TOL_ORTHO_BOX 1e-3 // tolerance (in A) for searching orthogonal box with inclined crystal cell vectors
+TOL_ORTHO_BOX_Z 1e-1 // tolerance (in A) for searching orthogonal box with inclined crystal cell vectors in Z direction (could be higher than for other direction)
 MIN_BOX_HEIGHT 15. // minimum box heigh (in A)
 MIN_BOX_ASIDE 4. // minimum box aside (in A)
 
+// Parameters for CSL calculation
+THETA_MAX_ROT_ANGLE_RAT 1e-1 // maximum angle deviation from the rationalized to the given rotation axis
+MAX_HKL_ROT_ANGLE 75 // maximum linear combination applied to vectors normal to rotation axis to search a rationalized rotation angle
+TOL_DIST_RAT_ANGLE 5e-2 // distance (in A) bellow which two lattice points are considered at the same place (used for rationalized the rotation angle)
+SIGMA_MAX 10000 // maximum sigma value for the GB (CSL)
+TOL_POS_KNOWN_CSL_VEC 1e-2 // tolerance (in A) to know if the CSL basis gives the CSL vector known from the rationalization process (if yes keep the base)
+TOL_CSL_INTEGER 1e-3 // tolerance for an element of U (CSL matrix) to be an integer
+TOL_ALIGNMENT_CSL 1e-1 // tolerance to know if one of the CSL vector is aligned with the rotation axis (the scalar product should be near 1)

@@ -6,9 +6,17 @@
 
 using namespace std;
 
+Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, double theta):h_a(h_a), k_a(k_a), l_a(l_a), theta(theta){
+	this->MT = new MathTools;
+	read_params();
+	setCrystal(crystalName);
+
+}
+	
 // Constructor for bicrystal with facetted GB with given misorientation and GB plane and facet type (for the moment this is implemented for 2D facets and for a GB composed 2 different facet types, i.e. with one facet direction parallel to x direction)
 Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, double theta, int h_p, int k_p, int l_p, vector<int> FacetsType, unsigned int N_facet):h_a(h_a), k_a(k_a), l_a(l_a), theta(theta), h_p(h_p), k_p(k_p), l_p(l_p){ //TODO warning use this-> for the variable in the initialization list
 	this->MT = new MathTools;
+	read_params();
 	setOrientedCrystals(crystalName, true);
 	double *Dir1_G1 = new double[3];
 	double *Dir2_G1 = new double[3];
@@ -450,6 +458,7 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	
 // Constructor for bicrystal with plane GB with given misorientation and GB plane
 Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, double theta, int h_p, int k_p, int l_p, bool rationalize):h_a(h_a), k_a(k_a), l_a(l_a), theta(theta), h_p(h_p), k_p(k_p), l_p(l_p){
+	read_params();
 	double GBspace = 0.; //TODO maybe define elsewhere (in a file in the main prog for example..)
 	double MaxMisfit = 0.02;
 	unsigned int MaxDup = 50;
@@ -613,6 +622,7 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 }
 
 Bicrystal::Bicrystal(const string& filename, const string NormalDir, const string CrystalName):AtomicSystem(filename){
+	read_params();
 	if( NormalDir != "z" && NormalDir != "y" && NormalDir != "x" && NormalDir != "Z" && NormalDir != "Y" && NormalDir != "X" ){
 		cerr << "The direction normal to the GB have to be : x,X,y,Y,z or Z" << endl;
 		exit(EXIT_FAILURE);
@@ -626,6 +636,7 @@ Bicrystal::Bicrystal(const string& filename, const string NormalDir, const strin
 }
 
 Bicrystal::Bicrystal(const string& filename, const string NormalDir):AtomicSystem(filename){
+	read_params();
 	if( NormalDir != "z" && NormalDir != "y" && NormalDir != "x" && NormalDir != "Z" && NormalDir != "Y" && NormalDir != "X" ){
 		cerr << "The direction normal to the GB have to be : x,X,y,Y,z or Z" << endl;
 		exit(EXIT_FAILURE);
@@ -638,13 +649,11 @@ Bicrystal::Bicrystal(const string& filename, const string NormalDir):AtomicSyste
 }
 
 // search CSL primitive lattice based on the work of Xie et al. 2020 and Bonnet and Rolland 1975
-void Bicrystal::searchCSL(int h_a_func, int k_a_func, int l_a_func, double theta_func, int *CSL_vec, unsigned int verbose){
+//void Bicrystal::searchCSL(int h_a_func, int k_a_func, int l_a_func, double theta_func, int *CSL_vec, unsigned int verbose){
+bool Bicrystal::searchCSL(double *rot_ax_func, double theta_func, int *CSL_vec, unsigned int verbose){
+	cout << "Searching CSL lattice" << endl;
 	this->CSL_Basis = new double[9];
-       cout << "INTVEC" << CSL_vec[0] << " " << CSL_vec[1] << " " << CSL_vec[2] << endl;
 	this->IsCSL_Basis = true;
-	unsigned int SigmaMax = 1000;
-	int MaxHKL = 100;
-	double sigma;
 	double *a1 = new double[9]; // basis vector of lattice 1 
 	double *a1_inv = new double[9]; // basis vector of lattice 1 
 	double *a2 = new double[9]; // basis vector of lattice 2 in coordinate of lattice 1 
@@ -653,6 +662,7 @@ void Bicrystal::searchCSL(int h_a_func, int k_a_func, int l_a_func, double theta
 	double *U = new double[9]; 
 	double *U_inv = new double[9]; 
 	double *U_1 = new double[9]; 
+	double *Backup_U1 = new double[9]; 
 	double *U_1_temp = new double[9]; 
 	double *U_2 = new double[9]; 
 	double *Ei = new double[9]; 
@@ -665,12 +675,14 @@ void Bicrystal::searchCSL(int h_a_func, int k_a_func, int l_a_func, double theta
 	double *searchVec = new double[3];
 	double *CSL_Basis2 = new double[9]; 
 	double *CSL_Basis_temp = new double[9]; 
+	double *buffer_mat = new double[9]; 
 	int *k = new int[3];
 	double *rot_ax = new double[3];
 	double *Known_CSL = new double[3];
 	double *buffer_vec = new double[3];
+	int *buffer_vec_int = new int[3];
 	double NormRotAx = 0.;
-	double *boxdim = new double[3];
+	double tmp, tmp_1, tmp_2, BasePrec;
 	for(unsigned int i=0;i<3;i++){
 		a1[i*3] = this->_MyCrystal->getA1()[i];
 		a1[i*3+1] = this->_MyCrystal->getA2()[i];
@@ -679,24 +691,18 @@ void Bicrystal::searchCSL(int h_a_func, int k_a_func, int l_a_func, double theta
 		a2[i*3] = this->_MyCrystal->getA1()[i];
 		a2[i*3+1] = this->_MyCrystal->getA2()[i];
 		a2[i*3+2] = this->_MyCrystal->getA3()[i];
-		//a2[i*3] = this->_MyCrystal2->getA1()[i];
-		//a2[i*3+1] = this->_MyCrystal2->getA2()[i];
-		//a2[i*3+2] = this->_MyCrystal2->getA3()[i];
 	}
-	// compute rotation matrix
-	for(unsigned int i=0;i<3;i++){
-		rot_ax[i] = this->_MyCrystal->getA1()[i]*h_a_func+this->_MyCrystal->getA2()[i]*k_a_func+this->_MyCrystal->getA3()[i]*l_a_func;
-		NormRotAx += pow(rot_ax[i],2.);
-	}
+	// renormalize rot axis (secure thing) and compute rotation matrix
+	for(unsigned int i=0;i<3;i++) NormRotAx += pow(rot_ax_func[i],2.);
 	NormRotAx = sqrt(NormRotAx);
-	for(unsigned int i=0;i<3;i++) rot_ax[i] /= NormRotAx;
-	MT->Vec2rotMat(rot_ax,theta_func,R);
+	for(unsigned int i=0;i<3;i++) rot_ax_func[i] /= NormRotAx;
+	MT->Vec2rotMat(rot_ax_func,theta_func,R);
 	unsigned int L, M, N;
 	bool BaseFound = false;
-	bool IsFindIntVec;
-	double tol_DSC = 1e-5;
-	double tolpos = 1e-3;
-	double tol_IntVec;
+	bool IsFindIntVec, BaseAligned;
+	bool FirstBase = true;
+	double tol_DSC = 1e-6;
+	double tol_IntVec, sp;
 	MT->invert3x3(a1,a1_inv);
 	MT->MatDotMat(R, a2, a2);
 	MT->MatDotMat(a1_inv,a2,U);
@@ -707,14 +713,15 @@ void Bicrystal::searchCSL(int h_a_func, int k_a_func, int l_a_func, double theta
 	MT->MatDotMat(a1,U_a,a2_a);
 	double exp = 5.;
 	bool OneBaseFound = false;
+	bool success;
 	// loop on tol_IntVec (increasing tolerance) until the primitive lattice vector of CSL fall within the box
-	while( exp > -1. && ( ( !BaseFound && !OneBaseFound ) || ( BaseFound && OneBaseFound ) ) ){
+	while( exp > 0. && ( ( !BaseFound && !OneBaseFound ) || ( BaseFound && OneBaseFound ) ) ){
 		tol_IntVec = pow(10.,-exp);
 		if( verbose == 2 ) cout << "Trying to find CSL base using a tolerance of : " << tol_IntVec << endl;
 		// search if a2_a_1 could be the basic vector for computing DSC lattice
 		for(unsigned int i=0;i<3;i++) searchVec[i] = a2_a[i*3];
 		MT->MatDotVec(a1_inv,searchVec,searchVec);
-		L = MT->find_integer_vector(searchVec,tol_IntVec,SigmaMax,k,IsFindIntVec);
+		L = MT->find_integer_vector(searchVec,tol_IntVec,this->SigmaMax,k,IsFindIntVec);
 		if( !IsFindIntVec ){
 			if( verbose == 2 ) cout << "Fail ! Increasing tolerance !" << endl;
 			if( exp > 1.5 )	exp -= .5;
@@ -726,7 +733,7 @@ void Bicrystal::searchCSL(int h_a_func, int k_a_func, int l_a_func, double theta
 		for(unsigned int i=0;i<3;i++) searchVec[i] = a2_a[i*3+1];
 		MT->invert3x3(Ei,Ei_inv);
 		MT->MatDotVec(Ei_inv,searchVec,searchVec);
-		L = MT->find_integer_vector(searchVec,tol_IntVec,SigmaMax,k,IsFindIntVec);
+		L = MT->find_integer_vector(searchVec,tol_IntVec,this->SigmaMax,k,IsFindIntVec);
 		if( !IsFindIntVec ){
 			if( verbose == 2 ) cout << "Fail ! Increasing tolerance !" << endl;
 			if( exp > 1.5 )	exp -= .5;
@@ -737,7 +744,7 @@ void Bicrystal::searchCSL(int h_a_func, int k_a_func, int l_a_func, double theta
 			// Yes, test if the basis is also good for a2_a_3
 			for(unsigned int i=0;i<3;i++) searchVec[i] = a2_a[i*3+2];
 			MT->MatDotVec(Ei_inv,searchVec,searchVec);
-			M = MT->find_integer_vector(searchVec,tol_IntVec,SigmaMax,k,IsFindIntVec);
+			M = MT->find_integer_vector(searchVec,tol_IntVec,this->SigmaMax,k,IsFindIntVec);
 			if( !IsFindIntVec ){
 				if( verbose == 2 ) cout << "Fail ! Increasing tolerance !" << endl;
 				if( exp > 1.5 )	exp -= .5;
@@ -753,7 +760,7 @@ void Bicrystal::searchCSL(int h_a_func, int k_a_func, int l_a_func, double theta
 			for(unsigned int i=0;i<3;i++) searchVec[i] = a2_a[i*3+2];
 			MT->invert3x3(Fi,Fi_inv);
 			MT->MatDotVec(Fi_inv,searchVec,searchVec);
-			M = MT->find_integer_vector(searchVec,tol_IntVec,SigmaMax,k,IsFindIntVec);
+			M = MT->find_integer_vector(searchVec,tol_IntVec,this->SigmaMax,k,IsFindIntVec);
 			if( !IsFindIntVec ){
 				if( verbose == 2 ) cout << "Fail ! Increasing tolerance !" << endl;
 				if( exp > 1.5 )	exp -= .5;
@@ -774,32 +781,61 @@ void Bicrystal::searchCSL(int h_a_func, int k_a_func, int l_a_func, double theta
 		MT->MatDotMat(a1,U_1_temp,CSL_Basis_temp);
 		MT->MatDotMat(a2,U_2,CSL_Basis2);
 		MT->LLL(CSL_Basis_temp,CSL_Basis_temp);
+		MT->get_right_hand(CSL_Basis_temp,CSL_Basis_temp);
 		MT->LLL(CSL_Basis2,CSL_Basis2);
+		MT->get_right_hand(CSL_Basis2,CSL_Basis2);
 		if( CSL_Basis_temp[0] == CSL_Basis_temp[0] ){
 			// keep the base which permits to get the known CSL vector and with the higher tolIntVec and which gives a sigma value higher than 1
-			sigma = fabs(MT->det(U_1_temp));
-			if( OneBaseFound && sigma < 1.5 ){
+			this->sigma = fabs(MT->det(U_1_temp));
+			if( verbose == 1 ){
+				cout << "We have found CSL basis corresponding to Sigma = " << this->sigma << endl;
+				MT->printMat(U_1_temp);
+			}
+			if( OneBaseFound && this->sigma < 1.5 ){
 				BaseFound = true;
 				break;
 			}
 			BaseFound = false;
-			for(int i=-MaxHKL;i<MaxHKL+1;i++){	
-				for(int j=-MaxHKL;j<MaxHKL+1;j++){
-					for(int k=-MaxHKL;k<MaxHKL+1;k++){
-						for(unsigned int ii=0;ii<3;ii++) buffer_vec[ii] = i*CSL_Basis_temp[ii*3] + j*CSL_Basis_temp[ii*3+1] + k*CSL_Basis_temp[ii*3+2];
-						if( ( fabs(buffer_vec[0]-Known_CSL[0]) < tolpos ) && ( fabs(buffer_vec[1]-Known_CSL[1]) < tolpos ) && ( fabs(buffer_vec[2]-Known_CSL[2]) < tolpos ) ){
-							BaseFound = true;
-							OneBaseFound = true;
-							for(unsigned int ii=0;ii<9;ii++){
-								CSL_Basis[ii] = CSL_Basis_temp[ii];
-								U_1[ii] = U_1_temp[ii];
-							}
-							break;
-						}
-					}
-					if( BaseFound ) break;
+			MT->invert3x3(CSL_Basis_temp,buffer_mat);
+			MT->MatDotVec(buffer_mat,Known_CSL,buffer_vec);
+			tmp = 0.;
+			tmp_1 = 0.;
+			tmp_2 = 0.;
+			for(unsigned int i=0;i<9;i++) tmp_2 += fabs(U_1_temp[i]-round(U_1_temp[i]));
+			for(unsigned int i=0;i<3;i++){
+				tmp += fabs(buffer_vec[i]-round(buffer_vec[i]));
+				tmp_1 += fabs(round(buffer_vec[i]));
+			}
+			if( ( tmp < this->tolpos_known_CSL && tmp_1 > this->tolpos_known_CSL && tmp_2 < this->tol_CSL_integer ) || tmp_2 < tol_DSC ){
+				BaseFound = true;
+				OneBaseFound = true;
+				if( verbose == 1 ) cout << "Good base found !" << endl;
+				for(unsigned int ii=0;ii<9;ii++){
+					CSL_Basis[ii] = CSL_Basis_temp[ii];
+					U_1[ii] = U_1_temp[ii];
 				}
-				if( BaseFound ) break;
+			}
+			// one of the CSL basis vector should be aligned with the rotation axis => verify that the backup base satisfy this criterium
+			for(unsigned int v=0;v<3;v++){
+				sp = 0.;
+				NormRotAx = 0.;
+				BaseAligned = false;
+				for(unsigned int i=0;i<3;i++){
+					sp += CSL_Basis_temp[i*3+v]*rot_ax_func[i];
+					NormRotAx += pow(CSL_Basis_temp[i*3+v],2.);
+				}
+				if( fabs(fabs((sp/sqrt(NormRotAx)))-1.) < this->tolAlignment_CSL ){
+					BaseAligned = true;
+					break;
+				}
+			}
+			if( FirstBase && this->sigma < this->SigmaMax && BaseAligned ){
+				BasePrec = tmp_2;
+				for(unsigned int i=0;i<9;i++) Backup_U1[i] = U_1_temp[i];
+				FirstBase = false;
+			}else if( tmp_2 < BasePrec && this->sigma < this->SigmaMax && BaseAligned ){
+				BasePrec = tmp_2;
+				for(unsigned int i=0;i<9;i++) Backup_U1[i] = U_1_temp[i];
 			}
 			if( !BaseFound && OneBaseFound ){
 				BaseFound = true;
@@ -816,14 +852,22 @@ void Bicrystal::searchCSL(int h_a_func, int k_a_func, int l_a_func, double theta
 		}
 	}
 	if( BaseFound ){
-		sigma = fabs(MT->det(U_1));
-		//for(unsigned int i=0;i<9;i++){// to see if good
+		this->sigma = fabs(MT->det(U_1));
+		//for(unsigned int i=0;i<9;i++){// still something TODO for sharing the CSL to the two lattices (for the moment CSL coincide with grain 2) 
 		//	CSL_Basis[i] += CSL_Basis2[i];
 		//	CSL_Basis[i] /= 2.;
 		//}
-		cout << "Success ! We find a CSL corresponding to sigma =" << sigma << ", using a tolerance of " << tol_IntVec << endl;
+		cout << "Success ! We find a CSL corresponding to sigma =" << this->sigma << ", using a tolerance of " << tol_IntVec << endl;
+		success=true;
+	}else if( !FirstBase ){
+		MT->MatDotMat(a1,Backup_U1,CSL_Basis);
+		this->sigma = fabs(MT->det(Backup_U1));
+		MT->printMat(Backup_U1);
+		cout << "We find a CSL corresponding to sigma =" << this->sigma << endl;
+		success=true;
 	}else{
-		cout << "Failed to find CSL basis, aborting computation !" << endl;
+		cout << "Fail to find CSL basis" << endl;
+		success=false;
 	}
 	cout << "CSL" << endl;
 	MT->printMat(CSL_Basis);
@@ -844,9 +888,14 @@ void Bicrystal::searchCSL(int h_a_func, int k_a_func, int l_a_func, double theta
 	delete[] U_a;
 	delete[] searchVec;
 	delete[] k;
-	delete[] boxdim;
 	delete[] rot_ax;
 	delete[] R;
+	delete[] buffer_vec;
+	delete[] Known_CSL;
+	delete[] CSL_Basis_temp;
+	delete[] CSL_Basis2;
+	delete[] U_1_temp;
+	return success;
 }
 
 // solve DSC equation based on the work of Bonnet and Durand 1975
@@ -938,39 +987,122 @@ void Bicrystal::printCSL(const std::string filename){
 
 }
 
-// search the rotation angle corresponding to the closest rational GB
-double Bicrystal::RationalizeOri(int h_a_func, int k_a_func, int l_a_func, double theta_func, int *CSL_vec){
+// search the rotation axis and angle corresponding to the closest rational GB
+double Bicrystal::RationalizeOri(int h_a_func, int k_a_func, int l_a_func, double theta_func, double *rot_ax_func, int *CSL_vec){
+	cout << "Rationalizing the rotation axis and angle" << endl;
 	if( !this->IsCrystalDefined ){
 		cerr << "The crystal is not defined, we cannot compute a rational GB" << endl;
 		exit(EXIT_FAILURE);
 	}
-	if( theta_func > M_PI ) theta_func -= M_PI;
-	int MaxHKL = 50; // TODO within FixedParam.dat
+	int hp_near, kp_near, lp_near;
+	double sp, norm1, norm2, theta_test;
+	vector<double> theta_list;
+	vector<int> hkl_list;
+	double tolScalarProd = 1e-3;
+	double *vec1 = new double[3];
+	double *vec2 = new double[3];
+	double *vec3 = new double[3];
+	double *vec4 = new double[3];
+	double *vec5 = new double[3];
+	
+	// rationalize the rotation axis by searching the closest (with quasi the same orientation) normal to a crystal plane (with relatively low integer Miller indices)
 	int arr[3] = {abs(h_a_func),abs(k_a_func),abs(l_a_func)};
-	int MaxHKL_Norm = MT->max(arr,3)*20;
+	int MaxHKL_Norm;
+	if( MT->max(arr,3) < 3 && ( ( h_a_func == 0 && k_a_func == 0 ) || ( h_a_func == 0 && l_a_func == 0 ) || ( k_a_func == 0 && l_a_func == 0 ) ) ) MaxHKL_Norm = MT->max(arr,3)*5;
+	else if( MT->max(arr,3) < 3 ) MaxHKL_Norm = MT->max(arr,3)*100;
+	else if( MT->max(arr,3) < 10 ) MaxHKL_Norm = MT->max(arr,3)*50;
+	else MaxHKL_Norm = MT->max(arr,3)*10;
+	if( this->_MyCrystal->getCrystallo() != "Cubic" ){
+		norm1 = 0.;
+		for(unsigned int i=0;i<3;i++){
+			vec1[i] = this->_MyCrystal->getA1()[i]*h_a_func + this->_MyCrystal->getA2()[i]*k_a_func + this->_MyCrystal->getA3()[i]*l_a_func;
+			norm1 += pow(vec1[i],2.);
+		}
+		norm1 = sqrt(norm1);
+		for(int i=-MaxHKL_Norm;i<MaxHKL_Norm+1;i++){
+			for(int j=-MaxHKL_Norm;j<MaxHKL_Norm+1;j++){
+				for(int k=-MaxHKL_Norm;k<MaxHKL_Norm+1;k++){
+					sp = 0.;
+					norm2 = 0.;
+					for(unsigned int ii=0;ii<3;ii++){
+						vec2[ii] = this->_MyCrystal->getA1_star()[ii]*i + this->_MyCrystal->getA2_star()[ii]*j + this->_MyCrystal->getA3_star()[ii]*k;
+						sp += vec2[ii]*vec1[ii];
+						norm2 += pow(vec2[ii],2.);
+					}
+					theta_test = acos(sp/(norm1*sqrt(norm2)));
+					if( theta_test < this->theta_max_rot_ax_rat ){
+						theta_list.push_back(theta_test);
+						hkl_list.push_back(i);
+						hkl_list.push_back(j);
+						hkl_list.push_back(k);
+					}
+				}
+			}
+		}
+		unsigned int ind_thetalist;
+		if( theta_list.size() != 0 ){
+			ind_thetalist = MT->min(theta_list);
+			hp_near = hkl_list[ind_thetalist*3];
+			kp_near = hkl_list[ind_thetalist*3+1];
+			lp_near = hkl_list[ind_thetalist*3+2];
+			cout << "The rotation axis has been rationalized to be the normal of the (" << hp_near << "_" << kp_near << "_" << lp_near <<") plane" << endl;
+		}else{
+			cerr << "We don't have found a close normal plane vector to the rotation axis for rationalizing the GB, aborting calculation" << endl;
+			exit(EXIT_FAILURE);
+		}
+	}else{ // for cubic crystals, the scalar product between plane and direction vector is expressed simply
+		hp_near = h_a_func;
+		kp_near = k_a_func;
+		lp_near = l_a_func;
+	}
+	
+	// compute the new rotation axis
+	norm1 = 0.;
+	for(unsigned int i=0;i<3;i++){
+		rot_ax_func[i] = this->_MyCrystal->getA1_star()[i]*hp_near + this->_MyCrystal->getA2_star()[i]*kp_near + this->_MyCrystal->getA3_star()[i]*lp_near;
+		norm1 += pow(rot_ax_func[i],2.);
+	}
+	norm1 = sqrt(norm1);
+	for(unsigned int i=0;i<3;i++) rot_ax_func[i] /= norm1;
+
+	// Now hp_near, kp_near and lp_near are plane indices which permits to simplify scalar product and the searching of vector normal to rotation axis	
 	// get cell parameter from crystal
 	double a_c = this->_MyCrystal->getALength()[0];
 	double b_c = this->_MyCrystal->getALength()[1];
 	double c_c = this->_MyCrystal->getALength()[2];
-	double tolScalarProd = 1e-3;
 	vector<double> Normal1;
 	vector<double> Normal2;
 	vector<int> Normal_ind;
 	unsigned int ind_norm;
-	double *vec1 = new double[3];
-	double *vec2 = new double[3];
 	int *int_vec = new int[3];
 	unsigned int *uint_vec = new unsigned int[3];
+	double norm;
+	bool ToStore;
 	// search the two smallest normal direction to the rotation axis with integer Miller indices
 	// loop for the first one
 	for(int i=-MaxHKL_Norm;i<MaxHKL_Norm+1;i++){
 		for(int j=-MaxHKL_Norm;j<MaxHKL_Norm+1;j++){
 			for(int k=-MaxHKL_Norm;k<MaxHKL_Norm+1;k++){
-				if( ( abs(i*h_a_func*pow(a_c,2.)+j*k_a_func*pow(b_c,2.)+k*l_a_func*pow(c_c,2.)) < tolScalarProd ) && ( i != 0 || j != 0 || k!= 0 ) ){
-					Normal1.push_back(pow(a_c*i,2.)+pow(b_c*j,2.)+pow(c_c*k,2.));
-					Normal1.push_back(i);
-					Normal1.push_back(j);
-					Normal1.push_back(k);
+				if( ( abs(i*hp_near+j*kp_near+k*lp_near) < tolScalarProd ) && ( i != 0 || j != 0 || k!= 0 ) ){
+					ToStore = true; // do not store colinear vectors
+					norm = sqrt(pow(a_c*i,2.)+pow(b_c*j,2.)+pow(c_c*k,2.));
+					for(unsigned int n=0;n<Normal1.size()/4;n++){
+						sp = ( i*Normal1[n*4+1]*pow(a_c,2.) + j*Normal1[n*4+2]*pow(b_c,2.) + k*Normal1[n*4+3]*pow(c_c,2.) ) / ( norm*Normal1[n*4] );
+						if( fabs(sp-1.) < 1e-3 ){
+							ToStore = false;
+							break;
+						}
+					}
+					if( ToStore ){
+						int_vec[0] = i;
+						int_vec[1] = j;
+						int_vec[2] = k;
+						MT->reduce_vec(int_vec,int_vec);
+						Normal1.push_back(sqrt(pow(a_c*int_vec[0],2.)+pow(b_c*int_vec[1],2.)+pow(c_c*int_vec[2],2.)));
+						Normal1.push_back(int_vec[0]);
+						Normal1.push_back(int_vec[1]);
+						Normal1.push_back(int_vec[2]);
+					}
 				}
 			}
 		}
@@ -979,156 +1111,278 @@ double Bicrystal::RationalizeOri(int h_a_func, int k_a_func, int l_a_func, doubl
 		cerr << "We don't find normal direction to the roation axis" << endl;
 		exit(EXIT_FAILURE);
 	}
-	MT->sort(Normal1,0,4,Normal1);
-	// second one using cross product
-	vec1[0] = h_a_func*a_c;
-	vec1[1] = k_a_func*b_c;
-	vec1[2] = l_a_func*c_c;
-	unsigned int MaxInt = 10000;
-	double tolIntVec = 1e-2;
-	bool IntVecFound;
-	unsigned int ComDen;
-	for(unsigned int n1=0;n1<3;n1++){
-		vec2[0] = Normal1[n1*4+1]*a_c;
-		vec2[1] = Normal1[n1*4+2]*b_c;
-		vec2[2] = Normal1[n1*4+3]*c_c;
-		MT->printVec(vec1);
-		MT->printVec(vec2);
-		MT->crossProd(vec1,vec2,vec2);
-		vec2[0] /= pow(a_c,2.);
-		vec2[1] /= pow(b_c,2.);
-		vec2[2] /= pow(c_c,2.);
-		MT->printVec(vec2);
-		ComDen = MT->find_integer_vector(vec2,tolIntVec,MaxInt,int_vec,IntVecFound);
-		for(unsigned int i=0;i<3;i++) uint_vec[i] = abs(int_vec[i]);
-		ComDen = MT->gcd_mult(uint_vec,3);
-		for(unsigned int i=0;i<3;i++) int_vec[i] /= ComDen;
-		if(IntVecFound){
-			Normal2.push_back(Normal1[n1*4]+pow(a_c*int_vec[0],2.)+pow(b_c*int_vec[0],2.)+pow(c_c*int_vec[0],2.));
-			Normal_ind.push_back(round(Normal1[n1*4+1]));
-			Normal_ind.push_back(round(Normal1[n1*4+2]));
-			Normal_ind.push_back(round(Normal1[n1*4+3]));
-			Normal_ind.push_back(int_vec[0]);
-			Normal_ind.push_back(int_vec[1]);
-			Normal_ind.push_back(int_vec[2]);
+	double DeltaTheta_orth = M_PI/12.;
+	double cos_lo = cos((M_PI/2.)+DeltaTheta_orth);
+	double cos_hi = cos((M_PI/2.)-DeltaTheta_orth);
+        for(unsigned int i=0;i<Normal1.size()/4;i++){
+        	for(unsigned int j=0;j<Normal1.size()/4;j++){
+			sp = ( Normal1[i*4+1]*Normal1[j*4+1]*pow(a_c,2.) + Normal1[i*4+2]*Normal1[j*4+2]*pow(b_c,2.) + Normal1[i*4+3]*Normal1[j*4+3]*pow(c_c,2.) ) / ( Normal1[i*4]*Normal1[j*4] );
+		        if( sp > cos_lo && sp < cos_hi ){
+				Normal2.push_back(0.); // criteria for choosing this => small Miller indices (not for the moment + angle between vectors near 90°)
+				for(unsigned int ii=0;ii<3;ii++) Normal2[Normal2.size()-1] += abs(Normal1[i*4+ii+1]) + abs(Normal1[j*4+ii+1]);
+				Normal_ind.push_back(round(Normal1[i*4+1]));
+				Normal_ind.push_back(round(Normal1[i*4+2]));
+				Normal_ind.push_back(round(Normal1[i*4+3]));
+				Normal_ind.push_back(round(Normal1[j*4+1]));
+				Normal_ind.push_back(round(Normal1[j*4+2]));
+				Normal_ind.push_back(round(Normal1[j*4+3]));
+			}
 		}
-	}
+	}	
+
 	if( Normal2.size() == 0 ){
-		cerr << "We don't find normal direction to the roation axis" << endl;
+		cerr << "We don't find normal direction to the rotation axis" << endl;
 		exit(EXIT_FAILURE);
 	}
 	// get the smallest ones
 	ind_norm = MT->min(Normal2);
-	cout << "The two smallest direction to the rotation axis are : " << Normal_ind[ind_norm*6] << " " << Normal_ind[ind_norm*6+1] << " " << Normal_ind[ind_norm*6+2] << " and " << Normal_ind[ind_norm*6+3] << " " << Normal_ind[ind_norm*6+4] << " " << Normal_ind[ind_norm*6+5] << endl; 
-	// compute the possible rotation angles corrsponding to linear combination of these two vectors
-	double NormV1 = sqrt(pow(Normal_ind[ind_norm*6]*a_c,2.)+pow(Normal_ind[ind_norm*6+1]*b_c,2.)+pow(Normal_ind[ind_norm*6+2]*c_c,2.));
-	double NormV2 = sqrt(pow(Normal_ind[ind_norm*6+3]*a_c,2.)+pow(Normal_ind[ind_norm*6+4]*b_c,2.)+pow(Normal_ind[ind_norm*6+5]*c_c,2.));
-	vector<double> RatTheta;
-	vector<double> RatTheta_diff;
-	vector<int> MilInd;
+	// change or not the sign of the second vector to have a direct basis
+	for(unsigned int i=0;i<3;i++){
+		vec1[i] = this->_MyCrystal->getA1()[i]*Normal_ind[ind_norm*6] + this->_MyCrystal->getA2()[i]*Normal_ind[ind_norm*6+1] + this->_MyCrystal->getA3()[i]*Normal_ind[ind_norm*6+2];  
+		vec2[i] = this->_MyCrystal->getA1()[i]*Normal_ind[ind_norm*6+3] + this->_MyCrystal->getA2()[i]*Normal_ind[ind_norm*6+4] + this->_MyCrystal->getA3()[i]*Normal_ind[ind_norm*6+5];
+	}
+	MT->crossProd(vec1,vec2,vec3);
+	sp = 0.;
+	for(unsigned int i=0;i<3;i++) sp += rot_ax_func[i]*vec3[i];
+	if( sp < 0 ) for(unsigned int i=0;i<3;i++) Normal_ind[ind_norm*6+3+i] *= -1;
+	double theta_star;
 	unsigned int ind_rattheta;
-	RatTheta.push_back(M_PI/2.);
-	RatTheta.push_back(-M_PI/2.);
-	RatTheta_diff.push_back(fabs((M_PI/2.)-(theta_func/2.)));
-	RatTheta_diff.push_back(fabs((-M_PI/2.)-(theta_func/2.)));
-	MilInd.push_back(0);
-	MilInd.push_back(1);
-	MilInd.push_back(0);
-	MilInd.push_back(-1);
-	for(int i=-MaxHKL;i<MaxHKL+1;i++){
-		for(int j=-MaxHKL;j<MaxHKL+1;j++){
-			//if( j > 0 && i >= 0 || i <= 0 && j > 0 ){ // To see if it is necessary to put these cases
-			//	RatTheta.push_back(atan(i*NormV1/(j*NormV2)));
-			//	RatTheta_diff.push_back(fabs(atan(i*NormV1/(j*NormV2))-(theta/2.)));
-			//	MilInd.push_back(j);
-			//	MilInd.push_back(i);
-			//}else if( j < 0 && i >= 0 ){
-			//	RatTheta.push_back(M_PI+atan(i*NormV1/(j*NormV2)));
-			//	RatTheta_diff.push_back(fabs(M_PI+atan(i*NormV1/(j*NormV2))-(theta/2.)));
-			//	MilInd.push_back(j);
-			//	MilInd.push_back(i);
-			//}else if( j < 0 && i <= 0 ){
-			//	RatTheta.push_back(-M_PI+atan(i*NormV1/(j*NormV2)));
-			//	RatTheta_diff.push_back(fabs(-M_PI+atan(i*NormV1/(j*NormV2))-(theta/2.)));
-			//	MilInd.push_back(j);
-			//	MilInd.push_back(i);
-			//}
-			if(  i > 0 ){
-				RatTheta.push_back(atan(j*NormV2/(i*NormV1)));
-				RatTheta_diff.push_back(fabs(atan(j*NormV2/(i*NormV1))-(theta_func/2.)));
-				MilInd.push_back(i);
-				MilInd.push_back(j);
-			}else if( j >= 0 && i < 0 ){
-				RatTheta.push_back(M_PI+atan(j*NormV2/(i*NormV1)));
-				RatTheta_diff.push_back(fabs(M_PI+atan(j*NormV2/(i*NormV1))-(theta_func/2.)));
-				MilInd.push_back(i);
-				MilInd.push_back(j);
-			}else if( j <= 0 && i < 0 ){
-				RatTheta.push_back(-M_PI+atan(j*NormV2/(i*NormV1)));
-				RatTheta_diff.push_back(fabs(-M_PI+atan(j*NormV2/(i*NormV1))-(theta_func/2.)));
-				MilInd.push_back(i);
-				MilInd.push_back(j);
+	int max_i, max_j;
+	for(unsigned int i=0;i<3;i++) arr[i] = abs(Normal_ind[ind_norm*6+3+i]);
+	max_j = MT->max(arr,3);
+	for(unsigned int i=0;i<3;i++) arr[i] = abs(Normal_ind[ind_norm*6+i]);
+	max_i = MT->max(arr,3);
+	int MaxHKL_i, MaxHKL_j;
+	if( max_i >= max_j ){
+		MaxHKL_i = this->MaxHKL_rot_angle_rat;
+		MaxHKL_j = this->MaxHKL_rot_angle_rat*max_i/max_j;
+		if( MaxHKL_j > 100 ) MaxHKL_j = 100;
+	}else{
+		MaxHKL_j = this->MaxHKL_rot_angle_rat;
+		MaxHKL_i = this->MaxHKL_rot_angle_rat*max_j/max_i;
+		if( MaxHKL_i > 100 ) MaxHKL_i = 100;
+	}
+	// generate lattices of the two vectors for the two orientations
+	vector<double> Lat1; // contains distance and x y z coordinates
+	vector<double> DeltaTheta_temp;
+	vector<double> temp_vec;
+	vector<int> indices;
+	double *RotMat = new double[9];
+	MT->Vec2rotMat(rot_ax_func,theta_func,RotMat);
+	for(int i=-MaxHKL_i;i<MaxHKL_i+1;i++){
+		for(int j=-MaxHKL_j;j<MaxHKL_j+1;j++){
+			norm = 0.;
+			for(unsigned int ii=0;ii<3;ii++){
+				vec3[ii] = vec1[ii]*i + vec2[ii]*j;
+				norm += pow(vec3[ii],2.);
 			}
-
+			if( norm != 0. ){
+				Lat1.push_back(sqrt(norm));
+				for(unsigned int ii=0;ii<3;ii++) Lat1.push_back(vec3[ii]);
+				indices.push_back(i);
+				indices.push_back(j);
+			}
 		}
 	}
-	ind_rattheta = MT->min(RatTheta_diff);
-	//for(unsigned int i=0;i<RatTheta_diff.size();i++) cout << RatTheta[i] << " " << RatTheta_diff[i] << " " << MilInd[i*2] << " " << MilInd[i*2+1] << endl;
+	// search the ones with the same distance
+	for(unsigned int i=0;i<Lat1.size()/4;i++){
+		temp_vec.clear();
+		for(unsigned int j=0;j<Lat1.size()/4;j++){
+			if( fabs(Lat1[i*4]-Lat1[j*4]) < this->tol_dist_rot_angle_rat ){
+				// rotate the vector to give the corresponding crystal 2 vector
+				for(unsigned int ii=0;ii<3;ii++){
+					vec3[ii] = Lat1[i*4+ii+1];
+					vec4[ii] = Lat1[j*4+ii+1];
+				}
+				MT->MatDotVec(RotMat,vec4,vec4);
+				// compare the angles between the two vector and store the difference
+				sp = 0.;
+				for(unsigned int ii=0;ii<3;ii++) sp += vec3[ii]*vec4[ii];
+				theta_star = acos(sp/(Lat1[i*4]*Lat1[j*4]));
+				// use cross product for the sign of the angle
+				MT->crossProd(vec3,vec4,vec5);
+				sp = 0.;
+				for(unsigned int ii=0;ii<3;ii++) sp += vec5[ii]*rot_ax_func[ii];
+				if( sp <= 0 ) temp_vec.push_back(theta_star);
+				else temp_vec.push_back(-theta_star);
+			}
+		}
+		if( temp_vec.size() != 0 ) DeltaTheta_temp.push_back(MT->min_vec_abs(temp_vec));
+		else DeltaTheta_temp.push_back(M_PI);
+		DeltaTheta_temp.push_back(fabs(indices[i*2])+fabs(indices[i*2+1]));
+		DeltaTheta_temp.push_back(indices[i*2]);
+		DeltaTheta_temp.push_back(indices[i*2+1]);
+	}
+	MT->sort_abs(DeltaTheta_temp,0,4,DeltaTheta_temp);
+	double min = DeltaTheta_temp[0];
+	vector<double> DeltaTheta;
+	vector<double> true_DeltaTheta;
+	double tolSelect = 2.5e-2; // in rads
+	indices.clear();
+	DeltaTheta.push_back(DeltaTheta_temp[1]);
+	true_DeltaTheta.push_back(DeltaTheta_temp[0]);
+	indices.push_back(DeltaTheta_temp[2]);
+	indices.push_back(DeltaTheta_temp[3]);
+	for(unsigned int i=0;i<(DeltaTheta_temp.size()/4)-1;i++){
+		if( fabs(fabs(DeltaTheta_temp[i*4])-fabs(min)) < tolSelect ){
+			DeltaTheta.push_back(DeltaTheta_temp[(i+1)*4+1]);
+			true_DeltaTheta.push_back(DeltaTheta_temp[(i+1)*4]);
+			indices.push_back(DeltaTheta_temp[(i+1)*4+2]);
+			indices.push_back(DeltaTheta_temp[(i+1)*4+3]);
+		}
+	}
+	ind_rattheta = MT->min(DeltaTheta);
+	if( fabs(true_DeltaTheta[ind_rattheta]+theta_func) < 1e-3 ){
+		cerr << "We don't have found rational angle" << endl;
+		exit(EXIT_FAILURE);
+	}	
+	
+	CSL_vec[0] = Normal_ind[ind_norm*6]  *indices[ind_rattheta*2] + Normal_ind[ind_norm*6+3]*indices[ind_rattheta*2+1];
+	CSL_vec[1] = Normal_ind[ind_norm*6+1]*indices[ind_rattheta*2] + Normal_ind[ind_norm*6+4]*indices[ind_rattheta*2+1];
+	CSL_vec[2] = Normal_ind[ind_norm*6+2]*indices[ind_rattheta*2] + Normal_ind[ind_norm*6+5]*indices[ind_rattheta*2+1];
+	
 	// search the GB plane corresponding to a STGB for this rotation angle
-	vector<double> normSTGB;
-	vector<int> MilSTGB;
-	CSL_vec[0] = Normal_ind[ind_norm*6]*MilInd[ind_rattheta*2]   + Normal_ind[ind_norm*6+3]*MilInd[ind_rattheta*2+1];
-	CSL_vec[1] = Normal_ind[ind_norm*6+1]*MilInd[ind_rattheta*2] + Normal_ind[ind_norm*6+4]*MilInd[ind_rattheta*2+1];
-	CSL_vec[2] = Normal_ind[ind_norm*6+2]*MilInd[ind_rattheta*2] + Normal_ind[ind_norm*6+5]*MilInd[ind_rattheta*2+1];
-	for(int i=-MaxHKL;i<MaxHKL;i++){
-		for(int j=-MaxHKL;j<MaxHKL;j++){
-			for(int k=-MaxHKL;k<MaxHKL;k++){
-				if( abs(i*CSL_vec[0]+j*CSL_vec[1]+k*CSL_vec[2]) < tolScalarProd && abs(i*h_a_func+j*k_a_func+k*l_a_func) < tolScalarProd && ( i != 0 || j != 0 || k!= 0 ) ){
-					normSTGB.push_back(pow(i,2.)+pow(j,2.)+pow(k,2.));
-					MilSTGB.push_back(i);
-					MilSTGB.push_back(j);
-					MilSTGB.push_back(k);
+	vector<double> normSTGB_true;
+	vector<int> MilSTGB_true;
+	vector<double> normSTGB_near;
+	vector<int> MilSTGB_near;
+	for(unsigned int i=0;i<3;i++) uint_vec[i] = abs(CSL_vec[i]);
+	if( MT->max_p(uint_vec,3) < 100 ){
+		int CL_STGB = (int) MT->max_p(uint_vec,3)*2;
+		for(int i=-CL_STGB;i<CL_STGB;i++){
+			for(int j=-CL_STGB;j<CL_STGB;j++){
+				for(int k=-CL_STGB;k<CL_STGB;k++){
+					sp = 0.;
+					for(unsigned int ii=0;ii<3;ii++){
+						vec1[ii] = this->_MyCrystal->getA1_star()[ii]*i + this->_MyCrystal->getA2_star()[ii]*j + this->_MyCrystal->getA3_star()[ii]*k;
+						sp += vec1[ii]*rot_ax_func[ii];
+					}
+					if( abs(i*CSL_vec[0]+j*CSL_vec[1]+k*CSL_vec[2]) < tolScalarProd && fabs(sp) < tolScalarProd && ( i != 0 || j != 0 || k!= 0 ) ){
+						normSTGB_true.push_back(pow(i,2.)+pow(j,2.)+pow(k,2.));
+						MilSTGB_true.push_back(i);
+						MilSTGB_true.push_back(j);
+						MilSTGB_true.push_back(k);
+					}else if( abs(i*CSL_vec[0]+j*CSL_vec[1]+k*CSL_vec[2]) < tolScalarProd && abs(i*h_a_func+j*k_a_func+k*l_a_func) < tolScalarProd && ( i != 0 || j != 0 || k!= 0 ) ){
+						normSTGB_near.push_back(pow(i,2.)+pow(j,2.)+pow(k,2.));
+						MilSTGB_near.push_back(i);
+						MilSTGB_near.push_back(j);
+						MilSTGB_near.push_back(k);
+					}
 				}
 			}
 		}
 	}
-	if( MilSTGB.size() == 0 ) cout << "No equivalent STGB" << endl;
-	unsigned int ind_STGB = MT->min(normSTGB);
-	cout << "We can rationalize this GB by taking a rotation angle of " << 180.*RatTheta[ind_rattheta]*2./M_PI << " (instead of " << theta_func*180./M_PI << ")" << endl;
-	cout << "test" << endl;
-	cout << "For the rotation axis [" << h_a << k_a << l_a << "] and this angle, the corresponding symmetrical tilt GB have a (" << MilSTGB[ind_STGB*3] << MilSTGB[ind_STGB*3+1] << MilSTGB[ind_STGB*3+2] << ") GB plane" << endl;
-	return RatTheta[ind_rattheta]*2.;
+
+	
+	cout << "We can rationalize this GB by taking a rotation axis corresponding to the normal of the (" << hp_near << "_" << kp_near << "_" << lp_near << ") plane (instead of direction [" << h_a_func << "_" << k_a_func << "_" << l_a_func << "]) and a rotation angle of " << 180.*(theta_func+true_DeltaTheta[ind_rattheta])/M_PI << " (instead of " << theta_func*180./M_PI << ")" << endl;
+	if( MT->max_p(uint_vec,3) < 100 ){
+		if( MilSTGB_true.size() != 0 ){
+			unsigned int ind_STGB = MT->min(normSTGB_true);
+			cout << "For the rotation axis (" << hp_near << kp_near << lp_near << ") and this angle, the corresponding symmetrical tilt GB have a (" << MilSTGB_true[ind_STGB*3] << "_" << MilSTGB_true[ind_STGB*3+1] << "_" << MilSTGB_true[ind_STGB*3+2] << ") GB plane" << endl;
+		}else if( MilSTGB_near.size() != 0 ){
+			unsigned int ind_STGB = MT->min(normSTGB_near);
+			cout << "For the rotation axis [" << h_a << k_a << l_a << "] (not the one rationalized) and this angle, the corresponding symmetrical tilt GB have a (" << MilSTGB_near[ind_STGB*3] << "_" << MilSTGB_near[ind_STGB*3+1] << "_" << MilSTGB_near[ind_STGB*3+2] << ") GB plane" << endl;
+		}else{
+			cout << "We don't have found a corresponding STGB !" << endl;
+		}
+	}else{
+		cout << "We don't have search the corresponding STGB of this misorientation (too long to compute)" << endl;
+	}
+
+	delete[] vec1;
+	delete[] vec2;
+	delete[] int_vec;
+	delete[] uint_vec;
+	return theta_func+true_DeltaTheta[ind_rattheta];
+}
+
+// Based on the CSL basis, we search the size of the GB plane (in x and y dir) for which there is a CSL site
+void Bicrystal::searchGBSize(const int h_p_func, const int k_p_func, const int l_p_func){
+	if( !this->IsCrystalDefined ){
+		cerr << "The crystal is not defined, we cannot compute the GB size" << endl;
+		exit(EXIT_FAILURE);
+	}
+	if( !IsCSL_Basis ){
+		cout << "The CSL basis have not been computed, need to perform the calculation !" << endl;
+		//searchCSL(this->h_a,this->k_a,this->l_a,this->theta,CSL_vec,0);
+	}
+	// search two orthogonal vectors of the CSL belonging to the GB plane
+	double tolScalarProd = 1e-3;
+	int MaxCL_CSL = 100;
+	double *vec1 = new double[3];
+	double *vec2 = new double[3];
+	double sp;
+	// get the normal direction to the GB plane
+	for(unsigned int i=0;i<3;i++) vec1[i] = h_p_func*_MyCrystal->getA1_star()[0] + k_p_func*_MyCrystal->getA2_star()[i] + l_p_func*_MyCrystal->getA3_star()[i];
+	// search a first normal vector
+	for(int i=-MaxCL_CSL;i<MaxCL_CSL+1;i++){
+		for(int j=-MaxCL_CSL;j<MaxCL_CSL+1;j++){
+			for(int k=-MaxCL_CSL;k<MaxCL_CSL+1;k++){
+				for(unsigned int ii=0;ii<3;ii++) vec2[ii] = i*this->CSL_Basis[ii*3] + j*this->CSL_Basis[ii*3+1] + k*this->CSL_Basis[ii*3+2];
+				sp = 0;
+				for(unsigned int ii=0;ii<3;ii++) sp += vec1[ii]*vec2[ii];
+				if( fabs(sp) < tolScalarProd && ( i != 0 || j != 0 || k != 0 ) ){
+
+				}
+			}
+		}
+	}
 }
 
 void Bicrystal::setOrientedCrystals(const string& crystalName, bool rationalize){
+	// TEST
+	double *testvec_d = new double[3];
+	double a,b,c;
+	//a = 4.749;
+	//b = 10.1985;
+	//c = 5.9792;
+	a = 4.7;
+	b = 10.;
+	c = 6.;
+	testvec_d[0] = -0.5814;
+	testvec_d[1] = 0.3234;
+	testvec_d[2] = 0.7466;
+	testvec_d[0] /= a;
+	testvec_d[1] /= b;
+	testvec_d[2] /= c;
+	int *testvec_i = new int[3];
+	double tol = 1e-1;
+	unsigned int sigma=100000;
+	bool found;
+	MT->find_integer_vector(testvec_d,tol,sigma,testvec_i,found);
+	if(found) cout << "rat vec : " << testvec_i[0] << " " << testvec_i[1] << " " << testvec_i[2] << endl;
+	else cout << "no rat vec found" << endl;
+	// END TEST
 	setCrystal(crystalName);
 	this->RotCartToGrain2 = new double[9];
 	this->RotGrain1ToGrain2 = new double[9];
 	int *CSL_vec = new int[3];
+	double *rot_ax = new double[3];
 	// construct the first crystal with the wanted plane horyzontal
 	this->_MyCrystal->RotateCrystal(h_p,k_p,l_p);
 	if( rationalize ){
-		double temp_var = RationalizeOri(h_a,k_a,l_a,theta,CSL_vec);
+		double temp_var = RationalizeOri(this->h_a,this->k_a,this->l_a,this->theta,rot_ax,CSL_vec);
 		this->theta = temp_var;
-		searchCSL(this->h_a,this->k_a,this->l_a,this->theta,CSL_vec,2);
+		//searchCSL(this->h_a,this->k_a,this->l_a,this->theta,CSL_vec,0);
+		//searchCSL(rot_ax,this->theta,CSL_vec,0);
 	}
 	// compute the rotation to be applied to the second grain
-	double *rot_ax = new double[3];
 	double NormRotAx = 0.;
 	// first rotation in the reference frame of the first crystal
 	for(unsigned int i=0;i<3;i++){
-		rot_ax[i] = this->_MyCrystal->getA1()[i]*h_a+this->_MyCrystal->getA2()[i]*k_a+this->_MyCrystal->getA3()[i]*l_a;
+		//rot_ax[i] = this->_MyCrystal->getA1()[i]*h_a+this->_MyCrystal->getA2()[i]*k_a+this->_MyCrystal->getA3()[i]*l_a;
 		NormRotAx += pow(rot_ax[i],2.);
 	}
 	NormRotAx = sqrt(NormRotAx);
 	for(unsigned int i=0;i<3;i++) rot_ax[i] /= NormRotAx;
-	MT->Vec2rotMat(rot_ax,theta,this->RotGrain1ToGrain2);
+	MT->Vec2rotMat(rot_ax,this->theta,this->RotGrain1ToGrain2);
 	// add the second rotation to be in the cartesian frame
 	MT->MatDotMat(this->RotGrain1ToGrain2,this->_MyCrystal->getRotMat(),this->RotCartToGrain2);
 	this->_MyCrystal2 = new Crystal(crystalName);
 	this->_MyCrystal2->RotateCrystal(this->RotCartToGrain2);
+		searchCSL(rot_ax,this->theta,CSL_vec,0);
 	//FOR TEST
-	//searchCSL(this->h_a,this->k_a,this->l_a,this->theta,CSL_vec,2);
+	searchGBSize(this->h_p, this->k_p, this->l_p);
 	// END TEST
 	cout << "constructing grains" << endl;
 	cout << "first" << endl;
@@ -1360,7 +1614,55 @@ void Bicrystal::print_Grains(){
 		cout << "The two grains are not defined, we cannot print them" << endl;
 	}
 }
-		
+
+void Bicrystal::read_params(){
+	ifstream file(FixedParam_Filename, ios::in);
+	size_t pos_thetamax, pos_MaxHKL, pos_toldist, pos_sigmaMax, pos_tolpos_kC, pos_tolCSLint, pos_tolAlign;
+	string buffer_s, line;
+	if(file){
+		while(file){
+			getline(file,line);
+			pos_thetamax=line.find("THETA_MAX_ROT_ANGLE_RAT ");
+			if(pos_thetamax!=string::npos){
+				istringstream text(line);
+				text >> buffer_s >> this->theta_max_rot_ax_rat;
+			}
+			pos_MaxHKL=line.find("MAX_HKL_ROT_ANGLE ");
+			if(pos_MaxHKL!=string::npos){
+				istringstream text(line);
+				text >> buffer_s >> this->MaxHKL_rot_angle_rat;
+			}
+			pos_toldist=line.find("TOL_DIST_RAT_ANGLE ");
+			if(pos_toldist!=string::npos){
+				istringstream text(line);
+				text >> buffer_s >> this->tol_dist_rot_angle_rat;
+			}
+			pos_sigmaMax=line.find("SIGMA_MAX ");
+			if(pos_sigmaMax!=string::npos){
+				istringstream text(line);
+				text >> buffer_s >> this->SigmaMax;
+			}
+			pos_tolpos_kC=line.find("TOL_POS_KNOWN_CSL_VEC ");
+			if(pos_tolpos_kC!=string::npos){
+				istringstream text(line);
+				text >> buffer_s >> this->tolpos_known_CSL;
+			}
+			pos_tolCSLint=line.find("TOL_CSL_INTEGER ");
+			if(pos_tolCSLint!=string::npos){
+				istringstream text(line);
+				text >> buffer_s >> this->tol_CSL_integer;
+			}
+			pos_tolAlign=line.find("TOL_ALIGNMENT_CSL ");
+			if(pos_tolAlign!=string::npos){
+				istringstream text(line);
+				text >> buffer_s >> this->tolAlignment_CSL;
+			}
+		}
+	}
+}
+
+
+
 Bicrystal::~Bicrystal(){
 	if( this->IsCrystal2 ) delete _MyCrystal2;
 	if( this->IsCA ) delete CA;
