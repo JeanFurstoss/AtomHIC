@@ -62,12 +62,13 @@ protected:
 public:
 	// constructors
 	Bicrystal(){};
-	Bicrystal(const std::string& filename, const std::string NormalDir);
+	Bicrystal(const std::string& filename, const std::string CrystalName);
 	Bicrystal(const std::string& filename, const std::string NormalDir, const std::string CrystalName);
 	Bicrystal(const std::string& crystalName, int h_a, int k_a, int l_a, double theta, int h_p, int k_p, int l_p, bool rationalize=true);// Constructor for bicrystal with plane GB with given misorientation and GB plane
 	Bicrystal(const std::string& crystalName, int h_a, int k_a, int l_a, double theta, int h_p, int k_p, int l_p, std::vector<int> FacetsType, unsigned int N_facet);// Constructor for bicrystal with facetted GB with given misorientation and GB plane and facet type
 	Bicrystal(const std::string& crystalName, int h_a, int k_a, int l_a, double theta); // constructor using only misorientation freedom degree (bicrystallo analyzis)
 	// getters
+	ComputeAuxiliary *get_CA(){ return this->CA; }
 	double getGBPos1(){ return this->GBPos1; }
 	double getGBwidth1(){ return this->GBwidth1; }
 	double getPrefac1(){ return this->prefac_test; }

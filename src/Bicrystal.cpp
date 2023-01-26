@@ -635,17 +635,11 @@ Bicrystal::Bicrystal(const string& filename, const string NormalDir, const strin
 	ComputeExcessVolume();
 }
 
-Bicrystal::Bicrystal(const string& filename, const string NormalDir):AtomicSystem(filename){
+Bicrystal::Bicrystal(const string& filename, const string CrystalName):AtomicSystem(filename){
 	read_params();
-	if( NormalDir != "z" && NormalDir != "y" && NormalDir != "x" && NormalDir != "Z" && NormalDir != "Y" && NormalDir != "X" ){
-		cerr << "The direction normal to the GB have to be : x,X,y,Y,z or Z" << endl;
-		exit(EXIT_FAILURE);
-	}
-	this->NormalDir = NormalDir;
-	this->IsMassDensity = false;
+	setCrystal(CrystalName);
 	this->CA = new ComputeAuxiliary(this);
 	this->IsCA = true;
-	searchGBPos();
 }
 
 // search CSL primitive lattice based on the work of Xie et al. 2020 and Bonnet and Rolland 1975

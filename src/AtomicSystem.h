@@ -43,6 +43,7 @@ protected:
 	bool IsCrystalMine = false;
 	Crystal *_MyCrystal;	
 	std::vector<double*> Aux; // auxiliary atom properties
+	std::vector<unsigned int> Aux_size; // size of auxiliary atom properties
 	bool IsSetAux = false;
 	std::vector<std::string> Aux_name; // auxiliary atom properties
 	MathTools *MT;
@@ -74,6 +75,7 @@ public:
 	double* getH3(){ return this->H3; }
 	// setters
 	void setAux(const double* aux, const std::string& AuxName);
+	void setAux_vec(const double* aux, const unsigned int size, const std::string& AuxName);
 	void setAux(const unsigned int* aux, const std::string& AuxName);
 	void setAux(const int* aux, const std::string& AuxName);
 	void setCrystal(Crystal* MyCrystal);

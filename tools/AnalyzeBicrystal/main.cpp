@@ -12,9 +12,12 @@ int main()
 	cout << "Atomic file name : " ;
 	cin >> filename;
 	Bicrystal MySystem(filename, "z", "Forsterite");
+	MySystem.get_CA()->Compute_StrainTensor(1);
+	//MySystem.setAux(MySystem.get_CA()->get_AtomSiteIndex(), "AtomSite");
 	cout << "output atomic file name : " ;
 	cin >> filename;
 	MySystem.printSystem_aux(filename, "Disorder");
+	//MySystem.printSystem_aux(filename, "Disorder AtomSite");
 	//cout << "output GB profile file name : " ;
 	//cin >> filename;
 	//MySystem.Print1dDensity(filename, "GBProfile");

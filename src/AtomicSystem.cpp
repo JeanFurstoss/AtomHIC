@@ -492,6 +492,7 @@ void AtomicSystem::setCrystal(Crystal* MyCrystal){
 
 // TODO : add verification that AtomType_uint of _MyCrystal and correspond to the same atom type
 void AtomicSystem::setCrystal(const std::string& CrystalName){
+	cout << "Setting crystal : " << CrystalName << endl;
 	this->_MyCrystal = new Crystal(CrystalName);
 	this->IsCrystalDefined = true;
 	this->IsCrystalMine = true;
@@ -519,7 +520,6 @@ void AtomicSystem::computeWrap(){
 // Searching neighbours using cell list algorithm
 void AtomicSystem::searchNeighbours(const double& rc){
 	computeWrap();
-	IsNeighbours = true;
 	// construct the cells
 	// set maximum neighbour by estimating the maximum number of atom in a rc x rc x rc cube
 	double rc_squared = pow(rc,2.);
@@ -639,6 +639,10 @@ void AtomicSystem::searchNeighbours(const double& rc){
 		if( Cells[i].size() > this->nbMaxN ) this->nbMaxN = Cells[i].size();
 	}
 	this->nbMaxN *= (int) (1.5*4.*M_PI*pow(rc,3.)/(3.*CellSizeX*CellSizeY*CellSizeZ)); // 1.5 is a security factor
+	if( this->IsNeighbours ){
+		delete[] this->Neighbours;
+		delete[] this->CLNeighbours;
+	} // TODO maybe issue here if we delete the var we may need to reclare them ?
 	this->Neighbours = new unsigned int[(this->nbMaxN+1)*this->nbAtom];
 	this->CLNeighbours = new int[(this->nbMaxN*3)*this->nbAtom]; // contain the periodic condition (Nclx, Ncly, Nclz) applied for atom to be a neighbour
 
@@ -717,19 +721,34 @@ void AtomicSystem::searchNeighbours(const double& rc){
 		}
 	}
 	cout << endl;
+	IsNeighbours = true;
 }
 
 void AtomicSystem::setAux(const double* aux, const string& AuxName){
 	IsSetAux = true;
 	this->Aux.push_back(new double[this->nbAtom]);
 	this->Aux_name.push_back(AuxName);
+	this->Aux_size.push_back(1);
 	for(unsigned int i=0;i<this->nbAtom;i++) Aux[Aux.size()-1][i] = aux[i];
+}
+
+void AtomicSystem::setAux_vec(const double* aux, const unsigned int size, const string& AuxName){
+	IsSetAux = true;
+	this->Aux.push_back(new double[this->nbAtom*size]);
+	this->Aux_name.push_back(AuxName);
+	this->Aux_size.push_back(size);
+	for(unsigned int i=0;i<this->nbAtom;i++){
+		for(unsigned int j=0;j<size;j++){
+			Aux[Aux.size()-1][i*size+j] = aux[i*size+j];
+		}
+	}
 }
 
 void AtomicSystem::setAux(const int* aux, const string& AuxName){
 	IsSetAux = true;
 	this->Aux.push_back(new double[this->nbAtom]);
 	this->Aux_name.push_back(AuxName);
+	this->Aux_size.push_back(1);
 	for(unsigned int i=0;i<this->nbAtom;i++) Aux[Aux.size()-1][i] = (double) aux[i];
 }
 
@@ -737,6 +756,7 @@ void AtomicSystem::setAux(const unsigned int* aux, const string& AuxName){
 	IsSetAux = true;
 	this->Aux.push_back(new double[this->nbAtom]);
 	this->Aux_name.push_back(AuxName);
+	this->Aux_size.push_back(1);
 	for(unsigned int i=0;i<this->nbAtom;i++) Aux[Aux.size()-1][i] = (double) aux[i];
 }
 
@@ -752,6 +772,7 @@ void AtomicSystem::printSystem(const string& filename){
 }
 
 void AtomicSystem::read_lmp_file(const string& filename){
+	cout << "Reading " << filename << " file..";
 	ifstream file(filename, ios::in);
 	size_t pos_at, pos_x, pos_y, pos_z, pos_tilt, pos_attype, pos_Mass, pos_At;
 	unsigned int line_Mass(1000), line_At(1000), buffer_uint, buffer_uint_1, count(0);
@@ -855,19 +876,25 @@ void AtomicSystem::read_lmp_file(const string& filename){
 			count += 1;
 		}
 		// compute the cell vectors
-		double arr[4] = {0.,this->H2[0],this->H3[0],this->H2[0]+this->H3[0]};
-		this->H1[0] = xhi-xlo+this->MT->min(arr,4)-this->MT->max(arr,4);
-		double arr_2[2] = {0.,this->H3[1]};
-		this->H2[1] = yhi-ylo+this->MT->min(arr_2,2)-this->MT->max(arr_2,2);
+		// TEST
+		//double arr[4] = {0.,this->H2[0],this->H3[0],this->H2[0]+this->H3[0]};
+		//this->H1[0] = xhi-xlo+this->MT->min(arr,4)-this->MT->max(arr,4);
+		//double arr_2[2] = {0.,this->H3[1]};
+		//this->H2[1] = yhi-ylo+this->MT->min(arr_2,2)-this->MT->max(arr_2,2);
+		//this->H3[2] = zhi-zlo; // TODO verify if this is good for tilted box
+		// END TEST
+		this->H1[0] = xhi-xlo;
+		this->H2[1] = yhi-ylo;
 		this->H3[2] = zhi-zlo; // TODO verify if this is good for tilted box
 		file.close();
 	}else{
 		cout << "The file " << filename << " cannot be openned" << endl;
 	}
-
+	cout << " done !" << endl;
 }
 
 void AtomicSystem::read_cfg_file(const string& filename){
+	cout << "Reading " << filename << " file..";
 	ifstream file(filename, ios::in);
 	if(file){
 		unsigned int line_dt(1000), line_At(1000), line_H_tilt(1000), line_H(1000), line_at(1000), buffer_uint, buffer_uint_1, count_H(0), count(0), nbAux(0), aux_count;
@@ -973,10 +1000,12 @@ void AtomicSystem::read_cfg_file(const string& filename){
 		file.close();
 		if( IsTilted ){
 			// compute the cell vectors
+			// TEST
 			double arr[4] = {0.,this->H2[0],this->H3[0],this->H2[0]+this->H3[0]};
-			this->H1[0] = xhi-xlo+this->MT->min(arr,4)-this->MT->max(arr,4);
+			this->H1[0] = xhi-this->MT->min(arr,4)-this->MT->max(arr,4);
 			double arr_2[2] = {0.,this->H3[1]};
-			this->H2[1] = yhi-ylo+this->MT->min(arr_2,2)-this->MT->max(arr_2,2);
+			this->H2[1] = yhi-this->MT->min(arr_2,2)-this->MT->max(arr_2,2);
+			// END TEST
 		}
 		// search the number of atom type
 		this->AtomType[0] = this->AtomList[0].type;
@@ -1042,9 +1071,11 @@ void AtomicSystem::read_cfg_file(const string& filename){
 	}else{
 		cout << "The file " << filename << " cannot be openned" << endl;
 	}
-
+	cout << " done !" << endl;
 }
 
+
+// TODO : change format for having more prec
 void AtomicSystem::print_lmp(const string& filename){
 	ofstream writefile(filename);
 	writefile << " # File generated using AtomHic\n";
@@ -1114,11 +1145,17 @@ void AtomicSystem::printSystem_aux(const string& filename, const string& AuxName
 	}
 	else writefile << "BOX BOUNDS pp pp pp\n" << "0\t" << H1[0] << "\n0\t" << H2[1] << "\n0\t" << H3[2] << "\n";
 	writefile << "ITEM: ATOMS id type element xu yu zu q";
-        for(unsigned int i=0;i<AuxId.size();i++) writefile << " " << this->Aux_name[AuxId[i]];
+        for(unsigned int i=0;i<AuxId.size();i++){
+		if( Aux_size[i] == 1 ) writefile << " " << this->Aux_name[AuxId[i]];
+		else for(unsigned int j=0;j<Aux_size[i];j++) writefile << " " << this->Aux_name[AuxId[i]] << "_" << j+1;
+	}
 	writefile << "\n";
 	for(unsigned int i=0;i<this->nbAtom;i++){
 		writefile << i+1 << " " << this->AtomList[i].type_uint << " " << this->AtomList[i].type << " " << this->AtomList[i].pos.x << " " << this->AtomList[i].pos.y << " " << this->AtomList[i].pos.z << " " << this->AtomList[i].charge;
-        	for(unsigned int j=0;j<AuxId.size();j++) writefile << " " << this->Aux[AuxId[j]][i];
+        	for(unsigned int j=0;j<AuxId.size();j++){
+			if( Aux_size[j] == 1 ) writefile << " " << this->Aux[AuxId[j]][i];
+			else for(unsigned int k=0;k<Aux_size[j];k++) writefile << " " << this->Aux[AuxId[j]][i*Aux_size[j]+k];
+		}
 		writefile << "\n";
 	}
 	writefile.close();

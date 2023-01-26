@@ -18,6 +18,7 @@ double* ComputeAuxiliary::BondOrientationalParameter(const int& l_sph, double& r
 	const unsigned int nbAt = _MySystem->getNbAtom();
 	const unsigned int nbNMax = _MySystem->getNbMaxN();
 	this->BondOriParam = new double[nbAt];
+	this->Atom_SiteIndex = new unsigned int[nbAt];
 	unsigned int *Malpha = new unsigned int[nbAt*(nbNMax+1)]; // array containing the index of neighbours of the same species (or same site in case of multisite crystal) with the first line corresponding to the number of neighbours, i.e. Malpha[i*(nbNMax+1)] = nb of neighbour of atom i, Malpha[i*(nbNMax+1)+j+1] = id of the jth neighbour of atom i
 	complex<double> *Qalpha = new complex<double>[nbAt*(l_sph*2+1)]; // complex array containing the spherical harmonic for the different modes
 	double *Calpha = new double[nbAt]; // normalization factor 
@@ -96,6 +97,7 @@ double* ComputeAuxiliary::BondOrientationalParameter(const int& l_sph, double& r
 	if( multiSite ){
 		// Search the most represented normalization factors
 		vector<vector<double>> NormFactors; // array containing the normalization factors and the number of atom having the normalization factor for a given element, i.e. : NormFactors[i][0] = chemical element (type_uint), NormFactors[i][j*2+1] = jth normalization factor for specy i, NormFactors[i][j*2+2] = number of atom having this normalization factor
+		vector<vector<unsigned int>> SiteIndex; // array containing the site index 
 		bool ElemStored, NormFacStored;
 		double tolSites = 5e-2; // !!! one of the critical values !!!
 		NormFactors.push_back(vector<double>());
@@ -135,14 +137,20 @@ double* ComputeAuxiliary::BondOrientationalParameter(const int& l_sph, double& r
 		// Initialize the norm fac site array
 		vector<vector<double>> FinalNormFactors;
 		unsigned int Index;
+		unsigned int count_site = 0;
 		for(unsigned int i=0;i<NormFactors.size();i++){
 			FinalNormFactors.push_back(vector<double>());
+			SiteIndex.push_back(vector<unsigned int>());
 			Index = (unsigned int) round(NormFactors[i][0]);
 			if( _MySystem->getCrystal()->getNbAtomSite(Index) > (NormFactors[i].size()-1)/2 ){
 				cerr << "Not enough sites have been found, consider decreasing tolSite" << endl;
 				exit(EXIT_FAILURE);
 			}
-			for(unsigned int j=0;j<_MySystem->getCrystal()->getNbAtomSite(Index);j++) FinalNormFactors[i].push_back(0.);
+			for(unsigned int j=0;j<_MySystem->getCrystal()->getNbAtomSite(Index);j++){
+				FinalNormFactors[i].push_back(0.);
+				SiteIndex[i].push_back(count_site);
+				count_site++;
+			}
 		}
 		// search the most represented norm factors
 		unsigned int kmax;
@@ -157,7 +165,7 @@ double* ComputeAuxiliary::BondOrientationalParameter(const int& l_sph, double& r
 		}
 
 		// normalize order parameters according to the closest but higher most represented bondoriparam
-		double tolRenorm = 1.15; // critical parameter
+		double tolRenorm = 1.05; // critical parameter
 		double buffer_d, buffer_d_2, buffer_d_3;
 		for(unsigned int i=0;i<nbAt;i++){
 			for(unsigned int j=0;j<FinalNormFactors.size();j++){
@@ -174,6 +182,7 @@ double* ComputeAuxiliary::BondOrientationalParameter(const int& l_sph, double& r
 						}
 					}
 					BondOriParam[i] /= FinalNormFactors[j][kmax];
+					Atom_SiteIndex[i] = SiteIndex[j][kmax];
 					break;
 				}
 			}
@@ -203,7 +212,277 @@ complex<double> ComputeAuxiliary::spherical_harmonics(const unsigned int& l, int
 	return sph_harm;
 }
 
+double* ComputeAuxiliary::Compute_StrainTensor(){
+	if( !_MySystem->getIsCrystalDefined() ){
+		cerr << "The crystal need to be defined for the strain tensor calculation" << endl;
+		exit(EXIT_FAILURE);
+	}
+	if( !IsBondOriParam ){
+		cerr << "The bond orientationnal parameter need to have been computed before computing strain tensor" << endl;
+		exit(EXIT_FAILURE);
+	}
+	const unsigned int nbAt = _MySystem->getNbAtom();
+	unsigned int id;
+	this->StrainTensor = new double[nbAt*6]; // the xx, yy, zz, xy, xz, yz strain component for each atom
+	vector<vector<unsigned int>> RestrictedN; // neighbour list restricted to atom of same site
+	vector<vector<double>> vec_RestrictedN; // vector and distance to the restricted neighbours 
+	this->IsStrainTensor = true;
+	double xp, yp ,zp, xpos, ypos, zpos;
+	double Fac_HighestLength = 1.5;
+	double rc = MT->max_p(_MySystem->getCrystal()->getALength(),3)*Fac_HighestLength;
+	_MySystem->searchNeighbours(rc);
+	const unsigned int nbNMax = _MySystem->getNbMaxN();
+	
+	for(unsigned int i=0;i<nbAt;i++){
+		RestrictedN.push_back(vector<unsigned int>());
+		vec_RestrictedN.push_back(vector<double>());
+		xpos = _MySystem->getWrappedPos(i).x;
+		ypos = _MySystem->getWrappedPos(i).y;
+		zpos = _MySystem->getWrappedPos(i).z;
+		for(unsigned int j=0;j<_MySystem->getNeighbours(i*(nbNMax+1));j++){
+			id = _MySystem->getNeighbours(i*(nbNMax+1)+j+1);
+			if( Atom_SiteIndex[i] == Atom_SiteIndex[id] ){
+				RestrictedN[i].push_back(id);
+				xp = _MySystem->getWrappedPos(id).x+_MySystem->getCLNeighbours(i*nbNMax*3+j*3)*_MySystem->getH1()[0]+_MySystem->getCLNeighbours(i*nbNMax*3+j*3+1)*_MySystem->getH2()[0]+_MySystem->getCLNeighbours(i*nbNMax*3+j*3+2)*_MySystem->getH3()[0]-xpos;
+				yp = _MySystem->getWrappedPos(id).y+_MySystem->getCLNeighbours(i*nbNMax*3+j*3)*_MySystem->getH1()[1]+_MySystem->getCLNeighbours(i*nbNMax*3+j*3+1)*_MySystem->getH2()[1]+_MySystem->getCLNeighbours(i*nbNMax*3+j*3+2)*_MySystem->getH3()[1]-ypos;
+				zp = _MySystem->getWrappedPos(id).z+_MySystem->getCLNeighbours(i*nbNMax*3+j*3)*_MySystem->getH1()[2]+_MySystem->getCLNeighbours(i*nbNMax*3+j*3+1)*_MySystem->getH2()[2]+_MySystem->getCLNeighbours(i*nbNMax*3+j*3+2)*_MySystem->getH3()[2]-zpos;
+				vec_RestrictedN[i].push_back(xp);
+				vec_RestrictedN[i].push_back(yp);
+				vec_RestrictedN[i].push_back(zp);
+				vec_RestrictedN[i].push_back(sqrt(pow(xp,2.)+pow(yp,2.)+pow(zp,2.)));
+			}
+		}
+		if( RestrictedN.size() < 3 ){
+			cerr << "We don't have found enough neighbours of the same site to compute the strain tensor" << endl;
+			exit(EXIT_FAILURE);
+		}
+	}
+
+	// search vectors closest to the cell parameters
+
+	
+	return this->StrainTensor;
+}
+
+double* ComputeAuxiliary::Compute_StrainTensor(unsigned int FromNum){
+	if( FromNum == 1 ) cout << "Computing strain tensor based on atom numerotation" << endl;
+	if( FromNum == 0 ) cout << "Computing strain tensor based on atom type" << endl;
+	const unsigned int nbAt = _MySystem->getNbAtom();
+	this->StrainTensor = new double[nbAt*6]; // the xx, yy, zz, xy, xz, yz strain component for each atom
+	vector<vector<unsigned int>> RestrictedN; // neighbour list restricted to atom of same site
+	vector<vector<double>> vec_RestrictedN; // vector and distance to the restricted neighbours 
+	this->IsStrainTensor = true;
+	double xp, yp ,zp, xpos, ypos, zpos;
+	double Fac_HighestLength = 1.5;
+	double rc = MT->max_p(_MySystem->getCrystal()->getALength(),3)*Fac_HighestLength;
+	unsigned int nbAt_Cryst = _MySystem->getCrystal()->getNbAtom();
+	_MySystem->searchNeighbours(rc);
+	const unsigned int nbNMax = _MySystem->getNbMaxN();
+	unsigned int id;
+	if( FromNum == 1 ){	
+		for(unsigned int i=0;i<nbAt;i++){
+			RestrictedN.push_back(vector<unsigned int>());
+			vec_RestrictedN.push_back(vector<double>());
+			xpos = _MySystem->getWrappedPos(i).x;
+			ypos = _MySystem->getWrappedPos(i).y;
+			zpos = _MySystem->getWrappedPos(i).z;
+			for(unsigned int j=0;j<_MySystem->getNeighbours(i*(nbNMax+1));j++){
+				id = _MySystem->getNeighbours(i*(nbNMax+1)+j+1);
+				if( abs((int) (i-id))%nbAt_Cryst == 0 ){
+					RestrictedN[i].push_back(id); // TODO maybe no need of this array
+					xp = _MySystem->getWrappedPos(id).x+_MySystem->getCLNeighbours(i*nbNMax*3+j*3)*_MySystem->getH1()[0]+_MySystem->getCLNeighbours(i*nbNMax*3+j*3+1)*_MySystem->getH2()[0]+_MySystem->getCLNeighbours(i*nbNMax*3+j*3+2)*_MySystem->getH3()[0]-xpos;
+					yp = _MySystem->getWrappedPos(id).y+_MySystem->getCLNeighbours(i*nbNMax*3+j*3)*_MySystem->getH1()[1]+_MySystem->getCLNeighbours(i*nbNMax*3+j*3+1)*_MySystem->getH2()[1]+_MySystem->getCLNeighbours(i*nbNMax*3+j*3+2)*_MySystem->getH3()[1]-ypos;
+					zp = _MySystem->getWrappedPos(id).z+_MySystem->getCLNeighbours(i*nbNMax*3+j*3)*_MySystem->getH1()[2]+_MySystem->getCLNeighbours(i*nbNMax*3+j*3+1)*_MySystem->getH2()[2]+_MySystem->getCLNeighbours(i*nbNMax*3+j*3+2)*_MySystem->getH3()[2]-zpos;
+					vec_RestrictedN[i].push_back(xp);
+					vec_RestrictedN[i].push_back(yp);
+					vec_RestrictedN[i].push_back(zp);
+					vec_RestrictedN[i].push_back(sqrt(pow(xp,2.)+pow(yp,2.)+pow(zp,2.)));
+				}
+			}
+			if( RestrictedN[i].size() < 3 ){
+				cerr << "We don't have found enough neighbours of the same site to compute the strain tensor" << endl;
+				exit(EXIT_FAILURE);
+			}
+		}
+	}else{
+		for(unsigned int i=0;i<nbAt;i++){
+			RestrictedN.push_back(vector<unsigned int>());
+			vec_RestrictedN.push_back(vector<double>());
+			xpos = _MySystem->getWrappedPos(i).x;
+			ypos = _MySystem->getWrappedPos(i).y;
+			zpos = _MySystem->getWrappedPos(i).z;
+			for(unsigned int j=0;j<_MySystem->getNeighbours(i*(nbNMax+1));j++){
+				id = _MySystem->getNeighbours(i*(nbNMax+1)+j+1);
+				if( _MySystem->getAtom(i).type_uint == _MySystem->getAtom(id).type_uint ){
+					RestrictedN[i].push_back(id); // TODO maybe no need of this array
+					xp = _MySystem->getWrappedPos(id).x+_MySystem->getCLNeighbours(i*nbNMax*3+j*3)*_MySystem->getH1()[0]+_MySystem->getCLNeighbours(i*nbNMax*3+j*3+1)*_MySystem->getH2()[0]+_MySystem->getCLNeighbours(i*nbNMax*3+j*3+2)*_MySystem->getH3()[0]-xpos;
+					yp = _MySystem->getWrappedPos(id).y+_MySystem->getCLNeighbours(i*nbNMax*3+j*3)*_MySystem->getH1()[1]+_MySystem->getCLNeighbours(i*nbNMax*3+j*3+1)*_MySystem->getH2()[1]+_MySystem->getCLNeighbours(i*nbNMax*3+j*3+2)*_MySystem->getH3()[1]-ypos;
+					zp = _MySystem->getWrappedPos(id).z+_MySystem->getCLNeighbours(i*nbNMax*3+j*3)*_MySystem->getH1()[2]+_MySystem->getCLNeighbours(i*nbNMax*3+j*3+1)*_MySystem->getH2()[2]+_MySystem->getCLNeighbours(i*nbNMax*3+j*3+2)*_MySystem->getH3()[2]-zpos;
+					vec_RestrictedN[i].push_back(xp);
+					vec_RestrictedN[i].push_back(yp);
+					vec_RestrictedN[i].push_back(zp);
+					vec_RestrictedN[i].push_back(sqrt(pow(xp,2.)+pow(yp,2.)+pow(zp,2.)));
+				}
+			}
+			if( RestrictedN[i].size() < 3 ){
+				cerr << "We don't have found enough neighbours of the same type to compute the strain tensor" << endl;
+				exit(EXIT_FAILURE);
+			}
+		}
+	}
+
+	// search vectors closest to cell vectors
+	vector<double> Diff_CellParam;
+	// finally we should have an array containing the three vectors closest to the cell vectors
+	double *cell_vec = new double[9];
+	double *rot_mat = new double[9];
+	double *buffer_mat = new double[9];
+	double *ref_crystal = new double[9];
+	double *rot_ax = new double[3];
+	unsigned int first_ind, second_ind, third_ind;
+	double tol_ZeroScalarProd_init = 5e-2; //TODO test this value
+	double tol_ZeroScalarProd;
+	double sp, norm, theta;
+	double *crossProd = new double[3];
+	bool Found;
+	for(unsigned int i=0;i<9;i++) ref_crystal[i] = 0.;
+	for(unsigned int i=0;i<3;i++) ref_crystal[i*3+i] = _MySystem->getCrystal()->getALength()[i];
+	MT->invert3x3(ref_crystal,ref_crystal);
+	for(unsigned int i=0;i<nbAt;i++){
+		Diff_CellParam.clear();
+		for(unsigned int j=0;j<RestrictedN[i].size();j++){
+			for(unsigned int k=0;k<3;k++){
+				Diff_CellParam.push_back(fabs(vec_RestrictedN[i][j*4+3]-_MySystem->getCrystal()->getALength()[k]));
+				Diff_CellParam.push_back(k);
+				Diff_CellParam.push_back(j);
+			}
+		}
+		MT->sort(Diff_CellParam,0,3,Diff_CellParam);
+		// get the first vector (the one with the norm closest to one of cell vec)
+		first_ind = round(Diff_CellParam[1]);
+		norm = 0.;
+		for(unsigned int dim=0;dim<3;dim++){
+			cell_vec[(dim*3)+first_ind] = vec_RestrictedN[i][round(Diff_CellParam[2])*4+dim];
+			norm += pow(cell_vec[(dim*3)+first_ind],2.);
+		}
+		norm = sqrt(norm);
+		// get the second vector (the one with the norm closest to the second cell vec and close normal to the first vec)
+		if( first_ind == 2 ) second_ind = 0;
+		else second_ind = first_ind+1;
+		Found = false;
+		tol_ZeroScalarProd = tol_ZeroScalarProd_init;
+		while( !Found ){
+			for(unsigned int j=1;j<Diff_CellParam.size()/3;j++){
+				if( round(Diff_CellParam[j*3+1]) == second_ind ){
+					sp = 0.;
+					for(unsigned int dim=0;dim<3;dim++) sp += cell_vec[(dim*3)+first_ind]*vec_RestrictedN[i][round(Diff_CellParam[j*3+2])*4+dim];
+					sp /= norm*vec_RestrictedN[i][round(Diff_CellParam[j*3+2])*4+3];
+					if( fabs(sp) < tol_ZeroScalarProd ){
+						for(unsigned int dim=0;dim<3;dim++) cell_vec[(dim*3)+second_ind] = vec_RestrictedN[i][round(Diff_CellParam[j*3+2])*4+dim];
+						Found = true;
+						break;
+					}
+				}
+			}
+			if( Found ) break;
+			else tol_ZeroScalarProd *= 2;
+		}
+		// get the third vector (the one with the norm closest to the third cell vec and close normal to the first and second vec and forming a direct basis)
+		// in practise we search the vector closest to the third cell vector with thei angle closest to the cross product of the first two
+		crossProd[0] = cell_vec[3+first_ind]*cell_vec[6+second_ind] - cell_vec[6+first_ind]*cell_vec[3+second_ind];
+		crossProd[1] = cell_vec[6+first_ind]*cell_vec[0+second_ind] - cell_vec[0+first_ind]*cell_vec[6+second_ind];
+		crossProd[2] = cell_vec[0+first_ind]*cell_vec[3+second_ind] - cell_vec[3+first_ind]*cell_vec[0+second_ind];
+		norm = 0.;
+		for(unsigned int dim=0;dim<3;dim++) norm += pow(crossProd[dim],2.);
+		norm = sqrt(norm);
+		if( second_ind == 2 ) third_ind = 0;
+		else third_ind = second_ind+1;
+		Found = false;
+		tol_ZeroScalarProd = tol_ZeroScalarProd_init;
+		while( !Found ){
+			for(unsigned int j=1;j<Diff_CellParam.size()/3;j++){
+				if( round(Diff_CellParam[j*3+1]) == third_ind ){
+					sp = 0.;
+					for(unsigned int dim=0;dim<3;dim++) sp += crossProd[dim]*vec_RestrictedN[i][round(Diff_CellParam[j*3+2])*4+dim];
+					sp /= norm*vec_RestrictedN[i][round(Diff_CellParam[j*3+2])*4+3];
+					if( fabs(sp-1.) < tol_ZeroScalarProd ){
+						for(unsigned int dim=0;dim<3;dim++) cell_vec[(dim*3)+third_ind] = vec_RestrictedN[i][round(Diff_CellParam[j*3+2])*4+dim];
+						Found = true;
+						break;
+					}
+				}
+			}
+			if( Found ) break;
+			else tol_ZeroScalarProd *= 2;
+		}
+		// rotate the cell vectors for first vector to be aligned with x axis and second vector to be in (x,y) plane
+		// first rot around z axis
+		if( i == 1 ){
+			cout << "break" << endl;
+		}
+		norm = sqrt(pow(cell_vec[3],2.)+pow(cell_vec[0],2.));
+		if( norm > 1e-6 ){
+			theta = asin(cell_vec[3]/norm);
+			if( cell_vec[0] < 0 ){
+				if( cell_vec[3] < 0 ) theta = -theta-M_PI;
+				else theta = M_PI-theta;
+			}
+			rot_ax[0] = 0.;
+			rot_ax[1] = 0.;
+			rot_ax[2] = 1.;
+			MT->Vec2rotMat(rot_ax,-theta,rot_mat);
+			MT->MatDotMat(rot_mat,cell_vec,cell_vec);
+		}
+		// second rot around y axis
+		norm = sqrt(pow(cell_vec[6],2.)+pow(cell_vec[0],2.));
+		if( norm > 1e-6 ){
+			theta = asin(cell_vec[6]/norm);
+			if( cell_vec[0] < 0 ){
+				if( cell_vec[6] < 0 ) theta = -theta-M_PI;
+				else theta = M_PI-theta;
+			}
+			rot_ax[0] = 0.;
+			rot_ax[1] = 1.;
+			rot_ax[2] = 0.;
+			MT->Vec2rotMat(rot_ax,theta,rot_mat);
+			MT->MatDotMat(rot_mat,cell_vec,cell_vec);
+		}
+		// last rot about x axis
+		norm = sqrt(pow(cell_vec[7],2.)+pow(cell_vec[4],2.));
+		if( norm > 1e-6 ){
+			theta = asin(cell_vec[7]/norm);
+			if( cell_vec[4] < 0 ){
+				if( cell_vec[7] < 0 ) theta = -theta-M_PI;
+				else theta = M_PI-theta;
+			}
+			rot_ax[0] = 1.;
+			rot_ax[1] = 0.;
+			rot_ax[2] = 0.;
+			MT->Vec2rotMat(rot_ax,-theta,rot_mat);
+			MT->MatDotMat(rot_mat,cell_vec,cell_vec);
+		}
+		MT->MatDotMat(ref_crystal,cell_vec,buffer_mat);
+		if( buffer_mat[2] < 1.0 ){
+			cout << i << endl;
+		}
+		this->StrainTensor[i*6+0] = buffer_mat[0];
+		this->StrainTensor[i*6+1] = buffer_mat[4];
+		this->StrainTensor[i*6+2] = buffer_mat[8];
+		this->StrainTensor[i*6+3] = buffer_mat[1];
+		this->StrainTensor[i*6+4] = buffer_mat[2];
+		this->StrainTensor[i*6+5] = buffer_mat[5];
+	}
+	return this->StrainTensor;
+}	
+	
 ComputeAuxiliary::~ComputeAuxiliary(){
-	if( IsBondOriParam ) delete[] BondOriParam;
+	delete MT;
+	if( IsBondOriParam ){
+		delete[] BondOriParam;
+		delete[] Atom_SiteIndex;
+	}
+	if( IsStrainTensor ){
+		delete[] StrainTensor;
+	}
 }
 
