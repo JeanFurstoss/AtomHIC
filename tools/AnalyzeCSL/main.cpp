@@ -39,11 +39,10 @@ int main(int argc, char *argv[])
 	double Rat_RotAng;
 	double tolIntVec = 1e-1;
 	unsigned int hkl_max = 25000;
-	rot_Mil[0] = ra_x / MyCrystal->getALength()[0];
-	rot_Mil[1] = ra_y / MyCrystal->getALength()[1];
-	rot_Mil[2] = ra_z / MyCrystal->getALength()[2];
+	rot_Mil[0] = ra_x;// / MyCrystal->getALength()[0];
+	rot_Mil[1] = ra_y;// / MyCrystal->getALength()[1];
+	rot_Mil[2] = ra_z;// / MyCrystal->getALength()[2];
 	MT->find_integer_vector(rot_Mil,tolIntVec,hkl_max,MilInd,found);
-	
 	if( found ){
 		// Create a bicrystal object as it has CSL tools
 		Bicrystal *MyBicrystal = new Bicrystal(CrystalType, MilInd[0], MilInd[1], MilInd[2], rot_angle);

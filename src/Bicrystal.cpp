@@ -998,6 +998,7 @@ double Bicrystal::RationalizeOri(int h_a_func, int k_a_func, int l_a_func, doubl
 	double *vec3 = new double[3];
 	double *vec4 = new double[3];
 	double *vec5 = new double[3];
+	bool DoNotRatAxis = false;
 	
 	// rationalize the rotation axis by searching the closest (with quasi the same orientation) normal to a crystal plane (with relatively low integer Miller indices)
 	int arr[3] = {abs(h_a_func),abs(k_a_func),abs(l_a_func)};
@@ -1006,7 +1007,12 @@ double Bicrystal::RationalizeOri(int h_a_func, int k_a_func, int l_a_func, doubl
 	else if( MT->max(arr,3) < 3 ) MaxHKL_Norm = MT->max(arr,3)*100;
 	else if( MT->max(arr,3) < 10 ) MaxHKL_Norm = MT->max(arr,3)*50;
 	else MaxHKL_Norm = MT->max(arr,3)*10;
-	if( this->_MyCrystal->getCrystallo() != "Cubic" ){
+	if( ( h_a_func == 0 && k_a_func == 0 ) || ( h_a_func == 0 && l_a_func == 0 ) || ( k_a_func == 0 && l_a_func == 0 ) ) DoNotRatAxis = true;
+	if( DoNotRatAxis || this->_MyCrystal->getCrystallo() == "Cubic" ){// for cubic crystals or simple rot axis, the scalar product between plane and direction vector is expressed simply
+		hp_near = h_a_func;
+		kp_near = k_a_func;
+		lp_near = l_a_func;
+	}else{
 		norm1 = 0.;
 		for(unsigned int i=0;i<3;i++){
 			vec1[i] = this->_MyCrystal->getA1()[i]*h_a_func + this->_MyCrystal->getA2()[i]*k_a_func + this->_MyCrystal->getA3()[i]*l_a_func;
@@ -1044,10 +1050,6 @@ double Bicrystal::RationalizeOri(int h_a_func, int k_a_func, int l_a_func, doubl
 			cerr << "We don't have found a close normal plane vector to the rotation axis for rationalizing the GB, aborting calculation" << endl;
 			exit(EXIT_FAILURE);
 		}
-	}else{ // for cubic crystals, the scalar product between plane and direction vector is expressed simply
-		hp_near = h_a_func;
-		kp_near = k_a_func;
-		lp_near = l_a_func;
 	}
 	
 	// compute the new rotation axis
@@ -1058,7 +1060,8 @@ double Bicrystal::RationalizeOri(int h_a_func, int k_a_func, int l_a_func, doubl
 	}
 	norm1 = sqrt(norm1);
 	for(unsigned int i=0;i<3;i++) rot_ax_func[i] /= norm1;
-
+	cout << hp_near << " " << kp_near << " " << lp_near << endl;
+	MT->printVec(rot_ax_func);
 	// Now hp_near, kp_near and lp_near are plane indices which permits to simplify scalar product and the searching of vector normal to rotation axis	
 	// get cell parameter from crystal
 	double a_c = this->_MyCrystal->getALength()[0];
