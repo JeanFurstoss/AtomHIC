@@ -1479,7 +1479,7 @@ void Bicrystal::searchGBPos(){
 		}
 		double leftMin = 0;
 		unsigned int indLeft = 0;
-		for(unsigned int i=indMaxDiso;i>=0;i--){
+		for(unsigned int i=indMaxDiso;i>0;i--){
 			if( density_red[i*2] < density_red[(i-1)*2] ){
 				leftMin = density_red[i*2];
 				indLeft = i;
