@@ -1395,11 +1395,9 @@ void Bicrystal::setOrientedCrystals(const string& crystalName, bool rationalize)
 
 void Bicrystal::searchGBPos(){
 	// Compute bond orientationnal order parameter to know where are the GBs and stored it into aux 1
-	int lsph = 20; // TODO maybe set a file reading sigma nbPts, lsph and rc for the different systems
-	double rc = 5.;
-	unsigned int nbPts_i = 1000;
+	unsigned int nbPts_i = 1000;// TODO maybe set a file reading sigma nbPts, lsph and rc for the different systems
 	double sigma = 2.;
-	setAux(this->CA->BondOrientationalParameter(lsph, rc),"Disorder");
+	setAux(this->CA->BondOrientationalParameter(),"Disorder");
 	// Compute density profile of bond ori param
 	unsigned int ind_DisoDens;
 	ind_DisoDens = Compute1dDensity("Disorder", NormalDir, sigma, nbPts_i);
@@ -1455,16 +1453,17 @@ void Bicrystal::searchGBPos(){
 		// compute the max and the mean of the disorder density 
 		unsigned int indMaxDiso = 0;
 		double MeanDiso = 0.;
+		double FracLength = 0.01;
 		for(unsigned int i=0;i<this->density_nbPts[ind_DisoDens];i++){
 			buffer = this->density_prof[ind_DisoDens][i*2+1];
 			if( !this->IsCentered && buffer > this->VacuumHi ) buffer -= this->Ldir;
 			// account only for position 60% around the center of system
-			if( buffer > this->MinPos+0.2*(this->SystemLength) && buffer < this->MaxPos-0.2*(this->SystemLength) ){
+			//if( buffer > this->MinPos+FracLength*(this->SystemLength) && buffer < this->MaxPos-FracLength*(this->SystemLength) ){
 				density_red.push_back(this->density_prof[ind_DisoDens][i*2]);
 				density_red.push_back(buffer);
 				MeanDiso += this->density_prof[ind_DisoDens][i*2];
 				if( density_red[((density_red.size()/2)-1)*2] > density_red[indMaxDiso*2] ) indMaxDiso = (density_red.size()/2)-1;
-			}
+			//}
 		}
 		MeanDiso /= (density_red.size()/2.);
 		// search the minimal values around the max to define bounds for characterizing the GB
@@ -1487,9 +1486,14 @@ void Bicrystal::searchGBPos(){
 			}
 		}
 		// if one of the two is higher than the mean we are in local minimum inside the GB
-		// => search the second minimum
-		if( rightMin > MeanDiso ){
-			bool maxfound = false;
+		// => search the following minimum
+		double facMean = 2.3;
+		unsigned int max_min_search = 50;
+		unsigned int count_min_search = 0;
+		bool maxfound;
+		cout << "Mean diso : " << MeanDiso << endl;
+		while( rightMin > MeanDiso*facMean || count_min_search < max_min_search ){
+			maxfound = false;
 			for(unsigned int i=indRight;i<(density_red.size()/2)-1;i++){
 				if( !maxfound && density_red[i*2] > density_red[(i+1)*2] ) maxfound = true;
 				if( maxfound && density_red[i*2] < density_red[(i+1)*2] ){
@@ -1498,11 +1502,13 @@ void Bicrystal::searchGBPos(){
 					break;
 				}
 			}
+			count_min_search++;
 		}
-		double facMean = 1.3;
-		if( leftMin > MeanDiso*facMean ){
-			bool maxfound = false;
-			for(unsigned int i=indLeft;i>=0;i--){
+		cout << "right min : " << rightMin << endl;
+		count_min_search = 0;
+		while( leftMin > MeanDiso*facMean || count_min_search < max_min_search ){
+			maxfound = false;
+			for(unsigned int i=indLeft;i>0;i--){
 				if( !maxfound && density_red[i*2] > density_red[(i-1)*2] ) maxfound = true;
 				if( maxfound && density_red[i*2] < density_red[(i-1)*2] ){
 					leftMin = density_red[i*2];
@@ -1510,7 +1516,9 @@ void Bicrystal::searchGBPos(){
 					break;
 				}
 			}
+			count_min_search++;
 		}		
+		cout << "left min : " << leftMin << endl;
 		for(unsigned int i=indLeft;i<indRight+1;i++){
 			density_red_forfit.push_back(density_red[i*2]);
 			density_red_forfit.push_back(density_red[i*2+1]);
@@ -1614,7 +1622,7 @@ void Bicrystal::print_Grains(){
 
 void Bicrystal::read_params(){
 	ifstream file(FixedParam_Filename, ios::in);
-	size_t pos_thetamax, pos_MaxHKL, pos_toldist, pos_sigmaMax, pos_tolpos_kC, pos_tolCSLint, pos_tolAlign;
+	size_t pos_thetamax, pos_MaxHKL, pos_toldist, pos_sigmaMax, pos_tolpos_kC, pos_tolCSLint, pos_tolAlign, pos_rcut, pos_lsph;
 	string buffer_s, line;
 	if(file){
 		while(file){

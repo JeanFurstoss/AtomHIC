@@ -51,6 +51,10 @@ protected:
 	std::vector<int> density_nbPts; // density_nbPts[i] = number of sampled point
 	std::vector<std::string*> density_name; // auxiliary atom properties => density_name[i*2] = auxiliary property used to compute density, density_name[i*2+1] = direction along which the density has been computed
 	std::string File_Heading; // head of lmp printed file
+	// Parameters read from Fixed_Parameter.dat file
+	std::string FixedParam_Filename = "Fixed_Parameters.dat";
+	double r_cut_n;
+	int l_sph_st;
 public:
 	AtomicSystem(){};
 	AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double zhi, std::vector<int> cl_box); // construct atomic system from crystal and cell size
@@ -73,6 +77,8 @@ public:
 	double* getH1(){ return this->H1; }
 	double* getH2(){ return this->H2; }
 	double* getH3(){ return this->H3; }
+	double get_rcut(){ return this->r_cut_n; }
+	int get_lsph(){ return this->l_sph_st; }
 	// setters
 	void setAux(const double* aux, const std::string& AuxName);
 	void setAux_vec(const double* aux, const unsigned int size, const std::string& AuxName);
@@ -82,6 +88,7 @@ public:
 	void setCrystal(const std::string& CrystalName);
 	void set_File_Heading(const std::string& Heading){ this->File_Heading = Heading; }
 	// methods
+	void read_params_atsys();
 	void computeInverseCellVec();
 	void read_lmp_file(const std::string& filename);
 	void read_cfg_file(const std::string& filename);

@@ -14,3 +14,8 @@ SIGMA_MAX 10000 // maximum sigma value for the GB (CSL)
 TOL_POS_KNOWN_CSL_VEC 1e-2 // tolerance (in A) to know if the CSL basis gives the CSL vector known from the rationalization process (if yes keep the base)
 TOL_CSL_INTEGER 1e-3 // tolerance for an element of U (CSL matrix) to be an integer
 TOL_ALIGNMENT_CSL 1e-1 // tolerance to know if one of the CSL vector is aligned with the rotation axis (the scalar product should be near 1)
+
+// Parameter for neighbour research and Steinhardt parameter calulation
+RCUT_NEIGHBOURS 5.0 // cutoff radius for neighbour research
+L_SPH_ST 20 // spherical harmonic degree for the computation of Steinhardt parameters
+

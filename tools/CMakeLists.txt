@@ -15,3 +15,5 @@ add_subdirectory(CreateOrientedPlane)
 add_subdirectory(CreateGB)
 add_subdirectory(CreateFacetGB)
 add_subdirectory(ComputeStrainTensor_FromNum)
+add_subdirectory(SaveSteinhardtToDatabase)
+

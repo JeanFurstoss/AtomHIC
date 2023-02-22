@@ -1,11 +1,8 @@
 ### CMakeLists.txt --- 
-##
 ######################################################################
 ## 
-### Commentary: Add directories containing database
+### Commentary: 
 ## 
 ######################################################################
 
-add_subdirectory(Crystals)
-add_subdirectory(Masses)
-add_subdirectory(Steinhardt)
+set(STEINHARDT_PERICLASE_DATABASE ${CMAKE_CURRENT_SOURCE_DIR} CACHE PATH "Steinhardt parameters database for periclase")

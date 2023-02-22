@@ -13,9 +13,15 @@ protected:
 	MathTools *MT;
 	double *BondOriParam;
 	double *StrainTensor;
+	double *Strain_invII;
 	unsigned int *Atom_SiteIndex;
+	unsigned int *Malpha;// array containing the index of neighbours of the same species (or same site in case of multisite crystal) with the first line corresponding to the number of neighbours, i.e. Malpha[i*(nbNMax+1)] = nb of neighbour of atom i, Malpha[i*(nbNMax+1)+j+1] = id of the jth neighbour of atom i
+	std::complex<double> *Qalpha; // complex array containing the spherical harmonic for the different modes
+	double *SteinhardtParams; // Steinhardt parameters
+	double *Calpha; // normalization factor for bond orientational parameter
 	bool IsBondOriParam = false;
 	bool IsStrainTensor = false;
+	bool IsStrainInvII = false;
 public:
 	// constructors
 	ComputeAuxiliary(){};
@@ -24,12 +30,17 @@ public:
 	};
 	// getters
 	// methods
-	double* BondOrientationalParameter(const int& l, double& rc);
+	double* BondOrientationalParameter();
+	double* ComputeSteinhardtParameters();
 	double* Compute_StrainTensor();
 	double* Compute_StrainTensor(unsigned int FromNum);
+	double* Compute_StrainTensor_invII();
 	unsigned int *get_AtomSiteIndex(){ return this->Atom_SiteIndex; }
 	double *get_StrainTensor(){ return this->StrainTensor; }
+	double *get_StrainInvII(){ return this->Strain_invII; }
 	std::complex<double> spherical_harmonics(const unsigned int& l, int& m, double& theta, double& phi);
+	void SaveSteinhardtParamToDatabase(std::string CrystalName, std::string filename);
+	std::string SteinhardtDatabase_write(std::string CrystalName);
 	// destructor
 	~ComputeAuxiliary();
 	

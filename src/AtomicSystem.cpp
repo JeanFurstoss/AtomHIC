@@ -9,6 +9,7 @@
 using namespace std;
 
 AtomicSystem::AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double zhi, vector<int> cl_box):_MyCrystal(_MyCrystal){
+	read_params_atsys();
 	// Compute the number of atom and verify it gives an integer number
 	double nbAt_d = _MyCrystal->getNbAtom()*xhi*yhi*zhi/_MyCrystal->getVol();
 	if( fabs(nbAt_d-round(nbAt_d)) > 1e-3 ) cout << "Warning the cell dimension does not correspond to integer number of atom" << endl;
@@ -262,6 +263,7 @@ AtomicSystem::AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double z
 }
 // construct AtomicSystem giving AtomList, number of atom and cell vectors 
 AtomicSystem::AtomicSystem(Atom *AtomList, unsigned int nbAtom, double *H1, double *H2, double *H3):AtomList(AtomList), nbAtom(nbAtom), H1(H1), H2(H2), H3(H3){
+	read_params_atsys();
 	this->IsAtomListMine = false;
 	this->IsCellVecMine = false;
 	// search the number of atom type, get type, type_uint and mass
@@ -299,6 +301,7 @@ AtomicSystem::AtomicSystem(Atom *AtomList, unsigned int nbAtom, double *H1, doub
 // Constructor using the filename of an atomic file (.cfg, .lmp, .xsf,..)
 AtomicSystem::AtomicSystem(const string& filename)
 {
+	read_params_atsys();
 	this->AtomType = new string[this->MaxAtomType];
 	this->AtomType_uint = new unsigned int[this->MaxAtomType];
 	this->AtomMass = new double[this->MaxAtomType];
@@ -1160,6 +1163,29 @@ void AtomicSystem::printSystem_aux(const string& filename, const string& AuxName
 	}
 	writefile.close();
 }
+
+void AtomicSystem::read_params_atsys(){
+	ifstream file(FixedParam_Filename, ios::in);
+	size_t pos_rcut, pos_lsph;
+	string buffer_s, line;
+	if(file){
+		while(file){
+			getline(file,line);
+			pos_rcut=line.find("RCUT_NEIGHBOURS ");
+			if(pos_rcut!=string::npos){
+				istringstream text(line);
+				text >> buffer_s >> this->r_cut_n;
+			}
+			pos_lsph=line.find("L_SPH_ST ");
+			if(pos_lsph!=string::npos){
+				istringstream text(line);
+				text >> buffer_s >> this->l_sph_st;
+			}
+		}
+	}
+	cout << "after reading fixed params : " << this->r_cut_n << " " << this->l_sph_st << endl;
+}
+
 
 AtomicSystem::~AtomicSystem(){
 	if( this->IsAtomListMine ){

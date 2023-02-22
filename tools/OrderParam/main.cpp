@@ -18,11 +18,7 @@ int main()
 	MySystem.setCrystal("Forsterite");
 	//cout << MySystem.getCrystal()->getA1()[0] << " " << MySystem.getCrystal()->getA1()[1] << " " << MySystem.getCrystal()->getA1()[2] << endl; 
 	ComputeAuxiliary CompAux(&MySystem);
-	double rc=5.;
-	int l;
-	cout << "spherical harmonic degree : ";
-	cin >> l;	
-	MySystem.setAux(CompAux.BondOrientationalParameter(l,rc), "order");
+	MySystem.setAux(CompAux.BondOrientationalParameter(), "order");
 	//unsigned int *nbNeigh = new unsigned int[MySystem.getNbAtom()];
 	//for(unsigned int i=0;i<MySystem.getNbAtom();i++) nbNeigh[i] = MySystem.getNeighbours()[i*(MySystem.getNbMaxN()+1)];
 	//MySystem.setAux(nbNeigh, "nbNeigh");

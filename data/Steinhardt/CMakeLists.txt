@@ -6,6 +6,5 @@
 ## 
 ######################################################################
 
-add_subdirectory(Crystals)
-add_subdirectory(Masses)
-add_subdirectory(Steinhardt)
+add_subdirectory(Forsterite)
+add_subdirectory(Periclase)

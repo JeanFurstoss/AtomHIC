@@ -7,44 +7,37 @@
 #include <vector>
 #include <iomanip>
 #include <omp.h>
+#include <cstring>
+#include <dirent.h>
 
 using namespace std;
 
-// Compute bond orientational parameter, based on the work of Steinhardt, P. J. et al. 1983, modified by Chua et al. 2010 and modified by me for accounting for multisite crystals 
-double* ComputeAuxiliary::BondOrientationalParameter(const int& l_sph, double& rc){
+// Compute Steinhart parameters which correspond to a vector of dimension l_sph*2+1 for each atom representing the complex norm of Qalpha components
+double* ComputeAuxiliary::ComputeSteinhardtParameters(){
+	double rc = _MySystem->get_rcut();
+	int l_sph = _MySystem->get_lsph();
 	// if neighbours have not been searched perform the research
 	if( !_MySystem->getIsNeighbours() ) _MySystem->searchNeighbours(rc);
-	cout << "Computing bond orientation parameter.. ";
+	cout << "Computing Steinhart parameters.. ";
 	const unsigned int nbAt = _MySystem->getNbAtom();
 	const unsigned int nbNMax = _MySystem->getNbMaxN();
 	this->BondOriParam = new double[nbAt];
 	this->Atom_SiteIndex = new unsigned int[nbAt];
-	unsigned int *Malpha = new unsigned int[nbAt*(nbNMax+1)]; // array containing the index of neighbours of the same species (or same site in case of multisite crystal) with the first line corresponding to the number of neighbours, i.e. Malpha[i*(nbNMax+1)] = nb of neighbour of atom i, Malpha[i*(nbNMax+1)+j+1] = id of the jth neighbour of atom i
-	complex<double> *Qalpha = new complex<double>[nbAt*(l_sph*2+1)]; // complex array containing the spherical harmonic for the different modes
-	double *Calpha = new double[nbAt]; // normalization factor 
+	this->Malpha = new unsigned int[nbAt*(nbNMax+1)]; // array containing the index of neighbours of the same species (or same site in case of multisite crystal) with the first line corresponding to the number of neighbours, i.e. Malpha[i*(nbNMax+1)] = nb of neighbour of atom i, Malpha[i*(nbNMax+1)+j+1] = id of the jth neighbour of atom i
+	this->Qalpha = new complex<double>[nbAt*(l_sph*2+1)]; // complex array containing the spherical harmonic for the different modes
+	this->SteinhardtParams = new double[nbAt*(l_sph*2+1)];
+	this->Calpha = new double[nbAt]; // normalization factor 
 	for(unsigned int i=0;i<nbAt*(l_sph*2+1);i++) Qalpha[i] = (0.,0.); // initialize it to zero
 	double zeronum = 1e-8;
 	const int bar_length = 30;
 	double prog=0;
 	double xpos,ypos,zpos,xp,yp,zp, colat, longit;
 	unsigned int id;
-	// if the crystal has been defined, search if it is a multisite one, wuthout crystal definition it is assumed as monosite
-	bool multiSite = false;
-	if( _MySystem->getIsCrystalDefined() ){
-		for(unsigned int i=0;i<_MySystem->getCrystal()->getNbAtomType();i++){
-			if(_MySystem->getCrystal()->getNbAtomSite(i) > 1){
-
-				multiSite = true;
-				break;
-			}
-		}
-	}
-
 	// loop on all atoms and neighbours to compute Qalpha and store neighbour of the same species
 	// Here is the most time consuming loop of the function, use parallel computation
-	unsigned int j_loop;
+	unsigned int j_loop, st;
 	int l_loop;
-	#pragma omp parallel for private(xpos,ypos,zpos,j_loop,id,xp,yp,zp,colat,longit,l_loop)
+	#pragma omp parallel for private(xpos,ypos,zpos,j_loop,id,xp,yp,zp,colat,longit,l_loop,st)
 	for(unsigned int i=0;i<nbAt;i++){
 		xpos = _MySystem->getWrappedPos(i).x;
 		ypos = _MySystem->getWrappedPos(i).y;
@@ -73,10 +66,36 @@ double* ComputeAuxiliary::BondOrientationalParameter(const int& l_sph, double& r
 				Malpha[i*(nbNMax+1)+Malpha[i*(nbNMax+1)]] = id;
 			}
 		}
+		for(st=0;st<(l_sph*2)+1;st++) SteinhardtParams[i*(l_sph*2+1)+st] = sqrt(pow(Qalpha[i*(l_sph*2+1)+st].real(),2.)+pow(Qalpha[i*(l_sph*2+1)+st].imag(),2.)); 
 		// compute normalization factors
 		for(int l=-l_sph;l<l_sph+1;l++)	Calpha[i] += (pow(Qalpha[i*(l_sph*2+1)+l+l_sph].real(), 2.) + pow(Qalpha[i*(l_sph*2+1)+l+l_sph].imag(), 2.));
 	}
-	// compute the order parameter using the formulation presented in Chua et al. 2010
+	cout << "Done !" << endl;
+}
+
+// Compute bond orientational parameter, based on the work of Steinhardt, P. J. et al. 1983, modified by Chua et al. 2010 and modified by me for accounting for multisite crystals 
+double* ComputeAuxiliary::BondOrientationalParameter(){
+	ComputeSteinhardtParameters();
+	cout << "Computing bond orientationnal parameter" << endl;
+
+	// if the crystal has been defined, search if it is a multisite one, wuthout crystal definition it is assumed as monosite
+	bool multiSite = false;
+	if( _MySystem->getIsCrystalDefined() ){
+		for(unsigned int i=0;i<_MySystem->getCrystal()->getNbAtomType();i++){
+			if(_MySystem->getCrystal()->getNbAtomSite(i) > 1){
+
+				multiSite = true;
+				break;
+			}
+		}
+	}
+
+
+	const unsigned int nbAt = _MySystem->getNbAtom();
+	const unsigned int nbNMax = _MySystem->getNbMaxN();
+	double rc = _MySystem->get_rcut();
+	int l_sph = _MySystem->get_lsph();
+// compute the order parameter using the formulation presented in Chua et al. 2010
 	unsigned int NId, nbN;
 	for(unsigned int i=0;i<nbAt;i++){
 		BondOriParam[i] = 0;
@@ -462,9 +481,6 @@ double* ComputeAuxiliary::Compute_StrainTensor(unsigned int FromNum){
 			MT->MatDotMat(rot_mat,cell_vec,cell_vec);
 		}
 		MT->MatDotMat(ref_crystal,cell_vec,buffer_mat);
-		if( buffer_mat[2] < 1.0 ){
-			cout << i << endl;
-		}
 		this->StrainTensor[i*6+0] = buffer_mat[0];
 		this->StrainTensor[i*6+1] = buffer_mat[4];
 		this->StrainTensor[i*6+2] = buffer_mat[8];
@@ -475,6 +491,152 @@ double* ComputeAuxiliary::Compute_StrainTensor(unsigned int FromNum){
 	return this->StrainTensor;
 }	
 	
+double* ComputeAuxiliary::Compute_StrainTensor_invII(){
+	if( !IsStrainTensor ) Compute_StrainTensor(0);
+	const unsigned int nbAt = _MySystem->getNbAtom();
+	this->Strain_invII = new double[nbAt];
+	this->IsStrainInvII = true;
+	for(unsigned int i=0;i<nbAt;i++) this->Strain_invII[i] = this->StrainTensor[i*6+0]*this->StrainTensor[i*6+1] + this->StrainTensor[i*6+1]*this->StrainTensor[i*6+2] + this->StrainTensor[i*6+0]*this->StrainTensor[i*6+2] + this->StrainTensor[i*6+3]*this->StrainTensor[i*6+3] + this->StrainTensor[i*6+4]*this->StrainTensor[i*6+4] + this->StrainTensor[i*6+5]*this->StrainTensor[i*6+5]; 
+}
+
+void ComputeAuxiliary::SaveSteinhardtParamToDatabase(string CrystalName, string filename){
+	ComputeSteinhardtParameters();
+	// read the database environment
+	string fullpathname = SteinhardtDatabase_write(CrystalName)+filename;
+	int l_sph = _MySystem->get_lsph();
+	double rc = _MySystem->get_rcut();
+	const unsigned int nbAt = _MySystem->getNbAtom();
+	bool multiSite = false;
+	if( _MySystem->getIsCrystalDefined() ){
+		for(unsigned int i=0;i<_MySystem->getCrystal()->getNbAtomType();i++){
+			if(_MySystem->getCrystal()->getNbAtomSite(i) > 1){
+
+				multiSite = true;
+				break;
+			}
+		}
+	}
+
+	ofstream writefile(fullpathname);
+	writefile << "Steinhardt parameters for " << CrystalName << " perfect crystal computed using" << endl;
+	writefile << "L_SPH " << l_sph << endl;
+	writefile << "RCUT " << rc << endl;
+	
+	if( multiSite ){
+		// compute the bond orientational param in order to have the different sites
+		BondOrientationalParameter();
+		bool Already = false;
+		bool AlreadyType = false;
+		unsigned int typeok;
+		vector<vector<double>> St2Print;
+		vector<unsigned int> type_printed;
+		vector<vector<unsigned int>> site_printed;
+		vector<vector<unsigned int>> count_ave;
+		// average the steinhardt parameters TODO maybe do the same thing with real and imag part of Qalpha
+		for(unsigned int i=0;i<nbAt;i++){
+			Already = false;
+			AlreadyType = false;
+			for(unsigned int t=0;t<type_printed.size();t++){
+				if( _MySystem->getAtom(i).type_uint == type_printed[t] ){
+					AlreadyType = true;
+					for(unsigned int s=0;s<site_printed[t].size();s++){
+						if( Atom_SiteIndex[i] == site_printed[t][s] ){
+							for(unsigned int l=0;l<l_sph*2+1;l++) St2Print[t][s*(l_sph*2+1)+l] += SteinhardtParams[i*(l_sph*2+1)+l];
+							count_ave[t][s] += 1;
+							Already = true;
+							break;
+						}
+					}
+					typeok = t;
+					break;
+				}
+			}
+			if( !Already ){
+				if( !AlreadyType ){ // new type and new site
+					St2Print.push_back(vector<double>());
+					count_ave.push_back(vector<unsigned int>());
+					site_printed.push_back(vector<unsigned int>());
+					count_ave[count_ave.size()-1].push_back(1);
+					site_printed[site_printed.size()-1].push_back(Atom_SiteIndex[i]);
+					type_printed.push_back(_MySystem->getAtom(i).type_uint);
+					for(unsigned int l=0;l<l_sph*2+1;l++) St2Print[St2Print.size()-1].push_back(SteinhardtParams[i*(l_sph*2+1)+l]);
+				}else{ // not a new type, just a new site
+					count_ave[typeok].push_back(1);
+					site_printed[typeok].push_back(Atom_SiteIndex[i]);
+					for(unsigned int l=0;l<l_sph*2+1;l++) St2Print[typeok].push_back(SteinhardtParams[i*(l_sph*2+1)+l]);
+				}
+			}
+		}
+		for(unsigned int t=0;t<type_printed.size();t++){
+			for(unsigned int s=0;s<site_printed[t].size();s++){
+				for(unsigned int l=0;l<l_sph*2+1;l++) St2Print[t][s*(l_sph*2+1)+l] /= count_ave[t][s];
+			}
+		}
+		for(unsigned int t=0;t<type_printed.size();t++){
+			for(unsigned int s=0;s<site_printed[t].size();s++){
+				writefile << _MySystem->getCrystal()->getAtomType(type_printed[t]-1) << " " << type_printed[t] << " S" << s+1 << " ";
+				for(unsigned int l=0;l<l_sph*2+1;l++) writefile << St2Print[t][s*(l_sph*2+1)+l] << " ";
+				writefile << endl;
+			}
+		}
+		writefile.close();
+	}else{
+		bool Already = false;
+		vector<vector<double>> St2Print;
+		vector<unsigned int> type_printed;
+		vector<unsigned int> count_ave;
+		// average the steinhardt parameters TODO maybe do the same thing with real and imag part of Qalpha
+		for(unsigned int i=0;i<nbAt;i++){
+			Already = false;
+			for(unsigned int t=0;t<type_printed.size();t++){
+				if( _MySystem->getAtom(i).type_uint == type_printed[t] ){
+					for(unsigned int l=0;l<l_sph*2+1;l++) St2Print[t][l] += SteinhardtParams[i*(l_sph*2+1)+l];
+					count_ave[t] += 1;
+					Already = true;
+					break;
+				}
+			}
+			if( !Already ){
+				St2Print.push_back(vector<double>());
+				count_ave.push_back(1);
+				type_printed.push_back(_MySystem->getAtom(i).type_uint);
+				for(unsigned int l=0;l<l_sph*2+1;l++) St2Print[St2Print.size()-1].push_back(SteinhardtParams[i*(l_sph*2+1)+l]);
+			}
+		}
+		for(unsigned int t=0;t<type_printed.size();t++){
+			for(unsigned int l=0;l<l_sph*2+1;l++) St2Print[t][l] /= count_ave[t];
+		}
+		for(unsigned int t=0;t<type_printed.size();t++){
+			writefile << _MySystem->getCrystal()->getAtomType(type_printed[t]-1) << " " << type_printed[t] << " ";
+			for(unsigned int l=0;l<l_sph*2+1;l++) writefile << St2Print[t][l] << " ";
+			writefile << endl;
+		}
+		writefile.close();
+	}
+
+}
+
+string ComputeAuxiliary::SteinhardtDatabase_write(string CrystalName){
+	string database;	
+	if( CrystalName == "Forsterite" ){
+		#ifdef STEINHARDT_FORSTERITE_DATABASE
+		database = STEINHARDT_FORSTERITE_DATABASE;
+		#endif
+	}else if( CrystalName == "Periclase" ){
+		#ifdef STEINHARDT_PERICLASE_DATABASE
+		database = STEINHARDT_PERICLASE_DATABASE;
+		#endif
+	}
+	if( database.empty() ){
+		cerr << "Warning database environment for crystal is empty" << endl;
+		exit(EXIT_FAILURE);
+	} else {
+		string backslash="/";
+		return database.c_str()+backslash;
+	}
+
+}
+
 ComputeAuxiliary::~ComputeAuxiliary(){
 	delete MT;
 	if( IsBondOriParam ){
@@ -483,6 +645,9 @@ ComputeAuxiliary::~ComputeAuxiliary(){
 	}
 	if( IsStrainTensor ){
 		delete[] StrainTensor;
+	}
+	if( IsStrainInvII ){
+		delete[] Strain_invII;
 	}
 }
 
