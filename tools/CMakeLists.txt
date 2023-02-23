@@ -15,5 +15,7 @@ add_subdirectory(CreateOrientedPlane)
 add_subdirectory(CreateGB)
 add_subdirectory(CreateFacetGB)
 add_subdirectory(ComputeStrainTensor_FromNum)
-add_subdirectory(SaveSteinhardtToDatabase)
+add_subdirectory(SaveSteinhardtToDatabase_PerfectCrystal)
+add_subdirectory(SaveSteinhardtToDatabase_Defect)
+add_subdirectory(OrderParam_Steinhardt)
 

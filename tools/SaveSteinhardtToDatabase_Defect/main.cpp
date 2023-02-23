@@ -19,6 +19,6 @@ int main(int argc, char *argv[])
 	string CrystalType = argv[2];
 	string filename = argv[3];
 	Bicrystal MySystem(InputFilename, CrystalType);
-	MySystem.get_CA()->SaveSteinhardtParamToDatabase(CrystalType,filename);
+	MySystem.get_CA()->SaveSteinhardtParamToDatabase_Defect(CrystalType,filename);
 	return 0;
 }

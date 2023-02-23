@@ -7,7 +7,7 @@
 ######################################################################
 
 #Project name
-project(SaveSteinhardtToDatabase)
+project(OrderParam_Steinhardt)
  
 #The file(GLOB...) allows for wildcard additions:
 file(GLOB HEADERS "*.h")

@@ -1492,7 +1492,7 @@ void Bicrystal::searchGBPos(){
 		unsigned int count_min_search = 0;
 		bool maxfound;
 		cout << "Mean diso : " << MeanDiso << endl;
-		while( rightMin > MeanDiso*facMean || count_min_search < max_min_search ){
+		while( rightMin > MeanDiso*facMean && count_min_search < max_min_search ){
 			maxfound = false;
 			for(unsigned int i=indRight;i<(density_red.size()/2)-1;i++){
 				if( !maxfound && density_red[i*2] > density_red[(i+1)*2] ) maxfound = true;
@@ -1506,7 +1506,7 @@ void Bicrystal::searchGBPos(){
 		}
 		cout << "right min : " << rightMin << endl;
 		count_min_search = 0;
-		while( leftMin > MeanDiso*facMean || count_min_search < max_min_search ){
+		while( leftMin > MeanDiso*facMean && count_min_search < max_min_search ){
 			maxfound = false;
 			for(unsigned int i=indLeft;i>0;i--){
 				if( !maxfound && density_red[i*2] > density_red[(i-1)*2] ) maxfound = true;
@@ -1565,7 +1565,7 @@ void Bicrystal::searchGBPos(){
 	prefac = 1.;
 	// fit a gaussian to rafine the estimation of GB width and position
 	MT->gaussian_fit(density_red_forfit, mu_fit, sigma_fit, prefac);
-	this->GBwidth1 = 2.*sigma_fit;
+	this->GBwidth1 = 2.355*sigma_fit;
 	this->GBPos1 = mu_fit;
 	// set the gaussian GB profile of AtomicSystem class (without prefac for the distribution to be normalized and for different system to be compared to each others)
 	this->density_prof.push_back(new double[density_red.size()]);
