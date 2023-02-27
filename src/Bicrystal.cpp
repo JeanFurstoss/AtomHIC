@@ -1488,15 +1488,23 @@ void Bicrystal::searchGBPos(){
 		// if one of the two is higher than the mean we are in local minimum inside the GB
 		// => search the following minimum
 		double facMean = 2.3;
-		unsigned int max_min_search = 50;
+		unsigned int max_min_search = 250;
 		unsigned int count_min_search = 0;
+		unsigned int count_equal;
+		unsigned int max_count_equal = 20;
 		bool maxfound;
 		cout << "Mean diso : " << MeanDiso << endl;
 		while( rightMin > MeanDiso*facMean && count_min_search < max_min_search ){
 			maxfound = false;
+			count_equal = 0;
 			for(unsigned int i=indRight;i<(density_red.size()/2)-1;i++){
 				if( !maxfound && density_red[i*2] > density_red[(i+1)*2] ) maxfound = true;
 				if( maxfound && density_red[i*2] < density_red[(i+1)*2] ){
+					rightMin = density_red[i*2];
+					indRight = i;
+					break;
+				}else if( fabs(density_red[i*2]-density_red[(i+1)*2]) < 1e-8 ) count_equal++;
+				if( count_equal >= max_count_equal ){
 					rightMin = density_red[i*2];
 					indRight = i;
 					break;
@@ -1504,13 +1512,19 @@ void Bicrystal::searchGBPos(){
 			}
 			count_min_search++;
 		}
-		cout << "right min : " << rightMin << endl;
+		cout << "right min : " << rightMin << " " << count_min_search << endl;
 		count_min_search = 0;
 		while( leftMin > MeanDiso*facMean && count_min_search < max_min_search ){
 			maxfound = false;
+			count_equal = 0;
 			for(unsigned int i=indLeft;i>0;i--){
 				if( !maxfound && density_red[i*2] > density_red[(i-1)*2] ) maxfound = true;
 				if( maxfound && density_red[i*2] < density_red[(i-1)*2] ){
+					leftMin = density_red[i*2];
+					indLeft = i;
+					break;
+				}else if( fabs(density_red[i*2]-density_red[(i-1)*2]) < 1e-8 ) count_equal++;
+				if( count_equal >= max_count_equal ){
 					leftMin = density_red[i*2];
 					indLeft = i;
 					break;
@@ -1518,7 +1532,7 @@ void Bicrystal::searchGBPos(){
 			}
 			count_min_search++;
 		}		
-		cout << "left min : " << leftMin << endl;
+		cout << "left min : " << leftMin << " " << count_min_search << endl;
 		for(unsigned int i=indLeft;i<indRight+1;i++){
 			density_red_forfit.push_back(density_red[i*2]);
 			density_red_forfit.push_back(density_red[i*2+1]);
@@ -1606,7 +1620,7 @@ void Bicrystal::ComputeExcessVolume(){
 		}
 		PC_dens /= count;
 		// compute excess volume by integrating density in the GB region
-		for(unsigned int i=0;i<(dens_GB.size()/2)-1;i++) this->ExcessVol += ((2.*PC_dens/(dens_GB[i*2]+dens_GB[(i+1)*2]))-1.)*fabs((dens_GB[(i+1)*2+1]-dens_GB[i*2+1]));
+		for(unsigned int i=0;i<(dens_GB.size()/2)-2;i++) this->ExcessVol += ((2.*PC_dens/(dens_GB[i*2]+dens_GB[(i+1)*2]))-1.)*fabs((dens_GB[(i+1)*2+1]-dens_GB[i*2+1]));
 
 	}
 }
@@ -1621,7 +1635,13 @@ void Bicrystal::print_Grains(){
 }
 
 void Bicrystal::read_params(){
-	ifstream file(FixedParam_Filename, ios::in);
+	string fp;
+	#ifdef FIXEDPARAMETERS
+	fp = FIXEDPARAMETERS;
+	#endif
+	string backslash="/";
+	string filename=fp+backslash+FixedParam_Filename;
+	ifstream file(filename, ios::in);
 	size_t pos_thetamax, pos_MaxHKL, pos_toldist, pos_sigmaMax, pos_tolpos_kC, pos_tolCSLint, pos_tolAlign, pos_rcut, pos_lsph;
 	string buffer_s, line;
 	if(file){

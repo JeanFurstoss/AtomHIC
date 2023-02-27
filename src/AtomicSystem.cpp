@@ -1165,7 +1165,13 @@ void AtomicSystem::printSystem_aux(const string& filename, const string& AuxName
 }
 
 void AtomicSystem::read_params_atsys(){
-	ifstream file(FixedParam_Filename, ios::in);
+	string fp;
+	#ifdef FIXEDPARAMETERS
+	fp = FIXEDPARAMETERS;
+	#endif
+	string backslash="/";
+	string filename=fp+backslash+FixedParam_Filename;
+	ifstream file(filename, ios::in);
 	size_t pos_rcut, pos_lsph;
 	string buffer_s, line;
 	if(file){
@@ -1186,6 +1192,14 @@ void AtomicSystem::read_params_atsys(){
 	cout << "after reading fixed params : " << this->r_cut_n << " " << this->l_sph_st << endl;
 }
 
+vector<unsigned int> AtomicSystem::selectAtomInBox(const double x_lo,const double x_hi,const double y_lo,const double y_hi,const double z_lo,const double z_hi){
+	if( !IsWrappedPos ) computeWrap();
+	vector<unsigned int> AtList;
+	for(unsigned int i=0;i<this->nbAtom;i++){
+		if( this->WrappedPos[i].x > x_lo && this->WrappedPos[i].x < x_hi && this->WrappedPos[i].y > y_lo && this->WrappedPos[i].y < y_hi && this->WrappedPos[i].z > z_lo && this->WrappedPos[i].z < z_hi ) AtList.push_back(i);
+	}
+	return AtList;
+}
 
 AtomicSystem::~AtomicSystem(){
 	if( this->IsAtomListMine ){

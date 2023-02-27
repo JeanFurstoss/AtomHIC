@@ -20,9 +20,12 @@ protected:
 	std::complex<double> *Qalpha; // complex array containing the spherical harmonic for the different modes
 	double *SteinhardtParams; // Steinhardt parameters
 	std::vector<double*> SteinhardtParams_REF_PC; // Steinhardt parameters for reference perfect crystal
-	double *SteinhardtParams_REF_Def; // Steinhardt parameters for reference defects => tab[i][n*(l_sph_ref*2+1)+l] gives for ref i, the lth degree of steinhard parameter : norm (for n=0), real part (n=1), imag part (n=2)
+	std::vector<double*> SteinhardtParams_REF_PC_ave; // Steinhardt parameters for reference perfect crystal
+	double *SteinhardtParams_REF_Def; // Steinhardt parameters for reference defects => tab[i*(l_sph_ref+1)+l] gives for ref i, the lth degree of steinhard parameter
+	unsigned int *AtomTypeUINTRefDef; // array containing the atom specy => i.e. AtomTypeUINTRefPC[i] = type uint of the params in SteinhardtParams_REF_DEF[i]
 	std::vector<std::string> Ref_Def_Names; // Names of the defect present in the database
 	std::vector<int> AtomTypeUINTRefPC; // array containing the atom specy => i.e. AtomTypeUINTRefPC[i] = type uint of the params in SteinhardtParams_REF_DEF[i]
+	std::vector<int> AtomTypeUINTRefPC_ave; // array containing the atom specy => i.e. AtomTypeUINTRefPC[i] = type uint of the params in SteinhardtParams_REF_DEF[i]
 	int nbRefDef;
 	int l_sph_ref;
 	double rcut_ref;
@@ -40,6 +43,7 @@ public:
 	// methods
 	double* BondOrientationalParameter();
 	double* ComputeSteinhardtParameters(const double rc, const int l_sph);
+	double* ComputeSteinhardtParameters_OneL(const double rc, const int l_sph);
 	double* Compute_StrainTensor();
 	double* Compute_StrainTensor(unsigned int FromNum);
 	double* Compute_StrainTensor_invII();
@@ -48,8 +52,10 @@ public:
 	double *get_StrainInvII(){ return this->Strain_invII; }
 	std::complex<double> spherical_harmonics(const unsigned int& l, int& m, double& theta, double& phi);
 	void SaveSteinhardtParamToDatabase_PerfectCrystal(std::string CrystalName);
-	void SaveSteinhardtParamToDatabase_Defect(std::string CrystalName, std::string filename);
-	std::string SteinhardtDatabase_write(std::string CrystalName);
+	void SaveAveSteinhardtParamToDatabase_PerfectCrystal(std::string CrystalName);
+	void SaveSteinhardtParamToDatabase_Defect(std::string CrystalName, std::string filename, std::vector<unsigned int> At_index);
+	//std::string SteinhardtDatabase_write(std::string CrystalName);
+	std::string getSteinhardtDatabase(std::string CrystalName);
 	void SteinhardtDatabase_read(std::string CrystalName);
 	double* BondOriParam_SteinhardtBased();
 	// destructor

@@ -1,12 +1,8 @@
 ### CMakeLists.txt --- 
-##
 ######################################################################
 ## 
-### Commentary: Add directories containing database
+### Commentary: 
 ## 
 ######################################################################
 
-add_subdirectory(Crystals)
-add_subdirectory(Masses)
-add_subdirectory(Steinhardt)
-add_subdirectory(FixedParameters)
+set(FIXEDPARAMETERS ${CMAKE_CURRENT_SOURCE_DIR} CACHE PATH "Parameters for calculations")

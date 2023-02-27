@@ -99,6 +99,13 @@ Crystal::Crystal(const string& crystalName){
 		if( this->IsDoNotSep == true ) ConstructNotSepList();
 		computeReciproqual();
 		computeStoich();
+		this->IsMultisite = false;
+		for(unsigned int i=0;i<this->nbAtomType;i++){
+			if( this->NbAtomSite[i] > 1 ){
+				this->IsMultisite = true;
+				break;
+			}
+		}
 	}
 }
 
@@ -545,8 +552,13 @@ void Crystal::computeStoich(){
 }
 
 void Crystal::read_params(){
-	//string filename = "Fixed_Parameters.dat";
-	ifstream file(FixedParam_Filename, ios::in);
+	string fp;
+	#ifdef FIXEDPARAMETERS
+	fp = FIXEDPARAMETERS;
+	#endif
+	string backslash="/";
+	string filename=fp+backslash+FixedParam_Filename;
+	ifstream file(filename, ios::in);
 	size_t pos_tolOrthoBox, pos_tolOrthoBoxZ, pos_minBoxHeight, pos_minBoxAside;
 	string buffer_s, line;
 	if(file){

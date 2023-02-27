@@ -33,6 +33,7 @@ private:
 	Atom *Motif;
 	const std::string database_extension=".dat";
 	bool IsOrientedSystem;
+	bool IsMultisite;
 	AtomicSystem *OrientedSystem;
 	MathTools *MT;
 	std::vector<std::vector<unsigned int>> DoNotSep; // contain the number neighbour which should not be separe from a given atom type <=> do not separe atom type DoNotSep[i][0] from its DoNotSep[i][1] first neighbors of atom type DoNotSep[i][2]
@@ -66,6 +67,7 @@ public:
 	const unsigned int getNbAtom(){ return this->nbAtom; }
 	const unsigned int getNbAtomType(){ return this->nbAtomType; }
 	const unsigned int getAtomType_uint(const unsigned int Id){ return this->AtomType_uint[Id]; }
+	const bool getIsMultisite(){ return this->IsMultisite; }
 	inline const unsigned int getNbAtomSite(const unsigned int type_uint){
 		unsigned int index=0;
 		for(unsigned int i=0;i<this->nbAtomType;i++){
