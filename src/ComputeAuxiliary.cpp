@@ -15,7 +15,9 @@ using namespace std;
 // Compute Steinhart parameters which correspond to a vector of dimension l_sph*2+1 for each atom representing the complex norm of Qalpha components
 double* ComputeAuxiliary::ComputeSteinhardtParameters(const double rc, const int l_sph){
 	// if neighbours have not been searched perform the research
-	if( !_MySystem->getIsNeighbours() ) _MySystem->searchNeighbours(rc);
+	if( !_MySystem->getIsNeighbours() ){
+		_MySystem->searchNeighbours(rc);
+	}
 	cout << "Computing Steinhart parameters.. ";
 	const unsigned int nbAt = _MySystem->getNbAtom();
 	const unsigned int nbNMax = _MySystem->getNbMaxN();
@@ -23,9 +25,15 @@ double* ComputeAuxiliary::ComputeSteinhardtParameters(const double rc, const int
 	this->Atom_SiteIndex = new unsigned int[nbAt];
 	this->Malpha = new unsigned int[nbAt*(nbNMax+1)]; // array containing the index of neighbours of the same species (or same site in case of multisite crystal) with the first line corresponding to the number of neighbours, i.e. Malpha[i*(nbNMax+1)] = nb of neighbour of atom i, Malpha[i*(nbNMax+1)+j+1] = id of the jth neighbour of atom i
 	this->Qalpha = new complex<double>[nbAt*(l_sph*2+1)]; // complex array containing the spherical harmonic for the different modes
-	this->SteinhardtParams = new double[nbAt*(l_sph*2+1)];
+	complex<double> *Qlm = new complex<double>[nbAt*(l_sph*2+1)*(l_sph+1)]; // complex array containing the spherical harmonic for the different modes Qlm[i*(l_sph*2+1)*(l_sph+1)+l*(l_sph*2+1)+m] gives the spherical harmonic for atom i and degree l and m
+	unsigned int lsph2 = (l_sph+1)*(l_sph*2+1.);
+	unsigned int lsph1 = l_sph*2+1;
+	this->SteinhardtParams = new double[nbAt*(l_sph+1)];
 	this->Calpha = new double[nbAt]; // normalization factor 
-	for(unsigned int i=0;i<nbAt*(l_sph*2+1);i++) Qalpha[i] = (0.,0.); // initialize it to zero
+	for(unsigned int i=0;i<nbAt*(l_sph*2+1);i++){
+		Qalpha[i] = (0.,0.); // initialize it to zero
+		for(unsigned int j=0;j<l_sph+1;j++) Qlm[i*j+j] = (0.,0.);
+	}
 	double zeronum = 1e-8;
 	const int bar_length = 30;
 	double prog=0;
@@ -33,9 +41,9 @@ double* ComputeAuxiliary::ComputeSteinhardtParameters(const double rc, const int
 	unsigned int id;
 	// loop on all atoms and neighbours to compute Qalpha and store neighbour of the same species
 	// Here is the most time consuming loop of the function, use parallel computation
-	unsigned int j_loop, st;
-	int l_loop;
-	#pragma omp parallel for private(xpos,ypos,zpos,j_loop,id,xp,yp,zp,colat,longit,l_loop,st)
+	unsigned int j_loop, l_loop_st, l_loop_st2;
+	int l_loop, m_loop_st, m_loop_st2;
+	#pragma omp parallel for private(xpos,ypos,zpos,j_loop,id,xp,yp,zp,colat,longit,l_loop,l_loop_st,m_loop_st,l_loop_st2,m_loop_st2)
 	for(unsigned int i=0;i<nbAt;i++){
 		xpos = _MySystem->getWrappedPos(i).x;
 		ypos = _MySystem->getWrappedPos(i).y;
@@ -57,16 +65,29 @@ double* ComputeAuxiliary::ComputeSteinhardtParameters(const double rc, const int
 	                else if( ( fabs(xp) < zeronum ) and ( yp < 0 ) ) longit = -M_PI/2.;
 	                else if( ( fabs(xp) < zeronum ) and ( fabs(yp) < zeronum ) ) longit = 0.;
 			// compute spherical harmonics
-			for(l_loop=-l_sph;l_loop<l_sph+1;l_loop++)	Qalpha[i*(l_sph*2+1)+l_loop+l_sph] += spherical_harmonics((unsigned int) l_sph, l_loop, colat, longit);
+			for(l_loop=-l_sph;l_loop<l_sph+1;l_loop++) Qalpha[i*(l_sph*2+1)+l_loop+l_sph] += spherical_harmonics((unsigned int) l_sph, l_loop, colat, longit); // maybe false here
+			for(l_loop_st=0;l_loop_st<l_sph+1;l_loop_st++){
+				for(m_loop_st=-l_loop_st;m_loop_st<(int) l_loop_st+1;m_loop_st++){
+					Qlm[i*lsph2+l_loop_st*lsph1+ ((unsigned int) m_loop_st + l_sph)] += spherical_harmonics(l_loop_st, m_loop_st, colat, longit);
+				}
+			}
 			// Store the neighbour index into Malpha if it is of the same specy
 			if( _MySystem->getAtom(i).type == _MySystem->getAtom(id).type ){
 				Malpha[i*(nbNMax+1)] += 1;
 				Malpha[i*(nbNMax+1)+Malpha[i*(nbNMax+1)]] = id;
 			}
 		}
-		for(st=0;st<(l_sph*2)+1;st++) SteinhardtParams[i*(l_sph*2+1)+st] = sqrt(pow(Qalpha[i*(l_sph*2+1)+st].real(),2.)+pow(Qalpha[i*(l_sph*2+1)+st].imag(),2.)); 
+		for(l_loop_st2=0;l_loop_st2<l_sph+1;l_loop_st2++){
+			SteinhardtParams[i*(l_sph+1)+l_loop_st2] = 0.; 
+			for(m_loop_st2=-l_loop_st2;m_loop_st2<(int) l_loop_st2+1;m_loop_st2++){
+				SteinhardtParams[i*(l_sph+1)+l_loop_st2] += norm(Qlm[i*lsph2+l_loop_st2*lsph1+((unsigned int) m_loop_st2 + l_sph)]);
+			}
+			SteinhardtParams[i*(l_sph+1)+l_loop_st2] *= 4.*M_PI/(2.*l_loop_st2+1.); 
+			SteinhardtParams[i*(l_sph+1)+l_loop_st2] /= _MySystem->getNeighbours(i*(nbNMax+1));
+			SteinhardtParams[i*(l_sph+1)+l_loop_st2] = sqrt(SteinhardtParams[i*(l_sph+1)+l_loop_st2]);
+		}
 		// compute normalization factors
-		for(int l=-l_sph;l<l_sph+1;l++)	Calpha[i] += (pow(Qalpha[i*(l_sph*2+1)+l+l_sph].real(), 2.) + pow(Qalpha[i*(l_sph*2+1)+l+l_sph].imag(), 2.));
+		for(int l=-l_sph;l<l_sph+1;l++)	Calpha[i] += (pow(Qalpha[i*(l_sph*2+1)+l+l_sph].real(), 2.) + pow(Qalpha[i*(l_sph*2+1)+l+l_sph].imag(), 2.)); // warning : l is not protected during parallel calc
 	}
 	cout << "Done !" << endl;
 }
@@ -87,10 +108,13 @@ double* ComputeAuxiliary::BondOriParam_SteinhardtBased(){
 		}
 	}
 	// compute Calpha and normalization factor for references
-	double *Calpha_ref = new double[AtomTypeUINTRefPC.size()];
+	double *NormSteinhardt_ref = new double[AtomTypeUINTRefPC.size()];
 	for(unsigned int i=0;i<AtomTypeUINTRefPC.size();i++){
-		Calpha_ref[i] = 0;
-		for(unsigned int l=0;l<this->l_sph_ref*2+1;l++)	Calpha_ref[i] += (pow(this->SteinhardtParams_REF_PC[i][(this->l_sph_ref*2+1)+l], 2.) + pow(this->SteinhardtParams_REF_PC[i][2*(this->l_sph_ref*2+1)+l], 2.));
+		NormSteinhardt_ref[i] = 0.;
+		for(unsigned int l=0;l<this->l_sph_ref+1;l++){
+			NormSteinhardt_ref[i] += pow(this->SteinhardtParams_REF_PC[i][l], 2.);
+		}
+		NormSteinhardt_ref[i] = sqrt(NormSteinhardt_ref[i]);
 	}
 	const unsigned int nbAt = _MySystem->getNbAtom();
 	this->BondOriParam_Steinhardt = new double[nbAt];
@@ -98,23 +122,32 @@ double* ComputeAuxiliary::BondOriParam_SteinhardtBased(){
 	vector<double> *BondOri = new vector<double>[AtomTypeUINTRefPC.size()];
 	double *NormFac = new double[AtomTypeUINTRefPC.size()];
 	vector<double> BondOriFromRef;
+	//for(unsigned int j=0;j<AtomTypeUINTRefPC.size();j++){
+	//	for(unsigned int l=0;l<this->l_sph_ref*2+1;l++)
+	//	cout << AtomTypeUINTRefPC[j] << endl;
 	//end test
 	if( multiSite ){ // search from the ref which is the closest to each atom
 		unsigned int *closest_ref = new unsigned int[nbAt];
 		vector<double> dist;
 		vector<unsigned int> ind;
 		double norm_dist;
+		double cur_norm;
 		for(unsigned int i=0;i<nbAt;i++){
-			//dist.clear();
-			//ind.clear();
-			//for(unsigned int j=0;j<AtomTypeUINTRefPC.size();j++){
-			//	if( _MySystem->getAtom(i).type_uint == AtomTypeUINTRefPC[j] ){
-			//		dist.push_back(0.);
-			//		ind.push_back(j);
-			//		for(unsigned int l=0;l<this->l_sph_ref*2+1;l++) dist[dist.size()-1] += pow(this->SteinhardtParams[i*(this->l_sph_ref*2+1)+l]-this->SteinhardtParams_REF_PC[j][l],2.);
-			//	}
-			//}
-			//closest_ref[i] = ind[MT->min(dist)];
+			dist.clear();
+			ind.clear();
+			cur_norm = 0.;
+			for(unsigned int l=0;l<this->l_sph_ref+1;l++)	cur_norm += pow(this->SteinhardtParams[i*(this->l_sph_ref+1)+l],2.);
+			for(unsigned int j=0;j<AtomTypeUINTRefPC.size();j++){
+				if( _MySystem->getAtom(i).type_uint == AtomTypeUINTRefPC[j] ){
+					dist.push_back(0.);
+					ind.push_back(j);
+					for(unsigned int l=0;l<this->l_sph_ref+1;l++)	dist[dist.size()-1] += pow(this->SteinhardtParams[i*(this->l_sph_ref+1)+l]-this->SteinhardtParams_REF_PC[j][l],2.);
+					dist[dist.size()-1] = sqrt(dist[dist.size()-1]);
+					dist[dist.size()-1] /= (sqrt(cur_norm)+NormSteinhardt_ref[j])/2.;
+				}
+			}
+			closest_ref[i] = ind[MT->min(dist)];
+			this->BondOriParam_Steinhardt[i] = MT->min_vec(dist);
 			//// compute the order param
 			//this->BondOriParam_Steinhardt[i] = 0.;
 			//for(unsigned int l=0;l<this->l_sph_ref*2+1;l++)	BondOriParam_Steinhardt[i] += ( (fabs(this->Qalpha[i*(this->l_sph_ref*2+1)+l].real())*this->SteinhardtParams_REF_PC[closest_ref[i]][(this->l_sph_ref*2+1)+l]) + fabs((this->Qalpha[i*(this->l_sph_ref*2+1)+l].imag())*this->SteinhardtParams_REF_PC[closest_ref[i]][2*(this->l_sph_ref*2+1)+l]) );
@@ -122,25 +155,26 @@ double* ComputeAuxiliary::BondOriParam_SteinhardtBased(){
 			//BondOri[closest_ref[i]].push_back(this->BondOriParam_Steinhardt[i]);
 
 			//test search the ref which maximize the order param
-			BondOriFromRef.clear();
-			for(unsigned int j=0;j<AtomTypeUINTRefPC.size();j++){
-				BondOriFromRef.push_back(0.);
-				if( _MySystem->getAtom(i).type_uint == AtomTypeUINTRefPC[j] ){
-					for(unsigned int l=0;l<this->l_sph_ref*2+1;l++)	BondOriFromRef[BondOriFromRef.size()-1] += ( (fabs(this->Qalpha[i*(this->l_sph_ref*2+1)+l].real())*this->SteinhardtParams_REF_PC[j][(this->l_sph_ref*2+1)+l]) + fabs((this->Qalpha[i*(this->l_sph_ref*2+1)+l].imag())*this->SteinhardtParams_REF_PC[j][2*(this->l_sph_ref*2+1)+l]) );
-					BondOriFromRef[BondOriFromRef.size()-1] /= ( sqrt(this->Calpha[i])*sqrt(Calpha_ref[j]) );
-				}
-			}
-			this->BondOriParam_Steinhardt[i] = MT->max_vec(BondOriFromRef);
-			closest_ref[i] = MT->max(BondOriFromRef);
-			BondOri[closest_ref[i]].push_back(this->BondOriParam_Steinhardt[i]);
+			//BondOriFromRef.clear();
+			//for(unsigned int j=0;j<AtomTypeUINTRefPC.size();j++){
+			//	BondOriFromRef.push_back(0.);
+			//	if( _MySystem->getAtom(i).type_uint == AtomTypeUINTRefPC[j] ){
+			//		//for(unsigned int l=0;l<this->l_sph_ref*2+1;l++)	BondOriFromRef[BondOriFromRef.size()-1] += ( (fabs(this->Qalpha[i*(this->l_sph_ref*2+1)+l].real())*this->SteinhardtParams_REF_PC[j][(this->l_sph_ref*2+1)+l]) + fabs((this->Qalpha[i*(this->l_sph_ref*2+1)+l].imag())*this->SteinhardtParams_REF_PC[j][2*(this->l_sph_ref*2+1)+l]) );
+			//		for(unsigned int l=0;l<this->l_sph_ref*2+1;l++)	BondOriFromRef[BondOriFromRef.size()-1] += ( (this->Qalpha[i*(this->l_sph_ref*2+1)+l].real()*this->SteinhardtParams_REF_PC[j][(this->l_sph_ref*2+1)+l]) + (this->Qalpha[i*(this->l_sph_ref*2+1)+l].imag()*this->SteinhardtParams_REF_PC[j][2*(this->l_sph_ref*2+1)+l]) );
+			//		BondOriFromRef[BondOriFromRef.size()-1] /= ( sqrt(this->Calpha[i])*sqrt(Calpha_ref[j]) );
+			//	}
+			//}
+			//this->BondOriParam_Steinhardt[i] = MT->max_vec(BondOriFromRef);
+			//closest_ref[i] = MT->max(BondOriFromRef);
+			//BondOri[closest_ref[i]].push_back(this->BondOriParam_Steinhardt[i]);
 		}
 		// search the maximum order param for each ref
-		for(unsigned int i=0;i<AtomTypeUINTRefPC.size();i++){
-			NormFac[i] = MT->max_vec(BondOri[i]);
-			cout << NormFac[i] << " " << endl;
-		}
-		// renormalize according to this
-		for(unsigned int i=0;i<nbAt;i++) this->BondOriParam_Steinhardt[i] /= NormFac[closest_ref[i]];
+		//for(unsigned int i=0;i<AtomTypeUINTRefPC.size();i++){
+		//	NormFac[i] = MT->max_vec(BondOri[i]);
+		//	cout << NormFac[i] << " " << endl;
+		//}
+		//// renormalize according to this
+		//for(unsigned int i=0;i<nbAt;i++) this->BondOriParam_Steinhardt[i] /= NormFac[closest_ref[i]];
 	}//end multisite
 	//ofstream writefile("closest_ref.dat");
 	//for(unsigned int i=0;i<nbAt;i++) writefile << closest_ref[i] << endl;
@@ -581,6 +615,7 @@ void ComputeAuxiliary::SaveSteinhardtParamToDatabase_PerfectCrystal(string Cryst
 	// read the database environment
 	string filename = "PerfectCrystal.dat";
 	string fullpathname = SteinhardtDatabase_write(CrystalName)+filename;
+	cout << "Saving Steinhardt parameters for perfect crystal of " << CrystalName << endl;
 	const unsigned int nbAt = _MySystem->getNbAtom();
 	bool multiSite = false;
 	if( _MySystem->getIsCrystalDefined() ){
@@ -617,10 +652,13 @@ void ComputeAuxiliary::SaveSteinhardtParamToDatabase_PerfectCrystal(string Cryst
 					AlreadyType = true;
 					for(unsigned int s=0;s<site_printed[t].size();s++){
 						if( Atom_SiteIndex[i] == site_printed[t][s] ){
-							for(unsigned int l=0;l<l_sph*2+1;l++){
-								St2Print[t*3][s*(l_sph*2+1)+l] += SteinhardtParams[i*(l_sph*2+1)+l];
-								St2Print[t*3+1][s*(l_sph*2+1)+l] += fabs(this->Qalpha[i*(l_sph*2+1)+l].real());
-								St2Print[t*3+2][s*(l_sph*2+1)+l] += fabs(this->Qalpha[i*(l_sph*2+1)+l].imag());
+							for(unsigned int l=0;l<l_sph+1;l++){
+								St2Print[t][s*(l_sph+1)+l] += SteinhardtParams[i*(l_sph+1)+l];
+								//St2Print[t*3][s*(l_sph*2+1)+l] += SteinhardtParams[i*(l_sph*2+1)+l];
+								//St2Print[t*3+1][s*(l_sph*2+1)+l] += fabs(this->Qalpha[i*(l_sph*2+1)+l].real());
+								//St2Print[t*3+2][s*(l_sph*2+1)+l] += fabs(this->Qalpha[i*(l_sph*2+1)+l].imag());
+								//St2Print[t*3+1][s*(l_sph*2+1)+l] += this->Qalpha[i*(l_sph*2+1)+l].real();
+								//St2Print[t*3+2][s*(l_sph*2+1)+l] += this->Qalpha[i*(l_sph*2+1)+l].imag();
 							}
 							count_ave[t][s] += 1;
 							Already = true;
@@ -633,24 +671,31 @@ void ComputeAuxiliary::SaveSteinhardtParamToDatabase_PerfectCrystal(string Cryst
 			}
 			if( !Already ){
 				if( !AlreadyType ){ // new type and new site
-					for(unsigned int st=0;st<3;st++) St2Print.push_back(vector<double>());
+					//for(unsigned int st=0;st<3;st++) St2Print.push_back(vector<double>());
+					St2Print.push_back(vector<double>());
 					count_ave.push_back(vector<unsigned int>());
 					site_printed.push_back(vector<unsigned int>());
 					count_ave[count_ave.size()-1].push_back(1);
 					site_printed[site_printed.size()-1].push_back(Atom_SiteIndex[i]);
 					type_printed.push_back(_MySystem->getAtom(i).type_uint);
-					for(unsigned int l=0;l<l_sph*2+1;l++){
-						St2Print[(St2Print.size()/3-1)*3].push_back(SteinhardtParams[i*(l_sph*2+1)+l]);
-						St2Print[(St2Print.size()/3-1)*3+1].push_back(fabs(this->Qalpha[i*(l_sph*2+1)+l].real()));
-						St2Print[(St2Print.size()/3-1)*3+2].push_back(fabs(this->Qalpha[i*(l_sph*2+1)+l].imag()));
+					for(unsigned int l=0;l<l_sph+1;l++){
+						St2Print[(St2Print.size()-1)].push_back(SteinhardtParams[i*(l_sph+1)+l]);
+						//St2Print[(St2Print.size()/3-1)*3].push_back(SteinhardtParams[i*(l_sph*2+1)+l]);
+						//St2Print[(St2Print.size()/3-1)*3+1].push_back(fabs(this->Qalpha[i*(l_sph*2+1)+l].real()));
+						//St2Print[(St2Print.size()/3-1)*3+2].push_back(fabs(this->Qalpha[i*(l_sph*2+1)+l].imag()));
+						//St2Print[(St2Print.size()/3-1)*3+1].push_back(this->Qalpha[i*(l_sph*2+1)+l].real());
+						//St2Print[(St2Print.size()/3-1)*3+2].push_back(this->Qalpha[i*(l_sph*2+1)+l].imag());
 					}
 				}else{ // not a new type, just a new site
 					count_ave[typeok].push_back(1);
 					site_printed[typeok].push_back(Atom_SiteIndex[i]);
-					for(unsigned int l=0;l<l_sph*2+1;l++){
-						St2Print[typeok*3].push_back(SteinhardtParams[i*(l_sph*2+1)+l]);
-						St2Print[typeok*3+1].push_back(fabs(this->Qalpha[i*(l_sph*2+1)+l].real()));
-						St2Print[typeok*3+2].push_back(fabs(this->Qalpha[i*(l_sph*2+1)+l].imag()));
+					for(unsigned int l=0;l<l_sph+1;l++){
+						St2Print[typeok].push_back(SteinhardtParams[i*(l_sph+1)+l]);
+						//St2Print[typeok*3].push_back(SteinhardtParams[i*(l_sph*2+1)+l]);
+						//St2Print[typeok*3+1].push_back(fabs(this->Qalpha[i*(l_sph*2+1)+l].real()));
+						//St2Print[typeok*3+2].push_back(fabs(this->Qalpha[i*(l_sph*2+1)+l].imag()));
+						//St2Print[typeok*3+1].push_back(this->Qalpha[i*(l_sph*2+1)+l].real());
+						//St2Print[typeok*3+2].push_back(this->Qalpha[i*(l_sph*2+1)+l].imag());
 					}
 				}
 			}
@@ -659,10 +704,11 @@ void ComputeAuxiliary::SaveSteinhardtParamToDatabase_PerfectCrystal(string Cryst
 		for(unsigned int t=0;t<type_printed.size();t++){
 			for(unsigned int s=0;s<site_printed[t].size();s++){
 				nbref += 1;
-				for(unsigned int l=0;l<l_sph*2+1;l++){
-					St2Print[t*3][s*(l_sph*2+1)+l] /= count_ave[t][s];
-					St2Print[t*3+1][s*(l_sph*2+1)+l] /= count_ave[t][s];
-					St2Print[t*3+2][s*(l_sph*2+1)+l] /= count_ave[t][s];
+				for(unsigned int l=0;l<l_sph+1;l++){
+					St2Print[t][s*(l_sph+1)+l] /= count_ave[t][s];
+					//St2Print[t*3][s*(l_sph*2+1)+l] /= count_ave[t][s];
+					//St2Print[t*3+1][s*(l_sph*2+1)+l] /= count_ave[t][s];
+					//St2Print[t*3+2][s*(l_sph*2+1)+l] /= count_ave[t][s];
 				}
 			}
 		}
@@ -670,8 +716,9 @@ void ComputeAuxiliary::SaveSteinhardtParamToDatabase_PerfectCrystal(string Cryst
 		for(unsigned int t=0;t<type_printed.size();t++){
 			for(unsigned int s=0;s<site_printed[t].size();s++){
 				writefile << _MySystem->getCrystal()->getAtomType(type_printed[t]-1) << " " << type_printed[t] << " S" << s+1 << " ";
-				for(unsigned int l=0;l<l_sph*2+1;l++) writefile << St2Print[t*3][s*(l_sph*2+1)+l] << " ";
-				for(unsigned int l=0;l<l_sph*2+1;l++) writefile << St2Print[t*3+1][s*(l_sph*2+1)+l] << " " << St2Print[t*3+2][s*(l_sph*2+1)+l] << " ";
+				for(unsigned int l=0;l<l_sph+1;l++) writefile << St2Print[t][s*(l_sph+1)+l] << " ";
+				//for(unsigned int l=0;l<l_sph*2+1;l++) writefile << St2Print[t*3][s*(l_sph*2+1)+l] << " ";
+				//for(unsigned int l=0;l<l_sph*2+1;l++) writefile << St2Print[t*3+1][s*(l_sph*2+1)+l] << " " << St2Print[t*3+2][s*(l_sph*2+1)+l] << " ";
 				writefile << endl;
 			}
 		}
