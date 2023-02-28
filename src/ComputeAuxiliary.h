@@ -21,23 +21,26 @@ protected:
 	double *SteinhardtParams; // Steinhardt parameters
 	std::vector<double*> SteinhardtParams_REF_PC; // Steinhardt parameters for reference perfect crystal
 	std::vector<double*> SteinhardtParams_REF_PC_ave; // Steinhardt parameters for reference perfect crystal
-	double *SteinhardtParams_REF_Def; // Steinhardt parameters for reference defects => tab[i*(l_sph_ref+1)+l] gives for ref i, the lth degree of steinhard parameter
-	unsigned int *AtomTypeUINTRefDef; // array containing the atom specy => i.e. AtomTypeUINTRefPC[i] = type uint of the params in SteinhardtParams_REF_DEF[i]
+	std::vector<double*> SteinhardtParams_REF_Def; // Steinhardt parameters for reference defects => tab[i*(l_sph_ref+1)+l] gives for ref i, the lth degree of steinhard parameter
+	std::vector<unsigned int*> AtomTypeUINTRefDef; // array containing the number of ref and atom specy => i.e. AtomTypeUINTRefDef[i][0] = number of ref of defect i, AtomTypeUINTRefDef[i][j+1] = type uint of the jth ref of the defect i
 	std::vector<std::string> Ref_Def_Names; // Names of the defect present in the database
 	std::vector<int> AtomTypeUINTRefPC; // array containing the atom specy => i.e. AtomTypeUINTRefPC[i] = type uint of the params in SteinhardtParams_REF_DEF[i]
 	std::vector<int> AtomTypeUINTRefPC_ave; // array containing the atom specy => i.e. AtomTypeUINTRefPC[i] = type uint of the params in SteinhardtParams_REF_DEF[i]
-	int nbRefDef;
+	unsigned int nbRefDef; // number of defect in the database
+	unsigned int nbref; // number of q vectors for each defect or perfect crystal average
 	int l_sph_ref;
 	double rcut_ref;
 	double *Calpha; // normalization factor for bond orientational parameter
 	bool IsBondOriParam = false;
 	bool IsStrainTensor = false;
 	bool IsStrainInvII = false;
+	bool IsSteinhardtDatabaseRead = false;
 public:
 	// constructors
 	ComputeAuxiliary(){};
 	ComputeAuxiliary(AtomicSystem *_MySystem): _MySystem(_MySystem){
 		this->MT = new MathTools;
+		if( _MySystem->getCrystal()->getName() != "" ) SteinhardtDatabase_read(_MySystem->getCrystal()->getName());
 	};
 	// getters
 	// methods
@@ -48,6 +51,7 @@ public:
 	double* Compute_StrainTensor(unsigned int FromNum);
 	double* Compute_StrainTensor_invII();
 	unsigned int *get_AtomSiteIndex(){ return this->Atom_SiteIndex; }
+	unsigned int getNumberRefDef_Steinhardt(){ return this->Ref_Def_Names.size(); }
 	double *get_StrainTensor(){ return this->StrainTensor; }
 	double *get_StrainInvII(){ return this->Strain_invII; }
 	std::complex<double> spherical_harmonics(const unsigned int& l, int& m, double& theta, double& phi);
@@ -58,6 +62,7 @@ public:
 	std::string getSteinhardtDatabase(std::string CrystalName);
 	void SteinhardtDatabase_read(std::string CrystalName);
 	double* BondOriParam_SteinhardtBased();
+	double* StructuralAnalysis_Steinhardt();
 	// destructor
 	~ComputeAuxiliary();
 	

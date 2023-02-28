@@ -642,6 +642,12 @@ Bicrystal::Bicrystal(const string& filename, const string CrystalName):AtomicSys
 	this->IsCA = true;
 }
 
+Bicrystal::Bicrystal(const string& filename):AtomicSystem(filename){
+	read_params();
+	this->CA = new ComputeAuxiliary(this);
+	this->IsCA = true;
+}
+
 // search CSL primitive lattice based on the work of Xie et al. 2020 and Bonnet and Rolland 1975
 //void Bicrystal::searchCSL(int h_a_func, int k_a_func, int l_a_func, double theta_func, int *CSL_vec, unsigned int verbose){
 bool Bicrystal::searchCSL(double *rot_ax_func, double theta_func, int *CSL_vec, unsigned int verbose){

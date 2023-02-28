@@ -62,6 +62,7 @@ protected:
 public:
 	// constructors
 	Bicrystal(){};
+	Bicrystal(const std::string& filename);
 	Bicrystal(const std::string& filename, const std::string CrystalName);
 	Bicrystal(const std::string& filename, const std::string NormalDir, const std::string CrystalName);
 	Bicrystal(const std::string& crystalName, int h_a, int k_a, int l_a, double theta, int h_p, int k_p, int l_p, bool rationalize=true);// Constructor for bicrystal with plane GB with given misorientation and GB plane

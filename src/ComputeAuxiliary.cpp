@@ -83,7 +83,7 @@ double* ComputeAuxiliary::ComputeSteinhardtParameters(const double rc, const int
 				SteinhardtParams[i*(l_sph+1)+l_loop_st2] += norm(Qlm[i*lsph2 + l_loop_st2*lsph1 + (unsigned int) (m_loop_st2 + (int) l_sph)]);
 			}
 			SteinhardtParams[i*(l_sph+1)+l_loop_st2] *= 4.*M_PI/(2.*l_loop_st2+1.); 
-			SteinhardtParams[i*(l_sph+1)+l_loop_st2] /= _MySystem->getNeighbours(i*(nbNMax+1));
+			SteinhardtParams[i*(l_sph+1)+l_loop_st2] /= pow(_MySystem->getNeighbours(i*(nbNMax+1)),2.);
 			SteinhardtParams[i*(l_sph+1)+l_loop_st2] = sqrt(SteinhardtParams[i*(l_sph+1)+l_loop_st2]);
 		}
 		for(m_loop_st3=-l_sph;m_loop_st3<(int) l_sph+1;m_loop_st3++) Qalpha[i*(l_sph*2+1) + (unsigned int) (m_loop_st3 + (int) l_sph)] += Qlm[i*lsph2 + l_sph*lsph1+ (unsigned int) (m_loop_st3 + (int) l_sph)]; 
@@ -91,6 +91,7 @@ double* ComputeAuxiliary::ComputeSteinhardtParameters(const double rc, const int
 		for(int l=-l_sph;l<l_sph+1;l++)	Calpha[i] += (pow(Qalpha[i*(l_sph*2+1)+l+l_sph].real(), 2.) + pow(Qalpha[i*(l_sph*2+1)+l+l_sph].imag(), 2.)); // warning : l is not protected during parallel calc
 	}
 	cout << "Done !" << endl;
+	return this->SteinhardtParams;
 }
 
 double* ComputeAuxiliary::ComputeSteinhardtParameters_OneL(const double rc, const int l_sph){
@@ -816,76 +817,34 @@ void ComputeAuxiliary::SaveSteinhardtParamToDatabase_Defect(string CrystalName, 
 }
 
 void ComputeAuxiliary::SteinhardtDatabase_read(string CrystalName){
-	string database = getSteinhardtDatabase(CrystalName);	
-	string database_extension=".dat";	
-	DIR *dir;
-	struct dirent *diread;
-	const char *env = database.c_str();
-	string buffer_s;
-	size_t pos;
-	if( (dir = opendir(env) ) != nullptr ){
-		while( (diread = readdir(dir)) != nullptr ){
-			buffer_s = diread->d_name;
-			pos = buffer_s.find(database_extension);
-			if(pos!=string::npos){
-				if( buffer_s.erase(buffer_s.size()-database_extension.size()) != "PerfectCrystal" ) this->Ref_Def_Names.push_back(buffer_s);
+	if( !this->IsSteinhardtDatabaseRead ){
+		string database = getSteinhardtDatabase(CrystalName);	
+		string database_extension=".dat";	
+		DIR *dir;
+		struct dirent *diread;
+		const char *env = database.c_str();
+		string buffer_s;
+		size_t pos;
+		if( (dir = opendir(env) ) != nullptr ){
+			while( (diread = readdir(dir)) != nullptr ){
+				buffer_s = diread->d_name;
+				pos = buffer_s.find(database_extension);
+				if(pos!=string::npos){
+					buffer_s.erase(buffer_s.size()-database_extension.size());
+					if( buffer_s != "PerfectCrystal" && buffer_s != "PerfectCrystal_ave" ) this->Ref_Def_Names.push_back(buffer_s);
+				}
 			}
+			closedir(dir);
+		}else{
+			perror("opendir");
 		}
-		closedir(dir);
-	}else{
-		perror("opendir");
-	}
-	// Read perfect crystal Steinhardt params
-	string PC_str="PerfectCrystal";
-	string fullpath2data = database.c_str()+PC_str+database_extension;
-	ifstream file(fullpath2data, ios::in);
-	size_t pos_nbref, pos_lsph, pos_rc;
-	unsigned int line_rc(1000), count, nbref;
-	string line;
-	count = 0;
-	if(file){
-		do{
-			getline(file,line);
-			// find number of ref
-			pos_nbref=line.find("NB_REF ");
-			if( pos_nbref!=string::npos){
-				istringstream text(line);
-				text >> buffer_s >> nbref;
-			}
-			// find l_sph
-			pos_lsph=line.find("L_SPH ");
-			if( pos_lsph!=string::npos){
-				istringstream text(line);
-				text >> buffer_s >> this->l_sph_ref;
-			}
-			// find rcut
-			pos_rc=line.find("RCUT ");
-			if( pos_rc!=string::npos){
-				line_rc = count;
-				istringstream text(line);
-				text >> buffer_s >> this->rcut_ref;
-			}
-			// read the parameters
-			if( count > line_rc+1 && count < line_rc+nbref+2 ){
-				SteinhardtParams_REF_PC.push_back(new double[(this->l_sph_ref+1)]);
-				AtomTypeUINTRefPC.push_back(0);
-				istringstream text(line);
-				text >> buffer_s >> AtomTypeUINTRefPC[AtomTypeUINTRefPC.size()-1];
-				if( _MySystem->getCrystal()->getIsMultisite() ) text >> buffer_s;
-				// get norm of steinhardt params
-				for(unsigned int l=0;l<this->l_sph_ref+1;l++) text >> SteinhardtParams_REF_PC[SteinhardtParams_REF_PC.size()-1][l];
-			}
-			count += 1;
-		}while(file);
-	}else{
-		cout << "We can't read the file containing the Steinhardt parameter for perfect crystal (/data/Steinhardt/CrystalName/PerfectCrystal.dat)" << endl;
-	}
-	unsigned int lref;
-	double rcref;
-	if( _MySystem->getCrystal()->getIsMultisite() ){
-		PC_str = "PerfectCrystal_ave";
-		fullpath2data = database.c_str()+PC_str+database_extension;
+		// Read perfect crystal Steinhardt params
+		string PC_str="PerfectCrystal";
+		string fullpath2data = database.c_str()+PC_str+database_extension;
 		ifstream file(fullpath2data, ios::in);
+		size_t pos_nbref, pos_lsph, pos_rc;
+		unsigned int line_rc(1000), count, buffer_ui;
+		string line;
 		count = 0;
 		if(file){
 			do{
@@ -894,93 +853,222 @@ void ComputeAuxiliary::SteinhardtDatabase_read(string CrystalName){
 				pos_nbref=line.find("NB_REF ");
 				if( pos_nbref!=string::npos){
 					istringstream text(line);
-					text >> buffer_s >> nbref;
+					text >> buffer_s >> buffer_ui;
 				}
 				// find l_sph
 				pos_lsph=line.find("L_SPH ");
 				if( pos_lsph!=string::npos){
 					istringstream text(line);
-					text >> buffer_s >> lref;
-					if( lref != this->l_sph_ref) cerr << "WARNING !!! The spherical harmonic degrees used for the calculation of averaged Steinhard parameters is not the same as the one for not averaged Steinhardt parameters" << endl;
+					text >> buffer_s >> this->l_sph_ref;
 				}
 				// find rcut
 				pos_rc=line.find("RCUT ");
 				if( pos_rc!=string::npos){
 					line_rc = count;
 					istringstream text(line);
-					text >> buffer_s >> rcref;
-					if( rcref != this->rcut_ref) cerr << "WARNING !!! The cutoff radius used for the calculation of averaged Steinhard parameters is not the same as the one for not averaged Steinhardt parameters" << endl;
+					text >> buffer_s >> this->rcut_ref;
 				}
 				// read the parameters
-				if( count > line_rc+1 && count < line_rc+nbref+2 ){
-					SteinhardtParams_REF_PC_ave.push_back(new double[(this->l_sph_ref+1)]);
-					AtomTypeUINTRefPC_ave.push_back(0);
+				if( count > line_rc+1 && count < line_rc+buffer_ui+2 ){
+					SteinhardtParams_REF_PC.push_back(new double[(this->l_sph_ref+1)]);
+					AtomTypeUINTRefPC.push_back(0);
 					istringstream text(line);
-					text >> buffer_s >> AtomTypeUINTRefPC_ave[AtomTypeUINTRefPC_ave.size()-1];
+					text >> buffer_s >> AtomTypeUINTRefPC[AtomTypeUINTRefPC.size()-1];
 					if( _MySystem->getCrystal()->getIsMultisite() ) text >> buffer_s;
 					// get norm of steinhardt params
-					for(unsigned int l=0;l<this->l_sph_ref+1;l++) text >> SteinhardtParams_REF_PC_ave[SteinhardtParams_REF_PC_ave.size()-1][l];
+					for(unsigned int l=0;l<this->l_sph_ref+1;l++) text >> SteinhardtParams_REF_PC[SteinhardtParams_REF_PC.size()-1][l];
 				}
 				count += 1;
 			}while(file);
 		}else{
-			cout << "We can't read the file containing the averaged Steinhardt parameters for perfect crystal (/data/Steinhardt/CrystalName/PerfectCrystal_ave.dat)" << endl;
+			cout << "We can't read the file containing the Steinhardt parameter for perfect crystal (/data/Steinhardt/CrystalName/PerfectCrystal.dat)" << endl;
 		}
-	}else{
-		for(unsigned int i=0;i<AtomTypeUINTRefPC.size();i++){
-			SteinhardtParams_REF_PC_ave.push_back(new double[(this->l_sph_ref+1)]);
-			AtomTypeUINTRefPC_ave.push_back(AtomTypeUINTRefPC[i]);
-			for(unsigned int l=0;l<this->l_sph_ref+1;l++) SteinhardtParams_REF_PC_ave[i][l] = SteinhardtParams_REF_PC[i][l];
+		unsigned int lref;
+		double rcref;
+		if( _MySystem->getCrystal()->getIsMultisite() ){
+			PC_str = "PerfectCrystal_ave";
+			fullpath2data = database.c_str()+PC_str+database_extension;
+			ifstream file(fullpath2data, ios::in);
+			count = 0;
+			if(file){
+				do{
+					getline(file,line);
+					// find number of ref
+					pos_nbref=line.find("NB_REF ");
+					if( pos_nbref!=string::npos){
+						istringstream text(line);
+						text >> buffer_s >> this->nbref;
+					}
+					// find l_sph
+					pos_lsph=line.find("L_SPH ");
+					if( pos_lsph!=string::npos){
+						istringstream text(line);
+						text >> buffer_s >> lref;
+						if( lref != this->l_sph_ref) cerr << "WARNING !!! The spherical harmonic degrees used for the calculation of averaged Steinhard parameters is not the same as the one for not averaged Steinhardt parameters" << endl;
+					}
+					// find rcut
+					pos_rc=line.find("RCUT ");
+					if( pos_rc!=string::npos){
+						line_rc = count;
+						istringstream text(line);
+						text >> buffer_s >> rcref;
+						if( rcref != this->rcut_ref) cerr << "WARNING !!! The cutoff radius used for the calculation of averaged Steinhard parameters is not the same as the one for not averaged Steinhardt parameters" << endl;
+					}
+					// read the parameters
+					if( count > line_rc+1 && count < line_rc+nbref+2 ){
+						SteinhardtParams_REF_PC_ave.push_back(new double[(this->l_sph_ref+1)]);
+						AtomTypeUINTRefPC_ave.push_back(0);
+						istringstream text(line);
+						text >> buffer_s >> AtomTypeUINTRefPC_ave[AtomTypeUINTRefPC_ave.size()-1];
+						// get norm of steinhardt params
+						for(unsigned int l=0;l<this->l_sph_ref+1;l++) text >> SteinhardtParams_REF_PC_ave[SteinhardtParams_REF_PC_ave.size()-1][l];
+					}
+					count += 1;
+				}while(file);
+			}else{
+				cout << "We can't read the file containing the averaged Steinhardt parameters for perfect crystal (/data/Steinhardt/CrystalName/PerfectCrystal_ave.dat)" << endl;
+			}
+		}else{
+			for(unsigned int i=0;i<AtomTypeUINTRefPC.size();i++){
+				SteinhardtParams_REF_PC_ave.push_back(new double[(this->l_sph_ref+1)]);
+				AtomTypeUINTRefPC_ave.push_back(AtomTypeUINTRefPC[i]);
+				for(unsigned int l=0;l<this->l_sph_ref+1;l++) SteinhardtParams_REF_PC_ave[i][l] = SteinhardtParams_REF_PC[i][l];
+			}
+		}
+
+		this->nbRefDef = this->Ref_Def_Names.size();
+		unsigned int count_ref;
+		for(unsigned int i=0;i<this->nbRefDef;i++){
+			fullpath2data = database.c_str()+this->Ref_Def_Names[i]+database_extension;
+			ifstream file(fullpath2data, ios::in);
+			count = 0;
+			count_ref = 0;
+			if(file){
+				do{
+					getline(file,line);
+					// find number of ref
+					pos_nbref=line.find("NB_REF ");
+					if( pos_nbref!=string::npos){
+						istringstream text(line);
+						text >> buffer_s >> buffer_ui;
+						if( buffer_ui != this->nbref) cerr << "WARNING !!! The number of Q vectors for defect : " << this->Ref_Def_Names[i] << " is not the same as the one for not averaged Steinhardt parameters" << endl;
+						this->SteinhardtParams_REF_Def.push_back(new double[this->nbref*(this->l_sph_ref+1)]);
+						this->AtomTypeUINTRefDef.push_back(new unsigned int[this->nbref+1]);
+						this->AtomTypeUINTRefDef[i][0]=this->nbref;
+					}
+					// find l_sph
+					pos_lsph=line.find("L_SPH ");
+					if( pos_lsph!=string::npos){
+						istringstream text(line);
+						text >> buffer_s >> lref;
+						if( lref != this->l_sph_ref) cerr << "WARNING !!! The spherical harmonic degrees used for the calculation of defect : " << this->Ref_Def_Names[i] << " Steinhardt parameters is not the same as the one for not averaged Steinhardt parameters" << endl;
+					}
+					// find rcut
+					pos_rc=line.find("RCUT ");
+					if( pos_rc!=string::npos){
+						line_rc = count;
+						istringstream text(line);
+						text >> buffer_s >> rcref;
+						if( rcref != this->rcut_ref) cerr << "WARNING !!! The cutoff radius used for the calculation of defect : " << this->Ref_Def_Names[i] << " Steinhard parameters is not the same as the one for not averaged Steinhardt parameters" << endl;
+					}
+					// read the parameters
+					if( count > line_rc+1 && count < line_rc+nbref+2 ){
+						istringstream text(line);
+						text >> buffer_s >> AtomTypeUINTRefDef[i][count_ref+1];
+						// get norm of steinhardt params
+						for(unsigned int l=0;l<this->l_sph_ref+1;l++) text >> SteinhardtParams_REF_Def[i][count_ref*(this->l_sph_ref+1)+l];
+						count_ref++;
+					}
+					count += 1;
+				}while(file);
+			}else{
+				cout << "We can't read the file containing the averaged Steinhardt parameters for perfect crystal (/data/Steinhardt/CrystalName/" << this->Ref_Def_Names[i] << ".dat)" << endl;
+			}
+		}
+		this->IsSteinhardtDatabaseRead = true;
+	}
+}
+
+double* ComputeAuxiliary::StructuralAnalysis_Steinhardt(){
+	// read database
+	SteinhardtDatabase_read(_MySystem->getCrystal()->getName());
+	// compute Steinhardt params
+	ComputeSteinhardtParameters(this->rcut_ref, this->l_sph_ref);
+	const unsigned int nbAt = _MySystem->getNbAtom();
+	double *D_q = new double[nbAt*(this->Ref_Def_Names.size()+1)]; // contains the Steinhardt params Euclidian distances between each atoms and perfect crystal and all defects in the database
+	// compute distances
+	for(unsigned int i=0;i<nbAt;i++){
+		// from perfect crystal
+		D_q[i*(this->Ref_Def_Names.size()+1)] = 0.;
+		for(unsigned int j=0;j<AtomTypeUINTRefPC_ave.size();j++){
+			if( _MySystem->getAtom(i).type_uint == AtomTypeUINTRefPC_ave[j] ){
+				for(unsigned int l=0;l<this->l_sph_ref+1;l++){ // maybe exclude l=0 ?
+					D_q[i*(this->Ref_Def_Names.size()+1)] += pow(this->SteinhardtParams[i*(this->l_sph_ref+1)+l]-this->SteinhardtParams_REF_PC_ave[j][l],2.);
+				}
+				D_q[i*(this->Ref_Def_Names.size()+1)] = sqrt(D_q[i*(this->Ref_Def_Names.size()+1)]);
+				break;
+			}
+		}
+		// from all defect
+		for(unsigned int j=0;j<this->Ref_Def_Names.size();j++){
+			D_q[i*(this->Ref_Def_Names.size()+1)+j+1] = 0.;
+			for(unsigned int k=0;k<this->AtomTypeUINTRefDef[j][0];k++){
+				if( _MySystem->getAtom(i).type_uint == AtomTypeUINTRefDef[j][k+1] ){
+					for(unsigned int l=0;l<this->l_sph_ref+1;l++){ // maybe exclude l=0 ?
+						D_q[i*(this->Ref_Def_Names.size()+1)+j+1] += pow(this->SteinhardtParams[i*(this->l_sph_ref+1)+l]-this->SteinhardtParams_REF_Def[j][k*(this->l_sph_ref+1)+l],2.);
+					}
+					D_q[i*(this->Ref_Def_Names.size()+1)+j+1] = sqrt(D_q[i*(this->Ref_Def_Names.size()+1)+j+1]);
+					break;
+				}
+			}
 		}
 	}
-
-	this->nbRefDef = this->Ref_Def_Names.size();
-	this->SteinhardtParams_REF_Def = new double[this->nbRefDef*(this->l_sph_ref+1)];
-	this->AtomTypeUINTRefDef = new unsigned int[this->nbRefDef];
-	for(unsigned int i=0;i<this->nbRefDef;i++){
-		fullpath2data = database.c_str()+this->Ref_Def_Names[i]+database_extension;
-		ifstream file(fullpath2data, ios::in);
-		count = 0;
-		if(file){
-			do{
-				getline(file,line);
-				// find number of ref
-				pos_nbref=line.find("NB_REF ");
-				if( pos_nbref!=string::npos){
-					istringstream text(line);
-					text >> buffer_s >> nbref;
+	// compute correlation factors such as sAB = ( exp(-lambdaAB*DAx) + 2exp(-lambdaAB*DBx) ) / ( exp(-lambdaAB*DAx) + exp(-lambdaAB*DBx) )
+	// 1. Compute lambdaAB (to begin A is the perfect crystal and B are the defects
+	double *lambdaAB = new double[this->Ref_Def_Names.size()*this->nbref];
+	unsigned int *type_uint_lambda = new unsigned int[this->Ref_Def_Names.size()*this->nbref];
+	for(unsigned int i=0;i<this->Ref_Def_Names.size();i++){
+		for(unsigned int t=0;t<this->nbref;t++){
+			lambdaAB[i*this->nbref+t] = 0.;
+			for(unsigned int j=0;j<this->AtomTypeUINTRefPC_ave.size();j++){
+				if( AtomTypeUINTRefPC_ave[j] == AtomTypeUINTRefDef[i][t+1] ){
+					for(unsigned int l=0;l<this->l_sph_ref+1;l++){ // maybe exclude l=0 ?
+						lambdaAB[i*this->nbref+t] += pow(this->SteinhardtParams_REF_PC_ave[j][l]-this->SteinhardtParams_REF_Def[i][t*(this->l_sph_ref+1)+l],2.);
+					}
+					lambdaAB[i*this->nbref+t] = 2.3/sqrt(lambdaAB[i*this->nbref+t]);
+					type_uint_lambda[i*this->nbref+t] = AtomTypeUINTRefDef[i][t+1];
+					break;
 				}
-				// find l_sph
-				pos_lsph=line.find("L_SPH ");
-				if( pos_lsph!=string::npos){
-					istringstream text(line);
-					text >> buffer_s >> lref;
-					if( lref != this->l_sph_ref) cerr << "WARNING !!! The spherical harmonic degrees used for the calculation of defect : " << this->Ref_Def_Names[i] << " Steinhardt parameters is not the same as the one for not averaged Steinhardt parameters" << endl;
-				}
-				// find rcut
-				pos_rc=line.find("RCUT ");
-				if( pos_rc!=string::npos){
-					line_rc = count;
-					istringstream text(line);
-					text >> buffer_s >> rcref;
-					if( rcref != this->rcut_ref) cerr << "WARNING !!! The cutoff radius used for the calculation of defect : " << this->Ref_Def_Names[i] << " Steinhard parameters is not the same as the one for not averaged Steinhardt parameters" << endl;
-				}
-				// read the parameters
-				if( count > line_rc+1 && count < line_rc+nbref+2 ){
-					istringstream text(line);
-					text >> buffer_s >> AtomTypeUINTRefDef[count];
-					// get norm of steinhardt params
-					for(unsigned int l=0;l<this->l_sph_ref+1;l++) text >> SteinhardtParams_REF_Def[count*(this->l_sph_ref+1)+l];
-				}
-				count += 1;
-			}while(file);
-		}else{
-			cout << "We can't read the file containing the averaged Steinhardt parameters for perfect crystal (/data/Steinhardt/CrystalName/" << this->Ref_Def_Names[i] << ".dat)" << endl;
+			}
 		}
-		cout << this->Ref_Def_Names[i] << endl; //TODO pb with count and i
-		for(unsigned int l=0;l<this->l_sph_ref+1;l++) cout << SteinhardtParams_REF_Def[count*(this->l_sph_ref+1)+l] << " ";
+	}
+	for(unsigned int i=0;i<this->Ref_Def_Names.size();i++){
+		for(unsigned int j=0;j<this->nbref;j++){
+			cout << lambdaAB[i*this->nbref+j] << " " ;
+		}
 		cout << endl;
 	}
+	// 2. Compute sAB
+	double *sAB = new double[nbAt*this->Ref_Def_Names.size()];
+	double buffer_exp_1, buffer_exp_2;
+	for(unsigned int i=0;i<nbAt;i++){
+		for(unsigned int d=0;d<this->Ref_Def_Names.size();d++){
+			for(unsigned int t=0;t<this->nbref;t++){
+				if( _MySystem->getAtom(i).type_uint == type_uint_lambda[d*this->nbref+t] ){
+					buffer_exp_1 = exp(-lambdaAB[d*this->nbref+t]*D_q[i*(this->Ref_Def_Names.size()+1)]);
+					buffer_exp_2 = exp(-lambdaAB[d*this->nbref+t]*D_q[i*(this->Ref_Def_Names.size()+1)]+d+1);
+					sAB[i*this->Ref_Def_Names.size()+d] = ( buffer_exp_1 + 2*buffer_exp_2 ) / ( buffer_exp_1 + buffer_exp_2 );
+				}
+				break;
+			}
+		}
+	}
+	delete[] D_q;
+	delete[] lambdaAB;
+	delete[] type_uint_lambda;
+
+	return sAB;	
+
 }
 
 string ComputeAuxiliary::getSteinhardtDatabase(string CrystalName){
