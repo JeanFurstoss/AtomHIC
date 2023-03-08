@@ -19,10 +19,14 @@ protected:
 	unsigned int *Malpha;// array containing the index of neighbours of the same species (or same site in case of multisite crystal) with the first line corresponding to the number of neighbours, i.e. Malpha[i*(nbNMax+1)] = nb of neighbour of atom i, Malpha[i*(nbNMax+1)+j+1] = id of the jth neighbour of atom i
 	std::complex<double> *Qalpha; // complex array containing the spherical harmonic for the different modes
 	double *SteinhardtParams; // Steinhardt parameters
+	double *SteinhardtParams_ave_cutoff; // Steinhardt parameters
 	std::vector<double*> SteinhardtParams_REF_PC; // Steinhardt parameters for reference perfect crystal
-	std::vector<double*> SteinhardtParams_REF_PC_ave; // Steinhardt parameters for reference perfect crystal
+	std::vector<double*> SteinhardtParams_REF_PC_ave; // Steinhardt parameters for reference perfect crystal averaged over sites
+	std::vector<double*> SteinhardtParams_REF_PC_ave_cutoff; // Steinhardt parameters for reference perfect crystal average over the atom of the same species within the cutoff radius
 	std::vector<double*> SteinhardtParams_REF_Def; // Steinhardt parameters for reference defects => tab[i*(l_sph_ref+1)+l] gives for ref i, the lth degree of steinhard parameter
+	std::vector<double*> SteinhardtParams_REF_Def_ave_cutoff; // Steinhardt parameters for reference defects => tab[i*(l_sph_ref+1)+l] gives for ref i, the lth degree of steinhard parameter
 	std::vector<unsigned int*> AtomTypeUINTRefDef; // array containing the number of ref and atom specy => i.e. AtomTypeUINTRefDef[i][0] = number of ref of defect i, AtomTypeUINTRefDef[i][j+1] = type uint of the jth ref of the defect i
+	std::vector<unsigned int*> AtomTypeUINTRefDef_ave_cutoff; // array containing the number of ref and atom specy => i.e. AtomTypeUINTRefDef[i][0] = number of ref of defect i, AtomTypeUINTRefDef[i][j+1] = type uint of the jth ref of the defect i
 	std::vector<std::string> Ref_Def_Names; // Names of the defect present in the database
 	std::vector<int> AtomTypeUINTRefPC; // array containing the atom specy => i.e. AtomTypeUINTRefPC[i] = type uint of the params in SteinhardtParams_REF_DEF[i]
 	std::vector<int> AtomTypeUINTRefPC_ave; // array containing the atom specy => i.e. AtomTypeUINTRefPC[i] = type uint of the params in SteinhardtParams_REF_DEF[i]
@@ -35,12 +39,16 @@ protected:
 	bool IsStrainTensor = false;
 	bool IsStrainInvII = false;
 	bool IsSteinhardtDatabaseRead = false;
+	// Parameters to read
+	std::string FixedParam_Filename = "Fixed_Parameters.dat";
+	double tolSites;
 public:
 	// constructors
 	ComputeAuxiliary(){};
 	ComputeAuxiliary(AtomicSystem *_MySystem): _MySystem(_MySystem){
 		this->MT = new MathTools;
 		if( _MySystem->getCrystal()->getName() != "" ) SteinhardtDatabase_read(_MySystem->getCrystal()->getName());
+		read_params();
 	};
 	// getters
 	// methods
@@ -63,6 +71,7 @@ public:
 	void SteinhardtDatabase_read(std::string CrystalName);
 	double* BondOriParam_SteinhardtBased();
 	double* StructuralAnalysis_Steinhardt();
+	void read_params();
 	// destructor
 	~ComputeAuxiliary();
 	

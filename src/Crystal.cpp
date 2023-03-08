@@ -585,6 +585,9 @@ void Crystal::read_params(){
 				text >> buffer_s >> this->MinBoxAside;
 			}
 		}
+	}else{
+		cerr << "Can't read /data/FixedParameters/Fixed_Parameters.dat file !" << endl;
+		exit(EXIT_FAILURE);
 	}
 }
 

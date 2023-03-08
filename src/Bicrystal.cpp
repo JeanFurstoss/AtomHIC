@@ -1689,6 +1689,9 @@ void Bicrystal::read_params(){
 				text >> buffer_s >> this->tolAlignment_CSL;
 			}
 		}
+	}else{
+		cerr << "Can't read /data/FixedParameters/Fixed_Parameters.dat file !" << endl;
+		exit(EXIT_FAILURE);
 	}
 }
 

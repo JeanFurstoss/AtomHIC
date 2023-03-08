@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
 		// Rationalize the misorientation axis and angle and get a CSL vector
 		Rat_RotAng = MyBicrystal->RationalizeOri(MilInd[0], MilInd[1], MilInd[2], rot_angle, Rat_RotAx, CSL_vec);
 		// Compute the CSL basis
-		CSL_found = MyBicrystal->searchCSL(Rat_RotAx, Rat_RotAng, CSL_vec, 0);
+		CSL_found = MyBicrystal->searchCSL(Rat_RotAx, Rat_RotAng, CSL_vec, 1);
 		if( CSL_found ){
 			// compute interesting values : smallest CSL vector, shape factor of the basis
 			double SmallestL, SF_1, SF_2;
