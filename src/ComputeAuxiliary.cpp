@@ -24,7 +24,6 @@ double* ComputeAuxiliary::ComputeSteinhardtParameters(const double rc, const int
 	const unsigned int nbAt = _MySystem->getNbAtom();
 	const unsigned int nbNMax = _MySystem->getNbMaxN();
 	this->BondOriParam = new double[nbAt];
-	this->Atom_SiteIndex = new unsigned int[nbAt];
 	this->Malpha = new unsigned int[nbAt*(nbNMax+1)]; // array containing the index of neighbours of the same species (or same site in case of multisite crystal) with the first line corresponding to the number of neighbours, i.e. Malpha[i*(nbNMax+1)] = nb of neighbour of atom i, Malpha[i*(nbNMax+1)+j+1] = id of the jth neighbour of atom i
 	this->Qalpha = new complex<double>[nbAt*(l_sph*2+1)]; // complex array containing the spherical harmonic for the different modes
 	complex<double> *Qlm = new complex<double>[nbAt*(l_sph*2+1)*(l_sph+1)]; // complex array containing the spherical harmonic for the different modes Qlm[i*(l_sph*2+1)*(l_sph+1)+l*(l_sph*2+1)+m] gives the spherical harmonic for atom i and degree l and m
@@ -115,16 +114,16 @@ double* ComputeAuxiliary::ComputeSteinhardtParameters(const double rc, const int
 		}
 	}
 
-	//for(unsigned int i=0;i<nbAt;i++){
-	//cout << i << " "<< _MySystem->getNeighbours(i*(nbNMax+1)) << " " << Malpha[i*(nbNMax+1)] << " ";
-	//for(unsigned int l=0;l<l_sph+1;l++) cout << SteinhardtParams_ave_cutoff[i*(l_sph+1)+l] << " ";
+	//for(unsigned int i=0;i<nbAt;i++) cout << pow(SteinhardtParams[i*(l_sph+1)+l_sph]*_MySystem->getNeighbours(i*(nbNMax+1)),2.)*((2.*l_sph+1.)/(4.*M_PI)) << " " << Calpha[i] << endl;
+	////cout << i << " "<< _MySystem->getNeighbours(i*(nbNMax+1)) << " " << Malpha[i*(nbNMax+1)] << " ";
+	//for(unsigned int l=0;l<l_sph+1;l++) cout << SteinhardtParams[i*(l_sph+1)+l] << " ";
 	//cout << endl;
 	//}
 	cout << "Done !" << endl;
 	return this->SteinhardtParams;
 }
 
-double* ComputeAuxiliary::ComputeSteinhardtParameters_OneL(const double rc, const int l_sph){
+double* ComputeAuxiliary::ComputeSteinhardtParameters_OneL(const double rc, const int l_sph){ //TODO Rename this function
 	// if neighbours have not been searched perform the research
 	if( !_MySystem->getIsNeighbours() ){
 		_MySystem->searchNeighbours(rc);
@@ -132,18 +131,13 @@ double* ComputeAuxiliary::ComputeSteinhardtParameters_OneL(const double rc, cons
 	cout << "Computing Steinhart parameters.. ";
 	const unsigned int nbAt = _MySystem->getNbAtom();
 	const unsigned int nbNMax = _MySystem->getNbMaxN();
-	this->BondOriParam = new double[nbAt];
-	this->Atom_SiteIndex = new unsigned int[nbAt];
 	this->Malpha = new unsigned int[nbAt*(nbNMax+1)]; // array containing the index of neighbours of the same species (or same site in case of multisite crystal) with the first line corresponding to the number of neighbours, i.e. Malpha[i*(nbNMax+1)] = nb of neighbour of atom i, Malpha[i*(nbNMax+1)+j+1] = id of the jth neighbour of atom i
 	this->Qalpha = new complex<double>[nbAt*(l_sph*2+1)]; // complex array containing the spherical harmonic for the different modes
-	complex<double> *Qlm = new complex<double>[nbAt*(l_sph*2+1)*(l_sph+1)]; // complex array containing the spherical harmonic for the different modes Qlm[i*(l_sph*2+1)*(l_sph+1)+l*(l_sph*2+1)+m] gives the spherical harmonic for atom i and degree l and m
 	unsigned int lsph2 = (l_sph+1)*(l_sph*2+1.);
 	unsigned int lsph1 = l_sph*2+1;
-	this->SteinhardtParams = new double[nbAt*(l_sph+1)];
 	this->Calpha = new double[nbAt]; // normalization factor 
 	for(unsigned int i=0;i<nbAt*(l_sph*2+1);i++){
 		Qalpha[i] = (0.,0.); // initialize it to zero
-		for(unsigned int j=0;j<l_sph+1;j++) Qlm[i*j+j] = (0.,0.);
 	}
 	double zeronum = 1e-8;
 	const int bar_length = 30;
@@ -186,7 +180,24 @@ double* ComputeAuxiliary::ComputeSteinhardtParameters_OneL(const double rc, cons
 		// compute normalization factors
 		for(int l=-l_sph;l<l_sph+1;l++)	Calpha[i] += (pow(Qalpha[i*(l_sph*2+1)+l+l_sph].real(), 2.) + pow(Qalpha[i*(l_sph*2+1)+l+l_sph].imag(), 2.)); // warning : l is not protected during parallel calc
 	}
-	cout << "Done !" << endl;
+	// Test averaged within cutoff radius (not concluant I think because contrarily to the true averaged Steinhardt params where the complex are normed, the spherical harmonic are not rotationally invariant)
+	//complex<double> *Qalpha_ave_cutoff = new complex<double>[nbAt*(l_sph*2+1)]; // complex array containing the spherical harmonic for the different modes
+	//for(unsigned int i=0;i<nbAt;i++){
+	//	for(int m_loop_st0=-l_loop_st2;m_loop_st0<(int) l_loop_st2+1;m_loop_st0++){
+	//		Qalpha_ave_cutoff[i*lsph1 + (unsigned int) (m_loop_st0 + (int) l_sph)] = Qalpha[i*lsph1 + (unsigned int) (m_loop_st0 + (int) l_sph)] / (double) _MySystem->getNeighbours(i*(nbNMax+1));
+	//	}
+	//	for(unsigned int neigh=0;neigh<Malpha[i*(nbNMax+1)];neigh++){
+	//	       for(int m_loop_st1=-l_loop_st2;m_loop_st1<(int) l_loop_st2+1;m_loop_st1++){
+	//		       Qalpha_ave_cutoff[i*lsph1 + (unsigned int) (m_loop_st1 + (int) l_sph)] += Qalpha[Malpha[i*(nbNMax+1)+neigh+1]*lsph1 + (unsigned int) (m_loop_st1 + (int) l_sph)] / ((double) _MySystem->getNeighbours(Malpha[i*(nbNMax+1)+neigh+1]*(nbNMax+1)));
+	//	       }
+	//	}
+	//}
+
+	//for(unsigned int i=0;i<nbAt;i++){
+	//	for(int m_loop_st1=-l_loop_st2;m_loop_st1<(int) l_loop_st2+1;m_loop_st1++) Qalpha[i*lsph1 +  (unsigned int) (m_loop_st1 + (int) l_sph)] = Qalpha_ave_cutoff[i*lsph1+ (unsigned int) (m_loop_st1 + (int) l_sph)];
+	//	for(int l=-l_sph;l<l_sph+1;l++)	Calpha[i] += (pow(Qalpha[i*(l_sph*2+1)+l+l_sph].real(), 2.) + pow(Qalpha[i*(l_sph*2+1)+l+l_sph].imag(), 2.)); // warning : l is not protected during parallel calc
+	//}
+	//cout << "Done !" << endl;
 }
 double* ComputeAuxiliary::BondOriParam_SteinhardtBased(){
 	// read database
@@ -241,6 +252,12 @@ double* ComputeAuxiliary::BondOriParam_SteinhardtBased(){
 
 // Compute bond orientational parameter, based on the work of Steinhardt, P. J. et al. 1983, modified by Chua et al. 2010 and modified by me for accounting for multisite crystals 
 double* ComputeAuxiliary::BondOrientationalParameter(){
+	if( _MySystem->getCrystal()->getIsMultisite() )	BondOriParam_MultisiteNewVersion();
+	else BondOriParam_NoMultisite();
+	return this->BondOriParam;
+}
+
+void ComputeAuxiliary::BondOriParam_NoMultisite(){
 	double rc = _MySystem->get_rcut();
 	int l_sph = _MySystem->get_lsph();
 	ComputeSteinhardtParameters_OneL(rc,l_sph);
@@ -248,6 +265,10 @@ double* ComputeAuxiliary::BondOrientationalParameter(){
 
 	const unsigned int nbAt = _MySystem->getNbAtom();
 	const unsigned int nbNMax = _MySystem->getNbMaxN();
+	if( !this->IsBondOriParam ){
+		this->BondOriParam = new double[nbAt];
+		this->IsBondOriParam = true;
+	}
 // compute the order parameter using the formulation presented in Chua et al. 2010
 	unsigned int NId, nbN;
 	for(unsigned int i=0;i<nbAt;i++){
@@ -262,103 +283,174 @@ double* ComputeAuxiliary::BondOrientationalParameter(){
 		if( nbN == 0 ) BondOriParam[i] = 0;
 		else BondOriParam[i] /= nbN;
 	}
+}
 
+void ComputeAuxiliary::BondOriParam_MultisiteNewVersion(){
+	double rc = _MySystem->get_rcut();
+	int l_sph = _MySystem->get_lsph();
+	ComputeSteinhardtParameters_OneL(rc,l_sph);
+	// search site index based on the value of Steinhardt parameter (which is sqrt(pow(Calpha*N,2.)*4pi/(2l+1)))
+	const unsigned int nbAt = _MySystem->getNbAtom();
+	const unsigned int nbNMax = _MySystem->getNbMaxN();
+	this->Atom_SiteIndex = new unsigned int[nbAt];
+	vector<double> diff_St;
+	double buffer_d, buffer_d1;
+	cout << "steinhardt" << endl;
+	for(unsigned int i=0;i<nbAt;i++){
+		if( this->AtomSiteRefPC[_MySystem->getAtom(i).type_uint-1].size() == 1 ) this->Atom_SiteIndex[i] = 0;
+		else{
+			diff_St.clear();
+			buffer_d = sqrt(Calpha[i]*4.*M_PI/((2*l_sph+1)*pow(_MySystem->getNeighbours(i*(nbNMax+1)),2.)));
+			for(unsigned int j=0;j<this->AtomSiteRefPC[_MySystem->getAtom(i).type_uint-1].size();j++){
+				buffer_d1 = SteinhardtParams_REF_PC[_MySystem->getAtom(i).type_uint-1][j*(l_sph+1)+l_sph]-buffer_d;
+				diff_St.push_back(fabs(buffer_d1));
+				//if( buffer_d1 < 0 ) diff_St.push_back(1e8);
+				//else diff_St.push_back(buffer_d1);
+			}
+			Atom_SiteIndex[i] = MT->min(diff_St);
+		}
+	}
+	// Compute the unnormalized order parameter	
+	if( !this->IsBondOriParam ){
+		this->BondOriParam = new double[nbAt];
+		this->IsBondOriParam = true;
+	}
+	cout << "unnormed BO" << endl;
+	unsigned int NId, nbN, trueN;
+	for(unsigned int i=0;i<nbAt;i++){
+		BondOriParam[i] = 0;
+		nbN = Malpha[i*(nbNMax+1)];
+		trueN = 0;
+		for(unsigned int j=0;j<nbN;j++){
+			NId = Malpha[i*(nbNMax+1)+j+1];
+			if( Atom_SiteIndex[NId] == Atom_SiteIndex[i] ){
+				for(unsigned int l=0;l<(l_sph*2+1);l++){
+					BondOriParam[i] += ((Qalpha[i*(l_sph*2+1)+l].real()*Qalpha[NId*(l_sph*2+1)+l].real())+Qalpha[i*(l_sph*2+1)+l].imag()*Qalpha[NId*(l_sph*2+1)+l].imag())/(pow(Calpha[i],.5)*pow(Calpha[NId],.5)); 
+				}
+				trueN++;
+			}
+		}
+		if( trueN == 0 ) BondOriParam[i] = 0;
+		else BondOriParam[i] /= trueN;
+		//cout << i+1 << " " << trueN << " " << BondOriParam[i] << endl;
+	}
+	// Normalized the order parameter
+	for(unsigned int i=0;i<nbAt;i++){
+		BondOriParam[i] /= this->BondOriParam_REF_PC[_MySystem->getAtom(i).type_uint-1][Atom_SiteIndex[i]];
+		//if( BondOriParam[i] > 1. ) BondOriParam[i] = 2.-BondOriParam[i];
+		if( BondOriParam[i] > 1. || BondOriParam[i] < -1. ) BondOriParam[i] = 1.;
+		BondOriParam[i] = 1.-fabs(BondOriParam[i]);
+	}
+}
+	
+void ComputeAuxiliary::BondOriParam_Multisite(){ // this version does work (it worked before => have a look if the new version is not satisfactory)
+	BondOriParam_NoMultisite();
+	const unsigned int nbAt = _MySystem->getNbAtom();
+	const unsigned int nbNMax = _MySystem->getNbMaxN();
 	// in the case of mutlisite crystal and/or non-centrosymmetric crystal, each atom belonging to a site will have a given BondOriParam
 	// we then search the most represented BondOriParam and renormalize by the closest one 
 	// this method implies to consider that most of the atoms in the system are in perfect environment
-	if( _MySystem->getCrystal()->getIsMultisite() ){
-		// Search the most represented normalization factors
-		vector<vector<double>> NormFactors; // array containing the normalization factors and the number of atom having the normalization factor for a given element, i.e. : NormFactors[i][0] = chemical element (type_uint), NormFactors[i][j*2+1] = jth normalization factor for specy i, NormFactors[i][j*2+2] = number of atom having this normalization factor
-		vector<vector<unsigned int>> SiteIndex; // array containing the site index 
-		bool ElemStored, NormFacStored;
-		NormFactors.push_back(vector<double>());
-		NormFactors[0].push_back(_MySystem->getAtom(0).type_uint);
-		NormFactors[0].push_back(BondOriParam[0]);
-		NormFactors[0].push_back(1);
-		for(unsigned int i=1;i<nbAt;i++){
-			ElemStored = false;
-			for(unsigned int j=0;j<NormFactors.size();j++){
-				if( _MySystem->getAtom(i).type_uint == (unsigned int) round(NormFactors[j][0]) ){ // chemical specy already stored, use the same vector column
-					NormFacStored = false;
-					for(unsigned int k=0;k<(NormFactors[j].size()-1)/2;k++){
-						if( fabs(BondOriParam[i]-NormFactors[j][k*2+1]) < tolSites ){ // norm factor already store, increment the counter and average the normalization factor according to the current one (to test if it is better or not)
-							NormFactors[j][k*2+1] *= NormFactors[j][k*2+2];
-							NormFactors[j][k*2+1] += BondOriParam[i];
-							NormFactors[j][k*2+2] += 1; // maybe just keep this line..
-							NormFactors[j][k*2+1] /= NormFactors[j][k*2+2];
-							NormFacStored = true;
-							break;
-						}
+	// Search the most represented normalization factors
+	vector<vector<double>> NormFactors; // array containing the normalization factors and the number of atom having the normalization factor for a given element, i.e. : NormFactors[i][0] = chemical element (type_uint), NormFactors[i][j*2+1] = jth normalization factor for specy i, NormFactors[i][j*2+2] = number of atom having this normalization factor
+	vector<vector<unsigned int>> SiteIndex; // array containing the site index 
+	this->Atom_SiteIndex = new unsigned int[nbAt];
+	// compute the tolerance for the different atom type
+	vector<double> tolSites_v(_MySystem->getCrystal()->getNbAtomType());
+	vector<vector<double>> BondOri_type(_MySystem->getCrystal()->getNbAtomType());
+	for(unsigned int i=0;i<nbAt;i++) BondOri_type[_MySystem->getAtom(i).type_uint-1].push_back(BondOriParam[i]);
+	for(unsigned int t=0;t<_MySystem->getCrystal()->getNbAtomType();t++){
+		if( _MySystem->getCrystal()->getNbAtomSite(t) == 1 ) tolSites_v[t] = MT->max_vec(BondOri_type[t])*tolSites;
+		else tolSites_v[t] = (MT->max_vec(BondOri_type[t]) - MT->min_vec(BondOri_type[t]))*tolSites;
+	}
+	bool ElemStored, NormFacStored;
+	NormFactors.push_back(vector<double>());
+	NormFactors[0].push_back(_MySystem->getAtom(0).type_uint);
+	NormFactors[0].push_back(BondOriParam[0]);
+	NormFactors[0].push_back(1);
+	for(unsigned int i=1;i<nbAt;i++){
+		ElemStored = false;
+		for(unsigned int j=0;j<NormFactors.size();j++){
+			if( _MySystem->getAtom(i).type_uint == (unsigned int) round(NormFactors[j][0]) ){ // chemical specy already stored, use the same vector column
+				NormFacStored = false;
+				for(unsigned int k=0;k<(NormFactors[j].size()-1)/2;k++){
+					//if( fabs(BondOriParam[i]-NormFactors[j][k*2+1]) < tolSites_v[_MySystem->getAtom(i).type_uint-1] ){ // norm factor already store, increment the counter and average the normalization factor according to the current one (to test if it is better or not)
+					if( fabs(BondOriParam[i]-NormFactors[j][k*2+1]) < tolSites ){ // norm factor already store, increment the counter and average the normalization factor according to the current one (to test if it is better or not)
+						NormFactors[j][k*2+1] *= NormFactors[j][k*2+2];
+						NormFactors[j][k*2+1] += BondOriParam[i];
+						NormFactors[j][k*2+2] += 1; // maybe just keep this line..
+						NormFactors[j][k*2+1] /= NormFactors[j][k*2+2];
+						NormFacStored = true;
+						break;
 					}
-					if( !NormFacStored ){ // this norm factor has not been found before : create a new line and initialize the counter to 1
-						NormFactors[j].push_back(BondOriParam[i]);
-						NormFactors[j].push_back(1);
-					}
-					ElemStored = true;
-					break;
 				}
-			}
-			if( !ElemStored ){ // this specy has not been found before : create a new column in NormFactors
-				NormFactors.push_back(vector<double>());
-				NormFactors[NormFactors.size()-1].push_back(_MySystem->getAtom(i).type_uint);
-				NormFactors[NormFactors.size()-1].push_back(BondOriParam[i]);
-				NormFactors[NormFactors.size()-1].push_back(1);
-			}
-		}
-		// Initialize the norm fac site array
-		vector<vector<double>> FinalNormFactors;
-		unsigned int Index;
-		unsigned int count_site = 0;
-		for(unsigned int i=0;i<NormFactors.size();i++){
-			FinalNormFactors.push_back(vector<double>());
-			SiteIndex.push_back(vector<unsigned int>());
-			Index = (unsigned int) round(NormFactors[i][0]);
-			if( _MySystem->getCrystal()->getNbAtomSite(Index) > (NormFactors[i].size()-1)/2 ){
-				cerr << "Not enough sites have been found, consider decreasing tolSite" << endl;
-				exit(EXIT_FAILURE);
-			}
-			for(unsigned int j=0;j<_MySystem->getCrystal()->getNbAtomSite(Index);j++){
-				FinalNormFactors[i].push_back(0.);
-				SiteIndex[i].push_back(count_site);
-				count_site++;
+				if( !NormFacStored ){ // this norm factor has not been found before : create a new line and initialize the counter to 1
+					NormFactors[j].push_back(BondOriParam[i]);
+					NormFactors[j].push_back(1);
+				}
+				ElemStored = true;
+				break;
 			}
 		}
-		// search the most represented norm factors
-		unsigned int kmax;
-		for(unsigned int i=0;i<FinalNormFactors.size();i++){
-			for(unsigned int j=0;j<FinalNormFactors[i].size();j++){
-				kmax = 0;
-				for(unsigned int k=1;k<(NormFactors[i].size()-1)/2;k++)	if( NormFactors[i][(k+1)*2] > NormFactors[i][(kmax+1)*2] ) kmax = k;
-				FinalNormFactors[i][j] = NormFactors[i][(kmax+1)*2-1];
-				NormFactors[i].erase(NormFactors[i].begin()+(kmax+1)*2);
-				NormFactors[i].erase(NormFactors[i].begin()+(kmax+1)*2-1);
-			}
+		if( !ElemStored ){ // this specy has not been found before : create a new column in NormFactors
+			NormFactors.push_back(vector<double>());
+			NormFactors[NormFactors.size()-1].push_back(_MySystem->getAtom(i).type_uint);
+			NormFactors[NormFactors.size()-1].push_back(BondOriParam[i]);
+			NormFactors[NormFactors.size()-1].push_back(1);
 		}
+	}
+	// Initialize the norm fac site array
+	vector<vector<double>> FinalNormFactors;
+	unsigned int Index;
+	unsigned int count_site = 0;
+	for(unsigned int i=0;i<NormFactors.size();i++){
+		FinalNormFactors.push_back(vector<double>());
+		SiteIndex.push_back(vector<unsigned int>());
+		Index = (unsigned int) round(NormFactors[i][0]);
+		if( _MySystem->getCrystal()->getNbAtomSite(Index) > (NormFactors[i].size()-1)/2 ){
+			cerr << "Not enough sites have been found, consider decreasing tolSite" << endl;
+			exit(EXIT_FAILURE);
+		}
+		for(unsigned int j=0;j<_MySystem->getCrystal()->getNbAtomSite(Index);j++){
+			FinalNormFactors[i].push_back(0.);
+			SiteIndex[i].push_back(count_site);
+			count_site++;
+		}
+	}
+	// search the most represented norm factors
+	unsigned int kmax;
+	for(unsigned int i=0;i<FinalNormFactors.size();i++){
+		for(unsigned int j=0;j<FinalNormFactors[i].size();j++){
+			kmax = 0;
+			for(unsigned int k=1;k<(NormFactors[i].size()-1)/2;k++)	if( NormFactors[i][(k+1)*2] > NormFactors[i][(kmax+1)*2] ) kmax = k;
+			FinalNormFactors[i][j] = NormFactors[i][(kmax+1)*2-1];
+			NormFactors[i].erase(NormFactors[i].begin()+(kmax+1)*2);
+			NormFactors[i].erase(NormFactors[i].begin()+(kmax+1)*2-1);
+		}
+	}
 
-		// normalize order parameters according to the closest but higher most represented bondoriparam
-		double tolRenorm = 1.05; // critical parameter
-		double buffer_d, buffer_d_2, buffer_d_3;
-		for(unsigned int i=0;i<nbAt;i++){
-			for(unsigned int j=0;j<FinalNormFactors.size();j++){
-				if( _MySystem->getAtom(i).type_uint == (unsigned int) round(NormFactors[j][0]) ){
-					buffer_d = fabs(BondOriParam[i]-FinalNormFactors[j][0]);
-					buffer_d_2 = (FinalNormFactors[j][0]*tolRenorm)-BondOriParam[i];
-					kmax = 0;
-					for(unsigned int k=1;k<FinalNormFactors[j].size();k++){
-						buffer_d_3 = (FinalNormFactors[j][k]*tolRenorm)-BondOriParam[i];
-						if( ( (buffer_d_3 > 0.) && (fabs(BondOriParam[i]-FinalNormFactors[j][k]) < buffer_d) ) || ( ( buffer_d_2 < 0. ) && ( buffer_d_3 > 0. ) ) ){
-								buffer_d = fabs(BondOriParam[i]-FinalNormFactors[j][k]);
-								buffer_d_2 = buffer_d_3;
-								kmax = k;
-						}
+	// normalize order parameters according to the closest but higher most represented bondoriparam
+	double tolRenorm = 1.05; // critical parameter
+	double buffer_d, buffer_d_2, buffer_d_3;
+	for(unsigned int i=0;i<nbAt;i++){
+		for(unsigned int j=0;j<FinalNormFactors.size();j++){
+			if( _MySystem->getAtom(i).type_uint == (unsigned int) round(NormFactors[j][0]) ){
+				buffer_d = fabs(BondOriParam[i]-FinalNormFactors[j][0]);
+				buffer_d_2 = (FinalNormFactors[j][0]*tolRenorm)-BondOriParam[i];
+				kmax = 0;
+				for(unsigned int k=1;k<FinalNormFactors[j].size();k++){
+					buffer_d_3 = (FinalNormFactors[j][k]*tolRenorm)-BondOriParam[i];
+					if( ( (buffer_d_3 > 0.) && (fabs(BondOriParam[i]-FinalNormFactors[j][k]) < buffer_d) ) || ( ( buffer_d_2 < 0. ) && ( buffer_d_3 > 0. ) ) ){
+							buffer_d = fabs(BondOriParam[i]-FinalNormFactors[j][k]);
+							buffer_d_2 = buffer_d_3;
+							kmax = k;
 					}
-					BondOriParam[i] /= FinalNormFactors[j][kmax];
-					Atom_SiteIndex[i] = SiteIndex[j][kmax];
-					break;
 				}
+				BondOriParam[i] /= FinalNormFactors[j][kmax];
+				Atom_SiteIndex[i] = SiteIndex[j][kmax];
+				break;
 			}
 		}
-	} // end if multisite
+	}
 	for(unsigned int i=0;i<nbAt;i++){
 		if( BondOriParam[i] > 1. || BondOriParam[i] < -1. ) BondOriParam[i] = 1.;
 		BondOriParam[i] = 1.-fabs(BondOriParam[i]);
@@ -368,9 +460,6 @@ double* ComputeAuxiliary::BondOrientationalParameter(){
 	delete[] Malpha;
 	delete[] Qalpha;
 	delete[] Calpha;
-	IsBondOriParam = true;
-	return BondOriParam;
-
 }
 
 complex<double> ComputeAuxiliary::spherical_harmonics(const unsigned int& l, int& m, double& theta, double& phi){
@@ -754,6 +843,39 @@ void ComputeAuxiliary::SaveAveSteinhardtParamToDatabase_PerfectCrystal(string Cr
 
 }
 
+void ComputeAuxiliary::BondOriParam_MultisiteCrystal(){
+	double rc = _MySystem->get_rcut();
+	int l_sph = _MySystem->get_lsph();
+	ComputeSteinhardtParameters_OneL(rc,l_sph);
+	cout << "Computing bond orientationnal parameter" << endl;
+
+	const unsigned int nbAt = _MySystem->getNbAtom();
+	const unsigned int nbNMax = _MySystem->getNbMaxN();
+	if( !this->IsBondOriParam ){
+		this->BondOriParam = new double[nbAt];
+		this->IsBondOriParam = true;
+	}
+
+// compute the order parameter using the formulation presented in Chua et al. 2010
+	unsigned int NId, nbN, trueNeigh;
+	for(unsigned int i=0;i<nbAt;i++){
+		BondOriParam[i] = 0;
+		nbN = Malpha[i*(nbNMax+1)];
+		trueNeigh = 0;
+		for(unsigned int j=0;j<nbN;j++){
+			NId = Malpha[i*(nbNMax+1)+j+1];
+			if( _MySystem->getCrystal()->getAtomSite(i) == _MySystem->getCrystal()->getAtomSite(NId) ){ // restrict the sum to ions of the same site
+				for(unsigned int l=0;l<(l_sph*2+1);l++){
+					BondOriParam[i] += ((Qalpha[i*(l_sph*2+1)+l].real()*Qalpha[NId*(l_sph*2+1)+l].real())+Qalpha[i*(l_sph*2+1)+l].imag()*Qalpha[NId*(l_sph*2+1)+l].imag())/(pow(Calpha[i],.5)*pow(Calpha[NId],.5)); 
+				}
+				trueNeigh++;
+			}
+		}
+		if( trueNeigh == 0 ) BondOriParam[i] = 0;
+		else BondOriParam[i] /= trueNeigh;
+	}
+}
+
 // save Steinhardt params for the different sites (defined if multisite crystal)
 void ComputeAuxiliary::SaveSteinhardtParamToDatabase_PerfectCrystal(string CrystalName){
 	if( _MySystem->getCrystal()->getIsMultisite() ){
@@ -769,12 +891,19 @@ void ComputeAuxiliary::SaveSteinhardtParamToDatabase_PerfectCrystal(string Cryst
 		writefile << "Steinhardt parameters for " << CrystalName << " perfect crystal computed using" << endl;
 		writefile << "L_SPH " << l_sph << endl;
 		writefile << "RCUT " << rc << endl;
-		// compute the bond orientational param in order to have the different sites
-		BondOrientationalParameter(); // warning multisite does not work every time
+		// compute the bond orientational param and store them for the different sites
+		BondOriParam_MultisiteCrystal(); // warning multisite does not work every time
+	//for(unsigned int i=0;i<nbAt;i++){
+	//cout << i << " ";
+	//	cout << BondOriParam[i] << " " << endl;
+	////for(unsigned int l=0;l<l_sph+1;l++) cout << this->SteinhardtParams[i*(l_sph+1)+l] << " ";
+	////cout << endl;
+	//}
 		bool Already = false;
 		bool AlreadyType = false;
 		unsigned int typeok;
 		vector<vector<double>> St2Print;
+		vector<vector<double>> BO2Print;
 		vector<unsigned int> type_printed;
 		vector<vector<unsigned int>> site_printed;
 		vector<vector<unsigned int>> count_ave;
@@ -786,7 +915,8 @@ void ComputeAuxiliary::SaveSteinhardtParamToDatabase_PerfectCrystal(string Cryst
 				if( _MySystem->getAtom(i).type_uint == type_printed[t] ){
 					AlreadyType = true;
 					for(unsigned int s=0;s<site_printed[t].size();s++){
-						if( Atom_SiteIndex[i] == site_printed[t][s] ){
+						if( _MySystem->getCrystal()->getAtomSite(i) == site_printed[t][s] ){
+							BO2Print[t][s] += BondOriParam[i];
 							for(unsigned int l=0;l<l_sph+1;l++){
 								St2Print[t][s*(l_sph+1)+l] += SteinhardtParams[i*(l_sph+1)+l];
 							}
@@ -802,17 +932,20 @@ void ComputeAuxiliary::SaveSteinhardtParamToDatabase_PerfectCrystal(string Cryst
 			if( !Already ){
 				if( !AlreadyType ){ // new type and new site
 					St2Print.push_back(vector<double>());
+					BO2Print.push_back(vector<double>());
 					count_ave.push_back(vector<unsigned int>());
 					site_printed.push_back(vector<unsigned int>());
 					count_ave[count_ave.size()-1].push_back(1);
-					site_printed[site_printed.size()-1].push_back(Atom_SiteIndex[i]);
+					site_printed[site_printed.size()-1].push_back(_MySystem->getCrystal()->getAtomSite(i));
 					type_printed.push_back(_MySystem->getAtom(i).type_uint);
+					BO2Print[BO2Print.size()-1].push_back(BondOriParam[i]);
 					for(unsigned int l=0;l<l_sph+1;l++){
 						St2Print[(St2Print.size()-1)].push_back(SteinhardtParams[i*(l_sph+1)+l]);
 					}
 				}else{ // not a new type, just a new site
 					count_ave[typeok].push_back(1);
-					site_printed[typeok].push_back(Atom_SiteIndex[i]);
+					site_printed[typeok].push_back(_MySystem->getCrystal()->getAtomSite(i));
+					BO2Print[typeok].push_back(BondOriParam[i]);
 					for(unsigned int l=0;l<l_sph+1;l++){
 						St2Print[typeok].push_back(SteinhardtParams[i*(l_sph+1)+l]);
 					}
@@ -823,6 +956,7 @@ void ComputeAuxiliary::SaveSteinhardtParamToDatabase_PerfectCrystal(string Cryst
 		for(unsigned int t=0;t<type_printed.size();t++){
 			for(unsigned int s=0;s<site_printed[t].size();s++){
 				nbref += 1;
+				BO2Print[t][s] /= count_ave[t][s];
 				for(unsigned int l=0;l<l_sph+1;l++){
 					St2Print[t][s*(l_sph+1)+l] /= count_ave[t][s];
 				}
@@ -831,9 +965,9 @@ void ComputeAuxiliary::SaveSteinhardtParamToDatabase_PerfectCrystal(string Cryst
 		writefile << "NB_REF " << nbref << endl;
 		for(unsigned int t=0;t<type_printed.size();t++){
 			for(unsigned int s=0;s<site_printed[t].size();s++){
-				writefile << _MySystem->getCrystal()->getAtomType(type_printed[t]-1) << " " << type_printed[t] << " S" << s+1 << " ";
+				writefile << _MySystem->getCrystal()->getAtomType(type_printed[t]-1) << " " << type_printed[t] << " " << site_printed[t][s]+1 << " ";
 				for(unsigned int l=0;l<l_sph+1;l++) writefile << St2Print[t][s*(l_sph+1)+l] << " ";
-				writefile << endl;
+				writefile << BO2Print[t][s] << endl;
 			}
 		}
 		writefile.close();
@@ -964,7 +1098,15 @@ void ComputeAuxiliary::SteinhardtDatabase_read(string CrystalName){
 		string fullpath2data = database.c_str()+PC_str+database_extension;
 		ifstream file(fullpath2data, ios::in);
 		size_t pos_nbref, pos_lsph, pos_rc;
-		unsigned int line_rc(1000), count, buffer_ui;
+		unsigned int line_rc(1000), count, buffer_ui, buffer_ui2;
+		double buffer_d1, buffer_d2;
+		for(unsigned int i=0;i<_MySystem->getCrystal()->getNbAtomType();i++){
+			this->AtomSiteRefPC.push_back(vector<unsigned int>());
+			this->SteinhardtParams_REF_PC.push_back(vector<double>());
+			if( _MySystem->getCrystal()->getIsMultisite() ){ // TODO change here and add IsCentrosymmetric to crystal database because we need the reference bond ori param only when it is not centrosymmetric and not when it is multisite
+				this->BondOriParam_REF_PC.push_back(vector<double>());
+			}
+		}
 		string line;
 		count = 0;
 		if(file){
@@ -991,18 +1133,36 @@ void ComputeAuxiliary::SteinhardtDatabase_read(string CrystalName){
 				}
 				// read the parameters
 				if( count > line_rc+1 && count < line_rc+buffer_ui+2 ){
-					SteinhardtParams_REF_PC.push_back(new double[(this->l_sph_ref+1)]);
+					//SteinhardtParams_REF_PC.push_back(new double[(this->l_sph_ref+1)]);
 					AtomTypeUINTRefPC.push_back(0);
-					istringstream text(line);
+istringstream text(line);
 					text >> buffer_s >> AtomTypeUINTRefPC[AtomTypeUINTRefPC.size()-1];
-					if( _MySystem->getCrystal()->getIsMultisite() ) text >> buffer_s;
+					if( _MySystem->getCrystal()->getIsMultisite() ){
+						text >> buffer_ui2;
+						this->AtomSiteRefPC[AtomTypeUINTRefPC[AtomTypeUINTRefPC.size()-1]-1].push_back(buffer_ui2);
+					}
 					// get norm of steinhardt params
-					for(unsigned int l=0;l<this->l_sph_ref+1;l++) text >> SteinhardtParams_REF_PC[SteinhardtParams_REF_PC.size()-1][l];
+					for(unsigned int l=0;l<this->l_sph_ref+1;l++){
+						text >> buffer_d1;
+						SteinhardtParams_REF_PC[AtomTypeUINTRefPC[AtomTypeUINTRefPC.size()-1]-1].push_back(buffer_d1);
+					}
+					if( _MySystem->getCrystal()->getIsMultisite() ){ // TODO change here and add IsCentrosymmetric to crystal database because we need the reference bond ori param only when it is not centrosymmetric and not when it is multisite
+						text >> buffer_d2;
+						BondOriParam_REF_PC[AtomTypeUINTRefPC[AtomTypeUINTRefPC.size()-1]-1].push_back(buffer_d2);
+					}
 				}
 				count += 1;
 			}while(file);
 		}else{
 			cout << "We can't read the file containing the Steinhardt parameter for perfect crystal (/data/Steinhardt/CrystalName/PerfectCrystal.dat)" << endl;
+		}
+		for(unsigned int i=0;i<_MySystem->getCrystal()->getNbAtomType();i++){
+			cout << "Atom type : " << i+1 << endl;
+			for(unsigned int j=0;j<AtomSiteRefPC[i].size();j++){
+				cout << "site " << AtomSiteRefPC[i][j] << " Steinhardt ";
+			       	for(unsigned int l=0;l<this->l_sph_ref+1;l++) cout << SteinhardtParams_REF_PC[i][j*(this->l_sph_ref+1)+l] << " ";
+				cout << ", Bond Ori Ref " << BondOriParam_REF_PC[i][j] << endl;
+			}
 		}
 		unsigned int lref;
 		double rcref;

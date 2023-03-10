@@ -18,6 +18,6 @@ Masses
 
 Atoms # charge/atomic // charge if the atoms have a charge, else atomic
 
-	N_i n_i (c_i) x_i y_i z_i // N_i id of atom i, n_i element number of atom i, c_i charge (if atoms are charged) of atom i, x_i y_i z_i cartesian coordinates of atom i
+	N_i n_i (c_i) x_i y_i z_i s_i // N_i id of atom i, n_i element number of atom i, c_i charge (if atoms are charged) of atom i, x_i y_i z_i cartesian coordinates of atom i, s_i crystallographic site of atom i
 	N_i+1 n_i+1 ..
 

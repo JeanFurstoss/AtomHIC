@@ -15,12 +15,13 @@ protected:
 	double *BondOriParam_Steinhardt;
 	double *StrainTensor;
 	double *Strain_invII;
-	unsigned int *Atom_SiteIndex;
+	unsigned int *Atom_SiteIndex; // determined using comparison of Steinhardt param for l=l_sph (using the database)
 	unsigned int *Malpha;// array containing the index of neighbours of the same species (or same site in case of multisite crystal) with the first line corresponding to the number of neighbours, i.e. Malpha[i*(nbNMax+1)] = nb of neighbour of atom i, Malpha[i*(nbNMax+1)+j+1] = id of the jth neighbour of atom i
 	std::complex<double> *Qalpha; // complex array containing the spherical harmonic for the different modes
 	double *SteinhardtParams; // Steinhardt parameters
 	double *SteinhardtParams_ave_cutoff; // Steinhardt parameters
-	std::vector<double*> SteinhardtParams_REF_PC; // Steinhardt parameters for reference perfect crystal
+	std::vector<std::vector<double>> SteinhardtParams_REF_PC; // Steinhardt parameters for reference perfect crystal
+	std::vector<std::vector<double>> BondOriParam_REF_PC; // Bond ori param for reference perfect crystal (non centrosymmetric crystals)
 	std::vector<double*> SteinhardtParams_REF_PC_ave; // Steinhardt parameters for reference perfect crystal averaged over sites
 	std::vector<double*> SteinhardtParams_REF_PC_ave_cutoff; // Steinhardt parameters for reference perfect crystal average over the atom of the same species within the cutoff radius
 	std::vector<double*> SteinhardtParams_REF_Def; // Steinhardt parameters for reference defects => tab[i*(l_sph_ref+1)+l] gives for ref i, the lth degree of steinhard parameter
@@ -29,6 +30,7 @@ protected:
 	std::vector<unsigned int*> AtomTypeUINTRefDef_ave_cutoff; // array containing the number of ref and atom specy => i.e. AtomTypeUINTRefDef[i][0] = number of ref of defect i, AtomTypeUINTRefDef[i][j+1] = type uint of the jth ref of the defect i
 	std::vector<std::string> Ref_Def_Names; // Names of the defect present in the database
 	std::vector<int> AtomTypeUINTRefPC; // array containing the atom specy => i.e. AtomTypeUINTRefPC[i] = type uint of the params in SteinhardtParams_REF_DEF[i]
+	std::vector<std::vector<unsigned int>> AtomSiteRefPC; // array containing the crystallographic site => i.e. AtomSiteRefPC[i][j] = crystallographic site of the params in SteinhardtParams_REF_PC[i]
 	std::vector<int> AtomTypeUINTRefPC_ave; // array containing the atom specy => i.e. AtomTypeUINTRefPC[i] = type uint of the params in SteinhardtParams_REF_DEF[i]
 	unsigned int nbRefDef; // number of defect in the database
 	unsigned int nbref; // number of q vectors for each defect or perfect crystal average
@@ -53,6 +55,10 @@ public:
 	// getters
 	// methods
 	double* BondOrientationalParameter();
+	void BondOriParam_MultisiteCrystal();
+	void BondOriParam_Multisite();
+	void BondOriParam_MultisiteNewVersion();
+	void BondOriParam_NoMultisite();
 	double* ComputeSteinhardtParameters(const double rc, const int l_sph);
 	double* ComputeSteinhardtParameters_OneL(const double rc, const int l_sph);
 	double* Compute_StrainTensor();

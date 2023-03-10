@@ -423,6 +423,7 @@ void Crystal::read_database(){
 				text >> buffer_uint;
 				this->nbAtom = buffer_uint;
 				Motif = new Atom[this->nbAtom];
+				this->AtomSite = new unsigned int[this->nbAtom];
 			}
 
 			// find H1 vector
@@ -503,7 +504,7 @@ void Crystal::read_database(){
 			if( count > line_At+1 ){
 				istringstream text(line);
 				if( this->IsCharge ){
-					text >> buffer_uint >> buffer_uint_1 >> buffer_1 >> buffer_2 >> buffer_3 >> buffer_4;
+					text >> buffer_uint >> buffer_uint_1 >> buffer_1 >> buffer_2 >> buffer_3 >> buffer_4 >> buffer_uint_2;
 					this->Motif[buffer_uint-1].pos.x = buffer_2;
 					this->Motif[buffer_uint-1].pos.y = buffer_3;
 					this->Motif[buffer_uint-1].pos.z = buffer_4;
@@ -511,8 +512,9 @@ void Crystal::read_database(){
 					this->Motif[buffer_uint-1].charge = buffer_1;
 					this->Motif[buffer_uint-1].type = this->AtomType[buffer_uint_1-1];
 					this->Motif[buffer_uint-1].mass = this->AtomMass[buffer_uint_1-1];
+					this->AtomSite[buffer_uint-1] = buffer_uint_2-1;
 				}else{
-					text >> buffer_uint >> buffer_uint_1 >> buffer_2 >> buffer_3 >> buffer_4;
+					text >> buffer_uint >> buffer_uint_1 >> buffer_2 >> buffer_3 >> buffer_4 >> buffer_uint_2;
 					this->Motif[buffer_uint-1].pos.x = buffer_2;
 					this->Motif[buffer_uint-1].pos.y = buffer_3;
 					this->Motif[buffer_uint-1].pos.z = buffer_4;
@@ -520,6 +522,7 @@ void Crystal::read_database(){
 					this->Motif[buffer_uint-1].type = this->AtomType[buffer_uint_1-1];
 					this->Motif[buffer_uint-1].mass = this->AtomMass[buffer_uint_1-1];
 					this->Motif[buffer_uint-1].charge = 0.;
+					this->AtomSite[buffer_uint-1] = buffer_uint_2-1;
 				}
 			}
 			count += 1;

@@ -17,6 +17,7 @@ private:
 	unsigned int nbAtomType;
 	std::string *AtomType; // the different atom species present in the system
 	unsigned int *AtomType_uint;
+	unsigned int *AtomSite;
 	unsigned int *NbAtomSite; // array such as NbAtomSite[i] = number of site for atom type AtomType[i]
 	bool IsCharge;
 	double *AtomMass;
@@ -66,6 +67,7 @@ public:
 	const double getVol(){ return this->V; };
 	const unsigned int getNbAtom(){ return this->nbAtom; }
 	const unsigned int getNbAtomType(){ return this->nbAtomType; }
+	const unsigned int getAtomSite(const unsigned int i){ return this->AtomSite[i]; }
 	const unsigned int getAtomType_uint(const unsigned int Id){ return this->AtomType_uint[Id]; }
 	const bool getIsMultisite(){ return this->IsMultisite; }
 	inline const unsigned int getNbAtomSite(const unsigned int type_uint){
