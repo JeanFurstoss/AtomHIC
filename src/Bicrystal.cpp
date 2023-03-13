@@ -1475,20 +1475,34 @@ void Bicrystal::searchGBPos(){
 		// search the minimal values around the max to define bounds for characterizing the GB
 		double rightMin = 0;
 		unsigned int indRight = 0;
+		unsigned int count_equal;
+		unsigned int max_count_equal = 20;
+		count_equal = 0;
 		for(unsigned int i=indMaxDiso;i<(density_red.size()/2)-1;i++){
 			if( density_red[i*2] < density_red[(i+1)*2] ){
 				rightMin = density_red[i*2];
 				indRight = i;
 				break;
+			}else if( fabs(density_red[i*2]-density_red[(i+1)*2]) < 1e-8 ) count_equal++;
+			if( count_equal >= max_count_equal ){
+					rightMin = density_red[i*2];
+					indRight = i;
+					break;
 			}
 		}
 		double leftMin = 0;
 		unsigned int indLeft = 0;
+		count_equal = 0;
 		for(unsigned int i=indMaxDiso;i>0;i--){
 			if( density_red[i*2] < density_red[(i-1)*2] ){
 				leftMin = density_red[i*2];
 				indLeft = i;
 				break;
+			}else if( fabs(density_red[i*2]-density_red[(i-1)*2]) < 1e-8 ) count_equal++;
+			if( count_equal >= max_count_equal ){
+					leftMin = density_red[i*2];
+					indLeft = i;
+					break;
 			}
 		}
 		// if one of the two is higher than the mean we are in local minimum inside the GB
@@ -1496,8 +1510,6 @@ void Bicrystal::searchGBPos(){
 		double facMean = 2.3;
 		unsigned int max_min_search = 250;
 		unsigned int count_min_search = 0;
-		unsigned int count_equal;
-		unsigned int max_count_equal = 20;
 		bool maxfound;
 		cout << "Mean diso : " << MeanDiso << endl;
 		while( rightMin > MeanDiso*facMean && count_min_search < max_min_search ){

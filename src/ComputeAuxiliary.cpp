@@ -315,7 +315,6 @@ void ComputeAuxiliary::BondOriParam_MultisiteNewVersion(){
 		this->BondOriParam = new double[nbAt];
 		this->IsBondOriParam = true;
 	}
-	cout << "unnormed BO" << endl;
 	unsigned int NId, nbN, trueN;
 	for(unsigned int i=0;i<nbAt;i++){
 		BondOriParam[i] = 0;
