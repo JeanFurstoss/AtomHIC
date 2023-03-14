@@ -101,8 +101,10 @@ double* ComputeAuxiliary::ComputeSteinhardtParameters(const double rc, const int
 				buffer_complex[l_loop_st2*lsph1 + (unsigned int) (m_loop_st0 + (int) l_sph)] = Qlm[i*lsph2 + l_loop_st2*lsph1 + (unsigned int) (m_loop_st0 + (int) l_sph)] / (double) _MySystem->getNeighbours(i*(nbNMax+1));
 			}
 			for(neigh=0;neigh<Malpha[i*(nbNMax+1)];neigh++){
+			//for(neigh=0;neigh<_MySystem->getNeighbours(i*(nbNMax+1));neigh++){
 			       for(m_loop_st1=-l_loop_st2;m_loop_st1<(int) l_loop_st2+1;m_loop_st1++){
 				       buffer_complex[l_loop_st2*lsph1 + (unsigned int) (m_loop_st1 + (int) l_sph)] += Qlm[Malpha[i*(nbNMax+1)+neigh+1]*lsph2 + l_loop_st2*lsph1 + (unsigned int) (m_loop_st1 + (int) l_sph)] / ((double) _MySystem->getNeighbours(Malpha[i*(nbNMax+1)+neigh+1]*(nbNMax+1)));
+				       //buffer_complex[l_loop_st2*lsph1 + (unsigned int) (m_loop_st1 + (int) l_sph)] += Qlm[_MySystem->getNeighbours(i*(nbNMax+1)+neigh+1)*lsph2 + l_loop_st2*lsph1 + (unsigned int) (m_loop_st1 + (int) l_sph)] / ((double) _MySystem->getNeighbours(_MySystem->getNeighbours(i*(nbNMax+1)+neigh+1)*(nbNMax+1)));
 			       }
 			}
 			for(m_loop_st2=-l_loop_st2;m_loop_st2<(int) l_loop_st2+1;m_loop_st2++){
@@ -110,6 +112,7 @@ double* ComputeAuxiliary::ComputeSteinhardtParameters(const double rc, const int
 			}
 			SteinhardtParams_ave_cutoff[i*(l_sph+1)+l_loop_st2] *= 4.*M_PI/(2.*l_loop_st2+1.); 
 			SteinhardtParams_ave_cutoff[i*(l_sph+1)+l_loop_st2] /= pow(Malpha[i*(nbNMax+1)],2.);
+			//SteinhardtParams_ave_cutoff[i*(l_sph+1)+l_loop_st2] /= pow(_MySystem->getNeighbours(i*(nbNMax+1)),2.);
 			SteinhardtParams_ave_cutoff[i*(l_sph+1)+l_loop_st2] = sqrt(SteinhardtParams_ave_cutoff[i*(l_sph+1)+l_loop_st2]);
 		}
 	}
@@ -1084,7 +1087,8 @@ void ComputeAuxiliary::SteinhardtDatabase_read(string CrystalName){
 				if(pos!=string::npos){
 					buffer_s.erase(buffer_s.size()-database_extension.size());
 					beg = buffer_s.substr(0,1); 
-					end_qual = buffer_s.substr(buffer_s.size()-ave_cutoff.size(),buffer_s.size());
+					if( buffer_s.size() < ave_cutoff.size() ) end_qual = "";
+					else end_qual = buffer_s.substr(buffer_s.size()-ave_cutoff.size(),buffer_s.size());
 					if( buffer_s != "PerfectCrystal" && buffer_s != "PerfectCrystal_ave" && buffer_s != "PerfectCrystal_ave_cutoff" && beg != "." && end_qual != ave_cutoff ) this->Ref_Def_Names.push_back(buffer_s);
 				}
 			}
