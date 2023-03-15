@@ -10,6 +10,7 @@ using namespace std;
 
 AtomicSystem::AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double zhi, vector<int> cl_box):_MyCrystal(_MyCrystal){
 	read_params_atsys();
+	this->IsCrystalDefined = true;
 	// Compute the number of atom and verify it gives an integer number
 	double nbAt_d = _MyCrystal->getNbAtom()*xhi*yhi*zhi/_MyCrystal->getVol();
 	if( fabs(nbAt_d-round(nbAt_d)) > 1e-3 ) cout << "Warning the cell dimension does not correspond to integer number of atom" << endl;
@@ -30,14 +31,9 @@ AtomicSystem::AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double z
 	this->H3[2] = zhi;
 	this->MT = new MathTools;
 	this->nbAtomType = _MyCrystal->getNbAtomType();
-	this->AtomType = new string[this->nbAtomType];
-	this->AtomType_uint = new unsigned int[this->nbAtomType];
-	this->AtomMass = new double[this->nbAtomType];
-	for(unsigned int i=0;i<this->nbAtomType;i++){
-		this->AtomType[i] = _MyCrystal->getAtomType(i);
-		this->AtomType_uint[i] = _MyCrystal->getAtomType_uint(i);
-		this->AtomMass[i] = _MyCrystal->getAtomMass(i);
-	}
+	this->AtomType = _MyCrystal->getAtomType();
+	this->AtomMass = _MyCrystal->getAtomMass();
+	this->AtomCharge = _MyCrystal->getAtomCharge();
 	this->IsCharge = _MyCrystal->getIsCharge();
 	this->IsTilted = false;
 	this->G1 = new double[3];
@@ -262,33 +258,15 @@ AtomicSystem::AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double z
 	} // END DoNotSep case
 }
 // construct AtomicSystem giving AtomList, number of atom and cell vectors 
-AtomicSystem::AtomicSystem(Atom *AtomList, unsigned int nbAtom, double *H1, double *H2, double *H3):AtomList(AtomList), nbAtom(nbAtom), H1(H1), H2(H2), H3(H3){
+AtomicSystem::AtomicSystem(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3):AtomList(AtomList), nbAtom(nbAtom), _MyCrystal(_MyCrystal), H1(H1), H2(H2), H3(H3){
 	read_params_atsys();
 	this->IsAtomListMine = false;
 	this->IsCellVecMine = false;
-	// search the number of atom type, get type, type_uint and mass
-	this->nbAtomType = 0;
-	this->AtomType = new string[this->MaxAtomType];
-	this->AtomType_uint = new unsigned int[this->MaxAtomType];
-	this->AtomMass = new double[this->MaxAtomType];
-	bool Already;
-	for(unsigned int i=0;i<nbAtom;i++){
-	       	Already = false;
-		for(unsigned int t=0;t<this->nbAtomType;t++){
-			if( this->AtomList[i].type_uint == AtomType_uint[t] ){
-				Already = true;
-				break;
-			}
-		}
-		if( !Already ){
-			this->AtomType[this->nbAtomType] = AtomList[i].type;
-			this->AtomType_uint[this->nbAtomType] = AtomList[i].type_uint;
-			this->AtomMass[this->nbAtomType] = AtomList[i].mass;
-			this->nbAtomType += 1;
-		}
-	}
-	if( fabs(AtomList[0].charge) > 1e-6 ) this->IsCharge = true;
-	else this->IsCharge = false;
+	this->nbAtomType = _MyCrystal->getNbAtomType();
+	this->AtomType = _MyCrystal->getAtomType();
+	this->AtomMass = _MyCrystal->getAtomMass();
+	this->AtomCharge = _MyCrystal->getAtomCharge();
+	this->IsCharge = _MyCrystal->getIsCharge();
 	if( H2[0] != 0 || H3[1] != 0 || H3[2] != 0 ) this->IsTilted = true;
 	else this->IsTilted = false;
 	this->MT = new MathTools;
@@ -303,8 +281,8 @@ AtomicSystem::AtomicSystem(const string& filename)
 {
 	read_params_atsys();
 	this->AtomType = new string[this->MaxAtomType];
-	this->AtomType_uint = new unsigned int[this->MaxAtomType];
 	this->AtomMass = new double[this->MaxAtomType];
+	this->AtomCharge = new double[this->MaxAtomType];
 	this->H1 = new double[3];
 	this->H2 = new double[3];
 	this->H3 = new double[3];
@@ -323,10 +301,6 @@ AtomicSystem::AtomicSystem(const string& filename)
 		this->read_cfg_file(filename);
 	}else{
 		cerr << "The \"" << ext << "\" is unknown (known extension : lmp, cfg(or xsf)), aborting the construction of atomic system" << endl;
-	}
-	for(unsigned int i=0;i<this->nbAtom;i++){
-		this->AtomList[i].type = this->AtomType[this->AtomList[i].type_uint-1]; //TODO not good
-		this->AtomList[i].mass = this->AtomMass[this->AtomList[i].type_uint-1];
 	}
 	this->MT = new MathTools;
 	this->G1 = new double[3];
@@ -371,19 +345,19 @@ unsigned int AtomicSystem::Compute1dDensity(std::string auxname, std::string dir
 				for(unsigned int i=0;i<nbPts;i++){
 					this->density_prof[this->density_prof.size()-1][i*2] = 0;
 					this->density_prof[this->density_prof.size()-1][i*2+1] = this->H1[0]*i/(nbPts-1.);
-					for(unsigned int j=0;j<this->nbAtom;j++) this->density_prof[this->density_prof.size()-1][i*2] += MT->gaussian(this->density_prof[this->density_prof.size()-1][i*2+1], this->WrappedPos[j].x, sigma)*(this->AtomList[j].mass);
+					for(unsigned int j=0;j<this->nbAtom;j++) this->density_prof[this->density_prof.size()-1][i*2] += MT->gaussian(this->density_prof[this->density_prof.size()-1][i*2+1], this->WrappedPos[j].x, sigma)*(this->AtomMass[this->AtomList[j].type_uint-1]);
 				}
 			}else if( dir == "y" ){
 				for(unsigned int i=0;i<nbPts;i++){
 					this->density_prof[this->density_prof.size()-1][i*2] = 0;
 					this->density_prof[this->density_prof.size()-1][i*2+1] = this->H2[1]*i/(nbPts-1.);
-					for(unsigned int j=0;j<this->nbAtom;j++) this->density_prof[this->density_prof.size()-1][i*2] += MT->gaussian(this->density_prof[this->density_prof.size()-1][i*2+1], this->WrappedPos[j].y, sigma)*(this->AtomList[j].mass);
+					for(unsigned int j=0;j<this->nbAtom;j++) this->density_prof[this->density_prof.size()-1][i*2] += MT->gaussian(this->density_prof[this->density_prof.size()-1][i*2+1], this->WrappedPos[j].y, sigma)*(this->AtomMass[this->AtomList[j].type_uint-1]);
 				}
 			}else if( dir == "z" ){
 				for(unsigned int i=0;i<nbPts;i++){
 					this->density_prof[this->density_prof.size()-1][i*2] = 0;
 					this->density_prof[this->density_prof.size()-1][i*2+1] = this->H3[2]*i/(nbPts-1.);
-					for(unsigned int j=0;j<this->nbAtom;j++) this->density_prof[this->density_prof.size()-1][i*2] += MT->gaussian(this->density_prof[this->density_prof.size()-1][i*2+1], this->WrappedPos[j].z, sigma)*(this->AtomList[j].mass);
+					for(unsigned int j=0;j<this->nbAtom;j++) this->density_prof[this->density_prof.size()-1][i*2] += MT->gaussian(this->density_prof[this->density_prof.size()-1][i*2+1], this->WrappedPos[j].z, sigma)*(this->AtomMass[this->AtomList[j].type_uint-1]);
 				}
 			}else{
 			        cout << "The provided direction \"" << dir << "\" for density computation has not been recognize" << endl;
@@ -394,19 +368,19 @@ unsigned int AtomicSystem::Compute1dDensity(std::string auxname, std::string dir
 				for(unsigned int i=0;i<nbPts;i++){
 					this->density_prof[this->density_prof.size()-1][i*2] = 0;
 					this->density_prof[this->density_prof.size()-1][i*2+1] = this->H1[0]*i/(nbPts-1.);
-					for(unsigned int j=0;j<this->nbAtom;j++) this->density_prof[this->density_prof.size()-1][i*2] += MT->gaussian(this->density_prof[this->density_prof.size()-1][i*2+1], this->WrappedPos[j].x, sigma)*(this->AtomList[j].charge);
+					for(unsigned int j=0;j<this->nbAtom;j++) this->density_prof[this->density_prof.size()-1][i*2] += MT->gaussian(this->density_prof[this->density_prof.size()-1][i*2+1], this->WrappedPos[j].x, sigma)*(this->AtomCharge[this->AtomList[j].type_uint-1]);
 				}
 			}else if( dir == "y" ){
 				for(unsigned int i=0;i<nbPts;i++){
 					this->density_prof[this->density_prof.size()-1][i*2] = 0;
 					this->density_prof[this->density_prof.size()-1][i*2+1] = this->H2[1]*i/(nbPts-1.);
-					for(unsigned int j=0;j<this->nbAtom;j++) this->density_prof[this->density_prof.size()-1][i*2] += MT->gaussian(this->density_prof[this->density_prof.size()-1][i*2+1], this->WrappedPos[j].y, sigma)*(this->AtomList[j].charge);
+					for(unsigned int j=0;j<this->nbAtom;j++) this->density_prof[this->density_prof.size()-1][i*2] += MT->gaussian(this->density_prof[this->density_prof.size()-1][i*2+1], this->WrappedPos[j].y, sigma)*(this->AtomCharge[this->AtomList[j].type_uint-1]);
 				}
 			}else if( dir == "z" ){
 				for(unsigned int i=0;i<nbPts;i++){
 					this->density_prof[this->density_prof.size()-1][i*2] = 0;
 					this->density_prof[this->density_prof.size()-1][i*2+1] = this->H3[2]*i/(nbPts-1.);
-					for(unsigned int j=0;j<this->nbAtom;j++) this->density_prof[this->density_prof.size()-1][i*2] += MT->gaussian(this->density_prof[this->density_prof.size()-1][i*2+1], this->WrappedPos[j].z, sigma)*(this->AtomList[j].charge);
+					for(unsigned int j=0;j<this->nbAtom;j++) this->density_prof[this->density_prof.size()-1][i*2] += MT->gaussian(this->density_prof[this->density_prof.size()-1][i*2+1], this->WrappedPos[j].z, sigma)*(this->AtomCharge[this->AtomList[j].type_uint-1]);
 				}
 			}else{
 			        cout << "The provided direction \"" << dir << "\" for density computation has not been recognize" << endl;
@@ -849,7 +823,6 @@ void AtomicSystem::read_lmp_file(const string& filename){
 				text >> buffer_uint >> buffer_1 >> buffer_s_1 >> buffer_s;
 				this->AtomMass[buffer_uint-1] = buffer_1;
 				this->AtomType[buffer_uint-1] = buffer_s;
-				this->AtomType_uint[buffer_uint-1] = buffer_uint;
 			}
 			pos_At=line.find("Atoms #");
 			if(pos_At!=string::npos){
@@ -866,14 +839,14 @@ void AtomicSystem::read_lmp_file(const string& filename){
 					this->AtomList[buffer_uint-1].pos.y = buffer_3;
 					this->AtomList[buffer_uint-1].pos.z = buffer_4;
 					this->AtomList[buffer_uint-1].type_uint = buffer_uint_1;
-					this->AtomList[buffer_uint-1].charge = buffer_1;
+					this->AtomCharge[buffer_uint_1-1] = buffer_1;
 				}else{
 					text >> buffer_uint >> buffer_uint_1 >> buffer_2 >> buffer_3 >> buffer_4;
 					this->AtomList[buffer_uint-1].pos.x = buffer_2;
 					this->AtomList[buffer_uint-1].pos.y = buffer_3;
 					this->AtomList[buffer_uint-1].pos.z = buffer_4;
 					this->AtomList[buffer_uint-1].type_uint = buffer_uint_1;
-					this->AtomList[buffer_uint-1].charge = 0.;
+					this->AtomCharge[buffer_uint_1-1] = 0.;
 				}
 			}
 			count += 1;
@@ -987,9 +960,9 @@ void AtomicSystem::read_cfg_file(const string& filename){
 				this->AtomList[buffer_uint-1].pos.x = buffer_1;
 				this->AtomList[buffer_uint-1].pos.y = buffer_2;
 				this->AtomList[buffer_uint-1].pos.z = buffer_3;
-				this->AtomList[buffer_uint-1].charge = buffer_4;
-				this->AtomList[buffer_uint-1].type = buffer_s;
 				this->AtomList[buffer_uint-1].type_uint = buffer_uint_1;
+				this->AtomCharge[buffer_uint_1-1] = buffer_4;
+				this->AtomType[buffer_uint_1-1] = buffer_s;
 				if(nbAux>0){
 					aux_count = 0;
 					while(text >> buffer_4){
@@ -1011,22 +984,10 @@ void AtomicSystem::read_cfg_file(const string& filename){
 			// END TEST
 		}
 		// search the number of atom type
-		this->AtomType[0] = this->AtomList[0].type;
-		this->AtomType_uint[0] = this->AtomList[0].type_uint;
-		this->nbAtomType = 1;
-		bool IsStored;
-		for(unsigned int i=1;i<this->nbAtom;i++){
-			IsStored = false;
-			for(unsigned int j=0;j<this->nbAtomType;j++){
-				if( this->AtomType[j] == this->AtomList[i].type ){
-					IsStored = true;
-					break;
-				}
-			}
-			if( !IsStored ){
-				this->AtomType[this->nbAtomType] = this->AtomList[i].type;
-				this->AtomType_uint[this->nbAtomType] = this->AtomList[i].type_uint;
-				this->nbAtomType += 1;
+		for(unsigned int i=0;i<this->MaxAtomType;i++){
+			if( this->AtomType[i] == "" ){
+				this->nbAtomType = i;
+				break;
 			}
 		}
 
@@ -1086,16 +1047,10 @@ void AtomicSystem::print_lmp(const string& filename){
         writefile << "\n\t" << this->nbAtom << "\tatoms\n\t" << this->nbAtomType << "\tatom types\n\n\t0.000000000000\t" << this->H1[0] << "\txlo xhi\n\t0.000000000000\t" << H2[1] << "\tylo yhi\n\t0.000000000000\t" << H3[2] << "\tzlo zhi\n";
 	if( this->IsTilted ) writefile << "\t" << H2[0] << "\t" << H3[0] << "\t" << H3[1] << "\txy xz yz\n";
 	writefile << "\nMasses\n\n";
-	vector<double> sortedType;
-	for(unsigned int i=0;i<this->nbAtomType;i++){
-		sortedType.push_back(this->AtomType_uint[i]);
-		sortedType.push_back(i);
-	}
-	this->MT->sort(sortedType,0,2,sortedType);
-	for(unsigned int i=0;i<this->nbAtomType;i++) writefile << "\t" << this->AtomType_uint[(unsigned int) round(sortedType[i*2+1])] << "\t" << this->AtomMass[(unsigned int) round(sortedType[i*2+1])] << "\t# " << this->AtomType[(unsigned int) round(sortedType[i*2+1])] << "\n";
+	for(unsigned int i=0;i<this->nbAtomType;i++) writefile << "\t" << i+1 << "\t" << this->AtomMass[i] << "\t# " << this->AtomType[i] << "\n";
 	if( IsCharge ){
 		writefile << "\nAtoms # charge\n\n";
-		for(unsigned int i=0;i<this->nbAtom;i++) writefile << i+1 << "\t" << this->AtomList[i].type_uint << "\t" << this->AtomList[i].charge << "\t" << this->AtomList[i].pos.x << "\t" << this->AtomList[i].pos.y << "\t" << this->AtomList[i].pos.z << "\n"; 
+		for(unsigned int i=0;i<this->nbAtom;i++) writefile << i+1 << "\t" << this->AtomList[i].type_uint << "\t" << this->AtomCharge[this->AtomList[i].type_uint-1] << "\t" << this->AtomList[i].pos.x << "\t" << this->AtomList[i].pos.y << "\t" << this->AtomList[i].pos.z << "\n"; 
 	}else{
 		writefile << "\nAtoms # atomic\n\n";
 		for(unsigned int i=0;i<this->nbAtom;i++) writefile << i+1 << "\t" << this->AtomList[i].type_uint << "\t" << this->AtomList[i].pos.x << "\t" << this->AtomList[i].pos.y << "\t" << this->AtomList[i].pos.z << "\n"; 
@@ -1114,7 +1069,7 @@ void AtomicSystem::print_cfg(const string& filename){
 	}
 	else writefile << "BOX BOUNDS pp pp pp\n" << "0\t" << H1[0] << "\n0\t" << H2[1] << "\n0\t" << H3[2] << "\n";
 	writefile << "ITEM: ATOMS id type element xu yu zu q\n";
-	for(unsigned int i=0;i<this->nbAtom;i++) writefile << i+1 << " " << this->AtomList[i].type_uint << " " << this->AtomList[i].type << " " << this->AtomList[i].pos.x << " " << this->AtomList[i].pos.y << " " << this->AtomList[i].pos.z << " " << this->AtomList[i].charge << "\n";
+	for(unsigned int i=0;i<this->nbAtom;i++) writefile << i+1 << " " << this->AtomList[i].type_uint << " " << this->AtomType[this->AtomList[i].type_uint-1] << " " << this->AtomList[i].pos.x << " " << this->AtomList[i].pos.y << " " << this->AtomList[i].pos.z << " " << this->AtomCharge[this->AtomList[i].type_uint-1] << "\n";
 	writefile.close();
 }
 
@@ -1154,7 +1109,7 @@ void AtomicSystem::printSystem_aux(const string& filename, const string& AuxName
 	}
 	writefile << "\n";
 	for(unsigned int i=0;i<this->nbAtom;i++){
-		writefile << i+1 << " " << this->AtomList[i].type_uint << " " << this->AtomList[i].type << " " << this->AtomList[i].pos.x << " " << this->AtomList[i].pos.y << " " << this->AtomList[i].pos.z << " " << this->AtomList[i].charge;
+		writefile << i+1 << " " << this->AtomList[i].type_uint << " " << this->AtomType[this->AtomList[i].type_uint-1] << " " << this->AtomList[i].pos.x << " " << this->AtomList[i].pos.y << " " << this->AtomList[i].pos.z << " " << this->AtomCharge[this->AtomList[i].type_uint-1];
         	for(unsigned int j=0;j<AuxId.size();j++){
 			if( Aux_size[j] == 1 ) writefile << " " << this->Aux[AuxId[j]][i];
 			else for(unsigned int k=0;k<Aux_size[j];k++) writefile << " " << this->Aux[AuxId[j]][i*Aux_size[j]+k];
@@ -1207,9 +1162,6 @@ AtomicSystem::~AtomicSystem(){
 	if( this->IsAtomListMine ){
 		delete[] AtomList;
 	}
-	delete[] AtomType;
-	delete[] AtomType_uint;
-	delete[] AtomMass;
 	if( this->IsCellVecMine ){
 		delete[] H1;
 		delete[] H2;
@@ -1226,6 +1178,11 @@ AtomicSystem::~AtomicSystem(){
 	}
 	if( IsSetAux ) for(unsigned int i=0;i<Aux.size();i++) delete[] Aux[i];
 	if( IsCrystalMine ) delete _MyCrystal;
+	if( !IsCrystalDefined ){
+		delete[] AtomType;
+		delete[] AtomMass;
+		delete[] AtomCharge;
+	}
 	for(unsigned int i=0;i<density_prof.size();i++){
 		delete[] density_prof[i];
 		delete[] density_name[i];

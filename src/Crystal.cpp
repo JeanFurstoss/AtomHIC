@@ -469,6 +469,7 @@ void Crystal::read_database(){
 				AtomType_uint = new unsigned int[this->nbAtomType];
 				NbAtomSite = new unsigned int[this->nbAtomType];
 				AtomMass = new double[this->nbAtomType];
+				AtomCharge = new double[this->nbAtomType];
 			}
 
 			// read DoNotSep array
@@ -509,24 +510,20 @@ void Crystal::read_database(){
 					this->Motif[buffer_uint-1].pos.y = buffer_3;
 					this->Motif[buffer_uint-1].pos.z = buffer_4;
 					this->Motif[buffer_uint-1].type_uint = buffer_uint_1;
-					this->Motif[buffer_uint-1].charge = buffer_1;
-					this->Motif[buffer_uint-1].type = this->AtomType[buffer_uint_1-1];
-					this->Motif[buffer_uint-1].mass = this->AtomMass[buffer_uint_1-1];
 					this->AtomSite[buffer_uint-1] = buffer_uint_2-1;
+					this->AtomCharge[buffer_uint_1-1] = buffer_1;
 				}else{
 					text >> buffer_uint >> buffer_uint_1 >> buffer_2 >> buffer_3 >> buffer_4 >> buffer_uint_2;
 					this->Motif[buffer_uint-1].pos.x = buffer_2;
 					this->Motif[buffer_uint-1].pos.y = buffer_3;
 					this->Motif[buffer_uint-1].pos.z = buffer_4;
 					this->Motif[buffer_uint-1].type_uint = buffer_uint_1;
-					this->Motif[buffer_uint-1].type = this->AtomType[buffer_uint_1-1];
-					this->Motif[buffer_uint-1].mass = this->AtomMass[buffer_uint_1-1];
-					this->Motif[buffer_uint-1].charge = 0.;
 					this->AtomSite[buffer_uint-1] = buffer_uint_2-1;
 				}
 			}
 			count += 1;
 		}
+		if( !this->IsCharge ) for(unsigned int i=0;i<this->nbAtomType;i++) AtomCharge[i] = 0.;
 		file.close();
 		this->a1[1] = 0;
 		this->a1[2] = 0;

@@ -75,7 +75,7 @@ double* ComputeAuxiliary::ComputeSteinhardtParameters(const double rc, const int
 				}
 			}
 			// Store the neighbour index into Malpha if it is of the same specy
-			if( _MySystem->getAtom(i).type == _MySystem->getAtom(id).type ){
+			if( _MySystem->getAtom(i).type_uint == _MySystem->getAtom(id).type_uint ){
 				Malpha[i*(nbNMax+1)] += 1;
 				Malpha[i*(nbNMax+1)+Malpha[i*(nbNMax+1)]] = id;
 			}
@@ -175,7 +175,7 @@ double* ComputeAuxiliary::ComputeSteinhardtParameters_OneL(const double rc, cons
 			// compute spherical harmonics
 			for(l_loop=-l_sph;l_loop<l_sph+1;l_loop++) Qalpha[i*(l_sph*2+1)+l_loop+l_sph] += spherical_harmonics((unsigned int) l_sph, l_loop, colat, longit); // maybe false here
 			// Store the neighbour index into Malpha if it is of the same specy
-			if( _MySystem->getAtom(i).type == _MySystem->getAtom(id).type ){
+			if( _MySystem->getAtom(i).type_uint == _MySystem->getAtom(id).type_uint ){
 				Malpha[i*(nbNMax+1)] += 1;
 				Malpha[i*(nbNMax+1)+Malpha[i*(nbNMax+1)]] = id;
 			}
@@ -361,7 +361,7 @@ void ComputeAuxiliary::BondOriParam_Multisite(){ // this version does work (it w
 	vector<vector<double>> BondOri_type(_MySystem->getCrystal()->getNbAtomType());
 	for(unsigned int i=0;i<nbAt;i++) BondOri_type[_MySystem->getAtom(i).type_uint-1].push_back(BondOriParam[i]);
 	for(unsigned int t=0;t<_MySystem->getCrystal()->getNbAtomType();t++){
-		if( _MySystem->getCrystal()->getNbAtomSite(t) == 1 ) tolSites_v[t] = MT->max_vec(BondOri_type[t])*tolSites;
+		if( _MySystem->getCrystal()->getNbAtomSite(t+1) == 1 ) tolSites_v[t] = MT->max_vec(BondOri_type[t])*tolSites;
 		else tolSites_v[t] = (MT->max_vec(BondOri_type[t]) - MT->min_vec(BondOri_type[t]))*tolSites;
 	}
 	bool ElemStored, NormFacStored;

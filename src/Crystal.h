@@ -21,6 +21,7 @@ private:
 	unsigned int *NbAtomSite; // array such as NbAtomSite[i] = number of site for atom type AtomType[i]
 	bool IsCharge;
 	double *AtomMass;
+	double *AtomCharge;
 	// Cell vectors
 	double *a1;
 	double *a2;
@@ -68,21 +69,15 @@ public:
 	const unsigned int getNbAtom(){ return this->nbAtom; }
 	const unsigned int getNbAtomType(){ return this->nbAtomType; }
 	const unsigned int getAtomSite(const unsigned int i){ return this->AtomSite[i]; }
-	const unsigned int getAtomType_uint(const unsigned int Id){ return this->AtomType_uint[Id]; }
 	const bool getIsMultisite(){ return this->IsMultisite; }
-	inline const unsigned int getNbAtomSite(const unsigned int type_uint){
-		unsigned int index=0;
-		for(unsigned int i=0;i<this->nbAtomType;i++){
-		       if( type_uint == this->AtomType_uint[i] ){
-			       index = i;
-			       break;
-		       }
-		}
-		return this->NbAtomSite[index];
-	}
+	const unsigned int getNbAtomSite(const unsigned int typeuint){ return this->NbAtomSite[typeuint-1]; }
 	const double* getTiltTrans(){ return this->TiltTrans_xyz; }
-	const std::string getAtomType(const unsigned int Id){ return this->AtomType[Id]; }
-	const double getAtomMass(const unsigned int Id){ return this->AtomMass[Id]; }
+	const std::string getAtomType(const unsigned int typeuint){ return this->AtomType[typeuint-1]; }
+	std::string* getAtomType(){ return this->AtomType; }
+	const double getAtomMass(const unsigned int typeuint){ return this->AtomMass[typeuint-1]; }
+	double* getAtomMass(){ return this->AtomMass; }
+	const double getAtomCharge(const unsigned int typeuint){ return this->AtomCharge[typeuint-1]; }
+	double* getAtomCharge(){ return this->AtomCharge; }
 	const bool getIsCharge(){ return this->IsCharge; }
 	AtomicSystem* getOrientedSystem(){ return this->OrientedSystem; } 
 	const double* getRotMat(){ return this->rot_mat_total; };

@@ -158,14 +158,9 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	this->H3_G2[1] = 0.;
 	this->H3_G2[2] = this->_MyCrystal2->getOrientedSystem()->getH3()[2];
 	this->nbAtomType = _MyCrystal->getNbAtomType();
-	this->AtomType = new string[this->nbAtomType];
-	this->AtomType_uint = new unsigned int[this->nbAtomType];
-	this->AtomMass = new double[this->nbAtomType];
-	for(unsigned int i=0;i<this->nbAtomType;i++){
-		this->AtomType[i] = _MyCrystal->getAtomType(i);
-		this->AtomType_uint[i] = _MyCrystal->getAtomType_uint(i);
-		this->AtomMass[i] = _MyCrystal->getAtomMass(i);
-	}
+	this->AtomType = _MyCrystal->getAtomType();
+	this->AtomMass = _MyCrystal->getAtomMass();
+	this->AtomCharge = _MyCrystal->getAtomCharge();
 	this->IsCharge = _MyCrystal->getIsCharge();
 	this->IsTilted = false;
 	computeInverseCellVec();
@@ -310,15 +305,15 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 		trueNbAt2 = at_count-trueNbAt1;
 	}
 	// Initialize the two grains
-	this->Grain1 = new AtomicSystem(this->AtomList_G1,nbAtom1,this->H1_G1,this->H2_G1,this->H3_G1);
-	this->Grain2 = new AtomicSystem(this->AtomList_G2,nbAtom2,this->H1_G2,this->H2_G2,this->H3_G2);
+	this->Grain1 = new AtomicSystem(this->AtomList_G1,nbAtom1,_MyCrystal,this->H1_G1,this->H2_G1,this->H3_G1);
+	this->Grain2 = new AtomicSystem(this->AtomList_G2,nbAtom2,_MyCrystal2,this->H1_G2,this->H2_G2,this->H3_G2);
 	this->AreGrainsDefined = true;
 	// verify the stoichiometry
 	unsigned int *currentStoich = new unsigned int[this->_MyCrystal->getNbAtomType()];
 	for(unsigned int i=0;i<this->_MyCrystal->getNbAtomType();i++) currentStoich[i] = 0;
 	for(unsigned int i=0;i<at_count;i++){
 		for(unsigned int t=0;t<this->_MyCrystal->getNbAtomType();t++){
-			if( AtomList_temp[i].type_uint == this->_MyCrystal->getAtomType_uint(t) ){
+			if( AtomList_temp[i].type_uint == t+1 ){
 				currentStoich[t] += 1;
 				break;
 			}
@@ -330,7 +325,7 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 			stoich = false;
 			cout << "Warning the stoichiometry is not the same than parent crystal, ";
 			for(unsigned int t=0;t<this->_MyCrystal->getNbAtomType();t++){
-				cout << "number of " << this->_MyCrystal->getAtomType(t) << " : " << currentStoich[t] << ", ";
+				cout << "number of " << this->_MyCrystal->getAtomType(t+1) << " : " << currentStoich[t] << ", ";
 			}
 			cout << endl;
 			break;
@@ -360,21 +355,20 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 		vector<int> Type2Rm;
 		for(unsigned int i=0;i<this->_MyCrystal->getNbAtomType();i++){
 			if( adjust[i] < 0 ){
-				Type2Rm.push_back(this->_MyCrystal->getAtomType_uint(i));
-				Type2Rm.push_back(i);
+				Type2Rm.push_back(i+1);
 				Neigh.push_back(vector<double>());
 			}
 		}
 		double rc_squared = pow(3.,2.);
 		double d_squared;
 		for(unsigned int i=0;i<at_count;i++){
-			for(unsigned int t=0;t<Type2Rm.size()/2;t++){
-				if( AtomList_temp[i].pos.z < GBup && AtomList_temp[i].pos.z > GBdown && AtomList_temp[i].type_uint == Type2Rm[t*2] ){
+			for(unsigned int t=0;t<Type2Rm.size();t++){
+				if( AtomList_temp[i].pos.z < GBup && AtomList_temp[i].pos.z > GBdown && AtomList_temp[i].type_uint == Type2Rm[t] ){
 					xpos = AtomList_temp[i].pos.x;
 					ypos = AtomList_temp[i].pos.y;
 					zpos = AtomList_temp[i].pos.z;
 					for(unsigned int j=0;j<at_count;j++){
-						if( i != j && AtomList_temp[j].pos.z < GBup && AtomList_temp[j].pos.z > GBdown  && AtomList_temp[j].type_uint == Type2Rm[t*2] ){
+						if( i != j && AtomList_temp[j].pos.z < GBup && AtomList_temp[j].pos.z > GBdown  && AtomList_temp[j].type_uint == Type2Rm[t] ){
 							d_squared = pow(xpos-AtomList_temp[j].pos.x,2.) + pow(ypos-AtomList_temp[j].pos.y,2.) + pow(zpos-AtomList_temp[j].pos.z,2.); 
 							if( d_squared < rc_squared ){
 								Neigh[t].push_back(d_squared);
@@ -386,18 +380,18 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 			}
 		}
 		this->nbAtom = at_count;
-		for(unsigned int t=0;t<Type2Rm.size()/2;t++){
+		for(unsigned int t=0;t<Type2Rm.size();t++){
 			this->MT->sort(Neigh[t],0,2,Neigh[t]);
-			this->nbAtom += adjust[Type2Rm[t*2+1]];
+			this->nbAtom += adjust[Type2Rm[t]-1];
 		}
 		this->AtomList = new Atom[this->nbAtom];
 		unsigned int at_count2 = 0;
 		bool store;
 		for(unsigned int i=0;i<at_count;i++){
 			store = true;
-			for(unsigned int t=0;t<Type2Rm.size()/2;t++){
-				if( AtomList_temp[i].type_uint == Type2Rm[t*2] ){
-					for(unsigned int n=0;n<abs(adjust[Type2Rm[t*2+1]]);n++){
+			for(unsigned int t=0;t<Type2Rm.size();t++){
+				if( AtomList_temp[i].type_uint == Type2Rm[t] ){
+					for(unsigned int n=0;n<abs(adjust[Type2Rm[t]-1]);n++){
 						if( round(Neigh[t][n*2+1]) == i ){
 							store = false;
 							if( TagGrain[i] == 1 ) trueNbAt1 -= 1;
@@ -561,14 +555,9 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	this->AtomList_G1 = new Atom[nbAtom1_G];
 	this->AtomList_G2 = new Atom[nbAtom2_G];
 	this->nbAtomType = _MyCrystal->getNbAtomType();
-	this->AtomType = new string[this->nbAtomType];
-	this->AtomType_uint = new unsigned int[this->nbAtomType];
-	this->AtomMass = new double[this->nbAtomType];
-	for(unsigned int i=0;i<this->nbAtomType;i++){
-		this->AtomType[i] = _MyCrystal->getAtomType(i);
-		this->AtomType_uint[i] = _MyCrystal->getAtomType_uint(i);
-		this->AtomMass[i] = _MyCrystal->getAtomMass(i);
-	}
+	this->AtomType = _MyCrystal->getAtomType();
+	this->AtomMass = _MyCrystal->getAtomMass();
+	this->AtomCharge = _MyCrystal->getAtomCharge();
 	this->IsCharge = _MyCrystal->getIsCharge();
 	this->IsTilted = false;
 	computeInverseCellVec();
@@ -602,8 +591,8 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 		}
 	}
 	// construct the two grains
-	this->Grain1 = new AtomicSystem(this->AtomList_G1,nbAtom1_G,this->H1_G1,this->H2_G1,this->H3_G1);
-	this->Grain2 = new AtomicSystem(this->AtomList_G2,nbAtom2_G,this->H1_G2,this->H2_G2,this->H3_G2);
+	this->Grain1 = new AtomicSystem(this->AtomList_G1,nbAtom1_G,this->_MyCrystal,this->H1_G1,this->H2_G1,this->H3_G1);
+	this->Grain2 = new AtomicSystem(this->AtomList_G2,nbAtom2_G,this->_MyCrystal2,this->H1_G2,this->H2_G2,this->H3_G2);
 	this->AreGrainsDefined = true;
 	string h_a_str = to_string(this->h_a);
 	string k_a_str = to_string(this->k_a);
@@ -966,22 +955,17 @@ void Bicrystal::printCSL(const std::string filename){
         writefile << "\n\t" << this->nbAtom+CSL.size() << "\tatoms\n\t" << this->nbAtomType+1 << "\tatom types\n\n\t0.000000000000\t" << this->H1[0] << "\txlo xhi\n\t0.000000000000\t" << H2[1] << "\tylo yhi\n\t0.000000000000\t" << H3[2] << "\tzlo zhi\n";
 	if( this->IsTilted ) writefile << "\t" << H2[0] << "\t" << H3[0] << "\t" << H3[1] << "\txy xz yz\n";
 	writefile << "\nMasses\n\n";
-	vector<double> sortedType;
-	for(unsigned int i=0;i<this->nbAtomType;i++){
-		sortedType.push_back(this->AtomType_uint[i]);
-		sortedType.push_back(i);
-	}
-	this->MT->sort(sortedType,0,2,sortedType);
-	for(unsigned int i=0;i<this->nbAtomType;i++) writefile << "\t" << this->AtomType_uint[(unsigned int) round(sortedType[i*2+1])] << "\t" << this->AtomMass[(unsigned int) round(sortedType[i*2+1])] << "\t# " << this->AtomType[(unsigned int) round(sortedType[i*2+1])] << "\n";
-	writefile << "\t" << this->AtomType_uint[(unsigned int) round(sortedType[(this->nbAtomType-1)*2+1])]+1 << "\t0\t# CSL\n";
+	for(unsigned int i=0;i<this->nbAtomType;i++) writefile << "\t" << i+1 << "\t" << this->AtomMass[i] << "\t# " << this->AtomType[i] << "\n";
+	writefile << "\t" << this->nbAtomType+1 << "\t0\t# CSL\n";
+
 	if( IsCharge ){
 		writefile << "\nAtoms # charge\n\n";
-		for(unsigned int i=0;i<this->nbAtom;i++) writefile << i+1 << "\t" << this->AtomList[i].type_uint << "\t" << this->AtomList[i].charge << "\t" << this->AtomList[i].pos.x << "\t" << this->AtomList[i].pos.y << "\t" << this->AtomList[i].pos.z << "\n"; 
-		for(unsigned int i=0;i<CSL.size();i++) writefile << i+1+this->nbAtom << "\t" << this->AtomType_uint[(unsigned int) round(sortedType[(this->nbAtomType-1)*2+1])]+1 << "\t0\t" << CSL[i][0] << "\t" << CSL[i][1] << "\t" << CSL[i][2] << "\n";
+		for(unsigned int i=0;i<this->nbAtom;i++) writefile << i+1 << "\t" << this->AtomList[i].type_uint << "\t" << this->AtomCharge[this->AtomList[i].type_uint-1] << "\t" << this->AtomList[i].pos.x << "\t" << this->AtomList[i].pos.y << "\t" << this->AtomList[i].pos.z << "\n"; 
+		for(unsigned int i=0;i<CSL.size();i++) writefile << i+1+this->nbAtom << "\t" << this->nbAtomType+1 << "\t0\t" << CSL[i][0] << "\t" << CSL[i][1] << "\t" << CSL[i][2] << "\n";
 	}else{
 		writefile << "\nAtoms # atomic\n\n";
 		for(unsigned int i=0;i<this->nbAtom;i++) writefile << i+1 << "\t" << this->AtomList[i].type_uint << "\t" << this->AtomList[i].pos.x << "\t" << this->AtomList[i].pos.y << "\t" << this->AtomList[i].pos.z << "\n"; 
-		for(unsigned int i=0;i<CSL.size();i++) writefile << i+1+this->nbAtom << "\t" << this->AtomType_uint[(unsigned int) round(sortedType[(this->nbAtomType-1)*2+1])]+1 << "\t" << CSL[i][0] << "\t" << CSL[i][1] << "\t" << CSL[i][2] << "\n";
+		for(unsigned int i=0;i<CSL.size();i++) writefile << i+1+this->nbAtom << "\t" << this->nbAtomType+1 << "\t" << CSL[i][0] << "\t" << CSL[i][1] << "\t" << CSL[i][2] << "\n";
 	}
 	writefile.close();
 

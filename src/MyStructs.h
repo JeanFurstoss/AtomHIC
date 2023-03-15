@@ -11,11 +11,8 @@ struct Position{
 };
 
 struct Atom{
-	std::string type;
 	unsigned int type_uint;
 	Position pos;
-	double charge; // charge
-	double mass; // mass
 };
 
 #endif

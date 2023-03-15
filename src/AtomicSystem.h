@@ -16,8 +16,8 @@ protected:
 	unsigned int nbAtomType;
 	unsigned int MaxAtomType=15;
 	std::string *AtomType; // the different atom species present in the system
-	unsigned int *AtomType_uint;
 	double *AtomMass;
+	double *AtomCharge;
 	Atom *AtomList; // List of the atom belonging to the system
 	bool IsAtomListMine = true;
 	Position *WrappedPos;
@@ -59,7 +59,7 @@ public:
 	AtomicSystem(){};
 	AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double zhi, std::vector<int> cl_box); // construct atomic system from crystal and cell size
 	AtomicSystem(const std::string& filename); // construct AtomicSystem by reading file
-	AtomicSystem(Atom *AtomList, unsigned int nbAtom, double *H1, double *H2, double *H3); // construct AtomicSystem giving AtomList and cell vectors 
+	AtomicSystem(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3); // construct AtomicSystem giving AtomList and cell vectors 
 	// getters
 	unsigned int getNbAtom(){ return this->nbAtom; }
 	Atom getAtom(const unsigned int Id){ return this->AtomList[Id]; }
