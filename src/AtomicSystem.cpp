@@ -875,7 +875,7 @@ void AtomicSystem::read_cfg_file(const string& filename){
 	if(file){
 		unsigned int line_dt(1000), line_At(1000), line_H_tilt(1000), line_H(1000), line_at(1000), buffer_uint, buffer_uint_1, count_H(0), count(0), nbAux(0), aux_count;
 		size_t pos_dt, pos_At, pos_H_tilt, pos_H, pos_charge, pos_at;
-		double buffer_1, buffer_2, buffer_3, buffer_4;
+		double buffer_1, buffer_2, buffer_3, buffer_4, buffer_5;
 		double xlo,xhi,ylo,yhi,zlo,zhi;
 		string buffer_s, buffer_s_1, buffer_s_2, line;
 		while(file){
@@ -965,8 +965,8 @@ void AtomicSystem::read_cfg_file(const string& filename){
 				this->AtomType[buffer_uint_1-1] = buffer_s;
 				if(nbAux>0){
 					aux_count = 0;
-					while(text >> buffer_4){
-						Aux[aux_count][buffer_uint-1] = buffer_4;
+					while(text >> buffer_5){
+						Aux[aux_count][buffer_uint-1] = buffer_5;
 						aux_count += 1;
 					}
 				}

@@ -49,7 +49,6 @@ public:
 	ComputeAuxiliary(){};
 	ComputeAuxiliary(AtomicSystem *_MySystem): _MySystem(_MySystem){
 		this->MT = new MathTools;
-		if( _MySystem->getCrystal()->getName() != "" ) SteinhardtDatabase_read(_MySystem->getCrystal()->getName());
 		read_params();
 	};
 	// getters

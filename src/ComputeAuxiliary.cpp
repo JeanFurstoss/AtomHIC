@@ -292,6 +292,7 @@ void ComputeAuxiliary::BondOriParam_MultisiteNewVersion(){
 	double rc = _MySystem->get_rcut();
 	int l_sph = _MySystem->get_lsph();
 	ComputeSteinhardtParameters_OneL(rc,l_sph);
+	if( _MySystem->getCrystal()->getName() != "" ) SteinhardtDatabase_read(_MySystem->getCrystal()->getName());
 	// search site index based on the value of Steinhardt parameter (which is sqrt(pow(Calpha*N,2.)*4pi/(2l+1)))
 	const unsigned int nbAt = _MySystem->getNbAtom();
 	const unsigned int nbNMax = _MySystem->getNbMaxN();
@@ -347,6 +348,7 @@ void ComputeAuxiliary::BondOriParam_MultisiteNewVersion(){
 	
 void ComputeAuxiliary::BondOriParam_Multisite(){ // this version does work (it worked before => have a look if the new version is not satisfactory)
 	BondOriParam_NoMultisite();
+	if( _MySystem->getCrystal()->getName() != "" ) SteinhardtDatabase_read(_MySystem->getCrystal()->getName());
 	const unsigned int nbAt = _MySystem->getNbAtom();
 	const unsigned int nbNMax = _MySystem->getNbMaxN();
 	// in the case of mutlisite crystal and/or non-centrosymmetric crystal, each atom belonging to a site will have a given BondOriParam
@@ -794,7 +796,7 @@ void ComputeAuxiliary::SaveAveSteinhardtParamToDatabase_PerfectCrystal(string Cr
 	}
 	writefile << "NB_REF " << type_printed.size() << endl;
 	for(unsigned int t=0;t<type_printed.size();t++){
-		writefile << _MySystem->getCrystal()->getAtomType(type_printed[t]-1) << " " << type_printed[t] << " ";
+		writefile << _MySystem->getCrystal()->getAtomType(type_printed[t]) << " " << type_printed[t] << " ";
 		for(unsigned int l=0;l<l_sph+1;l++) writefile << St2Print[t][l] << " ";
 		writefile << endl;
 	}
@@ -837,7 +839,7 @@ void ComputeAuxiliary::SaveAveSteinhardtParamToDatabase_PerfectCrystal(string Cr
 	}
 	writefile2 << "NB_REF " << type_printed.size() << endl;
 	for(unsigned int t=0;t<type_printed.size();t++){
-		writefile2 << _MySystem->getCrystal()->getAtomType(type_printed[t]-1) << " " << type_printed[t] << " ";
+		writefile2 << _MySystem->getCrystal()->getAtomType(type_printed[t]) << " " << type_printed[t] << " ";
 		for(unsigned int l=0;l<l_sph+1;l++) writefile2 << St2Print[t][l] << " ";
 		writefile2 << endl;
 	}
@@ -855,6 +857,7 @@ void ComputeAuxiliary::BondOriParam_MultisiteCrystal(){
 	const unsigned int nbNMax = _MySystem->getNbMaxN();
 	if( !this->IsBondOriParam ){
 		this->BondOriParam = new double[nbAt];
+		this->Atom_SiteIndex = new unsigned int[nbAt];
 		this->IsBondOriParam = true;
 	}
 
@@ -864,9 +867,10 @@ void ComputeAuxiliary::BondOriParam_MultisiteCrystal(){
 		BondOriParam[i] = 0;
 		nbN = Malpha[i*(nbNMax+1)];
 		trueNeigh = 0;
+		this->Atom_SiteIndex[i] = _MySystem->getCrystal()->getAtomSite(i);
 		for(unsigned int j=0;j<nbN;j++){
 			NId = Malpha[i*(nbNMax+1)+j+1];
-			if( _MySystem->getCrystal()->getAtomSite(i) == _MySystem->getCrystal()->getAtomSite(NId) ){ // restrict the sum to ions of the same site
+			if( this->Atom_SiteIndex[i] == _MySystem->getCrystal()->getAtomSite(NId) ){ // restrict the sum to ions of the same site
 				for(unsigned int l=0;l<(l_sph*2+1);l++){
 					BondOriParam[i] += ((Qalpha[i*(l_sph*2+1)+l].real()*Qalpha[NId*(l_sph*2+1)+l].real())+Qalpha[i*(l_sph*2+1)+l].imag()*Qalpha[NId*(l_sph*2+1)+l].imag())/(pow(Calpha[i],.5)*pow(Calpha[NId],.5)); 
 				}
@@ -967,7 +971,7 @@ void ComputeAuxiliary::SaveSteinhardtParamToDatabase_PerfectCrystal(string Cryst
 		writefile << "NB_REF " << nbref << endl;
 		for(unsigned int t=0;t<type_printed.size();t++){
 			for(unsigned int s=0;s<site_printed[t].size();s++){
-				writefile << _MySystem->getCrystal()->getAtomType(type_printed[t]-1) << " " << type_printed[t] << " " << site_printed[t][s]+1 << " ";
+				writefile << _MySystem->getCrystal()->getAtomType(type_printed[t]) << " " << type_printed[t] << " " << site_printed[t][s]+1 << " ";
 				for(unsigned int l=0;l<l_sph+1;l++) writefile << St2Print[t][s*(l_sph+1)+l] << " ";
 				writefile << BO2Print[t][s] << endl;
 			}
@@ -1021,7 +1025,7 @@ void ComputeAuxiliary::SaveSteinhardtParamToDatabase_Defect(string CrystalName, 
 	}
 	writefile << "NB_REF " << type_printed.size() << endl;
 	for(unsigned int t=0;t<type_printed.size();t++){
-		writefile << _MySystem->getCrystal()->getAtomType(type_printed[t]-1) << " " << type_printed[t] << " ";
+		writefile << _MySystem->getCrystal()->getAtomType(type_printed[t]) << " " << type_printed[t] << " ";
 		for(unsigned int l=0;l<l_sph+1;l++) writefile << St2Print[t][l] << " ";
 		writefile << endl;
 	}
@@ -1063,7 +1067,7 @@ void ComputeAuxiliary::SaveSteinhardtParamToDatabase_Defect(string CrystalName, 
 	}
 	writefile2 << "NB_REF " << type_printed.size() << endl;
 	for(unsigned int t=0;t<type_printed.size();t++){
-		writefile2 << _MySystem->getCrystal()->getAtomType(type_printed[t]-1) << " " << type_printed[t] << " ";
+		writefile2 << _MySystem->getCrystal()->getAtomType(type_printed[t]) << " " << type_printed[t] << " ";
 		for(unsigned int l=0;l<l_sph+1;l++) writefile2 << St2Print[t][l] << " ";
 		writefile2 << endl;
 	}
@@ -1613,8 +1617,11 @@ void ComputeAuxiliary::read_params(){
 ComputeAuxiliary::~ComputeAuxiliary(){
 	delete MT;
 	if( IsBondOriParam ){
+	cout << 1 << endl;
 		delete[] BondOriParam;
+	cout << 1 << endl;
 		delete[] Atom_SiteIndex;
+	cout << 1 << endl;
 	}
 	if( IsStrainTensor ){
 		delete[] StrainTensor;
