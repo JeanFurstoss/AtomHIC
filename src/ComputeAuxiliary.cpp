@@ -126,6 +126,118 @@ double* ComputeAuxiliary::ComputeSteinhardtParameters(const double rc, const int
 	return this->SteinhardtParams;
 }
 
+// Same as above but with the average version where the Steinhardt params are averaged using all neighbours (in the case above only the ions of same type inside the cutoff radius are used)
+double* ComputeAuxiliary::ComputeSteinhardtParameters_Multi(const double rc, const int l_sph){
+	// if neighbours have not been searched perform the research
+	if( !_MySystem->getIsNeighbours() ){
+		_MySystem->searchNeighbours(rc);
+	}
+	cout << "Computing Steinhart parameters.. ";
+	const unsigned int nbAt = _MySystem->getNbAtom();
+	const unsigned int nbNMax = _MySystem->getNbMaxN();
+	this->BondOriParam = new double[nbAt];
+	this->Malpha = new unsigned int[nbAt*(nbNMax+1)]; // array containing the index of neighbours of the same species (or same site in case of multisite crystal) with the first line corresponding to the number of neighbours, i.e. Malpha[i*(nbNMax+1)] = nb of neighbour of atom i, Malpha[i*(nbNMax+1)+j+1] = id of the jth neighbour of atom i
+	this->Qalpha = new complex<double>[nbAt*(l_sph*2+1)]; // complex array containing the spherical harmonic for the different modes
+	complex<double> *Qlm = new complex<double>[nbAt*(l_sph*2+1)*(l_sph+1)]; // complex array containing the spherical harmonic for the different modes Qlm[i*(l_sph*2+1)*(l_sph+1)+l*(l_sph*2+1)+m] gives the spherical harmonic for atom i and degree l and m
+	unsigned int lsph2 = (l_sph+1)*(l_sph*2+1.);
+	unsigned int lsph1 = l_sph*2+1;
+	complex<double> *buffer_complex = new complex<double>[lsph2]; // complex array containing the spherical harmonic for the different modes Qlm[i*(l_sph*2+1)*(l_sph+1)+l*(l_sph*2+1)+m] gives the spherical harmonic for atom i and degree l and m
+	this->SteinhardtParams = new double[nbAt*(l_sph+1)];
+	this->SteinhardtParams_ave_cutoff = new double[nbAt*(l_sph+1)];
+	this->Calpha = new double[nbAt]; // normalization factor 
+	for(unsigned int i=0;i<nbAt*(l_sph*2+1);i++){
+		Qalpha[i] = (0.,0.); // initialize it to zero
+		for(unsigned int j=0;j<l_sph+1;j++) Qlm[i*j+j] = (0.,0.);
+	}
+	double zeronum = 1e-8;
+	const int bar_length = 30;
+	double prog=0;
+	double xpos,ypos,zpos,xp,yp,zp, colat, longit;
+	unsigned int id;
+	// loop on all atoms and neighbours to compute Qalpha and store neighbour of the same species
+	// Here is the most time consuming loop of the function, use parallel computation
+	unsigned int j_loop, l_loop_st, l_loop_st2, neigh, l_neigh;
+	int l_loop, m_loop_st, m_loop_st0, m_loop_st1, m_loop_st2, m_loop_st3;
+	#pragma omp parallel for private(xpos,ypos,zpos,j_loop,id,xp,yp,zp,colat,longit,l_loop,l_loop_st,m_loop_st,l_loop_st2,m_loop_st2,m_loop_st3,neigh,l_neigh,m_loop_st0,m_loop_st1)
+	for(unsigned int i=0;i<nbAt;i++){
+		xpos = _MySystem->getWrappedPos(i).x;
+		ypos = _MySystem->getWrappedPos(i).y;
+		zpos = _MySystem->getWrappedPos(i).z;
+		Malpha[i*(nbNMax+1)] = 0; 
+		Calpha[i] = 0; 
+		for(j_loop=0;j_loop<_MySystem->getNeighbours(i*(nbNMax+1));j_loop++){
+			id = _MySystem->getNeighbours(i*(nbNMax+1)+j_loop+1);
+			// get distance vector
+			xp = _MySystem->getWrappedPos(id).x+_MySystem->getCLNeighbours(i*nbNMax*3+j_loop*3)*_MySystem->getH1()[0]+_MySystem->getCLNeighbours(i*nbNMax*3+j_loop*3+1)*_MySystem->getH2()[0]+_MySystem->getCLNeighbours(i*nbNMax*3+j_loop*3+2)*_MySystem->getH3()[0]-xpos;
+			yp = _MySystem->getWrappedPos(id).y+_MySystem->getCLNeighbours(i*nbNMax*3+j_loop*3)*_MySystem->getH1()[1]+_MySystem->getCLNeighbours(i*nbNMax*3+j_loop*3+1)*_MySystem->getH2()[1]+_MySystem->getCLNeighbours(i*nbNMax*3+j_loop*3+2)*_MySystem->getH3()[1]-ypos;
+			zp = _MySystem->getWrappedPos(id).z+_MySystem->getCLNeighbours(i*nbNMax*3+j_loop*3)*_MySystem->getH1()[2]+_MySystem->getCLNeighbours(i*nbNMax*3+j_loop*3+1)*_MySystem->getH2()[2]+_MySystem->getCLNeighbours(i*nbNMax*3+j_loop*3+2)*_MySystem->getH3()[2]-zpos;
+			// compute colatitude and longitudinal angles
+			colat = acos(zp/sqrt(pow(xp,2.)+pow(yp,2.)+pow(zp,2.)));
+			if( xp > 0 ) longit = atan(yp/xp);
+	                else if( ( xp < 0 ) && ( yp >= 0 ) ) longit = atan(yp/xp) + M_PI;
+	                else if( ( xp < 0 ) and ( yp < 0 ) ) longit = atan(yp/xp) - M_PI;
+	                else if( ( fabs(xp) < zeronum ) and ( yp > 0 ) ) longit = M_PI/2.;
+	                else if( ( fabs(xp) < zeronum ) and ( yp < 0 ) ) longit = -M_PI/2.;
+	                else if( ( fabs(xp) < zeronum ) and ( fabs(yp) < zeronum ) ) longit = 0.;
+			// compute spherical harmonics
+			//for(l_loop=-l_sph;l_loop<l_sph+1;l_loop++) Qalpha[i*(l_sph*2+1)+l_loop+l_sph] += spherical_harmonics((unsigned int) l_sph, l_loop, colat, longit); // maybe false here
+			for(l_loop_st=0;l_loop_st<l_sph+1;l_loop_st++){
+				for(m_loop_st=-l_loop_st;m_loop_st<(int) l_loop_st+1;m_loop_st++){
+					Qlm[i*lsph2 + l_loop_st*lsph1 + (unsigned int) (m_loop_st + (int) l_sph)] += spherical_harmonics(l_loop_st, m_loop_st, colat, longit);
+				}
+			}
+			// Store the neighbour index into Malpha if it is of the same specy
+			if( _MySystem->getAtom(i).type_uint == _MySystem->getAtom(id).type_uint ){
+				Malpha[i*(nbNMax+1)] += 1;
+				Malpha[i*(nbNMax+1)+Malpha[i*(nbNMax+1)]] = id;
+			}
+		}
+		for(l_loop_st2=0;l_loop_st2<l_sph+1;l_loop_st2++){
+			SteinhardtParams[i*(l_sph+1)+l_loop_st2] = 0.; 
+			for(m_loop_st2=-l_loop_st2;m_loop_st2<(int) l_loop_st2+1;m_loop_st2++){
+				SteinhardtParams[i*(l_sph+1)+l_loop_st2] += norm(Qlm[i*lsph2 + l_loop_st2*lsph1 + (unsigned int) (m_loop_st2 + (int) l_sph)]);
+			}
+			SteinhardtParams[i*(l_sph+1)+l_loop_st2] *= 4.*M_PI/(2.*l_loop_st2+1.); 
+			SteinhardtParams[i*(l_sph+1)+l_loop_st2] /= pow(_MySystem->getNeighbours(i*(nbNMax+1)),2.);
+			SteinhardtParams[i*(l_sph+1)+l_loop_st2] = sqrt(SteinhardtParams[i*(l_sph+1)+l_loop_st2]);
+		}
+		for(m_loop_st3=-l_sph;m_loop_st3<(int) l_sph+1;m_loop_st3++) Qalpha[i*(l_sph*2+1) + (unsigned int) (m_loop_st3 + (int) l_sph)] += Qlm[i*lsph2 + l_sph*lsph1+ (unsigned int) (m_loop_st3 + (int) l_sph)]; 
+		// compute normalization factors
+		for(int l=-l_sph;l<l_sph+1;l++)	Calpha[i] += (pow(Qalpha[i*(l_sph*2+1)+l+l_sph].real(), 2.) + pow(Qalpha[i*(l_sph*2+1)+l+l_sph].imag(), 2.)); // warning : l is not protected during parallel calc
+	}
+	//#pragma omp parallel for private(l_loop_st2,m_loop_st0,buffer_complex,neigh,m_loop_st1,m_loop_st2)
+	for(unsigned int i=0;i<nbAt;i++){
+		for(l_loop_st2=0;l_loop_st2<l_sph+1;l_loop_st2++){
+			SteinhardtParams_ave_cutoff[i*(l_sph+1)+l_loop_st2] = 0.; 
+			for(m_loop_st0=-l_loop_st2;m_loop_st0<(int) l_loop_st2+1;m_loop_st0++){
+				buffer_complex[l_loop_st2*lsph1 + (unsigned int) (m_loop_st0 + (int) l_sph)] = Qlm[i*lsph2 + l_loop_st2*lsph1 + (unsigned int) (m_loop_st0 + (int) l_sph)] / (double) _MySystem->getNeighbours(i*(nbNMax+1));
+			}
+			//for(neigh=0;neigh<Malpha[i*(nbNMax+1)];neigh++){
+			for(neigh=0;neigh<_MySystem->getNeighbours(i*(nbNMax+1));neigh++){
+			       for(m_loop_st1=-l_loop_st2;m_loop_st1<(int) l_loop_st2+1;m_loop_st1++){
+				       //buffer_complex[l_loop_st2*lsph1 + (unsigned int) (m_loop_st1 + (int) l_sph)] += Qlm[Malpha[i*(nbNMax+1)+neigh+1]*lsph2 + l_loop_st2*lsph1 + (unsigned int) (m_loop_st1 + (int) l_sph)] / ((double) _MySystem->getNeighbours(Malpha[i*(nbNMax+1)+neigh+1]*(nbNMax+1)));
+				       buffer_complex[l_loop_st2*lsph1 + (unsigned int) (m_loop_st1 + (int) l_sph)] += Qlm[_MySystem->getNeighbours(i*(nbNMax+1)+neigh+1)*lsph2 + l_loop_st2*lsph1 + (unsigned int) (m_loop_st1 + (int) l_sph)] / ((double) _MySystem->getNeighbours(_MySystem->getNeighbours(i*(nbNMax+1)+neigh+1)*(nbNMax+1)));
+			       }
+			}
+			for(m_loop_st2=-l_loop_st2;m_loop_st2<(int) l_loop_st2+1;m_loop_st2++){
+				SteinhardtParams_ave_cutoff[i*(l_sph+1)+l_loop_st2] += norm(buffer_complex[l_loop_st2*lsph1 + (unsigned int) (m_loop_st2 + (int) l_sph)]);
+			}
+			SteinhardtParams_ave_cutoff[i*(l_sph+1)+l_loop_st2] *= 4.*M_PI/(2.*l_loop_st2+1.); 
+			//SteinhardtParams_ave_cutoff[i*(l_sph+1)+l_loop_st2] /= pow(Malpha[i*(nbNMax+1)],2.);
+			SteinhardtParams_ave_cutoff[i*(l_sph+1)+l_loop_st2] /= pow(_MySystem->getNeighbours(i*(nbNMax+1)),2.);
+			SteinhardtParams_ave_cutoff[i*(l_sph+1)+l_loop_st2] = sqrt(SteinhardtParams_ave_cutoff[i*(l_sph+1)+l_loop_st2]);
+		}
+	}
+
+	//for(unsigned int i=0;i<nbAt;i++) cout << pow(SteinhardtParams[i*(l_sph+1)+l_sph]*_MySystem->getNeighbours(i*(nbNMax+1)),2.)*((2.*l_sph+1.)/(4.*M_PI)) << " " << Calpha[i] << endl;
+	////cout << i << " "<< _MySystem->getNeighbours(i*(nbNMax+1)) << " " << Malpha[i*(nbNMax+1)] << " ";
+	//for(unsigned int l=0;l<l_sph+1;l++) cout << SteinhardtParams[i*(l_sph+1)+l] << " ";
+	//cout << endl;
+	//}
+	cout << "Done !" << endl;
+	return this->SteinhardtParams;
+}
+
 double* ComputeAuxiliary::ComputeSteinhardtParameters_OneL(const double rc, const int l_sph){ //TODO Rename this function
 	// if neighbours have not been searched perform the research
 	if( !_MySystem->getIsNeighbours() ){
@@ -1072,6 +1184,27 @@ void ComputeAuxiliary::SaveSteinhardtParamToDatabase_Defect(string CrystalName, 
 		writefile2 << endl;
 	}
 	writefile2.close();
+}
+
+void ComputeAuxiliary::PrintSteinhardtParam(vector<unsigned int> At_index){
+	int l_sph = _MySystem->get_lsph();
+	double rc = _MySystem->get_rcut();
+	//ComputeSteinhardtParameters_Multi(rc, l_sph);
+	ComputeSteinhardtParameters_Multi(rc, l_sph);
+	string at_type, filename;
+	for(unsigned int t=0;t<_MySystem->getCrystal()->getNbAtomType();t++){
+		at_type = _MySystem->getCrystal()->getAtomType()[t];
+		filename = at_type+"_Steinhardt.dat";
+		ofstream writefile(filename);
+		for(unsigned int i=0;i<At_index.size();i++){
+			if(_MySystem->getAtom(At_index[i]).type_uint != t+1) continue;
+			else{
+				writefile << 0 << " " << SteinhardtParams_ave_cutoff[At_index[i]*(l_sph+1)]-1 << " " << At_index[i] << endl;
+				for(unsigned int l=1;l<l_sph+1;l++) writefile << l << " " << SteinhardtParams_ave_cutoff[At_index[i]*(l_sph+1)+l] << " " << At_index[i] << endl;
+			}
+		}
+		writefile.close();
+	}
 }
 
 void ComputeAuxiliary::SteinhardtDatabase_read(string CrystalName){
