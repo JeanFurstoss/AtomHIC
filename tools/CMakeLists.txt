@@ -21,4 +21,6 @@ add_subdirectory(GetSteinhardt)
 add_subdirectory(OrderParam_Steinhardt)
 add_subdirectory(ComputeSteinhardtParams)
 add_subdirectory(StructuralAnalysis_Steinhardt)
+add_subdirectory(InvertMatrix)
+add_subdirectory(SaveGaussianMixture_Steinhardt)
 

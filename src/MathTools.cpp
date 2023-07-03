@@ -270,6 +270,19 @@ void MathTools::MatDotVec(const double *mat, const double *vec, double *prod){
 	}
 }
 
+void MathTools::MatDotVec_vec(const vector<vector<double>> mat, const vector<double> vec, vector<double> &prod){
+	unsigned int dim=vec.size();
+	if( mat[0].size() != dim ) cerr << "The dimensions of matrix and vector to multiply are not consistent (i.e. " << mat.size() << "x" << mat[0].size() << " * " << dim << ")" << endl;
+	vector<double> temp_vec(dim);
+	for(unsigned int i=0;i<dim;i++){
+		temp_vec[i] = vec[i];
+		prod[i] = 0.;
+	}
+	for(unsigned int i=0;i<mat.size();i++){
+		for(unsigned int j=0;j<dim;j++)	prod[i] += mat[i][j]*temp_vec[j];
+	}
+}
+
 void MathTools::VecDotMat(const double *vec, const double *mat, double *prod){
 	for(unsigned int i=0;i<3;i++){
 		this->buffer_vec_1[i] = vec[i];
@@ -293,6 +306,45 @@ void MathTools::MatDotMat(const double *mat1, const double *mat2, double *prod){
 	}
 }
 
+void MathTools::MatDotMatVec(const vector<vector<double>> mat1, const vector<vector<double>> mat2, vector<vector<double>> &prod){
+	unsigned int dim1_1 = mat1.size();
+	unsigned int dim1_2 = mat1[0].size();
+	unsigned int dim2_1 = mat2.size();
+	unsigned int dim2_2 = mat2[0].size();
+	if( dim1_2 != dim2_1 ){
+		cerr << "Warning the dimensions of the matrix to multiply are not consistent (matrix 1: " << dim1_1 << "x" << dim1_2 << ", matrix 2: " << dim2_1 << "x" << dim2_2 << ")" << endl;
+	}else{
+		buffer_vec_vec_1.clear();
+		buffer_vec_vec_2.clear();
+		for(unsigned int i=0;i<mat1.size();i++){
+			buffer_vec_vec_1.push_back(vector<double>());
+			for(unsigned int j=0;j<mat1[i].size();j++) buffer_vec_vec_1[i].push_back(mat1[i][j]);
+		}
+		for(unsigned int i=0;i<mat2.size();i++){
+			buffer_vec_vec_2.push_back(vector<double>());
+			for(unsigned int j=0;j<mat2[i].size();j++) buffer_vec_vec_2[i].push_back(mat2[i][j]);
+		}
+		prod.clear();
+		for(unsigned int i=0;i<dim1_1;i++){
+			prod.push_back(vector<double>());
+			for(unsigned int j=0;j<dim2_2;j++){
+				prod[i].push_back(0.);
+				for(unsigned int j_m=0;j_m<dim1_2;j_m++) prod[i][j] += buffer_vec_vec_1[i][j_m]*buffer_vec_vec_2[j_m][j];
+			}
+		}
+	}
+
+}
+
+void MathTools::printMatVec(const vector<vector<double>> mat){
+	for(unsigned int i=0;i<mat.size();i++){
+		for(unsigned int j=0;j<mat.size();j++) cout << mat[i][j] << " ";
+		cout << endl;
+	}
+}
+		
+
+	
 void MathTools::printMat(const double *mat){
 	for(unsigned int i=0;i<3;i++){
 		for(unsigned int j=0;j<3;j++){
@@ -561,6 +613,104 @@ void MathTools::computeTiltTrans(const double *xh, const double *yh, const doubl
 	TiltTrans[6] = -(xh[2]*buffer_mat_1[8]+buffer_mat_1[7]*xh[1])/(xh[0]+buffer_mat_1[1]*xh[1]+buffer_mat_1[2]*xh[2]);
 	TiltTrans[7] = buffer_mat_1[7]-(xh[2]*buffer_mat_1[8]+buffer_mat_1[7]*xh[1])*buffer_mat_1[1]/(xh[0]+buffer_mat_1[1]*xh[1]+buffer_mat_1[2]*xh[2]);
 	TiltTrans[8] = buffer_mat_1[8]-(xh[2]*buffer_mat_1[8]+buffer_mat_1[7]*xh[1])*buffer_mat_1[2]/(xh[0]+buffer_mat_1[1]*xh[1]+buffer_mat_1[2]*xh[2]);
+}
+
+void MathTools::MultidimGaussian(const vector<vector<double>> data, vector<double> &mu, vector<vector<double>> &C){
+	for(unsigned int i=0;i<C.size();i++) C[i].clear();
+	C.clear();
+	mu.clear();
+	unsigned int nbdat = data.size();
+	unsigned int dim = data[0].size();
+	for(unsigned int i=0;i<dim;i++){
+		mu.push_back(0.);
+		C.push_back(vector<double>());
+		for(unsigned int j=0;j<dim;j++)	C[C.size()-1].push_back(0.);
+	}
+	// compute esperance
+	for(unsigned int i=0;i<dim;i++){
+		for(unsigned int j=0;j<nbdat;j++) mu[i] += data[j][i];
+		mu[i] /= nbdat;
+	}
+	// compute covariance matrix
+	for(unsigned int i=0;i<dim;i++){
+		for(unsigned int j=0;j<dim;j++){
+			for(unsigned int k=0;k<nbdat;k++) C[i][j] += (data[k][i]-mu[i])*(data[k][j]-mu[j]);
+			C[i][j] /= nbdat;
+		}
+	}
+}
+
+double MathTools::Prob_MultidimGaussian(const vector<vector<double>> C_inv, vector<double> mu, const double det_C, const vector<double> X){
+	unsigned int dim=mu.size();
+	vector<double> prod(dim);
+	vector<double> XMinusMu(dim);
+	double sp = 0.;
+
+	for(unsigned int i=0;i<dim;i++) XMinusMu[i] = X[i]-mu[i];
+	MatDotVec_vec(C_inv,XMinusMu,prod);
+	for(unsigned int i=0;i<dim;i++) sp += XMinusMu[i]*prod[i];
+	return ( 1./ ( pow(2.*M_PI, dim/2.) * sqrt(det_C) ) ) * exp( -.5*sp );
+}
+
+void MathTools::invMat_LU(const vector<vector<double>> mat, vector<vector<double>> &inv, double &det){
+	unsigned int dim = mat.size();
+	if( dim != mat[0].size() ){
+		cerr << "We cannot invert the matrix because it is not square matrix" << endl; 
+	}
+	// Initialisation of L and Lt
+	vector<vector<double>> L; //Triangular lower matrix
+	vector<vector<double>> U; //Triangular upper matrix => L*U=mat
+	vector<vector<double>> L_inv; //Inverse of Triangular lower matrix
+	vector<vector<double>> U_inv; //Inverse of Triangular upper matrix => L*U=mat
+	vector<vector<double>> temp; // buffer
+	vector<double> vec;
+	vector<double> v(mat.size(), 0);
+	
+	for(unsigned int i(0);i<mat.size();i++) {
+		L.push_back(v);
+		U.push_back(v);
+		L_inv.push_back(v);
+		U_inv.push_back(v);
+		temp.push_back(v);
+		for(unsigned int j=0;j<mat[i].size();j++) temp[i][j] = mat[i][j];
+	}
+	double sum;
+	for(unsigned int j=0;j<dim;j++){
+		L[j][j] = 1.;
+		for(unsigned int i=0;i<j+1;i++){
+			sum = 0.;
+			for(unsigned int k=0;k<i;k++) sum += U[k][j]*L[i][k];
+			U[i][j] = mat[i][j] - sum;
+		}
+		for(unsigned int i=j;i<dim;i++){
+			sum = 0.;
+			for(unsigned int k=0;k<j;k++) sum += U[k][j]*L[i][k];
+			L[i][j] = ( mat[i][j] - sum ) / U[j][j];
+		}
+	}
+	// Compute the determinant (product of diagonal element of U)
+	det = U[0][0];
+	for(unsigned int i=1;i<dim;i++) det *= U[i][i];
+	// Compute L_inv
+	for(unsigned int i=0;i<dim;i++){
+		L_inv[i][i] = 1./L[i][i];
+		for(unsigned int j=0;j<i;j++){
+			for(unsigned int k=j;k<=i-1;k++) L_inv[i][j] -= L[i][k]*L_inv[k][j];
+			L_inv[i][j] /= L[i][i];
+		}
+	}
+	// Compute U_inv
+	unsigned int i_uint;
+	for(int i=dim-1;i>=0;i--){
+		i_uint = (unsigned int) i;
+		U_inv[i_uint][i_uint] = 1./U[i_uint][i_uint];
+		for(unsigned int j=dim-1;j>i_uint;j--){
+			for(unsigned int k=i_uint+1;k<=j;k++) U_inv[i_uint][j] -= U[i_uint][k]*U_inv[k][j];
+			U_inv[i_uint][j] /= U[i_uint][i_uint];
+		}
+	}
+	// mat-1 = L-1 * U-1
+	MatDotMatVec(U_inv,L_inv,inv);
 }
 
 MathTools::~MathTools(){

@@ -15,6 +15,7 @@ protected:
 	double *buffer_mat_1;
 	double *buffer_mat_2;
 	unsigned int *buffer_mat_uint;
+	std::vector<std::vector<double>> buffer_vec_vec_1, buffer_vec_vec_2;
 public:
 	MathTools();
 	// those functions return the max/min of a given array
@@ -46,10 +47,13 @@ public:
 	void gaussian_fit(const std::vector<double> data, double &mu, double &sigma, double &prefac);
 	void Vec2rotMat(const double *vec, const double &theta, double *rotMat);
 	void MatDotVec(const double *mat, const double *vec, double *prod);
+	void MatDotVec_vec(const std::vector<std::vector<double>> mat, const std::vector<double> vec, std::vector<double> &prod);
 	void VecDotMat(const double *vec, const double *mat, double *prod);
 	void MatDotAt(const double *mat, const Atom &At, Atom &At_prod);
 	void MatDotMat(const double *mat1, const double *mat2, double *prod);
+	void MatDotMatVec(const std::vector<std::vector<double>> mat1, const std::vector<std::vector<double>> mat2, std::vector<std::vector<double>> &prod);
 	void printMat(const double *mat);
+	void printMatVec(const std::vector<std::vector<double>> mat);
 	void printVec(const double *vec);
 	void crossProd(const double *vec1, const double *vec2, double *Prod);
 	void dia_sym_mtx(const double *Mat, double *Prod); // compute the symmetric over the second diagonal
@@ -62,6 +66,9 @@ public:
 	void sort(const std::vector<double> vec, const unsigned int col, const unsigned int NbCol, std::vector<double> &sorted); // sort a vector with respect to a given column (col), giving the number of column in the vector
 	void sort_abs(const std::vector<double> vec, const unsigned int col, const unsigned int NbCol, std::vector<double> &sorted); // sort a vector with respect to a given column (col), giving the number of column in the vector
 	void computeTiltTrans(const double *xh, const double *yh, const double  *zh, double *TiltTrans); // compute a transformation matrix permitting to transform an inclined parallelepiped (with xh, yh and zh its cell parameters) into an orthogonal cell with dimension |xh| |yh| and |zh|
+	void MultidimGaussian(const std::vector<std::vector<double>> data, std::vector<double> &mu, std::vector<std::vector<double>> &C); // compute the esperance and covariance of multidimensionnal data assuming normal law
+	double Prob_MultidimGaussian(const std::vector<std::vector<double>> C_inv, std::vector<double> mu, const double det_C, const std::vector<double> X); // compute the probability associated to a multidim gaussian with a given esperance, inverse covariant matrix and determinant of covariant matrix 
+	void invMat_LU(const std::vector<std::vector<double>> mat, std::vector<std::vector<double>> &inv, double &det); // invert a square matrix using the LU method and compute the determinant
 	~MathTools();
 };
 

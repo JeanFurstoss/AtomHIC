@@ -41,6 +41,7 @@ protected:
 	bool IsStrainTensor = false;
 	bool IsStrainInvII = false;
 	bool IsSteinhardtDatabaseRead = false;
+	bool IsSteinhardt = false;
 	// Parameters to read
 	std::string FixedParam_Filename = "Fixed_Parameters.dat";
 	double tolSites;
@@ -60,6 +61,8 @@ public:
 	void BondOriParam_NoMultisite();
 	double* ComputeSteinhardtParameters(const double rc, const int l_sph);
 	double* ComputeSteinhardtParameters_Multi(const double rc, const int l_sph);
+	double* ComputeSteinhardtParameters_testMono(const double rc, const int l_sph);
+	double* ComputeSteinhardtParameters_testMulti(const double rc, const int l_sph);
 	double* ComputeSteinhardtParameters_OneL(const double rc, const int l_sph);
 	double* Compute_StrainTensor();
 	double* Compute_StrainTensor(unsigned int FromNum);
@@ -75,7 +78,7 @@ public:
 	//std::string SteinhardtDatabase_write(std::string CrystalName);
 	std::string getSteinhardtDatabase(std::string CrystalName);
 	void SteinhardtDatabase_read(std::string CrystalName);
-	void PrintSteinhardtParam(std::vector<unsigned int> At_index);
+	void PrintSteinhardtParam(std::vector<unsigned int> At_index, std::string ext_filename);
 	double* BondOriParam_SteinhardtBased();
 	double* StructuralAnalysis_Steinhardt();
 	void read_params();
