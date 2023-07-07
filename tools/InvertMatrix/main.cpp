@@ -30,10 +30,11 @@ int main(int argc, char *argv[])
 	}
 	MathTools MT;
 	MT.printMatVec(mat);
-	double det;
+	long double det;
 	vector<vector<double>> inv;
 	MT.invMat_LU(mat,inv,det);
 	MT.printMatVec(inv);
+	cout << "determinant = " << det;
 	//if( argc < 3 ){
 	//	cerr << "Usage: AnalyzeBicrystal_ARGS AtomicInputFilename number_of_struct number_of_struct*(AtomIndexListFileName name_of_struct) CrystalType OutputFilename" << endl;
 	//	cerr << "or: AnalyzeBicrystal_ARGS AtomicInputFilename number_of_struct number_of_struct*(x_lo x_hi y_lo y_hi z_lo z_hi name_of_struct) CrystalType OutputFilename" << endl; 

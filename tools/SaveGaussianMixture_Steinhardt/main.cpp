@@ -43,14 +43,14 @@ int main(int argc, char *argv[])
 	MathTools MT;
 	vector<double> mu;
 	vector<vector<double>> C, C_inv;
-	double det;
+	long double det;
 	//for(unsigned int i=0;i<data.size();i++){
 	//	for(unsigned int j=0;j<dim;j++) cout << data[i][j] << " " ;
 	//	cout << endl;
 	//}
 	MT.MultidimGaussian(data,mu,C);
 	MT.invMat_LU(C,C_inv,det);
-
+	cout << "deter : " << det << endl;
 	string database;	
 	string GMM="/GaussianMixtureModel/"; // TODO create dir if does not exist
 	string ext=".dat";
@@ -72,7 +72,7 @@ int main(int argc, char *argv[])
 	ifile.open(fullpathname);
 	string buffer_s, buffer_s_1;
         vector<string> attype_already;
-	size_t pos_attype;
+	size_t pos_attype, pos_dim;
 	if( ifile ){
 		while(ifile){
 			getline(ifile,line);
@@ -82,6 +82,12 @@ int main(int argc, char *argv[])
 				text >> buffer_s >> buffer_s_1;
 				attype_already.push_back(buffer_s_1);
 			}
+			pos_dim = line.find("NUMBER_OF_DIMENSION");
+			if(pos_dim!=string::npos){
+				istringstream text(line);
+				text >> buffer_s >> buffer_d;
+			}
+
 		}
 		ifile.close();
 		bool already = false;
@@ -94,11 +100,15 @@ int main(int argc, char *argv[])
 		if( already ){
 			cerr << "This atom type has already been stored for this defect, aborting.." << endl;
 			exit(EXIT_FAILURE);
+		}else if( buffer_d != dim ){
+			cerr << "The number of dimension used for the atom type already stored is different to the provided one, aborting.." << endl;
+			exit(EXIT_FAILURE);
 		}else{
 			ofstream writefile(fullpathname, std::ios::app);
 			writefile << "ATOM_TYPE " << AtomType << endl;
-			writefile << "ESPERANCE" << endl;
-			for(unsigned int i=0;i<dim;i++) writefile << mu[i] << " ";
+			writefile << "DETERMINANT " << det << endl;
+			writefile << "ESPERANCE";
+			for(unsigned int i=0;i<dim;i++) writefile << " " << mu[i];
 			writefile << endl;
 			writefile << "INVERSE OF COVARIANCE MATRIX" << endl;
 			for(unsigned int i=0;i<dim;i++){
@@ -111,8 +121,9 @@ int main(int argc, char *argv[])
 		ofstream writefile(fullpathname);
 		writefile << "NUMBER_OF_DIMENSION " << dim << endl;
 		writefile << "ATOM_TYPE " << AtomType << endl;
-		writefile << "ESPERANCE" << endl;
-		for(unsigned int i=0;i<dim;i++) writefile << mu[i] << " ";
+		writefile << "DETERMINANT " << det << endl;
+		writefile << "ESPERANCE";
+		for(unsigned int i=0;i<dim;i++) writefile << " " << mu[i];
 		writefile << endl;
 		writefile << "INVERSE OF COVARIANCE MATRIX" << endl;
 		for(unsigned int i=0;i<dim;i++){

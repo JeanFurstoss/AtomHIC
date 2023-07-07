@@ -24,7 +24,7 @@ int main(int argc, char *argv[])
 	iss_r >> rcut;
 	string OutputFilename = argv[4];
 	Bicrystal MySystem(InputFilename); // for the moment need to be a bicrystal object (to have the computeAuxiliary methods), it has no sense but its complicated to change (it should be an AtomicSystem instead but the AtomicSystem cannot have a ComputeAuxiliary)
-	MySystem.setAux_vec(MySystem.get_CA()->ComputeSteinhardtParameters(rcut,lsph), ((unsigned int) lsph + 1), "SteinhardtParams");
+	MySystem.setAux_vec(MySystem.get_CA()->ComputeSteinhardtParameters_Mono(rcut,lsph), ((unsigned int) lsph + 1), "SteinhardtParams");
 	MySystem.printSystem_aux(OutputFilename, "SteinhardtParams");
 	return 0;
 }

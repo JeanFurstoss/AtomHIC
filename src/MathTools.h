@@ -31,6 +31,7 @@ public:
 	unsigned int max_p(const unsigned int* arr, unsigned int size);
 	// those functions return the indice of the max/min of the vector
 	unsigned int max(std::vector<double> arr);
+	unsigned int max(std::vector<long double> arr);
 	unsigned int min(std::vector<double> arr);
 	unsigned int min_abs(std::vector<double> arr);
 	// those functions return the max/min of a double vector
@@ -67,8 +68,8 @@ public:
 	void sort_abs(const std::vector<double> vec, const unsigned int col, const unsigned int NbCol, std::vector<double> &sorted); // sort a vector with respect to a given column (col), giving the number of column in the vector
 	void computeTiltTrans(const double *xh, const double *yh, const double  *zh, double *TiltTrans); // compute a transformation matrix permitting to transform an inclined parallelepiped (with xh, yh and zh its cell parameters) into an orthogonal cell with dimension |xh| |yh| and |zh|
 	void MultidimGaussian(const std::vector<std::vector<double>> data, std::vector<double> &mu, std::vector<std::vector<double>> &C); // compute the esperance and covariance of multidimensionnal data assuming normal law
-	double Prob_MultidimGaussian(const std::vector<std::vector<double>> C_inv, std::vector<double> mu, const double det_C, const std::vector<double> X); // compute the probability associated to a multidim gaussian with a given esperance, inverse covariant matrix and determinant of covariant matrix 
-	void invMat_LU(const std::vector<std::vector<double>> mat, std::vector<std::vector<double>> &inv, double &det); // invert a square matrix using the LU method and compute the determinant
+	long double Prob_MultidimGaussian(const std::vector<std::vector<double>> C_inv, std::vector<double> mu, const long double det_C, const std::vector<double> X); // compute the probability associated to a multidim gaussian with a given esperance, inverse covariant matrix and determinant of covariant matrix 
+	void invMat_LU(const std::vector<std::vector<double>> mat, std::vector<std::vector<double>> &inv, long double &det); // invert a square matrix using the LU method and compute the determinant
 	~MathTools();
 };
 

@@ -16,6 +16,6 @@ TOL_CSL_INTEGER 1e-3 // tolerance for an element of U (CSL matrix) to be an inte
 TOL_ALIGNMENT_CSL 1e-1 // tolerance to know if one of the CSL vector is aligned with the rotation axis (the scalar product should be near 1)
 
 // Parameter for neighbour research and Steinhardt parameter calulation
-RCUT_NEIGHBOURS 10 // cutoff radius for neighbour research
+RCUT_NEIGHBOURS 8 // cutoff radius for neighbour research
 L_SPH_ST 20 // spherical harmonic degree for the computation of Steinhardt parameters
 

@@ -112,6 +112,12 @@ unsigned int MathTools::max(vector<double> arr){
 	return imax;
 }
 
+unsigned int MathTools::max(vector<long double> arr){
+	unsigned int imax = 0;
+	for(unsigned int i=1;i<arr.size();i++) if( arr[i] > arr[imax] ) imax = i;
+	return imax;
+}
+
 unsigned int MathTools::min(vector<double> arr){
 	unsigned int imin = 0;
 	for(unsigned int i=1;i<arr.size();i++) if( arr[i] < arr[imin] ) imin = i;
@@ -640,7 +646,7 @@ void MathTools::MultidimGaussian(const vector<vector<double>> data, vector<doubl
 	}
 }
 
-double MathTools::Prob_MultidimGaussian(const vector<vector<double>> C_inv, vector<double> mu, const double det_C, const vector<double> X){
+long double MathTools::Prob_MultidimGaussian(const vector<vector<double>> C_inv, vector<double> mu, const long double det_C, const vector<double> X){
 	unsigned int dim=mu.size();
 	vector<double> prod(dim);
 	vector<double> XMinusMu(dim);
@@ -652,7 +658,7 @@ double MathTools::Prob_MultidimGaussian(const vector<vector<double>> C_inv, vect
 	return ( 1./ ( pow(2.*M_PI, dim/2.) * sqrt(det_C) ) ) * exp( -.5*sp );
 }
 
-void MathTools::invMat_LU(const vector<vector<double>> mat, vector<vector<double>> &inv, double &det){
+void MathTools::invMat_LU(const vector<vector<double>> mat, vector<vector<double>> &inv, long double &det){
 	unsigned int dim = mat.size();
 	if( dim != mat[0].size() ){
 		cerr << "We cannot invert the matrix because it is not square matrix" << endl; 
@@ -691,6 +697,8 @@ void MathTools::invMat_LU(const vector<vector<double>> mat, vector<vector<double
 	// Compute the determinant (product of diagonal element of U)
 	det = U[0][0];
 	for(unsigned int i=1;i<dim;i++) det *= U[i][i];
+	//cout << "deter " << det << endl;
+	//printMatVec(U);
 	// Compute L_inv
 	for(unsigned int i=0;i<dim;i++){
 		L_inv[i][i] = 1./L[i][i];

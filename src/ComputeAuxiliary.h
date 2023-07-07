@@ -17,9 +17,11 @@ protected:
 	double *Strain_invII;
 	unsigned int *Atom_SiteIndex; // determined using comparison of Steinhardt param for l=l_sph (using the database)
 	unsigned int *Malpha;// array containing the index of neighbours of the same species (or same site in case of multisite crystal) with the first line corresponding to the number of neighbours, i.e. Malpha[i*(nbNMax+1)] = nb of neighbour of atom i, Malpha[i*(nbNMax+1)+j+1] = id of the jth neighbour of atom i
+	unsigned int *nbNeigh_FiltNeigh;
 	std::complex<double> *Qalpha; // complex array containing the spherical harmonic for the different modes
+	std::complex<double> *Qlm; // complex array containing the spherical harmonic for the different modes Qlm[i*(l_sph*2+1)*(l_sph+1)+l*(l_sph*2+1)+m] gives the spherical harmonic for atom i and degree l and m
 	double *SteinhardtParams; // Steinhardt parameters
-	double *SteinhardtParams_ave_cutoff; // Steinhardt parameters
+	double *SteinhardtParams_ave; // Steinhardt parameters
 	std::vector<std::vector<double>> SteinhardtParams_REF_PC; // Steinhardt parameters for reference perfect crystal
 	std::vector<std::vector<double>> BondOriParam_REF_PC; // Bond ori param for reference perfect crystal (non centrosymmetric crystals)
 	std::vector<double*> SteinhardtParams_REF_PC_ave; // Steinhardt parameters for reference perfect crystal averaged over sites
@@ -32,6 +34,15 @@ protected:
 	std::vector<int> AtomTypeUINTRefPC; // array containing the atom specy => i.e. AtomTypeUINTRefPC[i] = type uint of the params in SteinhardtParams_REF_DEF[i]
 	std::vector<std::vector<unsigned int>> AtomSiteRefPC; // array containing the crystallographic site => i.e. AtomSiteRefPC[i][j] = crystallographic site of the params in SteinhardtParams_REF_PC[i]
 	std::vector<int> AtomTypeUINTRefPC_ave; // array containing the atom specy => i.e. AtomTypeUINTRefPC[i] = type uint of the params in SteinhardtParams_REF_DEF[i]
+	
+	// FOR Gaussian mixture model
+	std::vector<std::string> Struct_GMM_Names; // name of the structures present in the database
+	std::vector<std::vector<double>> *ICovs_GMM; // inverse covariant matrix of structures present in the database ( Covs_GMM[s*nbAtomType+t][i][j] => covariant matrix of structure s and atom type t )
+	std::vector<double> *Mus_GMM; // esperance of structures present in the database ( Mus_GMM[s*nbAtomType+t][i] => esperance of structure s and atom type t )
+	long double *Det_GMM; // determinant of the covariant matrix for structures present in the database ( Det_GMM[s*nbAtomType+t] => determinant of structure s and atom type t )
+
+	// end for gaussian mixture model
+	
 	unsigned int nbRefDef; // number of defect in the database
 	unsigned int nbref; // number of q vectors for each defect or perfect crystal average
 	int l_sph_ref;
@@ -41,7 +52,14 @@ protected:
 	bool IsStrainTensor = false;
 	bool IsStrainInvII = false;
 	bool IsSteinhardtDatabaseRead = false;
-	bool IsSteinhardt = false;
+	bool IsGMMSteinhardtDatabaseRead = false;
+	bool IsSteinhardt_Mono = false;
+	bool IsSteinhardt_Multi = false;
+	bool IsSteinhardt_AveMono = false;
+	bool IsSteinhardt_AveMulti = false;
+	bool IsSteinhardt_AveFilteredAve = false;
+	bool IsSteinhardt_FilteredNeigh = false;
+	bool IsSteinhardt_AveFilteredNeigh = false;
 	// Parameters to read
 	std::string FixedParam_Filename = "Fixed_Parameters.dat";
 	double tolSites;
@@ -59,10 +77,21 @@ public:
 	void BondOriParam_Multisite();
 	void BondOriParam_MultisiteNewVersion();
 	void BondOriParam_NoMultisite();
-	double* ComputeSteinhardtParameters(const double rc, const int l_sph);
+	double* ComputeSteinhardtParameters_Mono(const double rc, const int l_sph);
+	void AverageSteinhardtParameters_Mono(const double rc, const int l_sph);
+	void AverageSteinhardtParameters_Multi(const double rc, const int l_sph);
+	double* ComputeAveSteinhardtParameters_MonoAveMono(const double rc, const int l_sph);
 	double* ComputeSteinhardtParameters_Multi(const double rc, const int l_sph);
-	double* ComputeSteinhardtParameters_testMono(const double rc, const int l_sph);
-	double* ComputeSteinhardtParameters_testMulti(const double rc, const int l_sph);
+	double* ComputeAveSteinhardtParameters_MultiAveMono(const double rc, const int l_sph);
+	double* ComputeAveSteinhardtParameters_MultiAveMulti(const double rc, const int l_sph);
+	double* ComputeAveSteinhardtParameters_MonoAveMulti(const double rc, const int l_sph);
+	double* ComputeSteinhardtParameters_FilteredNeigh(const double rc, const int l_sph);
+	double* ComputeAveSteinhardtParameters_FilteredNeigh(const double rc, const int l_sph);
+	void AverageSteinhardtParameters_FilteredNeigh(const double rc, const int l_sph);
+	double* ComputeAveSteinhardtParameters_FilteredNeighAndAve(const double rc, const int l_sph);
+	double* ComputeAveSteinhardtParameters_FilteredAve(const double rc, const int l_sph);
+	void AverageSteinhardtParameters_FilteredAve(const double rc, const int l_sph);
+	void AverageFilteredSteinhardtParameters_FilteredAve(const double rc, const int l_sph);
 	double* ComputeSteinhardtParameters_OneL(const double rc, const int l_sph);
 	double* Compute_StrainTensor();
 	double* Compute_StrainTensor(unsigned int FromNum);
@@ -78,9 +107,11 @@ public:
 	//std::string SteinhardtDatabase_write(std::string CrystalName);
 	std::string getSteinhardtDatabase(std::string CrystalName);
 	void SteinhardtDatabase_read(std::string CrystalName);
-	void PrintSteinhardtParam(std::vector<unsigned int> At_index, std::string ext_filename);
+	void SteinhardtDatabase_read_GMM(std::string CrystalName);
+	void PrintSteinhardtParam(std::vector<unsigned int> At_index, std::string ext_filename, std::string SteinhardtStyle);
 	double* BondOriParam_SteinhardtBased();
 	double* StructuralAnalysis_Steinhardt();
+	double* StructuralAnalysis_Steinhardt_GMM();
 	void read_params();
 	// destructor
 	~ComputeAuxiliary();
