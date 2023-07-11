@@ -17,7 +17,7 @@ protected:
 	double *Strain_invII;
 	unsigned int *Atom_SiteIndex; // determined using comparison of Steinhardt param for l=l_sph (using the database)
 	unsigned int *Malpha;// array containing the index of neighbours of the same species (or same site in case of multisite crystal) with the first line corresponding to the number of neighbours, i.e. Malpha[i*(nbNMax+1)] = nb of neighbour of atom i, Malpha[i*(nbNMax+1)+j+1] = id of the jth neighbour of atom i
-	unsigned int *nbNeigh_FiltNeigh;
+	unsigned int *nbNeigh_FiltNeigh; // array containing the number of neighoring ions of particular type (i.e. nbNeigh_FiltNeigh[i*t] => nb of neighbor having type t of atom i) this array is used for the calculation of filtered steinhardt params
 	std::complex<double> *Qalpha; // complex array containing the spherical harmonic for the different modes
 	std::complex<double> *Qlm; // complex array containing the spherical harmonic for the different modes Qlm[i*(l_sph*2+1)*(l_sph+1)+l*(l_sph*2+1)+m] gives the spherical harmonic for atom i and degree l and m
 	double *SteinhardtParams; // Steinhardt parameters
@@ -55,11 +55,13 @@ protected:
 	bool IsGMMSteinhardtDatabaseRead = false;
 	bool IsSteinhardt_Mono = false;
 	bool IsSteinhardt_Multi = false;
+	bool IsSteinhardt_Filtered = false;
 	bool IsSteinhardt_AveMono = false;
 	bool IsSteinhardt_AveMulti = false;
-	bool IsSteinhardt_AveFilteredAve = false;
-	bool IsSteinhardt_FilteredNeigh = false;
-	bool IsSteinhardt_AveFilteredNeigh = false;
+	bool IsSteinhardt_AveFiltered = false;
+	bool IsSteinhardt_FilteredAveFiltered = false;
+	bool IsSteinhardt_AveFilteredMono = false;
+	bool IsSteinhardt_AveFilteredMulti = false;
 	// Parameters to read
 	std::string FixedParam_Filename = "Fixed_Parameters.dat";
 	double tolSites;
@@ -75,24 +77,22 @@ public:
 	double* BondOrientationalParameter();
 	void BondOriParam_MultisiteCrystal();
 	void BondOriParam_Multisite();
-	void BondOriParam_MultisiteNewVersion();
 	void BondOriParam_NoMultisite();
-	double* ComputeSteinhardtParameters_Mono(const double rc, const int l_sph);
+	// The different Steinhardt parameters
+	void ComputeSteinhardtParameters_Mono(const double rc, const int l_sph);
+	void ComputeSteinhardtParameters_Multi(const double rc, const int l_sph);
+	void ComputeSteinhardtParameters_FilteredNeigh(const double rc, const int l_sph);
+	double* ComputeSteinhardtParameters_OneL(const double rc, const int l_sph);
+	// The different averaging methods
 	void AverageSteinhardtParameters_Mono(const double rc, const int l_sph);
 	void AverageSteinhardtParameters_Multi(const double rc, const int l_sph);
-	double* ComputeAveSteinhardtParameters_MonoAveMono(const double rc, const int l_sph);
-	double* ComputeSteinhardtParameters_Multi(const double rc, const int l_sph);
-	double* ComputeAveSteinhardtParameters_MultiAveMono(const double rc, const int l_sph);
-	double* ComputeAveSteinhardtParameters_MultiAveMulti(const double rc, const int l_sph);
-	double* ComputeAveSteinhardtParameters_MonoAveMulti(const double rc, const int l_sph);
-	double* ComputeSteinhardtParameters_FilteredNeigh(const double rc, const int l_sph);
-	double* ComputeAveSteinhardtParameters_FilteredNeigh(const double rc, const int l_sph);
-	void AverageSteinhardtParameters_FilteredNeigh(const double rc, const int l_sph);
-	double* ComputeAveSteinhardtParameters_FilteredNeighAndAve(const double rc, const int l_sph);
-	double* ComputeAveSteinhardtParameters_FilteredAve(const double rc, const int l_sph);
-	void AverageSteinhardtParameters_FilteredAve(const double rc, const int l_sph);
-	void AverageFilteredSteinhardtParameters_FilteredAve(const double rc, const int l_sph);
-	double* ComputeSteinhardtParameters_OneL(const double rc, const int l_sph);
+	void AverageSteinhardtParameters_Filtered(const double rc, const int l_sph);
+	void AverageFilteredSteinhardtParameters_Mono(const double rc, const int l_sph);
+	void AverageFilteredSteinhardtParameters_Multi(const double rc, const int l_sph);
+	void AverageFilteredSteinhardtParameters_Filtered(const double rc, const int l_sph);
+	// computation of the different averaged Steinhardt parameters
+	double *ComputeSteinhardtParameters(const double rc, const int l_sph, std::string SteinhardtStyle, std::string AveStyle);
+
 	double* Compute_StrainTensor();
 	double* Compute_StrainTensor(unsigned int FromNum);
 	double* Compute_StrainTensor_invII();
@@ -108,8 +108,7 @@ public:
 	std::string getSteinhardtDatabase(std::string CrystalName);
 	void SteinhardtDatabase_read(std::string CrystalName);
 	void SteinhardtDatabase_read_GMM(std::string CrystalName);
-	void PrintSteinhardtParam(std::vector<unsigned int> At_index, std::string ext_filename, std::string SteinhardtStyle);
-	double* BondOriParam_SteinhardtBased();
+	void PrintSteinhardtParam(std::vector<unsigned int> At_index, std::string ext_filename, std::string SteinhardtStyle, std::string AveStyle);
 	double* StructuralAnalysis_Steinhardt();
 	double* StructuralAnalysis_Steinhardt_GMM();
 	void read_params();

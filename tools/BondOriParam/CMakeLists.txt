@@ -7,7 +7,7 @@
 ######################################################################
 
 #Project name
-project(OrderParam_Steinhardt)
+project(BondOriParam)
  
 #The file(GLOB...) allows for wildcard additions:
 file(GLOB HEADERS "*.h")

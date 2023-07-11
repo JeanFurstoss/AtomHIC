@@ -54,6 +54,7 @@ protected:
 	// Parameters read from Fixed_Parameter.dat file
 	std::string FixedParam_Filename = "Fixed_Parameters.dat";
 	double r_cut_n;
+	double current_rc_neigh;
 	int l_sph_st;
 public:
 	AtomicSystem(){};
@@ -64,6 +65,7 @@ public:
 	unsigned int getNbAtom(){ return this->nbAtom; }
 	Atom getAtom(const unsigned int Id){ return this->AtomList[Id]; }
 	double* getAux(const unsigned int AuxId){ return this->Aux[AuxId]; }
+	double get_current_rc(){ return this->current_rc_neigh; }
 	Position getWrappedPos(const unsigned int AuxId){ return this->WrappedPos[AuxId]; }
 	unsigned int* getNeighbours(){ return this->Neighbours; }
 	unsigned int getNeighbours(const unsigned int Id){ return this->Neighbours[Id]; }

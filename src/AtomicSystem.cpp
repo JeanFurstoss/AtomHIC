@@ -699,10 +699,17 @@ void AtomicSystem::searchNeighbours(const double& rc){
 	}
 	cout << endl;
 	IsNeighbours = true;
+	this->current_rc_neigh = rc;
 }
 
 void AtomicSystem::setAux(const double* aux, const string& AuxName){
 	IsSetAux = true;
+	for(unsigned int i=0;i<this->Aux_name.size();i++){
+		if( AuxName == this->Aux_name[i] ){
+			cout << "Auxiliary propery already stored, aborting" << endl;
+			return;
+		}
+	}
 	this->Aux.push_back(new double[this->nbAtom]);
 	this->Aux_name.push_back(AuxName);
 	this->Aux_size.push_back(1);
@@ -711,6 +718,12 @@ void AtomicSystem::setAux(const double* aux, const string& AuxName){
 
 void AtomicSystem::setAux_vec(const double* aux, const unsigned int size, const string& AuxName){
 	IsSetAux = true;
+	for(unsigned int i=0;i<this->Aux_name.size();i++){
+		if( AuxName == this->Aux_name[i] ){
+			cout << "Auxiliary propery already stored, aborting" << endl;
+			return;
+		}
+	}
 	this->Aux.push_back(new double[this->nbAtom*size]);
 	this->Aux_name.push_back(AuxName);
 	this->Aux_size.push_back(size);
