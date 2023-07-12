@@ -102,7 +102,7 @@ int main(int argc, char *argv[])
 		double rc = MySystem.get_rcut();
 		unsigned int l_sph = MySystem.get_lsph();
 		unsigned int size;
-		if( SteinhardtStyle == "Filtered" || AveStyle == "Filtered" ) size = (l_sph+1)*MySystem.getCrystal()->getNbAtomType();
+		if( SteinhardtStyle == "Filtered" || AveStyle == "Filtered" ) size = (l_sph+1)*(MySystem.getCrystal()->getNbAtomType()+1);
 		else size = l_sph+1;
 		MySystem.setAux_vec(MySystem.get_CA()->ComputeSteinhardtParameters(rc,l_sph,SteinhardtStyle,AveStyle),size,"Q");
 		MySystem.printSystem_aux(OutputFilename,"Q");
