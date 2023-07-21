@@ -496,7 +496,7 @@ void AtomicSystem::computeWrap(){
 
 // Searching neighbours using cell list algorithm
 void AtomicSystem::searchNeighbours(const double& rc){
-	computeWrap();
+	if( !IsWrappedPos ) computeWrap();
 	// construct the cells
 	// set maximum neighbour by estimating the maximum number of atom in a rc x rc x rc cube
 	double rc_squared = pow(rc,2.);

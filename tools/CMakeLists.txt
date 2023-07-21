@@ -24,4 +24,4 @@ add_subdirectory(StructuralAnalysis_Steinhardt)
 add_subdirectory(StructuralAnalysis_Steinhardt_GMM)
 add_subdirectory(InvertMatrix)
 add_subdirectory(SaveGaussianMixture_Steinhardt)
-
+add_subdirectory(AtomicStrain)

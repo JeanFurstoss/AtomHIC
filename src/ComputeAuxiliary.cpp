@@ -2053,11 +2053,119 @@ void ComputeAuxiliary::read_params(){
 	}
 }
 
+// atomic strain as defined in ovito (i.e. Shimizu, Ogata, Li: Mater. Trans. 48 (2007), 2923)
+double* ComputeAuxiliary::Compute_AtomicStrain(AtomicSystem &AnalyzedSystem, double rc){
+	if( !_MySystem->getIsNeighbours() || _MySystem->get_current_rc() != rc ){
+		_MySystem->searchNeighbours(rc);
+	}
+
+	const unsigned int nbAt = _MySystem->getNbAtom();
+	const unsigned int nbNMax = _MySystem->getNbMaxN();
+	const unsigned int nbAt_ref = AnalyzedSystem.getNbAtom();
+
+	double xpos, ypos, zpos, xpos_r, ypos_r, zpos_r, id;
+	double *buffer_mat = new double[9];
+
+	if( nbAt != nbAt_ref ){
+		cout << "The number of atom in the reference system and system to compute atomic strain is not the same !" << endl;
+		return 0;
+	}
+	
+	// Compute d0 and Vi if not already computed
+	if( !this->Reference_AtomicStrain_Computed ){
+		this->Vi_inv = new double[nbAt*9];
+		this->d0 = new double[nbAt*nbNMax*3];
+		
+		for(unsigned int i=0;i<nbAt;i++){
+			xpos = _MySystem->getWrappedPos(i).x;
+			ypos = _MySystem->getWrappedPos(i).y;
+			zpos = _MySystem->getWrappedPos(i).z;
+			for(unsigned int j=0;j<9;j++) buffer_mat[j] = 0.;
+			for(unsigned int n=0;n<_MySystem->getNeighbours(i*(nbNMax+1));n++){
+				id = _MySystem->getNeighbours(i*(nbNMax+1)+n+1);
+				this->d0[i*nbNMax*3+n*3] = _MySystem->getWrappedPos(id).x+_MySystem->getCLNeighbours(i*nbNMax*3+n*3)*_MySystem->getH1()[0]+_MySystem->getCLNeighbours(i*nbNMax*3+n*3+1)*_MySystem->getH2()[0]+_MySystem->getCLNeighbours(i*nbNMax*3+n*3+2)*_MySystem->getH3()[0]-xpos;
+				this->d0[i*nbNMax*3+n*3+1] = _MySystem->getWrappedPos(id).y+_MySystem->getCLNeighbours(i*nbNMax*3+n*3)*_MySystem->getH1()[1]+_MySystem->getCLNeighbours(i*nbNMax*3+n*3+1)*_MySystem->getH2()[1]+_MySystem->getCLNeighbours(i*nbNMax*3+n*3+2)*_MySystem->getH3()[1]-ypos;
+				this->d0[i*nbNMax*3+n*3+2] = _MySystem->getWrappedPos(id).z+_MySystem->getCLNeighbours(i*nbNMax*3+n*3)*_MySystem->getH1()[2]+_MySystem->getCLNeighbours(i*nbNMax*3+n*3+1)*_MySystem->getH2()[2]+_MySystem->getCLNeighbours(i*nbNMax*3+n*3+2)*_MySystem->getH3()[2]-zpos;
+				for(unsigned int d1=0;d1<3;d1++){
+					for(unsigned int d2=0;d2<3;d2++) buffer_mat[d1*3+d2] += this->d0[i*nbNMax*3+n*3+d1]*this->d0[i*nbNMax*3+n*3+d2];
+				}
+			}
+			MT->invert3x3(buffer_mat,buffer_mat);
+			for(unsigned int d=0;d<9;d++) Vi_inv[i*9+d] = buffer_mat[d];
+		}
+		this->Reference_AtomicStrain_Computed = true;
+		cout << "Ref computed" << endl;
+	}
+
+	double *W = new double[9];
+	double *buffer_vec = new double[3];
+	double *delta = new double[nbAt*3];
+	this->AtomicStrain = new double[nbAt*9];
+
+	for(unsigned int i=0;i<nbAt;i++){
+		for(unsigned int d=0;d<3;d++) delta[i*3+d] = 0.;
+		xpos = AnalyzedSystem.getWrappedPos(i).x;
+		ypos = AnalyzedSystem.getWrappedPos(i).y;
+		zpos = AnalyzedSystem.getWrappedPos(i).z;
+		xpos_r = _MySystem->getWrappedPos(i).x;
+		ypos_r = _MySystem->getWrappedPos(i).y;
+		zpos_r = _MySystem->getWrappedPos(i).z;
+		//if( (xpos-xpos_r) > AnalyzedSystem.getH1()[0]/2. ) for(unsigned int d=0;d<3;d++) delta[i*3+d] -= AnalyzedSystem.getH1()[d];
+		//else if( (xpos-xpos_r) < -AnalyzedSystem.getH1()[0]/2. ) for(unsigned int d=0;d<3;d++) delta[i*3+d] += AnalyzedSystem.getH1()[d];
+		//if( (ypos-ypos_r) > AnalyzedSystem.getH2()[1]/2. ) for(unsigned int d=0;d<3;d++) delta[i*3+d] -= AnalyzedSystem.getH2()[d];
+		//else if( (ypos-ypos_r) < -AnalyzedSystem.getH2()[1]/2. ) for(unsigned int d=0;d<3;d++) delta[i*3+d] += AnalyzedSystem.getH2()[d];
+		//if( (zpos-zpos_r) > AnalyzedSystem.getH3()[2]/2. ) for(unsigned int d=0;d<3;d++) delta[i*3+d] -= AnalyzedSystem.getH3()[d];
+		//else if( (zpos-zpos_r) < -AnalyzedSystem.getH3()[2]/2. ) for(unsigned int d=0;d<3;d++) delta[i*3+d] += AnalyzedSystem.getH3()[d];
+	}
+
+	for(unsigned int i=0;i<nbAt;i++){
+		xpos = AnalyzedSystem.getWrappedPos(i).x;
+		ypos = AnalyzedSystem.getWrappedPos(i).y;
+		zpos = AnalyzedSystem.getWrappedPos(i).z;
+		for(unsigned int j=0;j<9;j++){
+			W[j] = 0.;
+			buffer_mat[j] = this->Vi_inv[i*9+j];
+			AtomicStrain[i*9+j] = 0.;
+		}
+		// Compute d and W
+		for(unsigned int n=0;n<_MySystem->getNeighbours(i*(nbNMax+1));n++){
+			id = _MySystem->getNeighbours(i*(nbNMax+1)+n+1);
+			buffer_vec[0] = AnalyzedSystem.getWrappedPos(id).x+_MySystem->getCLNeighbours(i*nbNMax*3+n*3)*AnalyzedSystem.getH1()[0]+_MySystem->getCLNeighbours(i*nbNMax*3+n*3+1)*AnalyzedSystem.getH2()[0]+_MySystem->getCLNeighbours(i*nbNMax*3+n*3+2)*AnalyzedSystem.getH3()[0]-xpos+delta[i*3]+delta[n*3];
+			buffer_vec[1] = AnalyzedSystem.getWrappedPos(id).y+_MySystem->getCLNeighbours(i*nbNMax*3+n*3)*AnalyzedSystem.getH1()[1]+_MySystem->getCLNeighbours(i*nbNMax*3+n*3+1)*AnalyzedSystem.getH2()[1]+_MySystem->getCLNeighbours(i*nbNMax*3+n*3+2)*AnalyzedSystem.getH3()[1]-ypos+delta[i*3+1]+delta[n*3+1];
+			buffer_vec[2] = AnalyzedSystem.getWrappedPos(id).z+_MySystem->getCLNeighbours(i*nbNMax*3+n*3)*AnalyzedSystem.getH1()[2]+_MySystem->getCLNeighbours(i*nbNMax*3+n*3+1)*AnalyzedSystem.getH2()[2]+_MySystem->getCLNeighbours(i*nbNMax*3+n*3+2)*AnalyzedSystem.getH3()[2]-zpos+delta[i*3+2]+delta[n*3+2];
+			for(unsigned int d1=0;d1<3;d1++){
+				for(unsigned int d2=0;d2<3;d2++) W[d1*3+d2] += this->d0[i*nbNMax*3+n*3+d2]*buffer_vec[d1];
+			}
+		}
+		// Compute J
+		MT->MatDotMat(buffer_mat,W,W);
+		// Compute Lagrangian strain tensor (.5*(J.Jt-Id))	
+		for(unsigned int d1=0;d1<3;d1++){
+			AtomicStrain[i*9+d1*3+d1] -= 1.;
+			for(unsigned int d2=0;d2<3;d2++){
+				//for(unsigned int d=0;d<3;d++) AtomicStrain[i*9+d1*3+d2] += W[d1*3+d]*W[d2*3+d];
+				for(unsigned int d=0;d<3;d++) AtomicStrain[i*9+d1*3+d2] += W[d*3+d1]*W[d*3+d2];
+				AtomicStrain[i*9+d1*3+d2] *= .5;
+			}
+		}
+	}
+	delete[] W;
+	delete[] buffer_vec;
+	delete[] buffer_mat;
+	return AtomicStrain;
+}
+
+
 ComputeAuxiliary::~ComputeAuxiliary(){
 	delete MT;
 	if( IsBondOriParam ){
 		delete[] BondOriParam;
 		delete[] Atom_SiteIndex;
+	}
+	if( this->Reference_AtomicStrain_Computed ){
+		delete[] Vi_inv;
+		delete[] d0;
+		delete[] AtomicStrain;
 	}
 	if( IsStrainTensor ){
 		delete[] StrainTensor;

@@ -62,6 +62,11 @@ protected:
 	bool IsSteinhardt_FilteredAveFiltered = false;
 	bool IsSteinhardt_AveFilteredMono = false;
 	bool IsSteinhardt_AveFilteredMulti = false;
+	// For atomic strain
+	double *d0;
+	double *Vi_inv;
+	double *AtomicStrain;
+	bool Reference_AtomicStrain_Computed = false;
 	// Parameters to read
 	std::string FixedParam_Filename = "Fixed_Parameters.dat";
 	double tolSites;
@@ -93,6 +98,7 @@ public:
 	// computation of the different averaged Steinhardt parameters
 	double *ComputeSteinhardtParameters(const double rc, const int l_sph, std::string SteinhardtStyle, std::string AveStyle);
 
+	double* Compute_AtomicStrain(AtomicSystem &ReferenceSystem, double rc); // atomic strain as defined in ovito (i.e. Shimizu, Ogata, Li: Mater. Trans. 48 (2007), 2923)
 	double* Compute_StrainTensor();
 	double* Compute_StrainTensor(unsigned int FromNum);
 	double* Compute_StrainTensor_invII();
