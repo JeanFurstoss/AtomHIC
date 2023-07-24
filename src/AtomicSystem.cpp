@@ -925,6 +925,151 @@ void AtomicSystem::read_lmp_file(const string& filename){
 	cout << " done !" << endl;
 }
 
+void AtomicSystem::read_other_cfg(const string& filename){
+	ifstream file(filename, ios::in);
+	if(file){
+		unsigned int buffer_uint, count(0), nbAux, line_aux(1000), indId, count_at(0), current_type_uint, count_aux, current_ind;
+		size_t pos_At, pos_H1_x, pos_H1_y, pos_H1_z, pos_H2_x, pos_H2_y, pos_H2_z, pos_H3_x, pos_H3_y, pos_H3_z, pos_nbAux;
+		double buffer_1, buffer_2, buffer_3, buffer_4, buffer_5;
+		bool IsId = false, TypeStored;
+		string buffer_s, buffer_s_1, buffer_s_2, buffer_s_3, line;
+		this->nbAtomType = 0;
+		while(file){
+			getline(file,line);
+			// find number of atom 
+			pos_At=line.find("Number of particles");
+			if(pos_At!=string::npos){
+				istringstream text(line);
+				text >> buffer_s >> buffer_s_1 >> buffer_s_2 >> buffer_s_3 >> buffer_uint;
+			       	this->nbAtom = buffer_uint;
+				AtomList = new Atom[this->nbAtom];
+			}
+			// find cell vectors
+			pos_H1_x=line.find("H0(1,1)");
+			if(pos_H1_x!=string::npos){
+				istringstream text(line);
+				text >> buffer_s >> buffer_s_1 >> buffer_1;
+				this->H1[0] = buffer_1;
+			}
+			pos_H1_y=line.find("H0(1,2)");
+			if(pos_H1_y!=string::npos){
+				istringstream text(line);
+				text >> buffer_s >> buffer_s_1 >> buffer_1;
+				this->H1[1] = buffer_1;
+			}
+			pos_H1_z=line.find("H0(1,3)");
+			if(pos_H1_z!=string::npos){
+				istringstream text(line);
+				text >> buffer_s >> buffer_s_1 >> buffer_1;
+				this->H1[2] = buffer_1;
+			}
+			pos_H2_x=line.find("H0(2,1)");
+			if(pos_H2_x!=string::npos){
+				istringstream text(line);
+				text >> buffer_s >> buffer_s_1 >> buffer_1;
+				this->H2[0] = buffer_1;
+			}
+			pos_H2_y=line.find("H0(2,2)");
+			if(pos_H2_y!=string::npos){
+				istringstream text(line);
+				text >> buffer_s >> buffer_s_1 >> buffer_1;
+				this->H2[1] = buffer_1;
+			}
+			pos_H2_z=line.find("H0(2,3)");
+			if(pos_H2_z!=string::npos){
+				istringstream text(line);
+				text >> buffer_s >> buffer_s_1 >> buffer_1;
+				this->H2[2] = buffer_1;
+			}
+			pos_H3_x=line.find("H0(3,1)");
+			if(pos_H3_x!=string::npos){
+				istringstream text(line);
+				text >> buffer_s >> buffer_s_1 >> buffer_1;
+				this->H3[0] = buffer_1;
+			}
+			pos_H3_y=line.find("H0(3,2)");
+			if(pos_H3_y!=string::npos){
+				istringstream text(line);
+				text >> buffer_s >> buffer_s_1 >> buffer_1;
+				this->H3[1] = buffer_1;
+			}
+			pos_H3_z=line.find("H0(3,3)");
+			if(pos_H3_z!=string::npos){
+				istringstream text(line);
+				text >> buffer_s >> buffer_s_1 >> buffer_1;
+				this->H3[2] = buffer_1;
+			}
+			pos_nbAux=line.find("entry_count");
+			if(pos_nbAux!=string::npos){
+				istringstream text(line);
+				text >> buffer_s >> buffer_s_1 >> nbAux;
+				nbAux -= 3; // the three atomic coordinates
+				line_aux = count;
+				if( nbAux > 0 ) this->IsSetAux = true;
+			}
+			if( count > line_aux && count <= line_aux+nbAux ){
+				istringstream text(line);
+				text >> buffer_s >> buffer_s_1 >> buffer_s_2;
+				if( buffer_s_2 == "id" ){ // TODO : same with charge
+					IsId = true;
+					indId = Aux_name.size();
+				}else{
+					this->Aux_name.push_back(buffer_s_2);
+					this->Aux.push_back(new double[this->nbAtom]);
+				}
+			}
+			if( count > line_aux+nbAux ){
+				istringstream text(line);
+				text >> buffer_1;
+				getline(file,line);
+				istringstream text1(line);
+				text1 >> buffer_s;
+				TypeStored = false;
+				for(unsigned int i=0;i<this->nbAtomType;i++){
+					if( buffer_s == this->AtomType[i] ){
+						TypeStored = true;
+						current_type_uint = i+1;
+						break;
+					}
+				}
+				if( !TypeStored ){
+					this->AtomType[nbAtomType] = buffer_s;
+					this->AtomMass[nbAtomType] = buffer_1;
+					this->nbAtomType += 1;
+					current_type_uint = this->nbAtomType;
+				}
+				getline(file,line);
+				istringstream text2(line);
+				text2 >> buffer_1 >> buffer_2 >> buffer_3;
+				count_aux = 0;
+				for(unsigned int i=0;i<nbAux;i++){
+					if( IsId ){
+						if( i == indId ) text2 >> current_ind;
+						else{
+							text2 >> Aux[count_aux][current_ind-1];
+							count_aux += 1;
+						}
+					}else text2 >> Aux[i][count_at];
+				}
+				if( IsId ){
+					this->AtomList[current_ind-1].pos.x = buffer_1*H1[0]+buffer_2*H2[0]+buffer_3*H3[0];
+					this->AtomList[current_ind-1].pos.y = buffer_1*H1[1]+buffer_2*H2[1]+buffer_3*H3[1];
+					this->AtomList[current_ind-1].pos.z = buffer_1*H1[2]+buffer_2*H2[2]+buffer_3*H3[2];
+					this->AtomList[current_ind-1].type_uint = current_type_uint;
+				}else{
+					this->AtomList[count_at].pos.x = buffer_1*H1[0]+buffer_2*H2[0]+buffer_3*H3[0];
+					this->AtomList[count_at].pos.y = buffer_1*H1[1]+buffer_2*H2[1]+buffer_3*H3[1];
+					this->AtomList[count_at].pos.z = buffer_1*H1[2]+buffer_2*H2[2]+buffer_3*H3[2];
+					this->AtomList[count_at].type_uint = current_type_uint;
+				}
+				count_at += 1;
+			}
+			count += 1;
+		}
+		if( H2[0] != 0 || H3[0] != 0 || H3[1] != 0 ) IsTilted = true;
+	}
+}
+
 void AtomicSystem::read_cfg_file(const string& filename){
 	cout << "Reading " << filename << " file..";
 	ifstream file(filename, ios::in);
@@ -934,9 +1079,17 @@ void AtomicSystem::read_cfg_file(const string& filename){
 		double buffer_1, buffer_2, buffer_3, buffer_4, buffer_5;
 		double xlo,xhi,ylo,yhi,zlo,zhi;
 		string buffer_s, buffer_s_1, buffer_s_2, line;
+		bool other_cfg = false;
 		while(file){
 			getline(file,line);
-
+			if( count == 0 ){
+				istringstream text(line);
+				text >> buffer_s >> buffer_s_1 >> buffer_s_2;
+				if( buffer_s == "Number" && buffer_s_1 == "of" && buffer_s_2 == "particles" ){
+					other_cfg = true;
+					break;
+				}
+			}
 			// find timestep
 			pos_dt=line.find("TIMESTEP");
 			if( pos_dt!=string::npos ) line_dt = count;
@@ -1017,7 +1170,7 @@ void AtomicSystem::read_cfg_file(const string& filename){
 				this->AtomList[buffer_uint-1].pos.y = buffer_2;
 				this->AtomList[buffer_uint-1].pos.z = buffer_3;
 				this->AtomList[buffer_uint-1].type_uint = buffer_uint_1;
-				this->AtomCharge[buffer_uint_1-1] = buffer_4;
+				this->AtomCharge[buffer_uint_1-1] = buffer_4;//TODO warning here if the system is not charge
 				this->AtomType[buffer_uint_1-1] = buffer_s;
 				if(nbAux>0){
 					aux_count = 0;
@@ -1030,6 +1183,10 @@ void AtomicSystem::read_cfg_file(const string& filename){
 			count += 1;
 		}
 		file.close();
+		if( other_cfg ){
+			read_other_cfg(filename);
+			return;
+		}
 		if( IsTilted ){
 			// compute the cell vectors
 			// TEST

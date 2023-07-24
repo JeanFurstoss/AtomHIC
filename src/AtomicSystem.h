@@ -97,6 +97,7 @@ public:
 	void computeInverseCellVec();
 	void read_lmp_file(const std::string& filename);
 	void read_cfg_file(const std::string& filename);
+	void read_other_cfg(const std::string& filename);
 	void printSystem(const std::string& filename); // print a file containing atom type, charge, masse and position
 	void print_lmp(const std::string& filename);
 	void print_cfg(const std::string& filename);
