@@ -2077,15 +2077,15 @@ double* ComputeAuxiliary::Compute_AtomicStrain(AtomicSystem &AnalyzedSystem, dou
 		this->d0 = new double[nbAt*nbNMax*3];
 		
 		for(unsigned int i=0;i<nbAt;i++){
-			xpos = _MySystem->getWrappedPos(i).x;
-			ypos = _MySystem->getWrappedPos(i).y;
-			zpos = _MySystem->getWrappedPos(i).z;
+			xpos_r = _MySystem->getWrappedPos(i).x;
+			ypos_r = _MySystem->getWrappedPos(i).y;
+			zpos_r = _MySystem->getWrappedPos(i).z;
 			for(unsigned int j=0;j<9;j++) buffer_mat[j] = 0.;
 			for(unsigned int n=0;n<_MySystem->getNeighbours(i*(nbNMax+1));n++){
 				id = _MySystem->getNeighbours(i*(nbNMax+1)+n+1);
-				this->d0[i*nbNMax*3+n*3] = _MySystem->getWrappedPos(id).x+_MySystem->getCLNeighbours(i*nbNMax*3+n*3)*_MySystem->getH1()[0]+_MySystem->getCLNeighbours(i*nbNMax*3+n*3+1)*_MySystem->getH2()[0]+_MySystem->getCLNeighbours(i*nbNMax*3+n*3+2)*_MySystem->getH3()[0]-xpos;
-				this->d0[i*nbNMax*3+n*3+1] = _MySystem->getWrappedPos(id).y+_MySystem->getCLNeighbours(i*nbNMax*3+n*3)*_MySystem->getH1()[1]+_MySystem->getCLNeighbours(i*nbNMax*3+n*3+1)*_MySystem->getH2()[1]+_MySystem->getCLNeighbours(i*nbNMax*3+n*3+2)*_MySystem->getH3()[1]-ypos;
-				this->d0[i*nbNMax*3+n*3+2] = _MySystem->getWrappedPos(id).z+_MySystem->getCLNeighbours(i*nbNMax*3+n*3)*_MySystem->getH1()[2]+_MySystem->getCLNeighbours(i*nbNMax*3+n*3+1)*_MySystem->getH2()[2]+_MySystem->getCLNeighbours(i*nbNMax*3+n*3+2)*_MySystem->getH3()[2]-zpos;
+				this->d0[i*nbNMax*3+n*3] = _MySystem->getWrappedPos(id).x+_MySystem->getCLNeighbours(i*nbNMax*3+n*3)*_MySystem->getH1()[0]+_MySystem->getCLNeighbours(i*nbNMax*3+n*3+1)*_MySystem->getH2()[0]+_MySystem->getCLNeighbours(i*nbNMax*3+n*3+2)*_MySystem->getH3()[0]-xpos_r;
+				this->d0[i*nbNMax*3+n*3+1] = _MySystem->getWrappedPos(id).y+_MySystem->getCLNeighbours(i*nbNMax*3+n*3)*_MySystem->getH1()[1]+_MySystem->getCLNeighbours(i*nbNMax*3+n*3+1)*_MySystem->getH2()[1]+_MySystem->getCLNeighbours(i*nbNMax*3+n*3+2)*_MySystem->getH3()[1]-ypos_r;
+				this->d0[i*nbNMax*3+n*3+2] = _MySystem->getWrappedPos(id).z+_MySystem->getCLNeighbours(i*nbNMax*3+n*3)*_MySystem->getH1()[2]+_MySystem->getCLNeighbours(i*nbNMax*3+n*3+1)*_MySystem->getH2()[2]+_MySystem->getCLNeighbours(i*nbNMax*3+n*3+2)*_MySystem->getH3()[2]-zpos_r;
 				for(unsigned int d1=0;d1<3;d1++){
 					for(unsigned int d2=0;d2<3;d2++) buffer_mat[d1*3+d2] += this->d0[i*nbNMax*3+n*3+d1]*this->d0[i*nbNMax*3+n*3+d2];
 				}
@@ -2094,13 +2094,12 @@ double* ComputeAuxiliary::Compute_AtomicStrain(AtomicSystem &AnalyzedSystem, dou
 			for(unsigned int d=0;d<9;d++) Vi_inv[i*9+d] = buffer_mat[d];
 		}
 		this->Reference_AtomicStrain_Computed = true;
-		cout << "Ref computed" << endl;
 	}
 
 	double *W = new double[9];
 	double *buffer_vec = new double[3];
 	double *delta = new double[nbAt*3];
-	this->AtomicStrain = new double[nbAt*9];
+	this->AtomicStrain = new double[nbAt*8]; // sorted as eps_xx,eps_yy,eps_zz,_eps_xy,eps_xz,eps_yz,shear_inv,hydro_inv
 
 	for(unsigned int i=0;i<nbAt;i++){
 		for(unsigned int d=0;d<3;d++) delta[i*3+d] = 0.;
@@ -2110,12 +2109,12 @@ double* ComputeAuxiliary::Compute_AtomicStrain(AtomicSystem &AnalyzedSystem, dou
 		xpos_r = _MySystem->getWrappedPos(i).x;
 		ypos_r = _MySystem->getWrappedPos(i).y;
 		zpos_r = _MySystem->getWrappedPos(i).z;
-		//if( (xpos-xpos_r) > AnalyzedSystem.getH1()[0]/2. ) for(unsigned int d=0;d<3;d++) delta[i*3+d] -= AnalyzedSystem.getH1()[d];
-		//else if( (xpos-xpos_r) < -AnalyzedSystem.getH1()[0]/2. ) for(unsigned int d=0;d<3;d++) delta[i*3+d] += AnalyzedSystem.getH1()[d];
-		//if( (ypos-ypos_r) > AnalyzedSystem.getH2()[1]/2. ) for(unsigned int d=0;d<3;d++) delta[i*3+d] -= AnalyzedSystem.getH2()[d];
-		//else if( (ypos-ypos_r) < -AnalyzedSystem.getH2()[1]/2. ) for(unsigned int d=0;d<3;d++) delta[i*3+d] += AnalyzedSystem.getH2()[d];
-		//if( (zpos-zpos_r) > AnalyzedSystem.getH3()[2]/2. ) for(unsigned int d=0;d<3;d++) delta[i*3+d] -= AnalyzedSystem.getH3()[d];
-		//else if( (zpos-zpos_r) < -AnalyzedSystem.getH3()[2]/2. ) for(unsigned int d=0;d<3;d++) delta[i*3+d] += AnalyzedSystem.getH3()[d];
+		if( (xpos-xpos_r) > AnalyzedSystem.getH1()[0]/2. ) for(unsigned int d=0;d<3;d++) delta[i*3+d] -= AnalyzedSystem.getH1()[d];
+		else if( (xpos-xpos_r) < -AnalyzedSystem.getH1()[0]/2. ) for(unsigned int d=0;d<3;d++) delta[i*3+d] += AnalyzedSystem.getH1()[d];
+		if( (ypos-ypos_r) > AnalyzedSystem.getH2()[1]/2. ) for(unsigned int d=0;d<3;d++) delta[i*3+d] -= AnalyzedSystem.getH2()[d];
+		else if( (ypos-ypos_r) < -AnalyzedSystem.getH2()[1]/2. ) for(unsigned int d=0;d<3;d++) delta[i*3+d] += AnalyzedSystem.getH2()[d];
+		if( (zpos-zpos_r) > AnalyzedSystem.getH3()[2]/2. ) for(unsigned int d=0;d<3;d++) delta[i*3+d] -= AnalyzedSystem.getH3()[d];
+		else if( (zpos-zpos_r) < -AnalyzedSystem.getH3()[2]/2. ) for(unsigned int d=0;d<3;d++) delta[i*3+d] += AnalyzedSystem.getH3()[d];
 	}
 
 	for(unsigned int i=0;i<nbAt;i++){
@@ -2125,33 +2124,58 @@ double* ComputeAuxiliary::Compute_AtomicStrain(AtomicSystem &AnalyzedSystem, dou
 		for(unsigned int j=0;j<9;j++){
 			W[j] = 0.;
 			buffer_mat[j] = this->Vi_inv[i*9+j];
-			AtomicStrain[i*9+j] = 0.;
 		}
 		// Compute d and W
 		for(unsigned int n=0;n<_MySystem->getNeighbours(i*(nbNMax+1));n++){
 			id = _MySystem->getNeighbours(i*(nbNMax+1)+n+1);
-			buffer_vec[0] = AnalyzedSystem.getWrappedPos(id).x+_MySystem->getCLNeighbours(i*nbNMax*3+n*3)*AnalyzedSystem.getH1()[0]+_MySystem->getCLNeighbours(i*nbNMax*3+n*3+1)*AnalyzedSystem.getH2()[0]+_MySystem->getCLNeighbours(i*nbNMax*3+n*3+2)*AnalyzedSystem.getH3()[0]-xpos+delta[i*3]+delta[n*3];
-			buffer_vec[1] = AnalyzedSystem.getWrappedPos(id).y+_MySystem->getCLNeighbours(i*nbNMax*3+n*3)*AnalyzedSystem.getH1()[1]+_MySystem->getCLNeighbours(i*nbNMax*3+n*3+1)*AnalyzedSystem.getH2()[1]+_MySystem->getCLNeighbours(i*nbNMax*3+n*3+2)*AnalyzedSystem.getH3()[1]-ypos+delta[i*3+1]+delta[n*3+1];
-			buffer_vec[2] = AnalyzedSystem.getWrappedPos(id).z+_MySystem->getCLNeighbours(i*nbNMax*3+n*3)*AnalyzedSystem.getH1()[2]+_MySystem->getCLNeighbours(i*nbNMax*3+n*3+1)*AnalyzedSystem.getH2()[2]+_MySystem->getCLNeighbours(i*nbNMax*3+n*3+2)*AnalyzedSystem.getH3()[2]-zpos+delta[i*3+2]+delta[n*3+2];
+			buffer_vec[0] = AnalyzedSystem.getWrappedPos(id).x+_MySystem->getCLNeighbours(i*nbNMax*3+n*3)*AnalyzedSystem.getH1()[0]+_MySystem->getCLNeighbours(i*nbNMax*3+n*3+1)*AnalyzedSystem.getH2()[0]+_MySystem->getCLNeighbours(i*nbNMax*3+n*3+2)*AnalyzedSystem.getH3()[0]-xpos-delta[i*3];
+			buffer_vec[1] = AnalyzedSystem.getWrappedPos(id).y+_MySystem->getCLNeighbours(i*nbNMax*3+n*3)*AnalyzedSystem.getH1()[1]+_MySystem->getCLNeighbours(i*nbNMax*3+n*3+1)*AnalyzedSystem.getH2()[1]+_MySystem->getCLNeighbours(i*nbNMax*3+n*3+2)*AnalyzedSystem.getH3()[1]-ypos-delta[i*3+1];
+			buffer_vec[2] = AnalyzedSystem.getWrappedPos(id).z+_MySystem->getCLNeighbours(i*nbNMax*3+n*3)*AnalyzedSystem.getH1()[2]+_MySystem->getCLNeighbours(i*nbNMax*3+n*3+1)*AnalyzedSystem.getH2()[2]+_MySystem->getCLNeighbours(i*nbNMax*3+n*3+2)*AnalyzedSystem.getH3()[2]-zpos-delta[i*3+2];
+			if( buffer_vec[0] > AnalyzedSystem.getH1()[0]/2. ) for(unsigned int d=0;d<3;d++) buffer_vec[d] -= AnalyzedSystem.getH1()[d];
+			else if( buffer_vec[0] < -AnalyzedSystem.getH1()[0]/2. ) for(unsigned int d=0;d<3;d++) buffer_vec[d] += AnalyzedSystem.getH1()[d];
+			if( buffer_vec[1] > AnalyzedSystem.getH2()[1]/2. ) for(unsigned int d=0;d<3;d++) buffer_vec[d] -= AnalyzedSystem.getH2()[d];
+			else if( buffer_vec[1] < -AnalyzedSystem.getH2()[1]/2. ) for(unsigned int d=0;d<3;d++) buffer_vec[d] += AnalyzedSystem.getH2()[d];
+			if( buffer_vec[2] > AnalyzedSystem.getH3()[2]/2. ) for(unsigned int d=0;d<3;d++) buffer_vec[d] -= AnalyzedSystem.getH3()[d];
+			else if( buffer_vec[2] < -AnalyzedSystem.getH3()[2]/2. ) for(unsigned int d=0;d<3;d++) buffer_vec[d] += AnalyzedSystem.getH3()[d];
 			for(unsigned int d1=0;d1<3;d1++){
-				for(unsigned int d2=0;d2<3;d2++) W[d1*3+d2] += this->d0[i*nbNMax*3+n*3+d2]*buffer_vec[d1];
+				for(unsigned int d2=0;d2<3;d2++) W[d1*3+d2] += this->d0[i*nbNMax*3+n*3+d1]*buffer_vec[d2];
 			}
 		}
-		// Compute J
+		// Compute deformation gradient tensor
 		MT->MatDotMat(buffer_mat,W,W);
 		// Compute Lagrangian strain tensor (.5*(J.Jt-Id))	
 		for(unsigned int d1=0;d1<3;d1++){
-			AtomicStrain[i*9+d1*3+d1] -= 1.;
-			for(unsigned int d2=0;d2<3;d2++){
-				//for(unsigned int d=0;d<3;d++) AtomicStrain[i*9+d1*3+d2] += W[d1*3+d]*W[d2*3+d];
-				for(unsigned int d=0;d<3;d++) AtomicStrain[i*9+d1*3+d2] += W[d*3+d1]*W[d*3+d2];
-				AtomicStrain[i*9+d1*3+d2] *= .5;
+			for(unsigned int d2=d1;d2<3;d2++){
+				buffer_mat[d1*3+d2] = 0.;
+				for(unsigned int d=0;d<3;d++) buffer_mat[d1*3+d2] += W[d*3+d1]*W[d*3+d2];
 			}
 		}
+		for(unsigned int d=0;d<3;d++){
+			buffer_mat[d*3+d] -= 1.;
+			buffer_mat[d*3+d] *= .5; //originally all strain component must be divided by two but regarding analytical tests we don't do that here
+		}
+		// sort the tensor 
+		AtomicStrain[i*8] = buffer_mat[0];
+		AtomicStrain[i*8+1] = buffer_mat[4];
+		AtomicStrain[i*8+2] = buffer_mat[8];
+		AtomicStrain[i*8+3] = buffer_mat[1];
+		AtomicStrain[i*8+4] = buffer_mat[2];
+		AtomicStrain[i*8+5] = buffer_mat[5];
+		// compute shear invariant
+		AtomicStrain[i*8+6] = 0.;
+		for(unsigned int d1=0;d1<3;d1++) AtomicStrain[i*8+6] += pow(AtomicStrain[i*8+3+d1],2.);
+		AtomicStrain[i*8+6] += (pow(buffer_mat[4]-buffer_mat[8],2.)+pow(buffer_mat[0]-buffer_mat[8],2.)+pow(buffer_mat[0]-buffer_mat[4],2.))/8.;
+		AtomicStrain[i*8+6] = sqrt(AtomicStrain[i*8+6]);
+		// compute hydrostatic invariant
+
+		AtomicStrain[i*8+7] = 0.;
+		for(unsigned int d1=0;d1<3;d1++) AtomicStrain[i*8+7] += buffer_mat[d1*3+d1];
+		AtomicStrain[i*8+7] /= 3.;
 	}
 	delete[] W;
 	delete[] buffer_vec;
 	delete[] buffer_mat;
+	delete[] delta;
 	return AtomicStrain;
 }
 

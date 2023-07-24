@@ -277,8 +277,24 @@ AtomicSystem::AtomicSystem(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrys
 	computeInverseCellVec();
 }
 // Constructor using the filename of an atomic file (.cfg, .lmp, .xsf,..)
-AtomicSystem::AtomicSystem(const string& filename)
-{
+AtomicSystem::AtomicSystem(const string& filename){
+	FilenameConstructor(filename);
+}
+
+void AtomicSystem::FilenameConstructor(const string& filename){
+	if( FilenameConstructed ){
+		delete[] AtomType;
+		delete[] AtomMass;
+		delete[] AtomCharge;
+		delete[] H1;
+		delete[] H2;
+		delete[] H3;
+		delete[] G1;
+		delete[] G2;
+		delete[] G3;
+		MT->~MathTools();
+		delete[] AtomList; 
+	}
 	read_params_atsys();
 	this->AtomType = new string[this->MaxAtomType];
 	this->AtomMass = new double[this->MaxAtomType];
@@ -308,6 +324,8 @@ AtomicSystem::AtomicSystem(const string& filename)
 	this->G3 = new double[3];
 	this->IsG = true;
 	computeInverseCellVec();
+	computeWrap();
+	this->FilenameConstructed = true;
 }
 
 void AtomicSystem::computeInverseCellVec(){
@@ -484,9 +502,9 @@ void AtomicSystem::computeWrap(){
 		x = this->AtomList[i].pos.x*G1[0]+this->AtomList[i].pos.y*G2[0]+this->AtomList[i].pos.z*G3[0];
 		y = this->AtomList[i].pos.x*G1[1]+this->AtomList[i].pos.y*G2[1]+this->AtomList[i].pos.z*G3[1];
 		z = this->AtomList[i].pos.x*G1[2]+this->AtomList[i].pos.y*G2[2]+this->AtomList[i].pos.z*G3[2];
-		if( x > 1. || x < 0. ) x = x-floor(x);
-		if( y > 1. || y < 0. ) y = y-floor(y);
-		if( z > 1. || z < 0. ) z = z-floor(z);
+		if( x >= 1. || x < 0. ) x = x-floor(x);
+		if( y >= 1. || y < 0. ) y = y-floor(y);
+		if( z >= 1. || z < 0. ) z = z-floor(z);
 		// cartesian coordinates
 		this->WrappedPos[i].x = x*H1[0]+y*H2[0]+z*H3[0];
 		this->WrappedPos[i].y = x*H1[1]+y*H2[1]+z*H3[1];
@@ -612,9 +630,12 @@ void AtomicSystem::searchNeighbours(const double& rc){
         	}
 	}
 	this->nbMaxN = Cells[0].size();
+	unsigned int nbAt_test = Cells[0].size();
 	for(unsigned int i=1;i<nbCellX*nbCellY*nbCellZ;i++){
+		nbAt_test += Cells[i].size();
 		if( Cells[i].size() > this->nbMaxN ) this->nbMaxN = Cells[i].size();
 	}
+	if( nbAt_test != this->nbAtom ) cout << "We miss atoms during cell list" << endl;
 	this->nbMaxN *= (int) (1.5*4.*M_PI*pow(rc,3.)/(3.*CellSizeX*CellSizeY*CellSizeZ)); // 1.5 is a security factor
 	if( this->IsNeighbours ){
 		delete[] this->Neighbours;
@@ -731,6 +752,28 @@ void AtomicSystem::setAux_vec(const double* aux, const unsigned int size, const 
 		for(unsigned int j=0;j<size;j++){
 			Aux[Aux.size()-1][i*size+j] = aux[i*size+j];
 		}
+	}
+}
+
+void AtomicSystem::modifyAux_vec(const double* aux, const string& AuxName){
+	unsigned int aux_ind,size;
+	bool ok = false;
+	for(unsigned int i=0;i<this->Aux_name.size();i++){
+		if( AuxName == this->Aux_name[i] ){
+			aux_ind = i;
+			ok = true;
+			break;
+		}
+	}
+	if( ok ){
+		size = this->Aux_size[aux_ind];
+		for(unsigned int i=0;i<this->nbAtom;i++){
+			for(unsigned int j=0;j<size;j++){
+				Aux[aux_ind][i*size+j] = aux[i*size+j];
+			}
+		}
+	}else{
+		cout << "Auxiliary property to modify does not exist, aborting" << endl;
 	}
 }
 

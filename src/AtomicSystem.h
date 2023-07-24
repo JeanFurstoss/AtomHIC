@@ -41,6 +41,7 @@ protected:
 	bool IsTilted;
 	bool IsCrystalDefined = false;
 	bool IsCrystalMine = false;
+	bool FilenameConstructed = false;
 	Crystal *_MyCrystal;	
 	std::vector<double*> Aux; // auxiliary atom properties
 	std::vector<unsigned int> Aux_size; // size of auxiliary atom properties
@@ -61,6 +62,7 @@ public:
 	AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double zhi, std::vector<int> cl_box); // construct atomic system from crystal and cell size
 	AtomicSystem(const std::string& filename); // construct AtomicSystem by reading file
 	AtomicSystem(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3); // construct AtomicSystem giving AtomList and cell vectors 
+	void FilenameConstructor(const std::string& filename);
 	// getters
 	unsigned int getNbAtom(){ return this->nbAtom; }
 	Atom getAtom(const unsigned int Id){ return this->AtomList[Id]; }
@@ -84,6 +86,7 @@ public:
 	// setters
 	void setAux(const double* aux, const std::string& AuxName);
 	void setAux_vec(const double* aux, const unsigned int size, const std::string& AuxName);
+	void modifyAux_vec(const double* aux, const std::string& AuxName);
 	void setAux(const unsigned int* aux, const std::string& AuxName);
 	void setAux(const int* aux, const std::string& AuxName);
 	void setCrystal(Crystal* MyCrystal);
