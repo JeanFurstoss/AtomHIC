@@ -36,10 +36,13 @@ protected:
 	std::vector<int> AtomTypeUINTRefPC_ave; // array containing the atom specy => i.e. AtomTypeUINTRefPC[i] = type uint of the params in SteinhardtParams_REF_DEF[i]
 	
 	// FOR Gaussian mixture model
+	unsigned int nbClusterMax_GMM = 10; // maximum number of cluster per structure and atom type
 	std::vector<std::string> Struct_GMM_Names; // name of the structures present in the database
-	std::vector<std::vector<double>> *ICovs_GMM; // inverse covariant matrix of structures present in the database ( Covs_GMM[s*nbAtomType+t][i][j] => covariant matrix of structure s and atom type t )
-	std::vector<double> *Mus_GMM; // esperance of structures present in the database ( Mus_GMM[s*nbAtomType+t][i] => esperance of structure s and atom type t )
-	long double *Det_GMM; // determinant of the covariant matrix for structures present in the database ( Det_GMM[s*nbAtomType+t] => determinant of structure s and atom type t )
+	unsigned int *nbCluster_GMM; // number of cluster for the different structures and atom type present in the database ( nbCluster_GMM[s*nbAtomType+t] => number of cluster for atom type t in structure s)
+	std::vector<std::vector<double>> *ICovs_GMM; // inverse covariant matrix of structures and their cluster present in the database ( Covs_GMM[s*nbAtomType*nbClusterMax_GMM+t*nbClusterMax+n][i][j] => covariant matrix of structure s, atom type t and cluster n)
+	std::vector<double> *Mus_GMM; // esperance of structures present in the database ( Mus_GMM[s*nbAtomType*nbClusterMax_GMM+t*nbClusterMax+n][i] => esperance of structure s, atom type t  and cluster n)
+	long double *Det_GMM; // determinant of the covariant matrix for structures present in the database ( Det_GMM[s*nbAtomType*nbClusterMax_GMM+t*nbClusterMax+n] => determinant of structure s, atom type t and cluster n)
+	double *weight_GMM; // weight of the different gaussian distributions for structures present in the database ( weight_GMM[s*nbAtomType*nbClusterMax_GMM+t*nbClusterMax+n] => determinant of structure s, atom type t and cluster n)
 
 	// end for gaussian mixture model
 	

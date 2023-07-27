@@ -1397,15 +1397,17 @@ void ComputeAuxiliary::SteinhardtDatabase_read_GMM(string CrystalName){
 
 		unsigned int nbG=Struct_GMM_Names.size();
 		unsigned int nbAt_type = _MySystem->getCrystal()->getNbAtomType();
-		this->ICovs_GMM = new vector<vector<double>>[nbG*nbAt_type];
-		this->Mus_GMM = new vector<double>[nbG*nbAt_type];
-		this->Det_GMM = new long double[nbG*nbAt_type];
+		this->ICovs_GMM = new vector<vector<double>>[nbG*nbAt_type*nbClusterMax_GMM];
+		this->Mus_GMM = new vector<double>[nbG*nbAt_type*nbClusterMax_GMM];
+		this->Det_GMM = new long double[nbG*nbAt_type*nbClusterMax_GMM];
+		this->weight_GMM = new double[nbG*nbAt_type*nbClusterMax_GMM];
+		this->nbCluster_GMM = new unsigned int[nbG*nbAt_type];
 		vector<string> AtType_GMM;
 		unsigned int *AtType_uint_GMM = new unsigned int[nbAt_type];
 		unsigned int *lines_attype = new unsigned int[nbAt_type];
 
 		string fullpath2data;
-		size_t pos_dim, pos_attype, pos_mu, pos_c;
+		size_t pos_dim, pos_attype, pos_mu, pos_c, pos_nbC, pos_weight;
 		unsigned int line_rc(1000), count, counter_attype, buffer_ui, buffer_ui2, dim;
 		double buffer_d1, buffer_d2;
 		string line, buffer_s_2;
@@ -1424,11 +1426,13 @@ void ComputeAuxiliary::SteinhardtDatabase_read_GMM(string CrystalName){
 						istringstream text(line);
 						text >> buffer_s >> dim;
 						for(unsigned int t=0;t<nbAt_type;t++){
-							for(unsigned int d1=0;d1<dim;d1++){
-								this->Mus_GMM[i*nbAt_type+t].push_back(0.);
-								this->ICovs_GMM[i*nbAt_type+t].push_back(vector<double>());
-								for(unsigned int d2=0;d2<dim;d2++){
-									this->ICovs_GMM[i*nbAt_type+t][this->ICovs_GMM[i*nbAt_type+t].size()-1].push_back(0.);
+							for(unsigned int c=0;c<nbClusterMax_GMM;c++){
+								for(unsigned int d1=0;d1<dim;d1++){
+									this->Mus_GMM[i*nbAt_type*nbClusterMax_GMM+t*nbClusterMax_GMM+c].push_back(0.);
+									this->ICovs_GMM[i*nbAt_type*nbClusterMax_GMM+t*nbClusterMax_GMM+c].push_back(vector<double>());
+									for(unsigned int d2=0;d2<dim;d2++){
+										this->ICovs_GMM[i*nbAt_type*nbClusterMax_GMM+t*nbClusterMax_GMM+c][this->ICovs_GMM[i*nbAt_type*nbClusterMax_GMM+t*nbClusterMax_GMM+c].size()-1].push_back(0.);
+									}
 								}
 							}
 						}
@@ -1448,17 +1452,32 @@ void ComputeAuxiliary::SteinhardtDatabase_read_GMM(string CrystalName){
 						lines_attype[counter_attype] = count;
 						counter_attype += 1;
 					}
-					if( counter_attype > 0 ){
-						if( count == lines_attype[counter_attype-1]+1 ){
+					// find atom type 
+					pos_nbC=line.find("NUMBER_OF_CLUSTER");
+					if( pos_nbC!=string::npos){
+						istringstream text(line);
+						text >> buffer_s >> nbCluster_GMM[i*nbAt_type+AtType_uint_GMM[counter_attype-1]];
+					}
+
+
+					if( counter_attype > 0 && count == lines_attype[counter_attype-1]+2 ){
+						for(unsigned int c=0;c<nbCluster_GMM[i*nbAt_type+AtType_uint_GMM[counter_attype-1]];c++){
+							if( c != 0 ) getline(file,line);
 							istringstream text(line);
-							text >> buffer_s >> this->Det_GMM[i*nbAt_type+AtType_uint_GMM[counter_attype-1]];
-						}else if( count == lines_attype[counter_attype-1]+2 ){
-							istringstream text(line);
-							text >> buffer_s;
-							for(unsigned int d=0;d<dim;d++) text >> this->Mus_GMM[i*nbAt_type+AtType_uint_GMM[counter_attype-1]][d];
-						}else if( count > lines_attype[counter_attype-1]+3 && count < lines_attype[counter_attype-1]+4+dim ){
-							istringstream text(line);
-							for(unsigned int d=0;d<dim;d++) text >> this->ICovs_GMM[i*nbAt_type+AtType_uint_GMM[counter_attype-1]][count-lines_attype[counter_attype-1]-4][d];
+							text >> buffer_s >> this->weight_GMM[i*nbAt_type*nbClusterMax_GMM+AtType_uint_GMM[counter_attype-1]*nbClusterMax_GMM+c];
+							getline(file,line);
+							istringstream text1(line);
+							text1 >> buffer_s >> this->Det_GMM[i*nbAt_type*nbClusterMax_GMM+AtType_uint_GMM[counter_attype-1]*nbClusterMax_GMM+c];
+							getline(file,line);
+							istringstream text2(line);
+							text2 >> buffer_s;
+							for(unsigned int d=0;d<dim;d++) text2 >> this->Mus_GMM[i*nbAt_type*nbClusterMax_GMM+AtType_uint_GMM[counter_attype-1]*nbClusterMax_GMM+c][d];
+							getline(file,line);
+							for(unsigned int d1=0;d1<dim;d1++){
+								getline(file,line);
+								istringstream text3(line);
+								for(unsigned int d2=0;d2<dim;d2++) text3 >> this->ICovs_GMM[i*nbAt_type*nbClusterMax_GMM+AtType_uint_GMM[counter_attype-1]*nbClusterMax_GMM+c][d1][d2];
+							}
 						}
 					}
 					count++;
@@ -1470,13 +1489,19 @@ void ComputeAuxiliary::SteinhardtDatabase_read_GMM(string CrystalName){
 		//	cout << Struct_GMM_Names[i] << endl;
 		//	for(unsigned int t=0;t<nbAt_type;t++){
 		//		cout << "For " << _MySystem->getCrystal()->getAtomType(t+1) << " ions :" << endl;
-		//		cout << "determinant : " << Det_GMM[i*nbAt_type+t] << endl;
-		//		cout << "esperance : ";
- 		//	        for(unsigned int d=0;d<dim;d++) cout << Mus_GMM[i*nbAt_type+t][d] << " ";
-		//		cout << "comat : " << endl;
-		//		for(unsigned int d1=0;d1<dim;d1++){
-		//			for(unsigned int d2=0;d2<dim;d2++) cout << ICovs_GMM[i*nbAt_type+t][d1][d2] << " ";
+		//		for(unsigned int c=0;c<nbCluster_GMM[i*nbAt_type+t];c++){
+		//			cout << "Custer " << c+1 << endl;
 		//			cout << endl;
+		//			cout << "weight : " << weight_GMM[i*nbAt_type*nbClusterMax_GMM+t*nbClusterMax_GMM+c] << endl;
+		//			cout << "determinant : " << Det_GMM[i*nbAt_type*nbClusterMax_GMM+t*nbClusterMax_GMM+c] << endl;
+		//			cout << "esperance : ";
+ 		//	        	for(unsigned int d=0;d<dim;d++) cout << Mus_GMM[i*nbAt_type*nbClusterMax_GMM+t*nbClusterMax_GMM+c][d] << " ";
+		//			cout << endl;
+		//			cout << "comat : " << endl;
+		//			for(unsigned int d1=0;d1<dim;d1++){
+		//				for(unsigned int d2=0;d2<dim;d2++) cout << ICovs_GMM[i*nbAt_type*nbClusterMax_GMM+t*nbClusterMax_GMM+c][d1][d2] << " ";
+		//				cout << endl;
+		//			}
 		//		}
 		//	}
 		//}
@@ -1788,13 +1813,13 @@ double* ComputeAuxiliary::StructuralAnalysis_Steinhardt_GMM(){
 	unsigned int current_type;
 	for(unsigned int i=0;i<nbAt;i++){
 		for(unsigned int l=0;l<l_sph;l++){
-			//for(unsigned int kp=0;kp<4;kp++) Filtered_St[kp*l_sph+l] = SteinhardtParams_ave[kp*nbAt*(l_sph+1)+i*(l_sph+1)+l+1];
 			Filtered_St[l] = SteinhardtParams_ave[i*(l_sph+1)+l+1];
 		}
 		current_type = _MySystem->getAtom(i).type_uint;
 		N_s[nbStruct] = 0.;
 		for(unsigned int s=0;s<nbStruct;s++){
-			N_s[s] = MT->Prob_MultidimGaussian(this->ICovs_GMM[s*nbAt_type+current_type-1], this->Mus_GMM[s*nbAt_type+current_type-1], this->Det_GMM[s*nbAt_type+current_type-1], Filtered_St);
+			N_s[s] = 0.;
+			for(unsigned int c=0;c<nbCluster_GMM[s*nbAt_type+(current_type-1)];c++)	N_s[s] += MT->Prob_MultidimGaussian(this->ICovs_GMM[s*nbAt_type*nbClusterMax_GMM+(current_type-1)*nbClusterMax_GMM+c], this->Mus_GMM[s*nbAt_type*nbClusterMax_GMM+(current_type-1)*nbClusterMax_GMM+c], this->Det_GMM[s*nbAt_type*nbClusterMax_GMM+(current_type-1)*nbClusterMax_GMM+c], Filtered_St)*weight_GMM[s*nbAt_type*nbClusterMax_GMM+(current_type-1)*nbClusterMax_GMM+c];
 			N_s[nbStruct] += N_s[s];
 		}
 		if( N_s[nbStruct] != 0 ){
@@ -2214,6 +2239,8 @@ ComputeAuxiliary::~ComputeAuxiliary(){
 		delete[] ICovs_GMM;
 		delete[] Mus_GMM;
 		delete[] Det_GMM;
+		delete[] nbCluster_GMM;
+	        delete[] weight_GMM;	
 	}
 	//TODO structural analysis
 }

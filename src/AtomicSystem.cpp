@@ -1078,8 +1078,9 @@ void AtomicSystem::read_cfg_file(const string& filename){
 		size_t pos_dt, pos_At, pos_H_tilt, pos_H, pos_charge, pos_at;
 		double buffer_1, buffer_2, buffer_3, buffer_4, buffer_5;
 		double xlo,xhi,ylo,yhi,zlo,zhi;
-		string buffer_s, buffer_s_1, buffer_s_2, line;
+		string buffer_s, buffer_s_1, buffer_s_2, line, aux_name;
 		bool other_cfg = false;
+		unsigned int nbAux_norm=8;
 		while(file){
 			getline(file,line);
 			if( count == 0 ){
@@ -1146,7 +1147,10 @@ void AtomicSystem::read_cfg_file(const string& filename){
 
 			// search if atom are charged
 			pos_charge=line.find(" q ");
-			if( pos_charge!=string::npos) this->IsCharge = true;
+			if( pos_charge!=string::npos){
+				this->IsCharge = true;
+				nbAux_norm += 1;
+			}
 
 			// find and get atom positions
 			pos_at=line.find("ITEM: ATOMS");
@@ -1154,14 +1158,36 @@ void AtomicSystem::read_cfg_file(const string& filename){
 				istringstream text(line);
 				while(text >> buffer_s){
 					nbAux += 1;
-					if( nbAux > 9 ){
+					if( nbAux > nbAux_norm ){
 					       this->IsSetAux = true;
 					       this->Aux_name.push_back(buffer_s);
+					       // search if auxiliary property is vector (contains "_" follwed by an integer number)
+					       bool isauxvec = false;
+					       pos_aux_vec=buffer_s.find("_");
+					       if(pos_aux_vec!=string::npos){
+						       bool isint = true;
+						       for(size_t ch=pos_aux_vec+1;ch<buffer_s.size();ch++){
+							       if( !isdigit(buffer_s[ch]) ){
+								       isint = false;
+								       break;
+							       }
+						       }
+						       if( isint ){
+							       isauxvec = true;
+							       aux_name = buffer_s.substr(0,pos_aux_vec);
+						       }
+					       }
+					       if( isauxvec ){
+						       for(unsigned int av=0;av<Aux_name.size();av++)
+
+
+
+
 					       this->Aux.push_back(new double[this->nbAtom]);
 					}	       
 				}
 				line_at = count;
-				nbAux -= 9;
+				nbAux -= nbAux_norm;
 			}
 			if( count > line_at ){
 				istringstream text(line);
