@@ -119,7 +119,7 @@ public:
 	void SteinhardtDatabase_read_GMM(std::string CrystalName);
 	void PrintSteinhardtParam(std::vector<unsigned int> At_index, std::string ext_filename, std::string SteinhardtStyle, std::string AveStyle);
 	double* StructuralAnalysis_Steinhardt();
-	double* StructuralAnalysis_Steinhardt_GMM();
+	double* StructuralAnalysis_Steinhardt_GMM(const std::string aux_name);
 	void read_params();
 	// destructor
 	~ComputeAuxiliary();

@@ -1795,12 +1795,19 @@ istringstream text(line);
 	}
 }
 
-double* ComputeAuxiliary::StructuralAnalysis_Steinhardt_GMM(){
+double* ComputeAuxiliary::StructuralAnalysis_Steinhardt_GMM(const string aux_name){
 	SteinhardtDatabase_read_GMM(_MySystem->getCrystal()->getName());
 
 	int l_sph = _MySystem->get_lsph();
 	double rc = _MySystem->get_rcut();
-	ComputeSteinhardtParameters(rc, l_sph, "Multi", "Multi");// TODO : add these infos to the GMM database
+	unsigned int aux_ind;
+	unsigned int aux_size;
+	if( aux_name == "none" ) ComputeSteinhardtParameters(rc, l_sph, "Multi", "Multi");// TODO : add these infos to the GMM database
+	else{
+		aux_ind = _MySystem->getAuxIdAndSize(aux_name,aux_size);
+		if( aux_size != l_sph+1 ) cout << "Warning: the dimension of the provided Steinhardt parameters (" << aux_size << ") is different from the one in /data/FixedParameters/FixedParameters.dat (" << l_sph+1 << " => l_sph+1)" << endl;
+	}
+
 	const unsigned int nbAt = _MySystem->getNbAtom();
 	const unsigned int nbAt_type = _MySystem->getCrystal()->getNbAtomType();
 	const unsigned int nbStruct = this->Struct_GMM_Names.size();
@@ -1812,9 +1819,8 @@ double* ComputeAuxiliary::StructuralAnalysis_Steinhardt_GMM(){
 	double *Struct = new double[nbAt*2];
 	unsigned int current_type;
 	for(unsigned int i=0;i<nbAt;i++){
-		for(unsigned int l=0;l<l_sph;l++){
-			Filtered_St[l] = SteinhardtParams_ave[i*(l_sph+1)+l+1];
-		}
+		if( aux_name == "none" ) for(unsigned int l=0;l<l_sph;l++) Filtered_St[l] = SteinhardtParams_ave[i*(l_sph+1)+l+1];
+		else for(unsigned int l=0;l<l_sph;l++) Filtered_St[l] = _MySystem->getAux(aux_ind)[i*(l_sph+1)+l+1];
 		current_type = _MySystem->getAtom(i).type_uint;
 		N_s[nbStruct] = 0.;
 		for(unsigned int s=0;s<nbStruct;s++){

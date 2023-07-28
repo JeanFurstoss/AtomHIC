@@ -67,6 +67,7 @@ public:
 	unsigned int getNbAtom(){ return this->nbAtom; }
 	Atom getAtom(const unsigned int Id){ return this->AtomList[Id]; }
 	double* getAux(const unsigned int AuxId){ return this->Aux[AuxId]; }
+	unsigned int getAuxIdAndSize(std::string auxname, unsigned int &size); 
 	double get_current_rc(){ return this->current_rc_neigh; }
 	Position getWrappedPos(const unsigned int AuxId){ if( !IsWrappedPos ) computeWrap(); return this->WrappedPos[AuxId]; }
 	unsigned int* getNeighbours(){ return this->Neighbours; }

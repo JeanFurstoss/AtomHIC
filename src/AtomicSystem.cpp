@@ -1075,7 +1075,7 @@ void AtomicSystem::read_cfg_file(const string& filename){
 	ifstream file(filename, ios::in);
 	if(file){
 		unsigned int line_dt(1000), line_At(1000), line_H_tilt(1000), line_H(1000), line_at(1000), buffer_uint, buffer_uint_1, count_H(0), count(0), nbAux(0), aux_count;
-		size_t pos_dt, pos_At, pos_H_tilt, pos_H, pos_charge, pos_at;
+		size_t pos_dt, pos_At, pos_H_tilt, pos_H, pos_charge, pos_at, pos_aux_vec;
 		double buffer_1, buffer_2, buffer_3, buffer_4, buffer_5;
 		double xlo,xhi,ylo,yhi,zlo,zhi;
 		string buffer_s, buffer_s_1, buffer_s_2, line, aux_name;
@@ -1160,7 +1160,6 @@ void AtomicSystem::read_cfg_file(const string& filename){
 					nbAux += 1;
 					if( nbAux > nbAux_norm ){
 					       this->IsSetAux = true;
-					       this->Aux_name.push_back(buffer_s);
 					       // search if auxiliary property is vector (contains "_" follwed by an integer number)
 					       bool isauxvec = false;
 					       pos_aux_vec=buffer_s.find("_");
@@ -1178,31 +1177,45 @@ void AtomicSystem::read_cfg_file(const string& filename){
 						       }
 					       }
 					       if( isauxvec ){
-						       for(unsigned int av=0;av<Aux_name.size();av++)
-
-
-
-
-					       this->Aux.push_back(new double[this->nbAtom]);
+						       bool already_stored = false;
+						       unsigned int aux_ind;
+						       for(unsigned int av=0;av<Aux_name.size();av++){
+							       if( aux_name == Aux_name[av] ){
+								       already_stored = true;
+								       aux_ind = av;
+								       break;
+							       }
+						       }
+						       if( already_stored ) Aux_size[aux_ind] += 1;
+						       else{
+							       Aux_name.push_back(aux_name);
+							       Aux_size.push_back(1);
+						       }
+					       }else{
+						       Aux_name.push_back(buffer_s);
+						       Aux_size.push_back(1);
+					       }
 					}	       
 				}
+				for(unsigned int au=0;au<Aux_name.size();au++) this->Aux.push_back(new double[this->nbAtom*Aux_size[au]]);
 				line_at = count;
 				nbAux -= nbAux_norm;
 			}
 			if( count > line_at ){
 				istringstream text(line);
-				text >> buffer_uint >> buffer_uint_1 >> buffer_s >> buffer_1 >> buffer_2 >> buffer_3 >> buffer_4;
+				text >> buffer_uint >> buffer_uint_1 >> buffer_s >> buffer_1 >> buffer_2 >> buffer_3;
 				this->AtomList[buffer_uint-1].pos.x = buffer_1;
 				this->AtomList[buffer_uint-1].pos.y = buffer_2;
 				this->AtomList[buffer_uint-1].pos.z = buffer_3;
 				this->AtomList[buffer_uint-1].type_uint = buffer_uint_1;
-				this->AtomCharge[buffer_uint_1-1] = buffer_4;//TODO warning here if the system is not charge
 				this->AtomType[buffer_uint_1-1] = buffer_s;
+				if( IsCharge ){
+					text >> buffer_4;
+					this->AtomCharge[buffer_uint_1-1] = buffer_4;
+				}
 				if(nbAux>0){
-					aux_count = 0;
-					while(text >> buffer_5){
-						Aux[aux_count][buffer_uint-1] = buffer_5;
-						aux_count += 1;
+					for(unsigned int au=0;au<Aux_name.size();au++){
+						for(unsigned int au_v=0;au_v<Aux_size[au];au_v++) text >> Aux[au][(buffer_uint-1)*Aux_size[au]+au_v];
 					}
 				}
 			}
@@ -1343,15 +1356,15 @@ void AtomicSystem::printSystem_aux(const string& filename, const string& AuxName
 	else writefile << "BOX BOUNDS pp pp pp\n" << "0\t" << H1[0] << "\n0\t" << H2[1] << "\n0\t" << H3[2] << "\n";
 	writefile << "ITEM: ATOMS id type element xu yu zu q";
         for(unsigned int i=0;i<AuxId.size();i++){
-		if( Aux_size[i] == 1 ) writefile << " " << this->Aux_name[AuxId[i]];
-		else for(unsigned int j=0;j<Aux_size[i];j++) writefile << " " << this->Aux_name[AuxId[i]] << "_" << j+1;
+		if( Aux_size[AuxId[i]] == 1 ) writefile << " " << this->Aux_name[AuxId[i]];
+		else for(unsigned int j=0;j<Aux_size[AuxId[i]];j++) writefile << " " << this->Aux_name[AuxId[i]] << "_" << j+1;
 	}
 	writefile << "\n";
 	for(unsigned int i=0;i<this->nbAtom;i++){
 		writefile << i+1 << " " << this->AtomList[i].type_uint << " " << this->AtomType[this->AtomList[i].type_uint-1] << " " << this->AtomList[i].pos.x << " " << this->AtomList[i].pos.y << " " << this->AtomList[i].pos.z << " " << this->AtomCharge[this->AtomList[i].type_uint-1];
         	for(unsigned int j=0;j<AuxId.size();j++){
 			if( Aux_size[j] == 1 ) writefile << " " << this->Aux[AuxId[j]][i];
-			else for(unsigned int k=0;k<Aux_size[j];k++) writefile << " " << this->Aux[AuxId[j]][i*Aux_size[j]+k];
+			else for(unsigned int k=0;k<Aux_size[AuxId[j]];k++) writefile << " " << this->Aux[AuxId[j]][i*Aux_size[AuxId[j]]+k];
 		}
 		writefile << "\n";
 	}
@@ -1395,6 +1408,18 @@ vector<unsigned int> AtomicSystem::selectAtomInBox(const double x_lo,const doubl
 		if( this->WrappedPos[i].x > x_lo && this->WrappedPos[i].x < x_hi && this->WrappedPos[i].y > y_lo && this->WrappedPos[i].y < y_hi && this->WrappedPos[i].z > z_lo && this->WrappedPos[i].z < z_hi ) AtList.push_back(i);
 	}
 	return AtList;
+}
+
+unsigned int AtomicSystem::getAuxIdAndSize(std::string auxname, unsigned int &size){
+	unsigned int ind;
+	for(unsigned int i=0;i<Aux.size();i++){
+		if( Aux_name[i] == auxname ){
+		 	ind = i;
+			size = Aux_size[i];
+			break;
+		}
+	}	
+	return ind; 
 }
 
 AtomicSystem::~AtomicSystem(){
