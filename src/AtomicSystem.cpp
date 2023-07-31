@@ -1075,12 +1075,13 @@ void AtomicSystem::read_cfg_file(const string& filename){
 	ifstream file(filename, ios::in);
 	if(file){
 		unsigned int line_dt(1000), line_At(1000), line_H_tilt(1000), line_H(1000), line_at(1000), buffer_uint, buffer_uint_1, count_H(0), count(0), nbAux(0), aux_count;
-		size_t pos_dt, pos_At, pos_H_tilt, pos_H, pos_charge, pos_at, pos_aux_vec;
+		size_t pos_dt, pos_At, pos_H_tilt, pos_H, pos_charge, pos_at, pos_aux_vec, pos_elem;
 		double buffer_1, buffer_2, buffer_3, buffer_4, buffer_5;
 		double xlo,xhi,ylo,yhi,zlo,zhi;
 		string buffer_s, buffer_s_1, buffer_s_2, line, aux_name;
-		bool other_cfg = false;
-		unsigned int nbAux_norm=8;
+		bool other_cfg = false, IsElem = false, IsReducedCoords = false;
+		unsigned int nbAux_norm=5;
+		vector<string> befAuxNames;
 		while(file){
 			getline(file,line);
 			if( count == 0 ){
@@ -1134,6 +1135,12 @@ void AtomicSystem::read_cfg_file(const string& filename){
 					zhi = buffer_2;
 					this->H3[2] = buffer_2-buffer_1;
 					this->H3[1] = buffer_3;
+
+			double arr[4] = {0.,this->H2[0],this->H3[0],this->H2[0]+this->H3[0]};
+			this->H1[0] = xhi-this->MT->min(arr,4)-this->MT->max(arr,4);
+			double arr_2[2] = {0.,this->H3[1]};
+			this->H2[1] = yhi-this->MT->min(arr_2,2)-this->MT->max(arr_2,2);
+
 				}
 				count_H += 1;
 			}else if( !IsTilted && count > line_H && count < line_H+4 ){
@@ -1146,9 +1153,14 @@ void AtomicSystem::read_cfg_file(const string& filename){
 			}
 
 			// search if atom are charged
-			pos_charge=line.find(" q ");
+			pos_charge=line.find(" q");
 			if( pos_charge!=string::npos){
 				this->IsCharge = true;
+				nbAux_norm += 1;
+			}
+			pos_elem=line.find(" element");
+			if( pos_elem!=string::npos){
+				IsElem = true;
 				nbAux_norm += 1;
 			}
 
@@ -1156,16 +1168,17 @@ void AtomicSystem::read_cfg_file(const string& filename){
 			pos_at=line.find("ITEM: ATOMS");
 			if( pos_at!=string::npos ){
 				istringstream text(line);
+				text >> buffer_s >> buffer_s;
 				while(text >> buffer_s){
 					nbAux += 1;
 					if( nbAux > nbAux_norm ){
 					       this->IsSetAux = true;
 					       // search if auxiliary property is vector (contains "_" follwed by an integer number)
 					       bool isauxvec = false;
-					       pos_aux_vec=buffer_s.find("_");
+					       pos_aux_vec=buffer_s.find("[");
 					       if(pos_aux_vec!=string::npos){
 						       bool isint = true;
-						       for(size_t ch=pos_aux_vec+1;ch<buffer_s.size();ch++){
+						       for(size_t ch=pos_aux_vec+1;ch<buffer_s.size()-1;ch++){
 							       if( !isdigit(buffer_s[ch]) ){
 								       isint = false;
 								       break;
@@ -1195,7 +1208,15 @@ void AtomicSystem::read_cfg_file(const string& filename){
 						       Aux_name.push_back(buffer_s);
 						       Aux_size.push_back(1);
 					       }
-					}	       
+					}else{
+						befAuxNames.push_back(buffer_s);		
+					}		
+				}
+				for( unsigned int bs=0;bs<befAuxNames.size();bs++){
+					if( befAuxNames[bs] == "xs" || befAuxNames[bs] == "ys" || befAuxNames[bs] == "zs" ){
+						IsReducedCoords = true;
+						break;
+					}
 				}
 				for(unsigned int au=0;au<Aux_name.size();au++) this->Aux.push_back(new double[this->nbAtom*Aux_size[au]]);
 				line_at = count;
@@ -1203,16 +1224,27 @@ void AtomicSystem::read_cfg_file(const string& filename){
 			}
 			if( count > line_at ){
 				istringstream text(line);
-				text >> buffer_uint >> buffer_uint_1 >> buffer_s >> buffer_1 >> buffer_2 >> buffer_3;
-				this->AtomList[buffer_uint-1].pos.x = buffer_1;
-				this->AtomList[buffer_uint-1].pos.y = buffer_2;
-				this->AtomList[buffer_uint-1].pos.z = buffer_3;
-				this->AtomList[buffer_uint-1].type_uint = buffer_uint_1;
-				this->AtomType[buffer_uint_1-1] = buffer_s;
-				if( IsCharge ){
-					text >> buffer_4;
-					this->AtomCharge[buffer_uint_1-1] = buffer_4;
+				for(unsigned int bs=0;bs<befAuxNames.size();bs++){
+					if( befAuxNames[bs] == "id" ) text >> buffer_uint;
+					else if( befAuxNames[bs] == "type" ) text >> buffer_uint_1;
+					else if( befAuxNames[bs] == "element" ) text >> buffer_s;
+					else if( befAuxNames[bs] == "xs" || befAuxNames[bs] == "x" || befAuxNames[bs] == "xu" ) text >> buffer_1;
+					else if( befAuxNames[bs] == "ys" || befAuxNames[bs] == "y" || befAuxNames[bs] == "yu" ) text >> buffer_2;
+					else if( befAuxNames[bs] == "zs" || befAuxNames[bs] == "z" || befAuxNames[bs] == "zu" ) text >> buffer_3;
+					else if( befAuxNames[bs] == "q" ) text >> buffer_4;
 				}
+				if( IsReducedCoords ){
+					this->AtomList[buffer_uint-1].pos.x = buffer_1*H1[0]+buffer_2*H2[0]+buffer_3*H3[0];
+					this->AtomList[buffer_uint-1].pos.y = buffer_1*H1[1]+buffer_2*H2[1]+buffer_3*H3[1];
+					this->AtomList[buffer_uint-1].pos.z = buffer_1*H1[2]+buffer_2*H2[2]+buffer_3*H3[2];
+				}else{
+					this->AtomList[buffer_uint-1].pos.x = buffer_1;
+					this->AtomList[buffer_uint-1].pos.y = buffer_2;
+					this->AtomList[buffer_uint-1].pos.z = buffer_3;
+				}
+				this->AtomList[buffer_uint-1].type_uint = buffer_uint_1;
+				if( IsElem ) this->AtomType[buffer_uint_1-1] = buffer_s;
+				if( IsCharge ) this->AtomCharge[buffer_uint_1-1] = buffer_4;
 				if(nbAux>0){
 					for(unsigned int au=0;au<Aux_name.size();au++){
 						for(unsigned int au_v=0;au_v<Aux_size[au];au_v++) text >> Aux[au][(buffer_uint-1)*Aux_size[au]+au_v];
@@ -1226,15 +1258,15 @@ void AtomicSystem::read_cfg_file(const string& filename){
 			read_other_cfg(filename);
 			return;
 		}
-		if( IsTilted ){
-			// compute the cell vectors
-			// TEST
-			double arr[4] = {0.,this->H2[0],this->H3[0],this->H2[0]+this->H3[0]};
-			this->H1[0] = xhi-this->MT->min(arr,4)-this->MT->max(arr,4);
-			double arr_2[2] = {0.,this->H3[1]};
-			this->H2[1] = yhi-this->MT->min(arr_2,2)-this->MT->max(arr_2,2);
-			// END TEST
-		}
+		//if( IsTilted ){
+		//	// compute the cell vectors
+		//	// TEST
+		//	double arr[4] = {0.,this->H2[0],this->H3[0],this->H2[0]+this->H3[0]};
+		//	this->H1[0] = xhi-this->MT->min(arr,4)-this->MT->max(arr,4);
+		//	double arr_2[2] = {0.,this->H3[1]};
+		//	this->H2[1] = yhi-this->MT->min(arr_2,2)-this->MT->max(arr_2,2);
+		//	// END TEST
+		//}
 		// search the number of atom type
 		for(unsigned int i=0;i<this->MaxAtomType;i++){
 			if( this->AtomType[i] == "" ){
@@ -1357,13 +1389,13 @@ void AtomicSystem::printSystem_aux(const string& filename, const string& AuxName
 	writefile << "ITEM: ATOMS id type element xu yu zu q";
         for(unsigned int i=0;i<AuxId.size();i++){
 		if( Aux_size[AuxId[i]] == 1 ) writefile << " " << this->Aux_name[AuxId[i]];
-		else for(unsigned int j=0;j<Aux_size[AuxId[i]];j++) writefile << " " << this->Aux_name[AuxId[i]] << "_" << j+1;
+		else for(unsigned int j=0;j<Aux_size[AuxId[i]];j++) writefile << " " << this->Aux_name[AuxId[i]] << "[" << j+1 << "]";
 	}
 	writefile << "\n";
 	for(unsigned int i=0;i<this->nbAtom;i++){
 		writefile << i+1 << " " << this->AtomList[i].type_uint << " " << this->AtomType[this->AtomList[i].type_uint-1] << " " << this->AtomList[i].pos.x << " " << this->AtomList[i].pos.y << " " << this->AtomList[i].pos.z << " " << this->AtomCharge[this->AtomList[i].type_uint-1];
         	for(unsigned int j=0;j<AuxId.size();j++){
-			if( Aux_size[j] == 1 ) writefile << " " << this->Aux[AuxId[j]][i];
+			if( Aux_size[AuxId[j]] == 1 ) writefile << " " << this->Aux[AuxId[j]][i];
 			else for(unsigned int k=0;k<Aux_size[AuxId[j]];k++) writefile << " " << this->Aux[AuxId[j]][i*Aux_size[AuxId[j]]+k];
 		}
 		writefile << "\n";
