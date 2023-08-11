@@ -64,6 +64,8 @@ public:
 	AtomicSystem(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3); // construct AtomicSystem giving AtomList and cell vectors 
 	void FilenameConstructor(const std::string& filename);
 	// getters
+	std::string getAtomType(const unsigned int i){ return this->AtomType[i]; };
+	unsigned int getNbAtomType(){ return this->nbAtomType; };
 	unsigned int getNbAtom(){ return this->nbAtom; }
 	Atom getAtom(const unsigned int Id){ return this->AtomList[Id]; }
 	double* getAux(const unsigned int AuxId){ return this->Aux[AuxId]; }
