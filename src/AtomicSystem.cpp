@@ -5,6 +5,7 @@
 #include <sstream>
 #include <vector>
 #include <iomanip>
+#include <chrono>
 
 using namespace std;
 
@@ -514,6 +515,8 @@ void AtomicSystem::computeWrap(){
 
 // Searching neighbours using cell list algorithm
 void AtomicSystem::searchNeighbours(const double& rc){
+	cout << "Performing neighbour research" << endl;
+	//auto start = chrono::high_resolution_clock::now();
 	if( !IsWrappedPos ) computeWrap();
 	// construct the cells
 	// set maximum neighbour by estimating the maximum number of atom in a rc x rc x rc cube
@@ -550,7 +553,7 @@ void AtomicSystem::searchNeighbours(const double& rc){
                 CellSizeZ = this->H3[2]/nbCellZ;
                 NeighCellZ = 1;
         }
-	vector<vector<unsigned int>> Cells;
+	vector<vector<unsigned int>> Cells(nbCellX*nbCellY*nbCellZ);
 	if( this->IsTilted ){
 		// compute plane equations (as everywhere the only tilts considered are xy, yz, xz)
 		double H1H3_z;
@@ -559,10 +562,10 @@ void AtomicSystem::searchNeighbours(const double& rc){
 		double H2H3_y = -(this->H2[0]/this->H2[1]); 
 		double H2H3_z = ((this->H2[0]*this->H3[1]/this->H2[1])-this->H3[0])/this->H3[2];
 		double planeH1H3, planeH2H3;
+		#pragma omp parallel for private(planeH1H3,planeH2H3)
 		for(unsigned int i=0;i<nbCellX;i++){
         	        for(unsigned int j=0;j<nbCellY;j++){
         	                for(unsigned int k=0;k<nbCellZ;k++){
-        	                        Cells.push_back(vector<unsigned int>());
         	                        for(unsigned at=0;at<this->nbAtom;at++){
 						planeH1H3 = this->WrappedPos[at].y+this->WrappedPos[at].z*H1H3_z;	
 						planeH2H3 = this->WrappedPos[at].x+this->WrappedPos[at].y*H2H3_y+this->WrappedPos[at].z*H2H3_z;	
@@ -588,10 +591,10 @@ void AtomicSystem::searchNeighbours(const double& rc){
 			}
 		}
 	}else{
+		#pragma omp parallel for
 		for(unsigned int i=0;i<nbCellX;i++){
         	        for(unsigned int j=0;j<nbCellY;j++){
         	                for(unsigned int k=0;k<nbCellZ;k++){
-        	                        Cells.push_back(vector<unsigned int>());
         	                        if( (i == nbCellX-1) && (j == nbCellY-1) && (k == nbCellZ-1) ){
         	                                for(unsigned at=0;at<this->nbAtom;at++){
         	                                        if( (this->WrappedPos[at].x>=i*CellSizeX) && (this->WrappedPos[at].x<=(i+1)*CellSizeX) && (this->WrappedPos[at].y>=j*CellSizeY) && (this->WrappedPos[at].y<=(j+1)*CellSizeY) && (this->WrappedPos[at].z>=k*CellSizeZ) && (this->WrappedPos[at].z<=(k+1)*CellSizeZ) ) Cells[i*nbCellY*nbCellZ+j*nbCellZ+k].push_back(at);
@@ -651,13 +654,14 @@ void AtomicSystem::searchNeighbours(const double& rc){
 	double prog=0.;
 	unsigned int countN = 0;
 	unsigned int currentId, currentId2;
-	cout << "Performing neighbour research" << endl;
-	cout << "\r[" << string(bar_length*prog,'X') << string(bar_length*(1-prog),'-') << "] " << setprecision(3) << 100*prog << "%";
+	//cout << "Performing neighbour research" << endl;
+	//cout << "\r[" << string(bar_length*prog,'X') << string(bar_length*(1-prog),'-') << "] " << setprecision(3) << 100*prog << "%";
+	#pragma omp parallel for private(countN,currentId,xpos,ypos,zpos,Nclx,Ncly,Nclz,ibx,jby,kbz,currentId2,d_squared)
 	for(unsigned int i=0;i<nbCellX;i++){
 		for(unsigned int j=0;j<nbCellY;j++){
 			for(unsigned int k=0;k<nbCellZ;k++){
-				prog = double(i*nbCellZ*nbCellY+j*nbCellZ+k)/double(nbCellX*nbCellY*nbCellZ);
-				cout << "\r[" << string(floor(bar_length*prog),'X') << string(ceil(bar_length*(1-prog)),'-') << "] " << setprecision(3) << 100*prog << "%";
+				//prog = double(i*nbCellZ*nbCellY+j*nbCellZ+k)/double(nbCellX*nbCellY*nbCellZ);
+				//cout << "\r[" << string(floor(bar_length*prog),'X') << string(ceil(bar_length*(1-prog)),'-') << "] " << setprecision(3) << 100*prog << "%";
 				for(unsigned int at1 = 0; at1<Cells[i*nbCellZ*nbCellY+j*nbCellZ+k].size(); at1++){
 				        countN = 0;
 					currentId = Cells[i*nbCellZ*nbCellY+j*nbCellZ+k][at1];
@@ -718,9 +722,12 @@ void AtomicSystem::searchNeighbours(const double& rc){
 			}
 		}
 	}
-	cout << endl;
 	IsNeighbours = true;
 	this->current_rc_neigh = rc;
+	cout << " done !" << endl;
+        //auto end = chrono::high_resolution_clock::now();
+        //auto duration = chrono::duration_cast<chrono::microseconds>(end - start);
+        //cout << "Execution time : " << duration.count() << endl;
 }
 
 void AtomicSystem::setAux(const double* aux, const string& AuxName){
@@ -1444,13 +1451,19 @@ vector<unsigned int> AtomicSystem::selectAtomInBox(const double x_lo,const doubl
 
 unsigned int AtomicSystem::getAuxIdAndSize(std::string auxname, unsigned int &size){
 	unsigned int ind;
+	bool found = false;
 	for(unsigned int i=0;i<Aux.size();i++){
 		if( Aux_name[i] == auxname ){
 		 	ind = i;
 			size = Aux_size[i];
+			found = true;
 			break;
 		}
-	}	
+	}
+	if( !found ){
+		cout << "Warning, the auxiliary property : \"" << auxname << "\" has not been found !" << endl;
+		ind = 0;
+	}
 	return ind; 
 }
 

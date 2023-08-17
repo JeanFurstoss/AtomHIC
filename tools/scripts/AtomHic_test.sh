@@ -50,9 +50,10 @@ fi
 log_file="test.log"
 diffnum_error_file="diffnum.err"
 job_log_files="test_has_*"
+out_files="output*"
 
 # Clean
-rm -f $log_file $diffnum_error_file $job_log_files
+rm -f $log_file $diffnum_error_file $job_log_files $out_files
 
 # Command
 printf "Launch test : $ATOMHIC_EXECUTABLE\n"

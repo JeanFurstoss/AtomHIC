@@ -8,4 +8,4 @@
 
 add_subdirectory(Steinhardt)
 add_subdirectory(BondOriParam)
-
+add_subdirectory(AtomicStrain)

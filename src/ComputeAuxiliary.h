@@ -90,7 +90,7 @@ public:
 	void ComputeSteinhardtParameters_Mono(const double rc, const int l_sph);
 	void ComputeSteinhardtParameters_Multi(const double rc, const int l_sph);
 	void ComputeSteinhardtParameters_FilteredNeigh(const double rc, const int l_sph);
-	double* ComputeSteinhardtParameters_OneL(const double rc, const int l_sph);
+	void ComputeSteinhardtParameters_OneL(const double rc, const int l_sph);
 	// The different averaging methods
 	void AverageSteinhardtParameters_Mono(const double rc, const int l_sph);
 	void AverageSteinhardtParameters_Multi(const double rc, const int l_sph);

@@ -578,8 +578,8 @@ void ComputeAuxiliary::PrintSteinhardtParam(vector<unsigned int> At_index, strin
 	else dim_s = l_sph+1;
 
 	if( AveStyle == "none" ){
-		for(unsigned int t=0;t<_MySystem->getCrystal()->getNbAtomType();t++){
-			at_type = _MySystem->getCrystal()->getAtomType()[t];
+		for(unsigned int t=0;t<_MySystem->getNbAtomType();t++){
+			at_type = _MySystem->getAtomType(t);
 			filename = at_type+"_Steinhardt_"+ext_filename+".dat";
 			ofstream writefile(filename);
 			for(unsigned int i=0;i<At_index.size();i++){
@@ -591,8 +591,8 @@ void ComputeAuxiliary::PrintSteinhardtParam(vector<unsigned int> At_index, strin
 			writefile.close();
 		}
 	}else{
-		for(unsigned int t=0;t<_MySystem->getCrystal()->getNbAtomType();t++){
-			at_type = _MySystem->getCrystal()->getAtomType()[t];
+		for(unsigned int t=0;t<_MySystem->getNbAtomType();t++){
+			at_type = _MySystem->getAtomType(t);
 			filename = at_type+"_Steinhardt_"+ext_filename+".dat";
 			ofstream writefile(filename);
 			for(unsigned int i=0;i<At_index.size();i++){
@@ -606,7 +606,7 @@ void ComputeAuxiliary::PrintSteinhardtParam(vector<unsigned int> At_index, strin
 	}
 }
 
-double* ComputeAuxiliary::ComputeSteinhardtParameters_OneL(const double rc, const int l_sph){ //TODO Rename this function
+void ComputeAuxiliary::ComputeSteinhardtParameters_OneL(const double rc, const int l_sph){ //TODO Rename this function
 	// if neighbours have not been searched perform the research
 	if( !_MySystem->getIsNeighbours() || _MySystem->get_current_rc() != rc ){
 		_MySystem->searchNeighbours(rc);
@@ -663,6 +663,7 @@ double* ComputeAuxiliary::ComputeSteinhardtParameters_OneL(const double rc, cons
 		// compute normalization factors
 		for(l_loop_2=-l_sph;l_loop_2<l_sph+1;l_loop_2++) Calpha[i] += (pow(Qalpha[i*(l_sph*2+1)+l_loop_2+l_sph].real(), 2.) + pow(Qalpha[i*(l_sph*2+1)+l_loop_2+l_sph].imag(), 2.));
 	}
+	cout << 1 << endl;
 	cout << " Done !" << endl;
 }
 
@@ -706,7 +707,7 @@ void ComputeAuxiliary::BondOriParam_NoMultisite(){
 
 void ComputeAuxiliary::BondOriParam_Multisite(){
 	if( _MySystem->getCrystal()->getName() != "" ) SteinhardtDatabase_read(_MySystem->getCrystal()->getName());
-	cout << "Computing bond orientationnal parameter.. " << endl;
+	cout << "Computing bond orientationnal parameter (multisite version).. " << endl;
 	ComputeSteinhardtParameters_OneL(this->rcut_ref,this->l_sph_ref);
 	// search site index based on the value of Steinhardt parameter (which is sqrt(pow(Calpha*N,2.)*4pi/(2l+1)))
 	const unsigned int nbAt = _MySystem->getNbAtom();
@@ -714,6 +715,7 @@ void ComputeAuxiliary::BondOriParam_Multisite(){
 	this->Atom_SiteIndex = new unsigned int[nbAt];
 	vector<double> diff_St;
 	double buffer_d, buffer_d1;
+	cout << 1 << endl;
 	for(unsigned int i=0;i<nbAt;i++){
 		if( this->AtomSiteRefPC[_MySystem->getAtom(i).type_uint-1].size() == 1 ) this->Atom_SiteIndex[i] = 0;
 		else{

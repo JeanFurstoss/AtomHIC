@@ -1,5 +1,6 @@
 // AtomHic library files
 #include <AtomicSystem.h>
+#include <Bicrystal.h>
 #include <ComputeAuxiliary.h>
 #include <stdlib.h>
 #include <iostream>
@@ -11,32 +12,27 @@ using namespace std;
 
 int main(int argc, char *argv[])
 {
-	string InputFilename, OutputFilename, CrystalType, outfilename;
-	double SiO_d, x_lo, x_hi, y_lo, y_hi, z_lo, z_hi;
+	string InputFilename, OutputFilename, CrystalType, outfilename, NormalDir;
+	double SiO_d;
 	double SecFac = 2.;
-	if( argc == 9 || argc == 10 ){
+	if( argc == 5 || argc == 6 ){
 		InputFilename = argv[1];
 		istringstream iss_d(argv[2]);
-		istringstream iss_x_lo(argv[3]);
-		istringstream iss_x_hi(argv[4]);
-		istringstream iss_y_lo(argv[5]);
-		istringstream iss_y_hi(argv[6]);
-		istringstream iss_z_lo(argv[7]);
-		istringstream iss_z_hi(argv[8]);
+		CrystalType = argv[3];
+		NormalDir = argv[4];
 		iss_d >> SiO_d;
-		iss_x_lo >> x_lo;
-		iss_x_hi >> x_hi;
-		iss_y_lo >> y_lo;
-		iss_y_hi >> y_hi;
-		iss_z_lo >> z_lo;
-		iss_z_hi >> z_hi;
 	}else{
-		cerr << "Usage: ./SearchLinkedTetrahedra InputFilename Dist_SiO_Tetrahedra xlo xhi ylo yhi zlo zhi OutputFilename(optional)" << endl;
+		cerr << "Usage: ./SearchLinkedTetrahedra InputFilename Dist_SiO_Tetrahedra xlo xhi ylo yhi zlo zhi CrystalType NormalDirection OutputFilename(optional)" << endl;
 		return EXIT_FAILURE;
 	}
-	if( argc == 10 ){
-		OutputFilename = argv[9];
+	if( argc == 6 ){
+		OutputFilename = argv[5];
 	}
+	Bicrystal MySystem1(InputFilename, NormalDir, CrystalType);
+
+	double z_lo = MySystem1.getGBPos1() - (MySystem1.getGBwidth1()/2.);
+	double z_hi = MySystem1.getGBPos1() + (MySystem1.getGBwidth1()/2.);
+
 	AtomicSystem MySystem(InputFilename);
 	SiO_d *= SecFac;
 	MySystem.searchNeighbours(SiO_d);
@@ -44,7 +40,7 @@ int main(int argc, char *argv[])
 	const unsigned int nbNMax = MySystem.getNbMaxN();
 	const unsigned int nbAt = MySystem.getNbAtom();
 	vector<unsigned int> At_index;
-	At_index = MySystem.selectAtomInBox(x_lo,x_hi,y_lo,y_hi,z_lo,z_hi);
+	At_index = MySystem.selectAtomInBox(-1e9,1e9,-1e9,1e9,z_lo,z_hi);
 	unsigned int ind_O, ind_Si;
 	for(unsigned int i=0;i<MySystem.getNbAtomType();i++){
 		if( MySystem.getAtomType(i) == "Si" ) ind_Si = i+1;
@@ -96,9 +92,12 @@ int main(int argc, char *argv[])
 		if( !inside ) nbT[n] = 0;
 	}
 
-	if( argc == 10 ){
-		MySystem.setAux(nbT,"LinkedTetrahedra");
-		MySystem.printSystem_aux(OutputFilename,"LinkedTetrahedra");
+	if( argc == 6 ){
+		//MySystem.setAux(nbT,"LinkedTetrahedra");
+		//MySystem.printSystem_aux(OutputFilename,"LinkedTetrahedra");
+		ofstream writefile(OutputFilename);
+		writefile << MySystem1.getGBPos1() << " " << MySystem1.getGBwidth1() << " " << MySystem1.getExcessVol() << " " << NbLinked << " " << nbSi;
+		writefile.close();
 	}
 
 	cout <<	"Number of linked tetrahedra : " << NbLinked << " over a total number of " << nbSi << " tetrahedra" << endl;

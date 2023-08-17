@@ -1394,7 +1394,18 @@ void Bicrystal::searchGBPos(){
 	// Compute atomic density profile to know if there is vacuum
 	unsigned int ind_AtDens;
 	ind_AtDens = Compute1dDensity("Atomic", NormalDir, sigma, nbPts_i);
-	double VacuumDens = 1e-2;
+	double VacuumDens = 0.;
+	double SecureFac = 1e-2;
+	unsigned int count_dens_ave = 0;
+	for(unsigned int i=0;i<this->density_nbPts[ind_AtDens];i++){
+		if( this->density_prof[ind_AtDens][i*2] > 1e-1 ){
+			VacuumDens += this->density_prof[ind_AtDens][i*2];
+			count_dens_ave += 1;
+		}
+	}
+	VacuumDens /= count_dens_ave;
+	VacuumDens *= 1e-1;
+
 	
 	if( NormalDir == "x" ) this->Ldir = this->H1[0];
 	else if( NormalDir == "y" ) this->Ldir = this->H2[1];
@@ -1406,6 +1417,7 @@ void Bicrystal::searchGBPos(){
 	this->VacuumHi = 0.;
 	this->MaxPos = 0.;
 	this->IsVacuum = false;
+	this->IsCentered = true;
 	double buffer;
 	vector<double> density_red;
 	vector<double> density_red_forfit;
@@ -1433,10 +1445,10 @@ void Bicrystal::searchGBPos(){
 				if( this->WrappedPos[i].z > this->MaxPos ) this->MaxPos = this->WrappedPos[i].z;
 			}
 		}
-		if( fabs(this->MinPos-(this->VacuumLo)) > 1. ){
-			this->MinPos = this->VacuumHi-(this->Ldir);
+		if( fabs(this->MaxPos-this->MinPos-this->Ldir) < 1. ){
+			this->MinPos = this->VacuumHi-this->Ldir;
 			this->MaxPos = this->VacuumLo;
-			this->SystemLength = this->MaxPos-(this->MinPos);
+			this->SystemLength = this->MaxPos-this->MinPos;
 			this->IsCentered = false;
 		}
 		// Search GB position by computing the mean of gaussian distrib in the center of the system
@@ -1606,16 +1618,16 @@ void Bicrystal::ComputeExcessVolume(){
 	unsigned int count = 0;
 	double buffer;
 	this->ExcessVol = 0.;
-	// compute density of perfect crystal assuming that there is perfect crystal between MinPos+((GBPos-2*GBwidth)-MinPos)*0.5 and GBPos-2*GBwidth and same above GBPos
+	// compute density of perfect crystal assuming that there is perfect crystal between MinPos+GBwidth and GBPos-GBwidth and same above GBPos
 	if( IsVacuum ){
 		vector<double> dens_GB;
 		for(unsigned int i=0;i<this->density_nbPts[index];i++){
 			buffer = this->density_prof[index][i*2+1];
 			if( !this->IsCentered && buffer > this->VacuumHi ) buffer -= this->Ldir;
-			if( ( buffer > .5*(MinPos+GBPos1-2.*GBwidth1) && buffer < GBPos1-2.*GBwidth1 ) || ( buffer < .5*(MaxPos+GBPos1)+GBwidth1 && buffer > GBPos1+2.*GBwidth1 ) ){
+			if( ( buffer > MinPos+GBwidth1 && buffer < GBPos1-GBwidth1 ) || ( buffer < MaxPos-GBwidth1 && buffer > GBPos1+GBwidth1 ) ){
 				PC_dens += this->density_prof[index][i*2];
 				count += 1;
-			}else if( buffer > GBPos1-2*GBwidth1 && buffer < GBPos1+2*GBwidth1 ){
+			}else if( buffer > GBPos1-GBwidth1 && buffer < GBPos1+GBwidth1 ){
 				dens_GB.push_back(density_prof[index][i*2]);
 				dens_GB.push_back(buffer);
 			}
