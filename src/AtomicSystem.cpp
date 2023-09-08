@@ -1144,9 +1144,11 @@ void AtomicSystem::read_cfg_file(const string& filename){
 					this->H3[1] = buffer_3;
 
 			double arr[4] = {0.,this->H2[0],this->H3[0],this->H2[0]+this->H3[0]};
-			this->H1[0] = xhi-this->MT->min(arr,4)-this->MT->max(arr,4);
+			//this->H1[0] = xhi-this->MT->min(arr,4)-this->MT->max(arr,4);
+			this->H1[0] = xhi-xlo+this->MT->min(arr,4)-this->MT->max(arr,4);
 			double arr_2[2] = {0.,this->H3[1]};
-			this->H2[1] = yhi-this->MT->min(arr_2,2)-this->MT->max(arr_2,2);
+			//this->H2[1] = yhi-this->MT->min(arr_2,2)-this->MT->max(arr_2,2);
+			this->H2[1] = yhi-ylo+this->MT->min(arr_2,2)-this->MT->max(arr_2,2);
 
 				}
 				count_H += 1;
@@ -1356,6 +1358,7 @@ void AtomicSystem::print_cfg(const string& filename){
 		// compute the cell vectors
 		double arr[4] = {0.,this->H2[0],this->H3[0],this->H2[0]+this->H3[0]};
 		double arr_2[2] = {0.,this->H3[1]};
+		// TODO issues here
 	       	writefile << "BOX BOUNDS xy xz yz pp pp pp\n" << this->MT->min(arr,4) << "\t" << this->H1[0]+this->MT->max(arr,4) << "\t" << H2[0] << "\n" << this->MT->min(arr_2,2) << "\t" << this->H2[1]+this->MT->max(arr_2,2) << "\t" << H3[0] << "\n0\t" << H3[2] << "\t" << H3[1] << "\n";
 	}
 	else writefile << "BOX BOUNDS pp pp pp\n" << "0\t" << H1[0] << "\n0\t" << H2[1] << "\n0\t" << H3[2] << "\n";
