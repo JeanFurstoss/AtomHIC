@@ -3,7 +3,7 @@
 // Parameters for constructing crystals and bicrystals
 TOL_ORTHO_BOX 1e-3 // tolerance (in A) for searching orthogonal box with inclined crystal cell vectors
 TOL_ORTHO_BOX_Z 1e-1 // tolerance (in A) for searching orthogonal box with inclined crystal cell vectors in Z direction (could be higher than for other direction)
-MIN_BOX_HEIGHT 15. // minimum box heigh (in A)
+MIN_BOX_HEIGHT 5. // minimum box heigh (in A)
 MIN_BOX_ASIDE 4. // minimum box aside (in A)
 
 // Parameters for CSL calculation
@@ -16,6 +16,6 @@ TOL_CSL_INTEGER 1e-3 // tolerance for an element of U (CSL matrix) to be an inte
 TOL_ALIGNMENT_CSL 1e-1 // tolerance to know if one of the CSL vector is aligned with the rotation axis (the scalar product should be near 1)
 
 // Parameter for neighbour research and Steinhardt parameter calulation
-RCUT_NEIGHBOURS 8 // cutoff radius for neighbour research
+RCUT_NEIGHBOURS 7.5 // cutoff radius for neighbour research
 L_SPH_ST 20 // spherical harmonic degree for the computation of Steinhardt parameters
 
