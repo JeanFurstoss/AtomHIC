@@ -272,9 +272,20 @@ void MathTools::MatDotVec(const double *mat, const double *vec, double *prod){
 		prod[i] = 0.;
 	}
 	for(unsigned int i=0;i<3;i++){
+		for(unsigned int j=0;j<3;j++) prod[i] += mat[j*3+i]*this->buffer_vec_1[j];
+	}
+}
+
+void MathTools::MatDotRawVec(const double *mat, const double *vec, double *prod){
+	for(unsigned int i=0;i<3;i++){
+		this->buffer_vec_1[i] = vec[i];
+		prod[i] = 0.;
+	}
+	for(unsigned int i=0;i<3;i++){
 		for(unsigned int j=0;j<3;j++) prod[i] += mat[i*3+j]*this->buffer_vec_1[j];
 	}
 }
+
 
 void MathTools::MatDotVec_vec(const vector<vector<double>> mat, const vector<double> vec, vector<double> &prod){
 	unsigned int dim=vec.size();
@@ -308,6 +319,20 @@ void MathTools::MatDotMat(const double *mat1, const double *mat2, double *prod){
 		for(unsigned int j=0;j<3;j++){
 			prod[i*3+j] = 0.;
 			for(unsigned int i_m=0;i_m<3;i_m++) prod[i*3+j] += this->buffer_mat_1[i*3+i_m]*this->buffer_mat_2[i_m*3+j];
+		}
+	}
+}
+
+void MathTools::MatDotTMat(const double *mat1, const double *mat2, double *prod){
+	for(unsigned int i=0;i<9;i++){
+		this->buffer_mat_1[i] = mat1[i];
+		this->buffer_mat_2[i] = mat2[i];
+	}
+	
+	for(unsigned int d1=0;d1<3;d1++){
+		for(unsigned int d2=d1;d2<3;d2++){
+			prod[d1*3+d2] = 0.;
+			for(unsigned int d=0;d<3;d++) prod[d1*3+d2] += this->buffer_mat_1[d*3+d1]*this->buffer_mat_2[d*3+d2];
 		}
 	}
 }

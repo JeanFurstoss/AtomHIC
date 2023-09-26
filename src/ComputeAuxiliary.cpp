@@ -2087,7 +2087,7 @@ void ComputeAuxiliary::read_params(){
 }
 
 // atomic strain as defined in ovito (i.e. Shimizu, Ogata, Li: Mater. Trans. 48 (2007), 2923)
-double* ComputeAuxiliary::Compute_AtomicStrain(AtomicSystem &AnalyzedSystem, double rc){
+double* ComputeAuxiliary::Compute_AffineTransfoMatrix(AtomicSystem &AnalyzedSystem, double rc){
 	if( !_MySystem->getIsNeighbours() || _MySystem->get_current_rc() != rc ){
 		_MySystem->searchNeighbours(rc);
 	}
@@ -2132,7 +2132,11 @@ double* ComputeAuxiliary::Compute_AtomicStrain(AtomicSystem &AnalyzedSystem, dou
 	double *W = new double[9];
 	double *buffer_vec = new double[3];
 	double *delta = new double[nbAt*3];
-	this->AtomicStrain = new double[nbAt*8]; // sorted as eps_xx,eps_yy,eps_zz,_eps_xy,eps_xz,eps_yz,shear_inv,hydro_inv
+	if( !this->IsJi ){
+		this->Ji = new double[nbAt*9];
+		this->current_d = new double[nbAt*nbNMax*3];
+		this->IsJi = true;
+	}
 
 	for(unsigned int i=0;i<nbAt;i++){
 		for(unsigned int d=0;d<3;d++) delta[i*3+d] = 0.;
@@ -2161,28 +2165,51 @@ double* ComputeAuxiliary::Compute_AtomicStrain(AtomicSystem &AnalyzedSystem, dou
 		// Compute d and W
 		for(unsigned int n=0;n<_MySystem->getNeighbours(i*(nbNMax+1));n++){
 			id = _MySystem->getNeighbours(i*(nbNMax+1)+n+1);
-			buffer_vec[0] = AnalyzedSystem.getWrappedPos(id).x+_MySystem->getCLNeighbours(i*nbNMax*3+n*3)*AnalyzedSystem.getH1()[0]+_MySystem->getCLNeighbours(i*nbNMax*3+n*3+1)*AnalyzedSystem.getH2()[0]+_MySystem->getCLNeighbours(i*nbNMax*3+n*3+2)*AnalyzedSystem.getH3()[0]-xpos-delta[i*3];
-			buffer_vec[1] = AnalyzedSystem.getWrappedPos(id).y+_MySystem->getCLNeighbours(i*nbNMax*3+n*3)*AnalyzedSystem.getH1()[1]+_MySystem->getCLNeighbours(i*nbNMax*3+n*3+1)*AnalyzedSystem.getH2()[1]+_MySystem->getCLNeighbours(i*nbNMax*3+n*3+2)*AnalyzedSystem.getH3()[1]-ypos-delta[i*3+1];
-			buffer_vec[2] = AnalyzedSystem.getWrappedPos(id).z+_MySystem->getCLNeighbours(i*nbNMax*3+n*3)*AnalyzedSystem.getH1()[2]+_MySystem->getCLNeighbours(i*nbNMax*3+n*3+1)*AnalyzedSystem.getH2()[2]+_MySystem->getCLNeighbours(i*nbNMax*3+n*3+2)*AnalyzedSystem.getH3()[2]-zpos-delta[i*3+2];
-			if( buffer_vec[0] > AnalyzedSystem.getH1()[0]/2. ) for(unsigned int d=0;d<3;d++) buffer_vec[d] -= AnalyzedSystem.getH1()[d];
-			else if( buffer_vec[0] < -AnalyzedSystem.getH1()[0]/2. ) for(unsigned int d=0;d<3;d++) buffer_vec[d] += AnalyzedSystem.getH1()[d];
-			if( buffer_vec[1] > AnalyzedSystem.getH2()[1]/2. ) for(unsigned int d=0;d<3;d++) buffer_vec[d] -= AnalyzedSystem.getH2()[d];
-			else if( buffer_vec[1] < -AnalyzedSystem.getH2()[1]/2. ) for(unsigned int d=0;d<3;d++) buffer_vec[d] += AnalyzedSystem.getH2()[d];
-			if( buffer_vec[2] > AnalyzedSystem.getH3()[2]/2. ) for(unsigned int d=0;d<3;d++) buffer_vec[d] -= AnalyzedSystem.getH3()[d];
-			else if( buffer_vec[2] < -AnalyzedSystem.getH3()[2]/2. ) for(unsigned int d=0;d<3;d++) buffer_vec[d] += AnalyzedSystem.getH3()[d];
+			 this->current_d[i*nbNMax*3+n*3] = AnalyzedSystem.getWrappedPos(id).x+_MySystem->getCLNeighbours(i*nbNMax*3+n*3)*AnalyzedSystem.getH1()[0]+_MySystem->getCLNeighbours(i*nbNMax*3+n*3+1)*AnalyzedSystem.getH2()[0]+_MySystem->getCLNeighbours(i*nbNMax*3+n*3+2)*AnalyzedSystem.getH3()[0]-xpos-delta[i*3];
+			 this->current_d[i*nbNMax*3+n*3+1] = AnalyzedSystem.getWrappedPos(id).y+_MySystem->getCLNeighbours(i*nbNMax*3+n*3)*AnalyzedSystem.getH1()[1]+_MySystem->getCLNeighbours(i*nbNMax*3+n*3+1)*AnalyzedSystem.getH2()[1]+_MySystem->getCLNeighbours(i*nbNMax*3+n*3+2)*AnalyzedSystem.getH3()[1]-ypos-delta[i*3+1];
+			 this->current_d[i*nbNMax*3+n*3+2] = AnalyzedSystem.getWrappedPos(id).z+_MySystem->getCLNeighbours(i*nbNMax*3+n*3)*AnalyzedSystem.getH1()[2]+_MySystem->getCLNeighbours(i*nbNMax*3+n*3+1)*AnalyzedSystem.getH2()[2]+_MySystem->getCLNeighbours(i*nbNMax*3+n*3+2)*AnalyzedSystem.getH3()[2]-zpos-delta[i*3+2];
+			if( this->current_d[i*nbNMax*3+n*3] > AnalyzedSystem.getH1()[0]/2. ) for(unsigned int d=0;d<3;d++) this->current_d[i*nbNMax*3+n*3+d] -= AnalyzedSystem.getH1()[d];
+			else if( this->current_d[i*nbNMax*3+n*3] < -AnalyzedSystem.getH1()[0]/2. ) for(unsigned int d=0;d<3;d++) this->current_d[i*nbNMax*3+n*3+d] += AnalyzedSystem.getH1()[d];
+			if( this->current_d[i*nbNMax*3+n*3+1] > AnalyzedSystem.getH2()[1]/2. ) for(unsigned int d=0;d<3;d++) this->current_d[i*nbNMax*3+n*3+d] -= AnalyzedSystem.getH2()[d];
+			else if( this->current_d[i*nbNMax*3+n*3+1] < -AnalyzedSystem.getH2()[1]/2. ) for(unsigned int d=0;d<3;d++) this->current_d[i*nbNMax*3+n*3+d] += AnalyzedSystem.getH2()[d];
+			if( this->current_d[i*nbNMax*3+n*3+2] > AnalyzedSystem.getH3()[2]/2. ) for(unsigned int d=0;d<3;d++) this->current_d[i*nbNMax*3+n*3+d] -= AnalyzedSystem.getH3()[d];
+			else if( this->current_d[i*nbNMax*3+n*3+2] < -AnalyzedSystem.getH3()[2]/2. ) for(unsigned int d=0;d<3;d++) this->current_d[i*nbNMax*3+n*3+d] += AnalyzedSystem.getH3()[d];
 			for(unsigned int d1=0;d1<3;d1++){
-				for(unsigned int d2=0;d2<3;d2++) W[d1*3+d2] += this->d0[i*nbNMax*3+n*3+d1]*buffer_vec[d2];
+				for(unsigned int d2=0;d2<3;d2++) W[d1*3+d2] += this->d0[i*nbNMax*3+n*3+d1]*(this->current_d[i*nbNMax*3+n*3+d2]);
 			}
 		}
 		// Compute deformation gradient tensor
 		MT->MatDotMat(buffer_mat,W,W);
+		for(unsigned int d=0;d<9;d++) this->Ji[i*9+d] = W[d];
+	}
+	
+	delete[] W;
+	delete[] buffer_vec;
+	delete[] buffer_mat;
+	delete[] delta;
+	
+	return this->Ji;
+}
+		
+double* ComputeAuxiliary::Compute_AtomicStrain(AtomicSystem &AnalyzedSystem, double rc){
+
+	Compute_AffineTransfoMatrix(AnalyzedSystem,rc);
+	
+	const unsigned int nbAt = _MySystem->getNbAtom();
+	
+	double *buffer_mat = new double[9];
+	double *buffer_mat_1 = new double[9];
+	
+	if( !this->IsAtomicStrain ){
+		this->AtomicStrain = new double[nbAt*8]; // sorted as eps_xx,eps_yy,eps_zz,_eps_xy,eps_xz,eps_yz,shear_inv,hydro_inv
+		this->IsAtomicStrain = true;
+	}
+
+	for(unsigned int i=0;i<nbAt;i++){
+		for(unsigned int d=0;d<9;d++) buffer_mat_1[d] = this->Ji[i*9+d];
 		// Compute Lagrangian strain tensor (.5*(J.Jt-Id))	
-		for(unsigned int d1=0;d1<3;d1++){
-			for(unsigned int d2=d1;d2<3;d2++){
-				buffer_mat[d1*3+d2] = 0.;
-				for(unsigned int d=0;d<3;d++) buffer_mat[d1*3+d2] += W[d*3+d1]*W[d*3+d2];
-			}
-		}
+		MT->MatDotTMat(buffer_mat_1,buffer_mat_1,buffer_mat);
+
 		for(unsigned int d=0;d<3;d++){
 			buffer_mat[d*3+d] -= 1.;
 			buffer_mat[d*3+d] *= .5; //originally all strain component must be divided by two but regarding analytical tests we don't do that here
@@ -2205,13 +2232,46 @@ double* ComputeAuxiliary::Compute_AtomicStrain(AtomicSystem &AnalyzedSystem, dou
 		for(unsigned int d1=0;d1<3;d1++) AtomicStrain[i*8+7] += buffer_mat[d1*3+d1];
 		AtomicStrain[i*8+7] /= 3.;
 	}
-	delete[] W;
-	delete[] buffer_vec;
+	
 	delete[] buffer_mat;
-	delete[] delta;
+	delete[] buffer_mat_1;
+
 	return AtomicStrain;
 }
 
+// D2Min as defined in Delbecq et al. 2023
+double* ComputeAuxiliary::Compute_D2Min(AtomicSystem &AnalyzedSystem, double rc){ 
+
+	Compute_AffineTransfoMatrix(AnalyzedSystem,rc);
+	
+	const unsigned int nbAt = _MySystem->getNbAtom();
+	const unsigned int nbNMax = _MySystem->getNbMaxN();
+	if( !this->IsD2Min ){
+		this->D2Min = new double[nbAt];
+	}
+
+	double *buffer_vec = new double[3];
+	double *buffer_mat = new double[9];
+
+	for(unsigned int i=0;i<nbAt;i++){
+		this->D2Min[i] = 0.;
+		for(unsigned int d=0;d<9;d++) buffer_mat[d] = this->Ji[i*9+d];
+		for(unsigned int n=0;n<_MySystem->getNeighbours(i*(nbNMax+1));n++){
+			// Compute Ji*delta0
+			for(unsigned int d1=0;d1<3;d1++) buffer_vec[d1] = this->d0[i*nbNMax*3+n*3+d1];
+			MT->MatDotRawVec(buffer_mat,buffer_vec,buffer_vec);
+			// Compute sum( (delta - Ji*delta0)^2
+			for(unsigned int d=0;d<3;d++) this->D2Min[i] += pow(this->current_d[i*nbNMax*3+n*3+d]-buffer_vec[d],2.);
+		}
+		// Normalize D2Min with respect to the number of neighbours
+		// this->D2Min[i] /= _MySystem->getNeighbours(i*(nbNMax+1));
+	}
+
+	delete[] buffer_vec;
+	delete[] buffer_mat;
+
+	return this->D2Min;
+}
 
 ComputeAuxiliary::~ComputeAuxiliary(){
 	delete MT;
@@ -2222,7 +2282,16 @@ ComputeAuxiliary::~ComputeAuxiliary(){
 	if( this->Reference_AtomicStrain_Computed ){
 		delete[] Vi_inv;
 		delete[] d0;
+		delete[] current_d;
+	}
+	if( this->IsJi ){
+		delete[] Ji;
+	}
+	if( this->IsAtomicStrain ){
 		delete[] AtomicStrain;
+	}
+	if( this->IsD2Min ){
+		delete[] D2Min;
 	}
 	if( IsStrainTensor ){
 		delete[] StrainTensor;

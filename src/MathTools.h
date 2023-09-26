@@ -48,10 +48,12 @@ public:
 	void gaussian_fit(const std::vector<double> data, double &mu, double &sigma, double &prefac);
 	void Vec2rotMat(const double *vec, const double &theta, double *rotMat);
 	void MatDotVec(const double *mat, const double *vec, double *prod);
+	void MatDotRawVec(const double *mat, const double *vec, double *prod);
 	void MatDotVec_vec(const std::vector<std::vector<double>> mat, const std::vector<double> vec, std::vector<double> &prod);
 	void VecDotMat(const double *vec, const double *mat, double *prod);
 	void MatDotAt(const double *mat, const Atom &At, Atom &At_prod);
 	void MatDotMat(const double *mat1, const double *mat2, double *prod);
+	void MatDotTMat(const double *mat1, const double *mat2, double *prod);
 	void MatDotMatVec(const std::vector<std::vector<double>> mat1, const std::vector<std::vector<double>> mat2, std::vector<std::vector<double>> &prod);
 	void printMat(const double *mat);
 	void printMatVec(const std::vector<std::vector<double>> mat);
