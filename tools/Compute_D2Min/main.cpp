@@ -19,7 +19,7 @@ int main(int argc, char *argv[])
 		istringstream iss_rc(argv[3]);
 		iss_rc >> rc;
 	}else{
-		cerr << "Usage: ./Compute_D2Min ReferenceFilename Filename_of_list_of_analyzed_filename cutoff_radius" << endl;
+		cerr << "Usage: ./Compute_D2Min ReferenceFilename Filename_of_list_of_analyzed_filename cutoff_radius(not read in FixedParameters)" << endl;
 		cerr << "The program will return the D2Min value according to the formulae in Delbecq et al. 2023" << endl;
 		return EXIT_FAILURE;
 	}

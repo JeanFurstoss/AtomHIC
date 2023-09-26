@@ -11,7 +11,7 @@ class AtomicSystem;
 class ATOMHIC_EXPORT Crystal {
 private:
 	std::string name;
-	std::string crystallo;
+	std::string crystallo; // cubic, orthorhombic, etc.
 	std::string path2database;
 	unsigned int nbAtom;
 	unsigned int nbAtomType;

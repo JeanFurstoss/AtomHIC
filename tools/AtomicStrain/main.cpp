@@ -25,7 +25,7 @@ int main(int argc, char *argv[])
 		iss_rc >> rc;
 		StrainFilename = argv[4];
 	}else{
-		cerr << "Usage: ./AtomicStrain ReferenceFilename Filename_of_list_of_analyzed_filename cutoff_radius Filename_of_dump_containing_strain_to_add(optional (TODO) )" << endl;
+		cerr << "Usage: ./AtomicStrain ReferenceFilename Filename_of_list_of_analyzed_filename cutoff_radius(not read in FixedParameters) Filename_of_dump_containing_strain_to_add(optional (TODO) )" << endl;
 		cerr << "The program will return an 8 dimension vector per atom containing eps_xx, eps_yy, eps_zz, eps_xy, eps_xz, eps_yz, shear_invariant, hydrostatic_invariant following the work of Shimizu, Ogata, Li: Mater. Trans. 48 (2007), 2923" << endl;
 		cerr << "if an other atomic strain from a dump file has to be add, the dump file must contains these 8 fields in the same ordering and having the name AtomicStrain" << endl;
 		return EXIT_FAILURE;
