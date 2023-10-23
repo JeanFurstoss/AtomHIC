@@ -1428,7 +1428,7 @@ void Bicrystal::searchGBPos(){
 			if( this->density_prof[ind_AtDens][i*2+1] < this->VacuumLo ) this->VacuumLo = this->density_prof[ind_AtDens][i*2+1];
 		}
 	} // TODO non vacuum case ?
-	if( this->IsVacuum ){
+	//if( this->IsVacuum ){
 		if( NormalDir == "x" ){
 			for(unsigned int i=0;i<this->nbAtom;i++){
 				if( this->WrappedPos[i].x < this->MinPos ) this->MinPos = this->WrappedPos[i].x;
@@ -1458,7 +1458,7 @@ void Bicrystal::searchGBPos(){
 		double FracLength = 0.01;
 		for(unsigned int i=0;i<this->density_nbPts[ind_DisoDens];i++){
 			buffer = this->density_prof[ind_DisoDens][i*2+1];
-			if( !this->IsCentered && buffer > this->VacuumHi ) buffer -= this->Ldir;
+			if( this->IsVacuum && !this->IsCentered && buffer > this->VacuumHi ) buffer -= this->Ldir;
 			// account only for position 60% around the center of system
 			//if( buffer > this->MinPos+FracLength*(this->SystemLength) && buffer < this->MaxPos-FracLength*(this->SystemLength) ){
 				density_red.push_back(this->density_prof[ind_DisoDens][i*2]);
@@ -1586,7 +1586,7 @@ void Bicrystal::searchGBPos(){
 		this->GBwidth1 = 0;
 		for(unsigned int i=0;i<(density_red_forfit.size()/2);i++) this->GBwidth1 += density_red_forfit[i*2]*pow(density_red_forfit[i*2+1]-this->GBPos1,2.);
 		this->GBwidth1 = sqrt(this->GBwidth1);
-	} // end if IsVacuum
+	//} // end if IsVacuum
 	double sigma_fit, mu_fit, prefac;
 	sigma_fit = this->GBwidth1;
 	mu_fit = this->GBPos1;
