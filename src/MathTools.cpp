@@ -53,6 +53,13 @@ unsigned int MathTools::max(const unsigned int arr[], unsigned int size){
 	return max;
 }
 
+unsigned int MathTools::max_ind(const unsigned int arr[], unsigned int size){
+	unsigned int max = 0;
+	for(unsigned int i=0;i<size;i++) if( arr[i] > arr[max] ) max = i;
+	return max;
+}
+
+
 unsigned int MathTools::min(const unsigned int arr[], unsigned int size){
 	unsigned int min = arr[0];
 	for(unsigned int i=0;i<size;i++) if( arr[i] < min ) min = arr[i];
@@ -214,6 +221,40 @@ void MathTools::gaussian_fit(const vector<double> data, double &mu, double &sigm
 	delete[] invJTJ;
 	delete[] residual;
 	delete[] JTR;
+}
+
+void MathTools::plane_fit(const vector<vector<double>> data, double &a, double &b, double &c){
+	unsigned int nbPts = data.size();
+	double *A = new double[9];
+	double *B = new double[3];
+	double *sol = new double[3];
+	double *invA = new double[9];
+	for(unsigned int i=0;i<8;i++) A[i] = 0.;
+	A[8] = nbPts;
+	for(unsigned int i=0;i<3;i++) B[i] = 0.;
+	for(unsigned int i=0;i<nbPts;i++){
+		A[0] += data[i][0]*data[i][0];
+		A[1] += data[i][0]*data[i][1];
+		A[2] += data[i][0];
+		A[3] += data[i][0]*data[i][1];
+		A[4] += data[i][1]*data[i][1];
+		A[5] += data[i][1];
+		A[6] += data[i][0];
+		A[7] += data[i][1];
+		B[0] += data[i][0]*data[i][2];
+		B[1] += data[i][1]*data[i][2];
+		B[2] += data[i][2];
+	}
+	this->invert3x3(A,invA);
+	this->VecDotMat(B,invA,sol);
+	a = sol[0];
+	b = sol[1];
+	c = sol[2];
+
+	delete[] sol;
+	delete[] invA;
+	delete[] A;
+	delete[] B;
 }
 
 double MathTools::det(const double *mat){

@@ -42,6 +42,7 @@ protected:
 	bool IsCrystalDefined = false;
 	bool IsCrystalMine = false;
 	bool FilenameConstructed = false;
+	bool AtomListConstructed = false;
 	Crystal *_MyCrystal;	
 	std::vector<double*> Aux; // auxiliary atom properties
 	std::vector<unsigned int> Aux_size; // size of auxiliary atom properties
@@ -62,6 +63,7 @@ public:
 	AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double zhi, std::vector<int> cl_box); // construct atomic system from crystal and cell size
 	AtomicSystem(const std::string& filename); // construct AtomicSystem by reading file
 	AtomicSystem(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3); // construct AtomicSystem giving AtomList and cell vectors 
+	void AtomListConstructor(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3); // construct AtomicSystem giving AtomList and cell vectors 
 	void FilenameConstructor(const std::string& filename);
 	// getters
 	std::string getAtomType(const unsigned int i){ return this->AtomType[i]; };
@@ -105,7 +107,8 @@ public:
 	void print_lmp(const std::string& filename);
 	void print_cfg(const std::string& filename);
 	void printSystem_aux(const std::string& filename, const std::string& AuxId);
-	void searchNeighbours(const double& rc);
+	unsigned int searchNeighbours(const double& rc); // return nbNMax which is crucial for findings neighbours from the list
+	unsigned int searchNeighbours_restricted(const double& rc, unsigned int *IndexToSearch, unsigned int nbToSearch, unsigned int *IndexForSearch, unsigned int nbForSearch); // return nbNMax which is crucial for findings neighbours from the list
 	void computeWrap();
 	unsigned int Compute1dDensity(std::string auxname, std::string dir, double sigma, unsigned int nbPts); // compute and store the 1D density profile of a given auxiliary property, the metho return the index of the given density
 	void Print1dDensity(std::string filename, std::string auxname);

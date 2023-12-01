@@ -1,6 +1,7 @@
 // AtomHic library files
 #include <AtomicSystem.h>
 #include <Bicrystal.h>
+#include <Crystal.h>
 #include <ComputeAuxiliary.h>
 #include <stdlib.h>
 #include <iostream>
@@ -13,25 +14,44 @@ using namespace std;
 
 int main(int argc, char *argv[])
 {
-	string InputFilename, OutputFilename, CrystalType, outfilename, NormalDir;
+	Crystal *MyCrystal = new Crystal("Forsterite");
+	
+	string InputFilename, OutputFilename;
 	double SiO_d;
 	double SecFac = 2.;
 	if( argc == 3 ){
 		InputFilename = argv[1];
 		OutputFilename = argv[2];
 	}else{
-		cerr << "Usage: ./SearchLinkedTetrahedra InputFilename Dist_SiO_Tetrahedra xlo xhi ylo yhi zlo zhi CrystalType NormalDirection OutputFilename(optional)" << endl;
+		cerr << "Usage: ./AdjustStoichiometry InputFilename OutputFilename" << endl;
+		cerr << "Adjsut the stoichiometry of Mg2SiO4 system by removing Mg and O ions, if it is not possible to adjust by removing Mg and O ions it won't work (not implemented yet)" << endl;
 		return EXIT_FAILURE;
 	}
 	AtomicSystem MySystem(InputFilename);
 	
 	const unsigned int nbAt = MySystem.getNbAtom();
 
+	vector<string> AtTypes;
+	for(unsigned int i=0;i<3;i++) AtTypes.push_back("");
+
+	unsigned int type_uint_O, type_uint_Si, type_uint_Mg;
+	for(unsigned int i=0;i<3;i++){
+		if( MySystem.getAtomType(i) == "Mg" ){
+			type_uint_Mg = i+1;
+			AtTypes[i] = "Mg";
+		} else if( MySystem.getAtomType(i) == "Si" ){
+			type_uint_Si = i+1;
+			AtTypes[i] = "Si";
+		} else if( MySystem.getAtomType(i) == "O" ){
+			type_uint_O = i+1;
+			AtTypes[i] = "O";
+		}
+	}
 	unsigned int nbO(0), nbSi(0), nbMg(0);
 	for(unsigned int i=0;i<nbAt;i++) {
-		if( MySystem.getAtom(i).type_uint == 1 ) nbMg += 1;
-		else if( MySystem.getAtom(i).type_uint == 2 ) nbSi += 1;
-		else if( MySystem.getAtom(i).type_uint == 3 ) nbO += 1;
+		if( MySystem.getAtom(i).type_uint == type_uint_Mg ) nbMg += 1;
+		else if( MySystem.getAtom(i).type_uint == type_uint_Si ) nbSi += 1;
+		else if( MySystem.getAtom(i).type_uint == type_uint_O ) nbO += 1;
 	}
 
 	int NbExtraMg, NbExtraO;
@@ -50,7 +70,7 @@ int main(int argc, char *argv[])
 		xpos = MySystem.getWrappedPos(i).x;
 		ypos = MySystem.getWrappedPos(i).y;
 		zpos = MySystem.getWrappedPos(i).z;
-		if( MySystem.getAtom(i).type_uint == 1 ){
+		if( MySystem.getAtom(i).type_uint == type_uint_Mg ){
 			dmin = 3.;
 			for(unsigned int j=0;j<MySystem.getNeighbours(i*(nbNMax+1));j++){
 				id = MySystem.getNeighbours(i*(nbNMax+1)+j+1);
@@ -64,7 +84,7 @@ int main(int argc, char *argv[])
 				MgList.push_back(i);
 				MgList.push_back(dmin);
 			}
-		}else if( MySystem.getAtom(i).type_uint == 3 ){
+		}else if( MySystem.getAtom(i).type_uint == type_uint_O ){
 			dmin = 3.;
 			for(unsigned int j=0;j<MySystem.getNeighbours(i*(nbNMax+1));j++){
 				id = MySystem.getNeighbours(i*(nbNMax+1)+j+1);
@@ -90,10 +110,13 @@ int main(int argc, char *argv[])
 	for(unsigned int i=0;i<NbExtraMg;i++) RmMg[i] = MgList[i*2];
 
 	Atom *NewAtoms = new Atom[nbAt-NbExtraO-NbExtraMg];
+	double *Aux = new double[nbAt-NbExtraO-NbExtraMg];
+	unsigned int buffer;
+	unsigned grainId_ind = MySystem.getAuxIdAndSize("grainID",buffer);
 	bool Store;
 	unsigned int count = 0;
 	for(unsigned int i=0;i<nbAt;i++){
-		if( MySystem.getAtom(i).type_uint == 1 ){
+		if( MySystem.getAtom(i).type_uint == type_uint_Mg ){
 			Store = true;
 			for(unsigned int j=0;j<RmMg.size();j++){
 				if( i == RmMg[j] ){
@@ -104,12 +127,14 @@ int main(int argc, char *argv[])
 			}
 			if( Store ){
 				NewAtoms[count] = MySystem.getAtom(i);
+				Aux[count] = MySystem.getAux(grainId_ind)[i];
 				count++;
 			}
-		}else if( MySystem.getAtom(i).type_uint == 2 ){
+		}else if( MySystem.getAtom(i).type_uint == type_uint_Si ){
 			NewAtoms[count] = MySystem.getAtom(i);
+			Aux[count] = MySystem.getAux(grainId_ind)[i];
 			count++;
-		}else if( MySystem.getAtom(i).type_uint == 3 ){
+		}else if( MySystem.getAtom(i).type_uint == type_uint_O ){
 			Store = true;
 			for(unsigned int j=0;j<RmO.size();j++){
 				if( i == RmO[j] ){
@@ -120,17 +145,17 @@ int main(int argc, char *argv[])
 			}
 			if( Store ){
 				NewAtoms[count] = MySystem.getAtom(i);
+				Aux[count] = MySystem.getAux(grainId_ind)[i];
 				count++;
 			}
 		}
 	}
 	cout << "Number of atom in the new system : " << count << endl;
 
-	Crystal *MyCrystal = new Crystal("Forsterite");
-	
 	AtomicSystem NewSys(NewAtoms,nbAt-NbExtraO-NbExtraMg,MyCrystal,MySystem.getH1(),MySystem.getH2(),MySystem.getH3());
-	
-	NewSys.printSystem(OutputFilename);
+	NewSys.setAux(Aux,"grainID");	
+	//NewSys.printSystem(OutputFilename);
+	NewSys.printSystem_aux(OutputFilename,"grainID");
 	cout << "New system printed" << endl;
 	return 0;
 }

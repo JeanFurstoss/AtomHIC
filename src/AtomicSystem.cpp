@@ -259,8 +259,28 @@ AtomicSystem::AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double z
 	} // END DoNotSep case
 }
 // construct AtomicSystem giving AtomList, number of atom and cell vectors 
-AtomicSystem::AtomicSystem(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3):AtomList(AtomList), nbAtom(nbAtom), _MyCrystal(_MyCrystal), H1(H1), H2(H2), H3(H3){
+AtomicSystem::AtomicSystem(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3){
+	AtomListConstructor(AtomList,nbAtom,_MyCrystal,H1,H2,H3);
+}
+
+void AtomicSystem::AtomListConstructor(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3){
+	if( this->AtomListConstructed ){
+		//delete[] H1;
+		//delete[] H2;
+		//delete[] H3;
+		delete[] G1;
+		delete[] G2;
+		delete[] G3;
+		MT->~MathTools();
+	}
+	this->AtomList = AtomList;
+	this->nbAtom = nbAtom;
+	this->_MyCrystal = _MyCrystal;
+	this->H1 = H1;
+	this->H2 = H2;
+	this->H3 = H3;
 	read_params_atsys();
+	this->IsWrappedPos = false;
 	this->IsAtomListMine = false;
 	this->IsCellVecMine = false;
 	this->nbAtomType = _MyCrystal->getNbAtomType();
@@ -276,7 +296,9 @@ AtomicSystem::AtomicSystem(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrys
 	this->G3 = new double[3];
 	this->IsG = true;
 	computeInverseCellVec();
+	this->AtomListConstructed = true;
 }
+
 // Constructor using the filename of an atomic file (.cfg, .lmp, .xsf,..)
 AtomicSystem::AtomicSystem(const string& filename){
 	FilenameConstructor(filename);
@@ -514,7 +536,7 @@ void AtomicSystem::computeWrap(){
 }
 
 // Searching neighbours using cell list algorithm
-void AtomicSystem::searchNeighbours(const double& rc){
+unsigned int AtomicSystem::searchNeighbours(const double& rc){
 	cout << "Performing neighbour research" << endl;
 	//auto start = chrono::high_resolution_clock::now();
 	if( !IsWrappedPos ) computeWrap();
@@ -554,6 +576,7 @@ void AtomicSystem::searchNeighbours(const double& rc){
                 NeighCellZ = 1;
         }
 	vector<vector<unsigned int>> Cells(nbCellX*nbCellY*nbCellZ);
+	cout << "diving system in cells" << endl;
 	if( this->IsTilted ){
 		// compute plane equations (as everywhere the only tilts considered are xy, yz, xz)
 		double H1H3_z;
@@ -639,14 +662,14 @@ void AtomicSystem::searchNeighbours(const double& rc){
 		if( Cells[i].size() > this->nbMaxN ) this->nbMaxN = Cells[i].size();
 	}
 	if( nbAt_test != this->nbAtom ) cout << "We miss atoms during cell list" << endl;
-	this->nbMaxN *= (int) (1.5*4.*M_PI*pow(rc,3.)/(3.*CellSizeX*CellSizeY*CellSizeZ)); // 1.5 is a security factor
+	this->nbMaxN *= (int) (5.*4.*M_PI*pow(rc,3.)/(3.*CellSizeX*CellSizeY*CellSizeZ)); // 1.5 is a security factor
 	if( this->IsNeighbours ){
 		delete[] this->Neighbours;
 		delete[] this->CLNeighbours;
 	} // TODO maybe issue here if we delete the var we may need to reclare them ?
 	this->Neighbours = new unsigned int[(this->nbMaxN+1)*this->nbAtom];
 	this->CLNeighbours = new int[(this->nbMaxN*3)*this->nbAtom]; // contain the periodic condition (Nclx, Ncly, Nclz) applied for atom to be a neighbour
-
+	cout << "cells done" << endl;
 	// Perform neighbour research
 	double xpos,ypos,zpos;
 	int ibx, jby, kbz;
@@ -712,6 +735,7 @@ void AtomicSystem::searchNeighbours(const double& rc){
 										this->CLNeighbours[currentId*this->nbMaxN*3+countN*3+1] = Ncly; // store the cl used for this neighbour
 										this->CLNeighbours[currentId*this->nbMaxN*3+countN*3+2] = Nclz; // store the cl used for this neighbour
 										countN += 1;
+						if( countN >= this->nbMaxN-1 ) cout << "Warning the number of found neighbour exceed the maximum number of neighbour allowed" << endl;
 									}
 								}
 							}
@@ -728,8 +752,274 @@ void AtomicSystem::searchNeighbours(const double& rc){
         //auto end = chrono::high_resolution_clock::now();
         //auto duration = chrono::duration_cast<chrono::microseconds>(end - start);
         //cout << "Execution time : " << duration.count() << endl;
+	return this->nbMaxN;
 }
 
+// Searching neighbours using cell list algorithm restricted for
+unsigned int AtomicSystem::searchNeighbours_restricted(const double& rc, unsigned int *IndexToSearch, unsigned int nbToSearch, unsigned int *IndexForSearch, unsigned int nbForSearch){
+	cout << "Performing neighbour research" << endl;
+	//auto start = chrono::high_resolution_clock::now();
+	if( !IsWrappedPos ) computeWrap();
+	// construct the cells
+	// set maximum neighbour by estimating the maximum number of atom in a rc x rc x rc cube
+	double rc_squared = pow(rc,2.);
+	double zeronum = 1e-6;
+	unsigned int nbCellX, nbCellY, nbCellZ;
+	int NeighCellX, NeighCellY, NeighCellZ;
+	const int bar_length = 30;
+	double CellSizeX, CellSizeY, CellSizeZ, d_squared;
+        nbCellX = floor(this->H1[0]/rc);
+        if( nbCellX == 0 ){
+                nbCellX = 1;
+                CellSizeX = this->H1[0];
+                NeighCellX = ceil(rc/this->H1[0]);
+        }else{
+                CellSizeX = this->H1[0]/nbCellX;
+                NeighCellX = 1;
+        }
+        nbCellY = floor(this->H2[1]/rc);
+        if( nbCellY == 0 ){
+                nbCellY = 1;
+                CellSizeY = this->H2[1];
+                NeighCellY = ceil(rc/this->H2[1]);
+        }else{
+                CellSizeY = this->H2[1]/nbCellY;
+                NeighCellY = 1;
+        }
+        nbCellZ = floor(this->H3[2]/rc);
+        if( nbCellZ == 0 ){
+                nbCellZ = 1;
+                CellSizeZ = this->H3[2];
+                NeighCellZ = ceil(rc/this->H3[2]);
+        }else{
+                CellSizeZ = this->H3[2]/nbCellZ;
+                NeighCellZ = 1;
+        }
+	vector<vector<unsigned int>> Cells_ToSearch(nbCellX*nbCellY*nbCellZ);
+	vector<vector<unsigned int>> Cells_ForSearch(nbCellX*nbCellY*nbCellZ);
+	cout << "diving system in cells" << endl;
+	if( this->IsTilted ){
+		// compute plane equations (as everywhere the only tilts considered are xy, yz, xz)
+		double H1H3_z;
+	        if(fabs(this->H3[2]) > 1e-6) H1H3_z = -(this->H3[1]/this->H3[2]);
+		else H1H3_z = 0.;
+		double H2H3_y = -(this->H2[0]/this->H2[1]); 
+		double H2H3_z = ((this->H2[0]*this->H3[1]/this->H2[1])-this->H3[0])/this->H3[2];
+		double planeH1H3, planeH2H3;
+		#pragma omp parallel for private(planeH1H3,planeH2H3)
+		for(unsigned int i=0;i<nbCellX;i++){
+        	        for(unsigned int j=0;j<nbCellY;j++){
+        	                for(unsigned int k=0;k<nbCellZ;k++){
+        	                        for(unsigned at=0;at<nbToSearch;at++){
+						planeH1H3 = this->WrappedPos[IndexToSearch[at]].y+this->WrappedPos[IndexToSearch[at]].z*H1H3_z;	
+						planeH2H3 = this->WrappedPos[IndexToSearch[at]].x+this->WrappedPos[IndexToSearch[at]].y*H2H3_y+this->WrappedPos[IndexToSearch[at]].z*H2H3_z;	
+        	                        	if( (i == nbCellX-1) && (j == nbCellY-1) && (k == nbCellZ-1) ){
+        	                                        if( (planeH2H3>=i*CellSizeX) && (planeH2H3<=(i+1)*CellSizeX) && (planeH1H3>=j*CellSizeY) && (planeH1H3<=(j+1)*CellSizeY) &&  (this->WrappedPos[IndexToSearch[at]].z>=k*CellSizeZ) && (this->WrappedPos[IndexToSearch[at]].z<=(k+1)*CellSizeZ) ) Cells_ToSearch[i*nbCellY*nbCellZ+j*nbCellZ+k].push_back(IndexToSearch[at]);
+        	                        	}else if( (i == nbCellX-1) && (j == nbCellY-1) ){
+        	                                        if( (planeH2H3>=i*CellSizeX) && (planeH2H3<=(i+1)*CellSizeX) && (planeH1H3>=j*CellSizeY) && (planeH1H3<=(j+1)*CellSizeY) &&  (this->WrappedPos[IndexToSearch[at]].z>=k*CellSizeZ) && (this->WrappedPos[IndexToSearch[at]].z<(k+1)*CellSizeZ) ) Cells_ToSearch[i*nbCellY*nbCellZ+j*nbCellZ+k].push_back(IndexToSearch[at]);
+        	                        	}else if( (j == nbCellY-1) && (k == nbCellZ-1) ){
+        	                                        if( (planeH2H3>=i*CellSizeX) && (planeH2H3<(i+1)*CellSizeX) && (planeH1H3>=j*CellSizeY) && (planeH1H3<=(j+1)*CellSizeY) &&  (this->WrappedPos[IndexToSearch[at]].z>=k*CellSizeZ) && (this->WrappedPos[IndexToSearch[at]].z<=(k+1)*CellSizeZ) ) Cells_ToSearch[i*nbCellY*nbCellZ+j*nbCellZ+k].push_back(IndexToSearch[at]);
+        	                        	}else if( (i == nbCellX-1) && (k == nbCellZ-1) ){
+        	                                        if( (planeH2H3>=i*CellSizeX) && (planeH2H3<=(i+1)*CellSizeX) && (planeH1H3>=j*CellSizeY) && (planeH1H3<(j+1)*CellSizeY) &&  (this->WrappedPos[IndexToSearch[at]].z>=k*CellSizeZ) && (this->WrappedPos[IndexToSearch[at]].z<=(k+1)*CellSizeZ) ) Cells_ToSearch[i*nbCellY*nbCellZ+j*nbCellZ+k].push_back(IndexToSearch[at]);
+        	                        	}else if(i == nbCellX-1){
+        	                                        if( (planeH2H3>=i*CellSizeX) && (planeH2H3<=(i+1)*CellSizeX) && (planeH1H3>=j*CellSizeY) && (planeH1H3<(j+1)*CellSizeY) &&  (this->WrappedPos[IndexToSearch[at]].z>=k*CellSizeZ) && (this->WrappedPos[IndexToSearch[at]].z<(k+1)*CellSizeZ) ) Cells_ToSearch[i*nbCellY*nbCellZ+j*nbCellZ+k].push_back(IndexToSearch[at]);
+        	                        	}else if(j == nbCellY-1){
+        	                                        if( (planeH2H3>=i*CellSizeX) && (planeH2H3<(i+1)*CellSizeX) && (planeH1H3>=j*CellSizeY) && (planeH1H3<=(j+1)*CellSizeY) &&  (this->WrappedPos[IndexToSearch[at]].z>=k*CellSizeZ) && (this->WrappedPos[IndexToSearch[at]].z<(k+1)*CellSizeZ) ) Cells_ToSearch[i*nbCellY*nbCellZ+j*nbCellZ+k].push_back(IndexToSearch[at]);
+        	                        	}else if(k == nbCellZ-1){
+        	                                        if( (planeH2H3>=i*CellSizeX) && (planeH2H3<(i+1)*CellSizeX) && (planeH1H3>=j*CellSizeY) && (planeH1H3<(j+1)*CellSizeY) &&  (this->WrappedPos[IndexToSearch[at]].z>=k*CellSizeZ) && (this->WrappedPos[IndexToSearch[at]].z<=(k+1)*CellSizeZ) ) Cells_ToSearch[i*nbCellY*nbCellZ+j*nbCellZ+k].push_back(IndexToSearch[at]);
+						}else{
+        	                                        if( (planeH2H3>=i*CellSizeX) && (planeH2H3<(i+1)*CellSizeX) && (planeH1H3>=j*CellSizeY) && (planeH1H3<(j+1)*CellSizeY) &&  (this->WrappedPos[IndexToSearch[at]].z>=k*CellSizeZ) && (this->WrappedPos[IndexToSearch[at]].z<(k+1)*CellSizeZ) ) Cells_ToSearch[i*nbCellY*nbCellZ+j*nbCellZ+k].push_back(IndexToSearch[at]);
+						}
+					}
+        	                        for(unsigned at=0;at<nbForSearch;at++){
+						planeH1H3 = this->WrappedPos[IndexForSearch[at]].y+this->WrappedPos[IndexForSearch[at]].z*H1H3_z;	
+						planeH2H3 = this->WrappedPos[IndexForSearch[at]].x+this->WrappedPos[IndexForSearch[at]].y*H2H3_y+this->WrappedPos[IndexForSearch[at]].z*H2H3_z;	
+        	                        	if( (i == nbCellX-1) && (j == nbCellY-1) && (k == nbCellZ-1) ){
+        	                                        if( (planeH2H3>=i*CellSizeX) && (planeH2H3<=(i+1)*CellSizeX) && (planeH1H3>=j*CellSizeY) && (planeH1H3<=(j+1)*CellSizeY) &&  (this->WrappedPos[IndexForSearch[at]].z>=k*CellSizeZ) && (this->WrappedPos[IndexForSearch[at]].z<=(k+1)*CellSizeZ) ) Cells_ForSearch[i*nbCellY*nbCellZ+j*nbCellZ+k].push_back(IndexForSearch[at]);
+        	                        	}else if( (i == nbCellX-1) && (j == nbCellY-1) ){
+        	                                        if( (planeH2H3>=i*CellSizeX) && (planeH2H3<=(i+1)*CellSizeX) && (planeH1H3>=j*CellSizeY) && (planeH1H3<=(j+1)*CellSizeY) &&  (this->WrappedPos[IndexForSearch[at]].z>=k*CellSizeZ) && (this->WrappedPos[IndexForSearch[at]].z<(k+1)*CellSizeZ) ) Cells_ForSearch[i*nbCellY*nbCellZ+j*nbCellZ+k].push_back(IndexForSearch[at]);
+        	                        	}else if( (j == nbCellY-1) && (k == nbCellZ-1) ){
+        	                                        if( (planeH2H3>=i*CellSizeX) && (planeH2H3<(i+1)*CellSizeX) && (planeH1H3>=j*CellSizeY) && (planeH1H3<=(j+1)*CellSizeY) &&  (this->WrappedPos[IndexForSearch[at]].z>=k*CellSizeZ) && (this->WrappedPos[IndexForSearch[at]].z<=(k+1)*CellSizeZ) ) Cells_ForSearch[i*nbCellY*nbCellZ+j*nbCellZ+k].push_back(IndexForSearch[at]);
+        	                        	}else if( (i == nbCellX-1) && (k == nbCellZ-1) ){
+        	                                        if( (planeH2H3>=i*CellSizeX) && (planeH2H3<=(i+1)*CellSizeX) && (planeH1H3>=j*CellSizeY) && (planeH1H3<(j+1)*CellSizeY) &&  (this->WrappedPos[IndexForSearch[at]].z>=k*CellSizeZ) && (this->WrappedPos[IndexForSearch[at]].z<=(k+1)*CellSizeZ) ) Cells_ForSearch[i*nbCellY*nbCellZ+j*nbCellZ+k].push_back(IndexForSearch[at]);
+        	                        	}else if(i == nbCellX-1){
+        	                                        if( (planeH2H3>=i*CellSizeX) && (planeH2H3<=(i+1)*CellSizeX) && (planeH1H3>=j*CellSizeY) && (planeH1H3<(j+1)*CellSizeY) &&  (this->WrappedPos[IndexForSearch[at]].z>=k*CellSizeZ) && (this->WrappedPos[IndexForSearch[at]].z<(k+1)*CellSizeZ) ) Cells_ForSearch[i*nbCellY*nbCellZ+j*nbCellZ+k].push_back(IndexForSearch[at]);
+        	                        	}else if(j == nbCellY-1){
+        	                                        if( (planeH2H3>=i*CellSizeX) && (planeH2H3<(i+1)*CellSizeX) && (planeH1H3>=j*CellSizeY) && (planeH1H3<=(j+1)*CellSizeY) &&  (this->WrappedPos[IndexForSearch[at]].z>=k*CellSizeZ) && (this->WrappedPos[IndexForSearch[at]].z<(k+1)*CellSizeZ) ) Cells_ForSearch[i*nbCellY*nbCellZ+j*nbCellZ+k].push_back(IndexForSearch[at]);
+        	                        	}else if(k == nbCellZ-1){
+        	                                        if( (planeH2H3>=i*CellSizeX) && (planeH2H3<(i+1)*CellSizeX) && (planeH1H3>=j*CellSizeY) && (planeH1H3<(j+1)*CellSizeY) &&  (this->WrappedPos[IndexForSearch[at]].z>=k*CellSizeZ) && (this->WrappedPos[IndexForSearch[at]].z<=(k+1)*CellSizeZ) ) Cells_ForSearch[i*nbCellY*nbCellZ+j*nbCellZ+k].push_back(IndexForSearch[at]);
+						}else{
+        	                                        if( (planeH2H3>=i*CellSizeX) && (planeH2H3<(i+1)*CellSizeX) && (planeH1H3>=j*CellSizeY) && (planeH1H3<(j+1)*CellSizeY) &&  (this->WrappedPos[IndexForSearch[at]].z>=k*CellSizeZ) && (this->WrappedPos[IndexForSearch[at]].z<(k+1)*CellSizeZ) ) Cells_ForSearch[i*nbCellY*nbCellZ+j*nbCellZ+k].push_back(IndexForSearch[at]);
+						}
+					}
+				}
+			}
+		}
+	}else{
+		#pragma omp parallel for
+		for(unsigned int i=0;i<nbCellX;i++){
+        	        for(unsigned int j=0;j<nbCellY;j++){
+        	                for(unsigned int k=0;k<nbCellZ;k++){
+        	                        if( (i == nbCellX-1) && (j == nbCellY-1) && (k == nbCellZ-1) ){
+        	                                for(unsigned at=0;at<nbToSearch;at++){
+        	                                        if( (this->WrappedPos[IndexToSearch[at]].x>=i*CellSizeX) && (this->WrappedPos[IndexToSearch[at]].x<=(i+1)*CellSizeX) && (this->WrappedPos[IndexToSearch[at]].y>=j*CellSizeY) && (this->WrappedPos[IndexToSearch[at]].y<=(j+1)*CellSizeY) && (this->WrappedPos[IndexToSearch[at]].z>=k*CellSizeZ) && (this->WrappedPos[IndexToSearch[at]].z<=(k+1)*CellSizeZ) ) Cells_ToSearch[i*nbCellY*nbCellZ+j*nbCellZ+k].push_back(IndexToSearch[at]);
+        	                                }
+        	                                for(unsigned at=0;at<nbForSearch;at++){
+        	                                        if( (this->WrappedPos[IndexForSearch[at]].x>=i*CellSizeX) && (this->WrappedPos[IndexForSearch[at]].x<=(i+1)*CellSizeX) && (this->WrappedPos[IndexForSearch[at]].y>=j*CellSizeY) && (this->WrappedPos[IndexForSearch[at]].y<=(j+1)*CellSizeY) && (this->WrappedPos[IndexForSearch[at]].z>=k*CellSizeZ) && (this->WrappedPos[IndexForSearch[at]].z<=(k+1)*CellSizeZ) ) Cells_ForSearch[i*nbCellY*nbCellZ+j*nbCellZ+k].push_back(IndexForSearch[at]);
+        	                                }
+        	                        }else if( (i == nbCellX-1) && (j == nbCellY-1) ){
+        	                                for(unsigned at=0;at<nbToSearch;at++){
+        	                                        if( (this->WrappedPos[IndexToSearch[at]].x>=i*CellSizeX) && (this->WrappedPos[IndexToSearch[at]].x<=(i+1)*CellSizeX) && (this->WrappedPos[IndexToSearch[at]].y>=j*CellSizeY) && (this->WrappedPos[IndexToSearch[at]].y<=(j+1)*CellSizeY) && (this->WrappedPos[IndexToSearch[at]].z>=k*CellSizeZ) && (this->WrappedPos[IndexToSearch[at]].z<(k+1)*CellSizeZ) ) Cells_ToSearch[i*nbCellY*nbCellZ+j*nbCellZ+k].push_back(IndexToSearch[at]);
+        	                                }
+        	                                for(unsigned at=0;at<nbForSearch;at++){
+        	                                        if( (this->WrappedPos[IndexForSearch[at]].x>=i*CellSizeX) && (this->WrappedPos[IndexForSearch[at]].x<=(i+1)*CellSizeX) && (this->WrappedPos[IndexForSearch[at]].y>=j*CellSizeY) && (this->WrappedPos[IndexForSearch[at]].y<=(j+1)*CellSizeY) && (this->WrappedPos[IndexForSearch[at]].z>=k*CellSizeZ) && (this->WrappedPos[IndexForSearch[at]].z<(k+1)*CellSizeZ) ) Cells_ForSearch[i*nbCellY*nbCellZ+j*nbCellZ+k].push_back(IndexForSearch[at]);
+        	                                }
+        	                        }else if( (j == nbCellY-1) && (k == nbCellZ-1) ){
+        	                                for(unsigned at=0;at<nbToSearch;at++){
+        	                                        if( (this->WrappedPos[IndexToSearch[at]].x>=i*CellSizeX) && (this->WrappedPos[IndexToSearch[at]].x<(i+1)*CellSizeX) && (this->WrappedPos[IndexToSearch[at]].y>=j*CellSizeY) && (this->WrappedPos[IndexToSearch[at]].y<=(j+1)*CellSizeY) && (this->WrappedPos[IndexToSearch[at]].z>=k*CellSizeZ) && (this->WrappedPos[IndexToSearch[at]].z<=(k+1)*CellSizeZ) ) Cells_ToSearch[i*nbCellZ*nbCellY+j*nbCellZ+k].push_back(IndexToSearch[at]);
+        	                                }
+        	                                for(unsigned at=0;at<nbForSearch;at++){
+        	                                        if( (this->WrappedPos[IndexForSearch[at]].x>=i*CellSizeX) && (this->WrappedPos[IndexForSearch[at]].x<(i+1)*CellSizeX) && (this->WrappedPos[IndexForSearch[at]].y>=j*CellSizeY) && (this->WrappedPos[IndexForSearch[at]].y<=(j+1)*CellSizeY) && (this->WrappedPos[IndexForSearch[at]].z>=k*CellSizeZ) && (this->WrappedPos[IndexForSearch[at]].z<=(k+1)*CellSizeZ) ) Cells_ForSearch[i*nbCellZ*nbCellY+j*nbCellZ+k].push_back(IndexForSearch[at]);
+        	                                }
+        	                        }else if( (i == nbCellX-1) && (k == nbCellZ-1) ){
+        	                                for(unsigned at=0;at<nbToSearch;at++){
+        	                                        if( (this->WrappedPos[IndexToSearch[at]].x>=i*CellSizeX) && (this->WrappedPos[IndexToSearch[at]].x<=(i+1)*CellSizeX) && (this->WrappedPos[IndexToSearch[at]].y>=j*CellSizeY) && (this->WrappedPos[IndexToSearch[at]].y<(j+1)*CellSizeY) && (this->WrappedPos[IndexToSearch[at]].z>=k*CellSizeZ) && (this->WrappedPos[IndexToSearch[at]].z<=(k+1)*CellSizeZ) ) Cells_ToSearch[i*nbCellZ*nbCellY+j*nbCellZ+k].push_back(IndexToSearch[at]);
+        	                                }
+        	                                for(unsigned at=0;at<nbForSearch;at++){
+        	                                        if( (this->WrappedPos[IndexForSearch[at]].x>=i*CellSizeX) && (this->WrappedPos[IndexForSearch[at]].x<=(i+1)*CellSizeX) && (this->WrappedPos[IndexForSearch[at]].y>=j*CellSizeY) && (this->WrappedPos[IndexForSearch[at]].y<(j+1)*CellSizeY) && (this->WrappedPos[IndexForSearch[at]].z>=k*CellSizeZ) && (this->WrappedPos[IndexForSearch[at]].z<=(k+1)*CellSizeZ) ) Cells_ForSearch[i*nbCellZ*nbCellY+j*nbCellZ+k].push_back(IndexForSearch[at]);
+        	                                }
+        	                        }else if(i == nbCellX-1){
+        	                                for(unsigned at=0;at<nbToSearch;at++){
+        	                                        if( (this->WrappedPos[IndexToSearch[at]].x>=i*CellSizeX) && (this->WrappedPos[IndexToSearch[at]].x<=(i+1)*CellSizeX) && (this->WrappedPos[IndexToSearch[at]].y>=j*CellSizeY) && (this->WrappedPos[IndexToSearch[at]].y<(j+1)*CellSizeY) && (this->WrappedPos[IndexToSearch[at]].z>=k*CellSizeZ) && (this->WrappedPos[IndexToSearch[at]].z<(k+1)*CellSizeZ) ) Cells_ToSearch[i*nbCellZ*nbCellY+j*nbCellZ+k].push_back(IndexToSearch[at]);
+        	                                }
+        	                                for(unsigned at=0;at<nbForSearch;at++){
+        	                                        if( (this->WrappedPos[IndexForSearch[at]].x>=i*CellSizeX) && (this->WrappedPos[IndexForSearch[at]].x<=(i+1)*CellSizeX) && (this->WrappedPos[IndexForSearch[at]].y>=j*CellSizeY) && (this->WrappedPos[IndexForSearch[at]].y<(j+1)*CellSizeY) && (this->WrappedPos[IndexForSearch[at]].z>=k*CellSizeZ) && (this->WrappedPos[IndexForSearch[at]].z<(k+1)*CellSizeZ) ) Cells_ForSearch[i*nbCellZ*nbCellY+j*nbCellZ+k].push_back(IndexForSearch[at]);
+        	                                }
+        	                        }else if(j == nbCellY-1){
+        	                                for(unsigned at=0;at<nbToSearch;at++){
+        	                                        if( (this->WrappedPos[IndexToSearch[at]].x>=i*CellSizeX) && (this->WrappedPos[IndexToSearch[at]].x<(i+1)*CellSizeX) && (this->WrappedPos[IndexToSearch[at]].y>=j*CellSizeY) && (this->WrappedPos[IndexToSearch[at]].y<=(j+1)*CellSizeY) && (this->WrappedPos[IndexToSearch[at]].z>=k*CellSizeZ) && (this->WrappedPos[IndexToSearch[at]].z<(k+1)*CellSizeZ) ) Cells_ToSearch[i*nbCellZ*nbCellY+j*nbCellZ+k].push_back(IndexToSearch[at]);
+        	                                }
+        	                                for(unsigned at=0;at<nbForSearch;at++){
+        	                                        if( (this->WrappedPos[IndexForSearch[at]].x>=i*CellSizeX) && (this->WrappedPos[IndexForSearch[at]].x<(i+1)*CellSizeX) && (this->WrappedPos[IndexForSearch[at]].y>=j*CellSizeY) && (this->WrappedPos[IndexForSearch[at]].y<=(j+1)*CellSizeY) && (this->WrappedPos[IndexForSearch[at]].z>=k*CellSizeZ) && (this->WrappedPos[IndexForSearch[at]].z<(k+1)*CellSizeZ) ) Cells_ForSearch[i*nbCellZ*nbCellY+j*nbCellZ+k].push_back(IndexForSearch[at]);
+        	                                }
+        	                        }else if(k == nbCellZ-1){
+        	                                for(unsigned at=0;at<nbToSearch;at++){
+        	                                        if( (this->WrappedPos[IndexToSearch[at]].x>=i*CellSizeX) && (this->WrappedPos[IndexToSearch[at]].x<(i+1)*CellSizeX) && (this->WrappedPos[IndexToSearch[at]].y>=j*CellSizeY) && (this->WrappedPos[IndexToSearch[at]].y<(j+1)*CellSizeY) && (this->WrappedPos[IndexToSearch[at]].z>=k*CellSizeZ) && (this->WrappedPos[IndexToSearch[at]].z<=(k+1)*CellSizeZ) ) Cells_ToSearch[i*nbCellZ*nbCellY+j*nbCellZ+k].push_back(IndexToSearch[at]);
+        	                                }
+        	                                for(unsigned at=0;at<nbForSearch;at++){
+        	                                        if( (this->WrappedPos[IndexForSearch[at]].x>=i*CellSizeX) && (this->WrappedPos[IndexForSearch[at]].x<(i+1)*CellSizeX) && (this->WrappedPos[IndexForSearch[at]].y>=j*CellSizeY) && (this->WrappedPos[IndexForSearch[at]].y<(j+1)*CellSizeY) && (this->WrappedPos[IndexForSearch[at]].z>=k*CellSizeZ) && (this->WrappedPos[IndexForSearch[at]].z<=(k+1)*CellSizeZ) ) Cells_ForSearch[i*nbCellZ*nbCellY+j*nbCellZ+k].push_back(IndexForSearch[at]);
+        	                                }
+        	                        }else{
+        	                                for(unsigned at=0;at<nbToSearch;at++){
+        	                                        if( (this->WrappedPos[IndexToSearch[at]].x>=i*CellSizeX) && (this->WrappedPos[IndexToSearch[at]].x<(i+1)*CellSizeX) && (this->WrappedPos[IndexToSearch[at]].y>=j*CellSizeY) && (this->WrappedPos[IndexToSearch[at]].y<(j+1)*CellSizeY) && (this->WrappedPos[IndexToSearch[at]].z>=k*CellSizeZ) && (this->WrappedPos[IndexToSearch[at]].z<(k+1)*CellSizeZ) ) Cells_ToSearch[i*nbCellZ*nbCellY+j*nbCellZ+k].push_back(IndexToSearch[at]);
+        	                                }
+        	                                for(unsigned at=0;at<nbForSearch;at++){
+        	                                        if( (this->WrappedPos[IndexForSearch[at]].x>=i*CellSizeX) && (this->WrappedPos[IndexForSearch[at]].x<(i+1)*CellSizeX) && (this->WrappedPos[IndexForSearch[at]].y>=j*CellSizeY) && (this->WrappedPos[IndexForSearch[at]].y<(j+1)*CellSizeY) && (this->WrappedPos[IndexForSearch[at]].z>=k*CellSizeZ) && (this->WrappedPos[IndexForSearch[at]].z<(k+1)*CellSizeZ) ) Cells_ForSearch[i*nbCellZ*nbCellY+j*nbCellZ+k].push_back(IndexForSearch[at]);
+        	                                }
+        	                        }
+        	                }
+        	        }
+        	}
+	}
+	this->nbMaxN = Cells[0].size();
+	unsigned int nbAt_test = Cells[0].size();
+	for(unsigned int i=1;i<nbCellX*nbCellY*nbCellZ;i++){
+		nbAt_test += Cells[i].size();
+		if( Cells[i].size() > this->nbMaxN ) this->nbMaxN = Cells[i].size();
+	}
+	if( nbAt_test != this->nbAtom ) cout << "We miss atoms during cell list" << endl;
+	this->nbMaxN *= (int) (1.5*4.*M_PI*pow(rc,3.)/(3.*CellSizeX*CellSizeY*CellSizeZ)); // 1.5 is a security factor
+	if( this->IsNeighbours ){
+		delete[] this->Neighbours;
+		delete[] this->CLNeighbours;
+	} // TODO maybe issue here if we delete the var we may need to reclare them ?
+	this->Neighbours = new unsigned int[(this->nbMaxN+1)*this->nbAtom];
+	this->CLNeighbours = new int[(this->nbMaxN*3)*this->nbAtom]; // contain the periodic condition (Nclx, Ncly, Nclz) applied for atom to be a neighbour
+	cout << "cells done" << endl;
+	// Perform neighbour research
+	double xpos,ypos,zpos;
+	int ibx, jby, kbz;
+	int Nclx, Ncly, Nclz;
+	double prog=0.;
+	unsigned int countN = 0;
+	unsigned int currentId, currentId2;
+	//cout << "Performing neighbour research" << endl;
+	//cout << "\r[" << string(bar_length*prog,'X') << string(bar_length*(1-prog),'-') << "] " << setprecision(3) << 100*prog << "%";
+	#pragma omp parallel for private(countN,currentId,xpos,ypos,zpos,Nclx,Ncly,Nclz,ibx,jby,kbz,currentId2,d_squared)
+	for(unsigned int i=0;i<nbCellX;i++){
+		for(unsigned int j=0;j<nbCellY;j++){
+			for(unsigned int k=0;k<nbCellZ;k++){
+				//prog = double(i*nbCellZ*nbCellY+j*nbCellZ+k)/double(nbCellX*nbCellY*nbCellZ);
+				//cout << "\r[" << string(floor(bar_length*prog),'X') << string(ceil(bar_length*(1-prog)),'-') << "] " << setprecision(3) << 100*prog << "%";
+				for(unsigned int at1 = 0; at1<Cells[i*nbCellZ*nbCellY+j*nbCellZ+k].size(); at1++){
+				        countN = 0;
+					currentId = Cells[i*nbCellZ*nbCellY+j*nbCellZ+k][at1];
+					this->Neighbours[currentId*(this->nbMaxN+1)] = 0; // initialize to zero the neighbour counters
+					xpos = this->WrappedPos[currentId].x;
+					ypos = this->WrappedPos[currentId].y;
+					zpos = this->WrappedPos[currentId].z;
+					for(int bx=-NeighCellX;bx<NeighCellX+1;bx++){
+						for(int by=-NeighCellY;by<NeighCellY+1;by++){
+							for(int bz=-NeighCellZ;bz<NeighCellZ+1;bz++){
+								// Search using periodic BC which cell use in case of border cell and what CL applied to ion pos
+								// for a non border cell =>
+								Nclx = 0;
+								Ncly = 0;
+								Nclz = 0;
+								ibx = bx+i;
+								jby = by+j;
+								kbz = bz+k;
+								// border cells
+								if( (int) i >= ((int) nbCellX)-NeighCellX && bx >= 1 ){
+									ibx = 0;
+									Nclx = bx;
+								}else if( (int) i <= NeighCellX-1 && bx <= -1 ){
+									ibx = nbCellX-1;
+									Nclx = bx;
+								}
+								if( (int) j >= ((int) nbCellY)-NeighCellY && by >= 1 ){
+									jby = 0;
+									Ncly = by;
+								}else if( (int) j <= NeighCellY-1  && by <= -1 ){
+									jby = nbCellY-1;
+									Ncly = by;
+								}
+								if( (int) k >= ((int) nbCellZ)-NeighCellZ && bz >= 1 ){
+									kbz = 0;
+									Nclz = bz;
+								}else if( (int) k <= NeighCellZ-1 && bz <= -1 ){
+									kbz = nbCellZ-1;
+									Nclz = bz;
+								}
+								for(unsigned int at2=0;at2<Cells[ibx*nbCellZ*nbCellY+jby*nbCellZ+kbz].size();at2++){
+									currentId2 = Cells[ibx*nbCellY*nbCellZ+jby*nbCellZ+kbz][at2];
+									d_squared = pow(this->WrappedPos[currentId2].x-xpos+Nclx*H1[0]+Ncly*H2[0]+Nclz*H3[0],2.)+pow(this->WrappedPos[currentId2].y-ypos+Nclx*H1[1]+Ncly*H2[1]+Nclz*H3[1],2.)+pow(this->WrappedPos[currentId2].z-zpos+Nclx*H1[2]+Ncly*H2[2]+Nclz*H3[2],2.);
+									if( d_squared > zeronum && d_squared < rc_squared ){
+										this->Neighbours[currentId*(this->nbMaxN+1)] += 1; // add this neighbours to the neighbour count
+										this->Neighbours[currentId*(this->nbMaxN+1)+countN+1] = currentId2; // add this neighbours to the neighbour list 
+										this->CLNeighbours[currentId*this->nbMaxN*3+countN*3] = Nclx; // store the cl used for this neighbour
+										this->CLNeighbours[currentId*this->nbMaxN*3+countN*3+1] = Ncly; // store the cl used for this neighbour
+										this->CLNeighbours[currentId*this->nbMaxN*3+countN*3+2] = Nclz; // store the cl used for this neighbour
+										countN += 1;
+						if( countN >= this->nbMaxN ) cout << "Warning the number of found neighbour exceed the maximum number of neighbour allowed" << endl;
+									}
+								}
+							}
+						}
+						if( countN > this->nbMaxN ) cout << "Warning the number of found neighbour exceed the maximum number of neighbour allowed" << endl;
+					}
+				}
+			}
+		}
+	}
+	IsNeighbours = true;
+	this->current_rc_neigh = rc;
+	cout << " done !" << endl;
+        //auto end = chrono::high_resolution_clock::now();
+        //auto duration = chrono::duration_cast<chrono::microseconds>(end - start);
+        //cout << "Execution time : " << duration.count() << endl;
+	return this->nbMaxN;
+}
 void AtomicSystem::setAux(const double* aux, const string& AuxName){
 	IsSetAux = true;
 	for(unsigned int i=0;i<this->Aux_name.size();i++){
@@ -1020,56 +1310,69 @@ void AtomicSystem::read_other_cfg(const string& filename){
 				if( buffer_s_2 == "id" ){ // TODO : same with charge
 					IsId = true;
 					indId = Aux_name.size();
+					this->Aux_size.push_back(1); //TODO for vector aux
 				}else{
 					this->Aux_name.push_back(buffer_s_2);
 					this->Aux.push_back(new double[this->nbAtom]);
+					this->Aux_size.push_back(1); //TODO for vector aux
 				}
 			}
 			if( count > line_aux+nbAux ){
-				istringstream text(line);
-				text >> buffer_1;
-				getline(file,line);
-				istringstream text1(line);
-				text1 >> buffer_s;
-				TypeStored = false;
-				for(unsigned int i=0;i<this->nbAtomType;i++){
-					if( buffer_s == this->AtomType[i] ){
-						TypeStored = true;
-						current_type_uint = i+1;
-						break;
+				istringstream text2(line);
+				int nbCol = 0;
+				do{
+					string sub;
+					text2 >> sub;
+					if( sub.length() )
+						++nbCol;
+				}
+				while ( text2 );
+				if( nbCol > 1 ){
+					istringstream text2(line);
+					text2 >> buffer_1 >> buffer_2 >> buffer_3;
+					count_aux = 0;
+					for(unsigned int i=0;i<nbAux;i++){
+						if( IsId ){
+							if( i == indId ) text2 >> current_ind;
+							else{
+								text2 >> Aux[count_aux][current_ind-1];
+								count_aux += 1;
+							}
+						}else text2 >> Aux[i][count_at];
+					}
+					if( IsId ){
+						this->AtomList[current_ind-1].pos.x = buffer_1*H1[0]+buffer_2*H2[0]+buffer_3*H3[0];
+						this->AtomList[current_ind-1].pos.y = buffer_1*H1[1]+buffer_2*H2[1]+buffer_3*H3[1];
+						this->AtomList[current_ind-1].pos.z = buffer_1*H1[2]+buffer_2*H2[2]+buffer_3*H3[2];
+						this->AtomList[current_ind-1].type_uint = current_type_uint;
+					}else{
+						this->AtomList[count_at].pos.x = buffer_1*H1[0]+buffer_2*H2[0]+buffer_3*H3[0];
+						this->AtomList[count_at].pos.y = buffer_1*H1[1]+buffer_2*H2[1]+buffer_3*H3[1];
+						this->AtomList[count_at].pos.z = buffer_1*H1[2]+buffer_2*H2[2]+buffer_3*H3[2];
+						this->AtomList[count_at].type_uint = current_type_uint;
+					}
+					count_at += 1;
+				} else {
+					istringstream text(line);
+					text >> buffer_1;
+					getline(file,line);
+					istringstream text1(line);
+					text1 >> buffer_s;
+					TypeStored = false;
+					for(unsigned int i=0;i<this->nbAtomType;i++){
+						if( buffer_s == this->AtomType[i] ){
+							TypeStored = true;
+							current_type_uint = i+1;
+							break;
+						}
+					}
+					if( !TypeStored ){
+						this->AtomType[nbAtomType] = buffer_s;
+						this->AtomMass[nbAtomType] = buffer_1;
+						this->nbAtomType += 1;
+						current_type_uint = this->nbAtomType;
 					}
 				}
-				if( !TypeStored ){
-					this->AtomType[nbAtomType] = buffer_s;
-					this->AtomMass[nbAtomType] = buffer_1;
-					this->nbAtomType += 1;
-					current_type_uint = this->nbAtomType;
-				}
-				getline(file,line);
-				istringstream text2(line);
-				text2 >> buffer_1 >> buffer_2 >> buffer_3;
-				count_aux = 0;
-				for(unsigned int i=0;i<nbAux;i++){
-					if( IsId ){
-						if( i == indId ) text2 >> current_ind;
-						else{
-							text2 >> Aux[count_aux][current_ind-1];
-							count_aux += 1;
-						}
-					}else text2 >> Aux[i][count_at];
-				}
-				if( IsId ){
-					this->AtomList[current_ind-1].pos.x = buffer_1*H1[0]+buffer_2*H2[0]+buffer_3*H3[0];
-					this->AtomList[current_ind-1].pos.y = buffer_1*H1[1]+buffer_2*H2[1]+buffer_3*H3[1];
-					this->AtomList[current_ind-1].pos.z = buffer_1*H1[2]+buffer_2*H2[2]+buffer_3*H3[2];
-					this->AtomList[current_ind-1].type_uint = current_type_uint;
-				}else{
-					this->AtomList[count_at].pos.x = buffer_1*H1[0]+buffer_2*H2[0]+buffer_3*H3[0];
-					this->AtomList[count_at].pos.y = buffer_1*H1[1]+buffer_2*H2[1]+buffer_3*H3[1];
-					this->AtomList[count_at].pos.z = buffer_1*H1[2]+buffer_2*H2[2]+buffer_3*H3[2];
-					this->AtomList[count_at].type_uint = current_type_uint;
-				}
-				count_at += 1;
 			}
 			count += 1;
 		}

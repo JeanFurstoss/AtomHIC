@@ -36,7 +36,7 @@ protected:
 	std::vector<int> AtomTypeUINTRefPC_ave; // array containing the atom specy => i.e. AtomTypeUINTRefPC[i] = type uint of the params in SteinhardtParams_REF_DEF[i]
 	
 	// FOR Gaussian mixture model
-	unsigned int nbClusterMax_GMM = 10; // maximum number of cluster per structure and atom type
+	unsigned int nbClusterMax_GMM = 20; // maximum number of cluster per structure and atom type
 	std::vector<std::string> Struct_GMM_Names; // name of the structures present in the database
 	unsigned int *nbCluster_GMM; // number of cluster for the different structures and atom type present in the database ( nbCluster_GMM[s*nbAtomType+t] => number of cluster for atom type t in structure s)
 	std::vector<std::vector<double>> *ICovs_GMM; // inverse covariant matrix of structures and their cluster present in the database ( Covs_GMM[s*nbAtomType*nbClusterMax_GMM+t*nbClusterMax+n][i][j] => covariant matrix of structure s, atom type t and cluster n)
