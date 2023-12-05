@@ -386,13 +386,23 @@ unsigned int AtomicSystem::Compute1dDensity(std::string auxname, std::string dir
 				for(unsigned int i=0;i<nbPts;i++){
 					this->density_prof[this->density_prof.size()-1][i*2] = 0;
 					this->density_prof[this->density_prof.size()-1][i*2+1] = this->H1[0]*i/(nbPts-1.);
-					for(unsigned int j=0;j<this->nbAtom;j++) this->density_prof[this->density_prof.size()-1][i*2] += MT->gaussian(this->density_prof[this->density_prof.size()-1][i*2+1], this->WrappedPos[j].x, sigma)*(this->AtomMass[this->AtomList[j].type_uint-1]);
+					for(unsigned int j=0;j<this->nbAtom;j++){
+						this->density_prof[this->density_prof.size()-1][i*2] += MT->gaussian(this->density_prof[this->density_prof.size()-1][i*2+1], this->WrappedPos[j].x, sigma)*(this->AtomMass[this->AtomList[j].type_uint-1]);
+						// consider boundary conditions
+						this->density_prof[this->density_prof.size()-1][i*2] += MT->gaussian(this->density_prof[this->density_prof.size()-1][i*2+1], this->WrappedPos[j].x+this->H1[0], sigma)*(this->AtomMass[this->AtomList[j].type_uint-1]);
+						this->density_prof[this->density_prof.size()-1][i*2] += MT->gaussian(this->density_prof[this->density_prof.size()-1][i*2+1], this->WrappedPos[j].x-this->H1[0], sigma)*(this->AtomMass[this->AtomList[j].type_uint-1]);
+					}
 				}
 			}else if( dir == "y" ){
 				for(unsigned int i=0;i<nbPts;i++){
 					this->density_prof[this->density_prof.size()-1][i*2] = 0;
 					this->density_prof[this->density_prof.size()-1][i*2+1] = this->H2[1]*i/(nbPts-1.);
-					for(unsigned int j=0;j<this->nbAtom;j++) this->density_prof[this->density_prof.size()-1][i*2] += MT->gaussian(this->density_prof[this->density_prof.size()-1][i*2+1], this->WrappedPos[j].y, sigma)*(this->AtomMass[this->AtomList[j].type_uint-1]);
+					for(unsigned int j=0;j<this->nbAtom;j++){
+						this->density_prof[this->density_prof.size()-1][i*2] += MT->gaussian(this->density_prof[this->density_prof.size()-1][i*2+1], this->WrappedPos[j].y, sigma)*(this->AtomMass[this->AtomList[j].type_uint-1]);
+						// BC
+						this->density_prof[this->density_prof.size()-1][i*2] += MT->gaussian(this->density_prof[this->density_prof.size()-1][i*2+1], this->WrappedPos[j].y+this->H2[1], sigma)*(this->AtomMass[this->AtomList[j].type_uint-1]);
+						this->density_prof[this->density_prof.size()-1][i*2] += MT->gaussian(this->density_prof[this->density_prof.size()-1][i*2+1], this->WrappedPos[j].y-this->H2[1], sigma)*(this->AtomMass[this->AtomList[j].type_uint-1]);
+					}
 				}
 			}else if( dir == "z" ){
 				for(unsigned int i=0;i<nbPts;i++){
@@ -438,7 +448,12 @@ unsigned int AtomicSystem::Compute1dDensity(std::string auxname, std::string dir
 				for(unsigned int i=0;i<nbPts;i++){
 					this->density_prof[this->density_prof.size()-1][i*2] = 0;
 					this->density_prof[this->density_prof.size()-1][i*2+1] = this->H2[1]*i/(nbPts-1.);
-					for(unsigned int j=0;j<this->nbAtom;j++) this->density_prof[this->density_prof.size()-1][i*2] += MT->gaussian(this->density_prof[this->density_prof.size()-1][i*2+1], this->WrappedPos[j].y, sigma);
+					for(unsigned int j=0;j<this->nbAtom;j++){
+						this->density_prof[this->density_prof.size()-1][i*2] += MT->gaussian(this->density_prof[this->density_prof.size()-1][i*2+1], this->WrappedPos[j].y, sigma);
+						//BC
+						this->density_prof[this->density_prof.size()-1][i*2] += MT->gaussian(this->density_prof[this->density_prof.size()-1][i*2+1], this->WrappedPos[j].y+this->H2[1], sigma);
+						this->density_prof[this->density_prof.size()-1][i*2] += MT->gaussian(this->density_prof[this->density_prof.size()-1][i*2+1], this->WrappedPos[j].y-this->H2[1], sigma);
+					}
 				}
 			}else if( dir == "z" ){
 				for(unsigned int i=0;i<nbPts;i++){
@@ -467,7 +482,12 @@ unsigned int AtomicSystem::Compute1dDensity(std::string auxname, std::string dir
 			for(unsigned int i=0;i<nbPts;i++){
 				this->density_prof[this->density_prof.size()-1][i*2] = 0;
 				this->density_prof[this->density_prof.size()-1][i*2+1] = this->H2[1]*i/(nbPts-1.);
-				for(unsigned int j=0;j<this->nbAtom;j++) this->density_prof[this->density_prof.size()-1][i*2] += MT->gaussian(this->density_prof[this->density_prof.size()-1][i*2+1], this->WrappedPos[j].y, sigma)*(this->Aux[indexaux][j]);
+				for(unsigned int j=0;j<this->nbAtom;j++){
+					this->density_prof[this->density_prof.size()-1][i*2] += MT->gaussian(this->density_prof[this->density_prof.size()-1][i*2+1], this->WrappedPos[j].y, sigma)*(this->Aux[indexaux][j]);
+					//BC
+					this->density_prof[this->density_prof.size()-1][i*2] += MT->gaussian(this->density_prof[this->density_prof.size()-1][i*2+1], this->WrappedPos[j].y+this->H2[1], sigma)*(this->Aux[indexaux][j]);
+					this->density_prof[this->density_prof.size()-1][i*2] += MT->gaussian(this->density_prof[this->density_prof.size()-1][i*2+1], this->WrappedPos[j].y-this->H2[1], sigma)*(this->Aux[indexaux][j]);
+				}
 			}
 		}else if( dir == "z" ){
 			for(unsigned int i=0;i<nbPts;i++){

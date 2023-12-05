@@ -1456,6 +1456,7 @@ void Bicrystal::searchGBPos(){
 		unsigned int indMaxDiso = 0;
 		double MeanDiso = 0.;
 		double FracLength = 0.01;
+		cout << IsVacuum << endl;
 		for(unsigned int i=0;i<this->density_nbPts[ind_DisoDens];i++){
 			buffer = this->density_prof[ind_DisoDens][i*2+1];
 			if( this->IsVacuum && !this->IsCentered && buffer > this->VacuumHi ) buffer -= this->Ldir;
@@ -1503,7 +1504,7 @@ void Bicrystal::searchGBPos(){
 		}
 		// if one of the two is higher than the mean we are in local minimum inside the GB
 		// => search the following minimum
-		double facMean = 2.3;
+		double facMean = 1.5;
 		unsigned int max_min_search = 250;
 		unsigned int count_min_search = 0;
 		bool maxfound;
