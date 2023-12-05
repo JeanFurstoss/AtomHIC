@@ -20,7 +20,7 @@ option(BUILD_SHARED_LIBRARY true)
 option(BUILD_TOOLS true)
 
 #Enable or disable testing
-option(BUILD_TESTS false)
+option(BUILD_TESTS true)
 
 # build type : Release or Debug
 #set(CMAKE_BUILD_TYPE "Debug")

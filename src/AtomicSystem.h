@@ -108,7 +108,7 @@ public:
 	void print_cfg(const std::string& filename);
 	void printSystem_aux(const std::string& filename, const std::string& AuxId);
 	unsigned int searchNeighbours(const double& rc); // return nbNMax which is crucial for findings neighbours from the list
-	unsigned int searchNeighbours_restricted(const double& rc, unsigned int *IndexToSearch, unsigned int nbToSearch, unsigned int *IndexForSearch, unsigned int nbForSearch); // return nbNMax which is crucial for findings neighbours from the list
+	unsigned int searchNeighbours_restricted(const double& rc, const std::vector<unsigned int> & IndexToSearch, const std::vector<unsigned int> & IndexForSearch); // return nbNMax which is crucial for findings neighbours from the list
 	void computeWrap();
 	unsigned int Compute1dDensity(std::string auxname, std::string dir, double sigma, unsigned int nbPts); // compute and store the 1D density profile of a given auxiliary property, the metho return the index of the given density
 	void Print1dDensity(std::string filename, std::string auxname);
