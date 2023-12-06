@@ -140,7 +140,11 @@ int main(int argc, char *argv[])
 	RestrictedSystem.setAux(AuxGT,"grainID");
 	RestrictedSystem.setAux(AuxRS,"Neigh");
 	RestrictedSystem.printSystem_aux("ResSys.cfg","Struct grainID Neigh");
-	
+
+	delete[] AuxStruct;	
+	delete[] AuxGT;	
+	delete[] AuxRS;
+
 	unsigned int size_struct_res;
 	unsigned struct_ind_res = RestrictedSystem.getAuxIdAndSize("Struct",size_struct_res);
 	unsigned int size_gt_res;
@@ -149,6 +153,7 @@ int main(int argc, char *argv[])
 	const unsigned int nbNMax_res = RestrictedSystem.searchNeighbours_restricted(25.,ResSys_ToSearch,ResSys_ForSearch);
 	
 	// Paralelize
+	#pragma omp parallel for
 	for(unsigned int i=0;i<ResSys_ToSearch.size();i++) {
 		double xpos = RestrictedSystem.getWrappedPos(ResSys_ToSearch[i]).x;
 		double ypos = RestrictedSystem.getWrappedPos(ResSys_ToSearch[i]).y;
@@ -254,8 +259,8 @@ int main(int argc, char *argv[])
 	delete[] GBAux;
 	delete[] count_struct;
 	delete[] RestrictedAtoms;
-	delete[] AuxStruct;
-	delete[] AuxGT;
+	//delete[] AuxStruct;
+	//delete[] AuxGT;
 
 	return 0;
 }

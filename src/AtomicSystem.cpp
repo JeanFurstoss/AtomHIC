@@ -939,6 +939,7 @@ unsigned int AtomicSystem::searchNeighbours_restricted(const double& rc, const v
         	        }
         	}
 	}
+	cout << "Cells done"<< endl;
 	this->nbMaxN = Cells_ForSearch[0].size();
 	unsigned int nbAt_test = Cells_ForSearch[0].size();
 	unsigned int nbAt_test_ToSearch = Cells_ToSearch[0].size();
@@ -949,13 +950,14 @@ unsigned int AtomicSystem::searchNeighbours_restricted(const double& rc, const v
 	}
 	if( nbAt_test != nbForSearch ) cout << "We miss atoms during cell list" << endl;
 	if( nbAt_test_ToSearch != nbToSearch ) cout << "We miss atoms during cell list" << endl;
-	this->nbMaxN *= (int) (5.*4.*M_PI*pow(rc,3.)/(3.*CellSizeX*CellSizeY*CellSizeZ)); // 1.5 is a security factor
+	this->nbMaxN *= (int) (1.5*4.*M_PI*pow(rc,3.)/(3.*CellSizeX*CellSizeY*CellSizeZ)); // 1.5 is a security factor
 	if( this->IsNeighbours ){
 		delete[] this->Neighbours;
 		delete[] this->CLNeighbours;
 	} // TODO maybe issue here if we delete the var we may need to reclare them ?
 	unsigned long int SizeNeigh = ((unsigned long int) (this->nbMaxN) + 1)*((unsigned long int) nbToSearch);
 	unsigned long int SizeCLNeigh = ((unsigned long int) (this->nbMaxN))*((unsigned long int) nbToSearch)*((unsigned long int) 3);
+	cout << SizeNeigh << " " << SizeCLNeigh << endl;
 	this->Neighbours = new unsigned int[SizeNeigh];
 	this->CLNeighbours = new int[SizeCLNeigh]; // contain the periodic condition (Nclx, Ncly, Nclz) applied for atom to be a neighbour
 	// Perform neighbour research
@@ -965,6 +967,7 @@ unsigned int AtomicSystem::searchNeighbours_restricted(const double& rc, const v
 	double prog=0.;
 	unsigned int countN = 0;
 	unsigned int currentId, currentId2;
+	cout << "done ! number of neighbour max = " << this->nbMaxN << endl;
 	//cout << "Performing neighbour research" << endl;
 	//cout << "\r[" << string(bar_length*prog,'X') << string(bar_length*(1-prog),'-') << "] " << setprecision(3) << 100*prog << "%";
 	//#pragma omp parallel for private(countN,currentId,xpos,ypos,zpos,Nclx,Ncly,Nclz,ibx,jby,kbz,currentId2,d_squared)
