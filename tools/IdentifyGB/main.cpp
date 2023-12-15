@@ -16,13 +16,15 @@ using namespace std;
 int main(int argc, char *argv[])
 {
 	string InputFilename, OutputFilename;
-	double SiO_d;
+	double rcut_large;
 	double SecFac = 2.;
-	if( argc == 3 ){
+	if( argc == 4 ){
 		InputFilename = argv[1];
 		OutputFilename = argv[2];
+		istringstream iss_rc(argv[3]);
+		iss_rc >> rcut_large;
 	}else{
-		cerr << "Usage: ./IdentifyGB InputFilename OutputFilename" << endl;
+		cerr << "Usage: ./IdentifyGB InputFilename OutputFilename rcut_large" << endl;
 		cerr << "the GB field returned here consists of G1Id.G2Id => when the number of grain is higher than 9 there is doubt and this program shoudl be modified" << endl;
 		return EXIT_FAILURE;
 	}
@@ -97,6 +99,8 @@ int main(int argc, char *argv[])
 		delete[] NbNeight;
 	}
 
+	SystemG->~AtomicSystem();
+
 	// search for isolated ions the structure the most represented in its neighbour and change it own struct according to
 	cout << "Treating restricted system" << endl;
 	cout << "Homogeneize interfaces" << endl;
@@ -108,6 +112,8 @@ int main(int argc, char *argv[])
 		unsigned int ind_max = MT.max_ind(count_struct,nbStruct);
 		MySystem.getAux(struct_ind)[IsolGrainId[i]*size_struct] = ind_max;
 	}
+
+	MySystem.deleteNeighList(); // free memory
 
 	// Create new system with only edge ions and set struct and grainID auxiliary
 	vector<unsigned int> ResSys_ToSearch;
@@ -150,11 +156,13 @@ int main(int argc, char *argv[])
 	unsigned int size_gt_res;
 	unsigned gt_ind_res = RestrictedSystem.getAuxIdAndSize("grainID",size_gt_res);
 	cout << "Compute GB identifier" << endl;
-	const unsigned int nbNMax_res = RestrictedSystem.searchNeighbours_restricted(25.,ResSys_ToSearch,ResSys_ForSearch);
-	
+	const unsigned long int nbNMax_res = RestrictedSystem.searchNeighbours_restricted(rcut_large,ResSys_ToSearch,ResSys_ForSearch);
+	const unsigned long int one_l = 1;	
+	const unsigned long int two_l = 2;	
+	const unsigned long int three_l = 3;	
 	// Paralelize
 	#pragma omp parallel for
-	for(unsigned int i=0;i<ResSys_ToSearch.size();i++) {
+	for(unsigned long int i=0;i<ResSys_ToSearch.size();i++) {
 		double xpos = RestrictedSystem.getWrappedPos(ResSys_ToSearch[i]).x;
 		double ypos = RestrictedSystem.getWrappedPos(ResSys_ToSearch[i]).y;
 		double zpos = RestrictedSystem.getWrappedPos(ResSys_ToSearch[i]).z;
@@ -163,8 +171,8 @@ int main(int argc, char *argv[])
 		vector<unsigned int> GrainId;
 		bool IsNGB, IsGrainAlreadyStored;
 		unsigned int id;
-		for(unsigned int j=0;j<RestrictedSystem.getNeighbours(i*(nbNMax_res+1));j++){
-			id = RestrictedSystem.getNeighbours(i*(nbNMax_res+1)+j+1);
+		for(unsigned long int j=0;j<RestrictedSystem.getNeighbours(i*(nbNMax_res+one_l));j++){
+			id = RestrictedSystem.getNeighbours(i*(nbNMax_res+one_l)+j+one_l);
 			IsGrainAlreadyStored = false;
 			for(unsigned int k=0;k<GrainId.size();k++){
 				if( (unsigned int) RestrictedSystem.getAux(gt_ind_res)[id] == GrainId[k] ){
@@ -173,9 +181,9 @@ int main(int argc, char *argv[])
 				}
 			}
 			if( !IsGrainAlreadyStored ) GrainId.push_back((unsigned int) RestrictedSystem.getAux(gt_ind_res)[id]);
-			double xp = RestrictedSystem.getWrappedPos(id).x+RestrictedSystem.getCLNeighbours(i*nbNMax_res*3+j*3)*RestrictedSystem.getH1()[0]+RestrictedSystem.getCLNeighbours(i*nbNMax_res*3+j*3+1)*RestrictedSystem.getH2()[0]+RestrictedSystem.getCLNeighbours(i*nbNMax_res*3+j*3+2)*RestrictedSystem.getH3()[0]-xpos;
-			double yp = RestrictedSystem.getWrappedPos(id).y+RestrictedSystem.getCLNeighbours(i*nbNMax_res*3+j*3)*RestrictedSystem.getH1()[1]+RestrictedSystem.getCLNeighbours(i*nbNMax_res*3+j*3+1)*RestrictedSystem.getH2()[1]+RestrictedSystem.getCLNeighbours(i*nbNMax_res*3+j*3+2)*RestrictedSystem.getH3()[1]-ypos;
-			double zp = RestrictedSystem.getWrappedPos(id).z+RestrictedSystem.getCLNeighbours(i*nbNMax_res*3+j*3)*RestrictedSystem.getH1()[2]+RestrictedSystem.getCLNeighbours(i*nbNMax_res*3+j*3+1)*RestrictedSystem.getH2()[2]+RestrictedSystem.getCLNeighbours(i*nbNMax_res*3+j*3+2)*RestrictedSystem.getH3()[2]-zpos;
+			double xp = RestrictedSystem.getWrappedPos(id).x+RestrictedSystem.getCLNeighbours(i*nbNMax_res*three_l+j*three_l)*RestrictedSystem.getH1()[0]+RestrictedSystem.getCLNeighbours(i*nbNMax_res*three_l+j*three_l+one_l)*RestrictedSystem.getH2()[0]+RestrictedSystem.getCLNeighbours(i*nbNMax_res*three_l+j*three_l+two_l)*RestrictedSystem.getH3()[0]-xpos;
+			double yp = RestrictedSystem.getWrappedPos(id).y+RestrictedSystem.getCLNeighbours(i*nbNMax_res*three_l+j*three_l)*RestrictedSystem.getH1()[1]+RestrictedSystem.getCLNeighbours(i*nbNMax_res*three_l+j*three_l+one_l)*RestrictedSystem.getH2()[1]+RestrictedSystem.getCLNeighbours(i*nbNMax_res*three_l+j*three_l+two_l)*RestrictedSystem.getH3()[1]-ypos;
+			double zp = RestrictedSystem.getWrappedPos(id).z+RestrictedSystem.getCLNeighbours(i*nbNMax_res*three_l+j*three_l)*RestrictedSystem.getH1()[2]+RestrictedSystem.getCLNeighbours(i*nbNMax_res*three_l+j*three_l+one_l)*RestrictedSystem.getH2()[2]+RestrictedSystem.getCLNeighbours(i*nbNMax_res*three_l+j*three_l+two_l)*RestrictedSystem.getH3()[2]-zpos;
 			Dist[(unsigned int) RestrictedSystem.getAux(gt_ind_res)[id] - 1].push_back(pow(xp,2.)+pow(yp,2.)+pow(zp,2.)); 
 		}
 		if( GrainId.size() < 2 ){

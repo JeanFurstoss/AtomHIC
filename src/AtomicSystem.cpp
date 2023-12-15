@@ -681,7 +681,7 @@ unsigned int AtomicSystem::searchNeighbours(const double& rc){
 		if( Cells[i].size() > this->nbMaxN ) this->nbMaxN = Cells[i].size();
 	}
 	if( nbAt_test != this->nbAtom ) cout << "We miss atoms during cell list" << endl;
-	this->nbMaxN *= (int) (5.*4.*M_PI*pow(rc,3.)/(3.*CellSizeX*CellSizeY*CellSizeZ)); // 1.5 is a security factor
+	this->nbMaxN *= (int) (1.5*4.*M_PI*pow(rc,3.)/(3.*CellSizeX*CellSizeY*CellSizeZ)); // 1.5 is a security factor
 	if( this->IsNeighbours ){
 		delete[] this->Neighbours;
 		delete[] this->CLNeighbours;
@@ -769,6 +769,7 @@ unsigned int AtomicSystem::searchNeighbours(const double& rc){
         //auto end = chrono::high_resolution_clock::now();
         //auto duration = chrono::duration_cast<chrono::microseconds>(end - start);
         //cout << "Execution time : " << duration.count() << endl;
+	vector<vector<unsigned int>>().swap(Cells); // free the memory allocated for cells
 	return this->nbMaxN;
 }
 
@@ -965,8 +966,11 @@ unsigned int AtomicSystem::searchNeighbours_restricted(const double& rc, const v
 	int ibx, jby, kbz;
 	int Nclx, Ncly, Nclz;
 	double prog=0.;
-	unsigned int countN = 0;
-	unsigned int currentId, currentId2;
+	unsigned long int countN = 0;
+	unsigned long int currentId, currentId2;
+	unsigned long int one_l = 1;
+	unsigned long int two_l = 1;
+	unsigned long int three_l = 3;
 	cout << "done ! number of neighbour max = " << this->nbMaxN << endl;
 	//cout << "Performing neighbour research" << endl;
 	//cout << "\r[" << string(bar_length*prog,'X') << string(bar_length*(1-prog),'-') << "] " << setprecision(3) << 100*prog << "%";
@@ -977,8 +981,10 @@ unsigned int AtomicSystem::searchNeighbours_restricted(const double& rc, const v
 				//prog = double(i*nbCellZ*nbCellY+j*nbCellZ+k)/double(nbCellX*nbCellY*nbCellZ);
 				//cout << "\r[" << string(floor(bar_length*prog),'X') << string(ceil(bar_length*(1-prog)),'-') << "] " << setprecision(3) << 100*prog << "%";
 				for(unsigned int at1 = 0; at1<Cells_ToSearch[i*nbCellZ*nbCellY+j*nbCellZ+k].size(); at1++){
+					bool Over = false;
 				        countN = 0;
 					currentId = Cells_ToSearch[i*nbCellZ*nbCellY+j*nbCellZ+k][at1];
+	if( currentId > nbToSearch ) cout << "Issue HERE" << endl;
 					this->Neighbours[currentId*(this->nbMaxN+1)] = 0; // initialize to zero the neighbour counters
 					xpos = this->WrappedPos[IndexToSearch[currentId]].x;
 					ypos = this->WrappedPos[IndexToSearch[currentId]].y;
@@ -1020,17 +1026,24 @@ unsigned int AtomicSystem::searchNeighbours_restricted(const double& rc, const v
 									currentId2 = Cells_ForSearch[ibx*nbCellY*nbCellZ+jby*nbCellZ+kbz][at2];
 									d_squared = pow(this->WrappedPos[currentId2].x-xpos+Nclx*H1[0]+Ncly*H2[0]+Nclz*H3[0],2.)+pow(this->WrappedPos[currentId2].y-ypos+Nclx*H1[1]+Ncly*H2[1]+Nclz*H3[1],2.)+pow(this->WrappedPos[currentId2].z-zpos+Nclx*H1[2]+Ncly*H2[2]+Nclz*H3[2],2.);
 									if( d_squared > zeronum && d_squared < rc_squared ){
-										this->Neighbours[currentId*(this->nbMaxN+1)] += 1; // add this neighbours to the neighbour count
-										this->Neighbours[currentId*(this->nbMaxN+1)+countN+1] = currentId2; // add this neighbours to the neighbour list 
-										this->CLNeighbours[currentId*this->nbMaxN*3+countN*3] = Nclx; // store the cl used for this neighbour
-										this->CLNeighbours[currentId*this->nbMaxN*3+countN*3+1] = Ncly; // store the cl used for this neighbour
-										this->CLNeighbours[currentId*this->nbMaxN*3+countN*3+2] = Nclz; // store the cl used for this neighbour
+										this->Neighbours[currentId*(this->nbMaxN+one_l)] += 1; // add this neighbours to the neighbour count
+										this->Neighbours[currentId*(this->nbMaxN+one_l)+countN+one_l] = currentId2; // add this neighbours to the neighbour list 
+										this->CLNeighbours[(this->nbMaxN)*currentId*three_l+countN*three_l] = Nclx; // store the cl used for this neighbour
+										this->CLNeighbours[(this->nbMaxN)*currentId*three_l+countN*three_l+one_l] = Ncly; // store the cl used for this neighbour
+										this->CLNeighbours[(this->nbMaxN)*currentId*three_l+countN*three_l+two_l] = Nclz; // store the cl used for this neighbour
 										countN += 1;
+										if( countN >= this->nbMaxN ){
+											Over = true;
+											cout << "Warning the number of found neighbour exceed the maximum number of neighbour allowed" << endl;
+											break;
+										}
 									}
 								}
+								if( Over ) break;
 							}
+							if( Over ) break;
 						}
-						if( countN > this->nbMaxN ) cout << "Warning the number of found neighbour exceed the maximum number of neighbour allowed" << endl;
+						if( Over ) break;
 					}
 				}
 			}
@@ -1042,6 +1055,8 @@ unsigned int AtomicSystem::searchNeighbours_restricted(const double& rc, const v
         //auto end = chrono::high_resolution_clock::now();
         //auto duration = chrono::duration_cast<chrono::microseconds>(end - start);
         //cout << "Execution time : " << duration.count() << endl;
+	vector<vector<unsigned int>>().swap(Cells_ToSearch); // free memory allocated for cells
+	vector<vector<unsigned int>>().swap(Cells_ForSearch);
 	return this->nbMaxN;
 }
 

@@ -22,7 +22,7 @@ protected:
 	bool IsAtomListMine = true;
 	Position *WrappedPos;
 	bool IsWrappedPos = false;
-	unsigned int nbMaxN; // Maximum number of neighbours (computed as function of cuttof radius)
+	unsigned long int nbMaxN; // Maximum number of neighbours (computed as function of cuttof radius)
 	unsigned int *Neighbours; // List of neigbors, structured as 2D array [ nbAtom x (nbMaxNeighbours+1) ] where the first value of each line corresponds to the number of neighbours for the ith atom, i.e. Neighbours[i*(nbMaxN+1)] = nb of neighbour of atom i, Neighbours[i*(nbMaxN+1)+j+1] = id of the jth neighbour of atom i
 	int *CLNeighbours; // List of coefficient (NclX,Ncly,Nclz) applied to the atom position to be a neighbour [ nbAtom x (nbMaxNeighbours*3) ] where the first value of each line corresponds to the number of neighbours for the ith atom, i.e. CLNeighbours[i*nbMaxN*3+j*3] = integer applied to H1 to the jth neighbour of atom i for being its neighbour, CLNeighbours[i*nbMaxN*3+j*3+1] = integer applied to H2 to the jth neighbour of atom i for being its neighbour, CLNeighbours[i*nbMaxN*3+j*3+2] = integer applied to H3 to the jth neighbour of atom i for being its neighbour
 	bool IsNeighbours = false;
@@ -75,10 +75,10 @@ public:
 	double get_current_rc(){ return this->current_rc_neigh; }
 	Position getWrappedPos(const unsigned int AuxId){ if( !IsWrappedPos ) computeWrap(); return this->WrappedPos[AuxId]; }
 	unsigned int* getNeighbours(){ return this->Neighbours; }
-	unsigned int getNeighbours(const unsigned int Id){ return this->Neighbours[Id]; }
+	unsigned int getNeighbours(const unsigned long int Id){ return this->Neighbours[Id]; }
 	int* getCLNeighbours(){ return this->CLNeighbours; }
 	std::vector<int>* getNotSepTag(){ return this->NotSepTag; }
-	int getCLNeighbours(const unsigned int Id){ return this->CLNeighbours[Id]; }
+	int getCLNeighbours(const unsigned long int Id){ return this->CLNeighbours[Id]; }
 	unsigned int getNbMaxN(){ return this->nbMaxN; }
 	bool getIsNeighbours(){ return this->IsNeighbours; }
 	bool getIsCrystalDefined(){ return this->IsCrystalDefined; }
@@ -112,6 +112,12 @@ public:
 	void computeWrap();
 	unsigned int Compute1dDensity(std::string auxname, std::string dir, double sigma, unsigned int nbPts); // compute and store the 1D density profile of a given auxiliary property, the metho return the index of the given density
 	void Print1dDensity(std::string filename, std::string auxname);
+	void deleteNeighList(){
+		if( this->IsNeighbours ){
+			delete[] this->Neighbours;
+			delete[] this->CLNeighbours;
+		}
+	}
 	std::vector<unsigned int> selectAtomInBox(const double x_lo,const double x_hi,const double y_lo,const double y_hi,const double z_lo,const double z_hi);
 	~AtomicSystem();
 };
