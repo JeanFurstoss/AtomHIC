@@ -2051,7 +2051,12 @@ string ComputeAuxiliary::getSteinhardtDatabase(string CrystalName){
 		#ifdef STEINHARDT_PERICLASE_DATABASE
 		database = STEINHARDT_PERICLASE_DATABASE;
 		#endif
+	}else if( CrystalName == "Alumine" ){
+		#ifdef STEINHARDT_ALUMINE_DATABASE
+		database = STEINHARDT_ALUMINE_DATABASE;
+		#endif
 	}
+
 	if( database.empty() ){
 		cerr << "Warning database environment for crystal is empty" << endl;
 		exit(EXIT_FAILURE);

@@ -1430,7 +1430,7 @@ void AtomicSystem::read_cfg_file(const string& filename){
 		double buffer_1, buffer_2, buffer_3, buffer_4, buffer_5;
 		double xlo,xhi,ylo,yhi,zlo,zhi;
 		string buffer_s, buffer_s_1, buffer_s_2, line, aux_name;
-		bool other_cfg = false, IsElem = false, IsReducedCoords = false;
+		bool other_cfg = false, IsReducedCoords = false;
 		unsigned int nbAux_norm=5;
 		vector<string> befAuxNames;
 		while(file){
@@ -1706,8 +1706,13 @@ void AtomicSystem::print_cfg(const string& filename){
 	       	writefile << "BOX BOUNDS xy xz yz pp pp pp\n" << this->MT->min(arr,4) << "\t" << this->H1[0]+this->MT->max(arr,4) << "\t" << H2[0] << "\n" << this->MT->min(arr_2,2) << "\t" << this->H2[1]+this->MT->max(arr_2,2) << "\t" << H3[0] << "\n0\t" << H3[2] << "\t" << H3[1] << "\n";
 	}
 	else writefile << "BOX BOUNDS pp pp pp\n" << "0\t" << H1[0] << "\n0\t" << H2[1] << "\n0\t" << H3[2] << "\n";
-	writefile << "ITEM: ATOMS id type element xu yu zu q\n";
-	for(unsigned int i=0;i<this->nbAtom;i++) writefile << i+1 << " " << this->AtomList[i].type_uint << " " << this->AtomType[this->AtomList[i].type_uint-1] << " " << this->AtomList[i].pos.x << " " << this->AtomList[i].pos.y << " " << this->AtomList[i].pos.z << " " << this->AtomCharge[this->AtomList[i].type_uint-1] << "\n";
+	if(IsElem ){
+		writefile << "ITEM: ATOMS id type element xu yu zu q\n";
+		for(unsigned int i=0;i<this->nbAtom;i++) writefile << i+1 << " " << this->AtomList[i].type_uint << " " << this->AtomType[this->AtomList[i].type_uint-1] << " " << this->AtomList[i].pos.x << " " << this->AtomList[i].pos.y << " " << this->AtomList[i].pos.z << " " << this->AtomCharge[this->AtomList[i].type_uint-1] << "\n";
+	}else{
+		writefile << "ITEM: ATOMS id type xu yu zu q\n";
+		for(unsigned int i=0;i<this->nbAtom;i++) writefile << i+1 << " " << this->AtomList[i].type_uint << " " << this->AtomList[i].pos.x << " " << this->AtomList[i].pos.y << " " << this->AtomList[i].pos.z << " " << this->AtomCharge[this->AtomList[i].type_uint-1] << "\n";
+	}
 	writefile.close();
 }
 
@@ -1740,19 +1745,36 @@ void AtomicSystem::printSystem_aux(const string& filename, const string& AuxName
 	       	writefile << "BOX BOUNDS xy xz yz pp pp pp\n" << this->MT->min(arr,4) << "\t" << this->H1[0]+this->MT->max(arr,4) << "\t" << H2[0] << "\n" << this->MT->min(arr_2,2) << "\t" << this->H2[1]+this->MT->max(arr_2,2) << "\t" << H3[0] << "\n0\t" << H3[2] << "\t" << H3[1] << "\n";
 	}
 	else writefile << "BOX BOUNDS pp pp pp\n" << "0\t" << H1[0] << "\n0\t" << H2[1] << "\n0\t" << H3[2] << "\n";
-	writefile << "ITEM: ATOMS id type element xu yu zu q";
-        for(unsigned int i=0;i<AuxId.size();i++){
-		if( Aux_size[AuxId[i]] == 1 ) writefile << " " << this->Aux_name[AuxId[i]];
-		else for(unsigned int j=0;j<Aux_size[AuxId[i]];j++) writefile << " " << this->Aux_name[AuxId[i]] << "[" << j+1 << "]";
-	}
-	writefile << "\n";
-	for(unsigned int i=0;i<this->nbAtom;i++){
-		writefile << i+1 << " " << this->AtomList[i].type_uint << " " << this->AtomType[this->AtomList[i].type_uint-1] << " " << this->AtomList[i].pos.x << " " << this->AtomList[i].pos.y << " " << this->AtomList[i].pos.z << " " << this->AtomCharge[this->AtomList[i].type_uint-1];
-        	for(unsigned int j=0;j<AuxId.size();j++){
-			if( Aux_size[AuxId[j]] == 1 ) writefile << " " << this->Aux[AuxId[j]][i];
-			else for(unsigned int k=0;k<Aux_size[AuxId[j]];k++) writefile << " " << this->Aux[AuxId[j]][i*Aux_size[AuxId[j]]+k];
+	if( IsElem ){
+		writefile << "ITEM: ATOMS id type element xu yu zu q";
+        	for(unsigned int i=0;i<AuxId.size();i++){
+			if( Aux_size[AuxId[i]] == 1 ) writefile << " " << this->Aux_name[AuxId[i]];
+			else for(unsigned int j=0;j<Aux_size[AuxId[i]];j++) writefile << " " << this->Aux_name[AuxId[i]] << "[" << j+1 << "]";
 		}
 		writefile << "\n";
+		for(unsigned int i=0;i<this->nbAtom;i++){
+			writefile << i+1 << " " << this->AtomList[i].type_uint << " " << this->AtomType[this->AtomList[i].type_uint-1] << " " << this->AtomList[i].pos.x << " " << this->AtomList[i].pos.y << " " << this->AtomList[i].pos.z << " " << this->AtomCharge[this->AtomList[i].type_uint-1];
+        		for(unsigned int j=0;j<AuxId.size();j++){
+				if( Aux_size[AuxId[j]] == 1 ) writefile << " " << this->Aux[AuxId[j]][i];
+				else for(unsigned int k=0;k<Aux_size[AuxId[j]];k++) writefile << " " << this->Aux[AuxId[j]][i*Aux_size[AuxId[j]]+k];
+			}
+			writefile << "\n";
+		}
+	}else{
+		writefile << "ITEM: ATOMS id type xu yu zu q";
+        	for(unsigned int i=0;i<AuxId.size();i++){
+			if( Aux_size[AuxId[i]] == 1 ) writefile << " " << this->Aux_name[AuxId[i]];
+			else for(unsigned int j=0;j<Aux_size[AuxId[i]];j++) writefile << " " << this->Aux_name[AuxId[i]] << "[" << j+1 << "]";
+		}
+		writefile << "\n";
+		for(unsigned int i=0;i<this->nbAtom;i++){
+			writefile << i+1 << " " << this->AtomList[i].type_uint << " " << this->AtomList[i].pos.x << " " << this->AtomList[i].pos.y << " " << this->AtomList[i].pos.z << " " << this->AtomCharge[this->AtomList[i].type_uint-1];
+        		for(unsigned int j=0;j<AuxId.size();j++){
+				if( Aux_size[AuxId[j]] == 1 ) writefile << " " << this->Aux[AuxId[j]][i];
+				else for(unsigned int k=0;k<Aux_size[AuxId[j]];k++) writefile << " " << this->Aux[AuxId[j]][i*Aux_size[AuxId[j]]+k];
+			}
+			writefile << "\n";
+		}
 	}
 	writefile.close();
 }

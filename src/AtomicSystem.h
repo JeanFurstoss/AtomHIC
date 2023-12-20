@@ -36,6 +36,7 @@ protected:
 	double *G2;
 	double *G3;
 	bool IsG = false;
+	bool IsElem = false;
 	double timestep; // timestep related to the atomic system (cfg lammps file)
 	bool IsCharge;
 	bool IsTilted;
