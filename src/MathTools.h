@@ -46,7 +46,7 @@ public:
 	double gaussian_prefac(double x, double mu, double sigma, double prefac);
 	double det(const double *mat);
 	void invert3x3(const double *mat, double *inv);
-	void plane_fit(const std::vector<std::vector<double>> data, double &a, double &b, double &c);
+	void plane_fit(const std::vector<std::vector<double>> & data, double &a, double &b, double &c);
 	void gaussian_fit(const std::vector<double> data, double &mu, double &sigma, double &prefac);
 	void Vec2rotMat(const double *vec, const double &theta, double *rotMat);
 	void MatDotVec(const double *mat, const double *vec, double *prod);

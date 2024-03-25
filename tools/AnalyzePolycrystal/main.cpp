@@ -15,93 +15,107 @@ using namespace std;
 
 int main(int argc, char *argv[])
 {
+	// Here we use a dump file containing (1) the structure of a given ion (either interface, amorph or crystal), (2) the GB Id, (3) the atomic volume, (4) strain and (5) stress tensor
+	// the objective is to return a file for each GB Id with:
+	// nx ny nz AmorphousThickness GBSurface Interface1Strain(AndStress)Tensor Interface2Strain(AndStress)Tensor AmorphousStrain(AndStress)Tensor Interface1Strain(AndStress)Invariant Interface2Strain(AndStress)Invariants AmorphousStrain(AndStress)Invariants 
 	string InputFilename, OutputFilename;
-	double SiO_d;
-	double SecFac = 2.;
+
+
 	if( argc == 3 ){
 		InputFilename = argv[1];
 		OutputFilename = argv[2];
 	}else{
-		cerr << "Usage: ./IdentifyGB InputFilename OutputFilename" << endl;
-		cerr << "the GB field returned here consists of G1Id.G2Id => when the number of grain is higher than 9 there is doubt and this program shoudl be modified" << endl;
+		cerr << "Usage: ./AnalyzePolycrystal InputFilename OutputFilename" << endl;
+		cerr << "TODO description" << endl;
 		return EXIT_FAILURE;
 	}
 	AtomicSystem MySystem(InputFilename);
 
 	const unsigned int nbAt = MySystem.getNbAtom();
-	const unsigned int nbNMax = MySystem.getNbMaxN();
 
-	double *GBAux = new double[nbAt];
-
-	vector<double> Struct_GB;
-	Struct_GB.push_back(0); // amorph
-	Struct_GB.push_back(5); // interface
-
-	unsigned int size_struct;
-	unsigned struct_ind = MySystem.getAuxIdAndSize("struct",size_struct);
-	unsigned int size_gt;
-	unsigned gt_ind = MySystem.getAuxIdAndSize("grainID",size_gt);
-
-	unsigned int nbGrain = 8; // TODO generalize	
+	unsigned int Struct_GB = 5; //TODO add in argument of exe
+	unsigned int Struct_Amorph = 0;
 	
-	MySystem.searchNeighbours(10.);
-	
-	// Paralelize
+	// Get the different aux properties
+	unsigned int size_Struct;
+	unsigned Struct_ind = MySystem.getAuxIdAndSize("Struct",size_Struct);
+	unsigned int size_GBId;
+	unsigned GBId_ind = MySystem.getAuxIdAndSize("GBId",size_GBId);
+	unsigned int size_AtVol;
+	unsigned AtVol_ind = MySystem.getAuxIdAndSize("AtVol",size_AtVol);
+	unsigned int size_Stress;
+	unsigned Stress_ind = MySystem.getAuxIdAndSize("c_s",size_Stress);
+	unsigned int size_AtStrain;
+	unsigned AtStrain_ind = MySystem.getAuxIdAndSize("AtomicStrain",size_AtStrain);
+
+	// Search which ions belongs to GB and differentiate the one in amorph and the one in interface
+	vector<double> GBId_arr;
+	vector<vector<unsigned int>> GBIons;
+	cout << "Searching GB ions" << endl;
+	// TODO Paralelize?
 	for(unsigned int i=0;i<nbAt;i++) {
-		MathTools MT;
 		bool IsGB = false;
-		for(unsigned int s=0;s<Struct_GB.size();s++){
-			if( MySystem.getAux(struct_ind)[i*size_struct+1] == Struct_GB[s] ){ // Warning here maybe safer to compare fabs() < eps because we compare doubles
-				IsGB = true;
-				break;
-			}
+		unsigned int GBOrAmorph;
+		if( (unsigned int) MySystem.getAux(Struct_ind)[i*size_Struct] == Struct_GB ){ // Warning here maybe safer to compare fabs() < eps because we compare doubles
+			GBOrAmorph = 0;       
+			IsGB = true;
+		}else if( (unsigned int) MySystem.getAux(Struct_ind)[i*size_Struct] == Struct_Amorph ){ // Warning here maybe safer to compare fabs() < eps because we compare doubles
+			GBOrAmorph = 1;       
+			IsGB = true;
 		}
 		if( IsGB ){
-			vector<vector<double>> Dist;
-			for(unsigned int d=0;d<nbGrain;d++) Dist.push_back(vector<double>());
-			vector<unsigned int> GrainId;
-			bool IsNGB, IsGrainAlreadyStored;
-			unsigned int id;
-			for(unsigned int j=0;j<MySystem.getNeighbours(i*(nbNMax+1));j++){
-				IsNGB = false;
-				id = MySystem.getNeighbours(i*(nbNMax+1)+j+1);
-				for(unsigned int s=0;s<Struct_GB.size();s++){
-					if( MySystem.getAux(struct_ind)[id*size_struct+1] == Struct_GB[s] ){ // Warning here maybe safer to compare fabs() < eps because we compare doubles
-						IsNGB = true;
-						break;
-					}
-				}
-				if( !IsNGB ){
-					IsGrainAlreadyStored = false;
-					for(unsigned int k=0;k<GrainId.size();k++){
-						if( (unsigned int) MySystem.getAux(gt_ind)[id] == GrainId[k] ){
-							IsGrainAlreadyStored = true;
-							break;
-						}
-					}
-					if( !IsGrainAlreadyStored ){
-						GrainId.push_back((unsigned int) MySystem.getAux(gt_ind)[id]);
-					}
-					double xp = MySystem.getWrappedPos(id).x+MySystem.getCLNeighbours(i*nbNMax*3+j*3)*MySystem.getH1()[0]+MySystem.getCLNeighbours(i*nbNMax*3+j*3+1)*MySystem.getH2()[0]+MySystem.getCLNeighbours(i*nbNMax*3+j*3+2)*MySystem.getH3()[0]-MySystem.getWrappedPos(i).x;
-					double yp = MySystem.getWrappedPos(id).y+MySystem.getCLNeighbours(i*nbNMax*3+j*3)*MySystem.getH1()[1]+MySystem.getCLNeighbours(i*nbNMax*3+j*3+1)*MySystem.getH2()[1]+MySystem.getCLNeighbours(i*nbNMax*3+j*3+2)*MySystem.getH3()[1]-MySystem.getWrappedPos(i).y;
-					double zp = MySystem.getWrappedPos(id).z+MySystem.getCLNeighbours(i*nbNMax*3+j*3)*MySystem.getH1()[2]+MySystem.getCLNeighbours(i*nbNMax*3+j*3+1)*MySystem.getH2()[2]+MySystem.getCLNeighbours(i*nbNMax*3+j*3+2)*MySystem.getH3()[2]-MySystem.getWrappedPos(i).z;
-					Dist[(unsigned int) MySystem.getAux(gt_ind)[id] - 1].push_back(pow(xp,2.)+pow(yp,2.)+pow(zp,2.)); 
+			bool IsAlreadyStored = false;
+			for(unsigned int g=0;g<GBId_arr.size();g++){
+				if( MySystem.getAux(GBId_ind)[i*size_GBId] == GBId_arr[g] ){
+					GBIons[g*2+GBOrAmorph].push_back(i);
+					IsAlreadyStored = true;
+					break;
 				}
 			}
-			vector<double> FinalArray;
-			for(unsigned int n=0;n<GrainId.size();n++){
-				FinalArray.push_back(MT.min(Dist[GrainId[n]]));
-				FinalArray.push_back(GrainId[n]);
+			if( !IsAlreadyStored ){
+				GBId_arr.push_back(MySystem.getAux(GBId_ind)[i*size_GBId]);
+				GBIons.push_back(vector<unsigned int>());
+				GBIons.push_back(vector<unsigned int>());
+				GBIons[(GBId_arr.size()-1)*2+GBOrAmorph].push_back(i); //not sure about the minus one (to verify)
 			}
-			MT.sort(FinalArray,0,2,FinalArray);
-			if( FinalArray[1] < FinalArray[3] ) GBAux[i] = FinalArray[1]+(FinalArray[3]/10.);
-			else GBAux[i] = FinalArray[3]+(FinalArray[1]/10.);
-		} else GBAux[i] = 0.;
+		}
+	}
+	cout << "Done" << endl;
+	cout << "Compute GB plane normals" << endl;
+	// Compute the normal plane to each GB using only interface ions (maybe compute here stress and strain for interfaces)
+	// Pb: multiple planes for a given GBId (i.e. an other one formed by the periodic replica of the grain)
+	vector<vector<double>> coords;
+	double *Normals = new double[GBId_arr.size()*4];
+	MathTools MT;
+
+	double afit,bfit,cfit;
+	for(unsigned int g=0;g<GBId_arr.size();g++){
+		coords.clear();
+		for(unsigned int i=0;i<GBIons[g*2].size();i++){
+			coords.push_back(vector<double>());
+			coords[i].push_back(MySystem.getWrappedPos(GBIons[g*2][i]).x);
+			coords[i].push_back(MySystem.getWrappedPos(GBIons[g*2][i]).y);
+			coords[i].push_back(MySystem.getWrappedPos(GBIons[g*2][i]).z);
+		}
+		MT.plane_fit(coords,afit,bfit,cfit);
+		// Normalize
+		double normFac = sqrt(pow(afit,2.)+pow(bfit,2.)+1);
+		Normals[g*4] = afit/normFac;
+		Normals[g*4+1] = bfit/normFac;
+		Normals[g*4+2] = -1./normFac;
+		Normals[g*4+3] = cfit/normFac;
+		cout << "GBId : " << GBId_arr[g] << ", plane coeff are : " << Normals[g*4] << ", " << Normals[g*4+1] << ", " << Normals[g*4+2] << ", " << Normals[g*4+3] << ", nb of ion considered : " << GBIons[g*2].size() << endl; 
 	}
 
-	MySystem.setAux(GBAux,"GBId");	
-	MySystem.printSystem_aux(OutputFilename,"GBId grainID struct");
-	cout << "New system printed" << endl;
-	delete[] GBAux;
+	cout << "Done" << endl;
+
+	// z = ax+by+c <=> apx+bpy+cpz+dp=0 and a,b,c normed
+	// apx+bpy+cpax+cpbby+ccp+dp=0
+	//Points[count].push_back(((double) x));
+	//Points[count].push_back(((double) y));
+	//Points[count].push_back((a*(double) x)+(b*(double) y)+c+(((double) (rand()%100) - 50.)/10));
+
+
+	delete[] Normals;
 	return 0;
 }

@@ -223,7 +223,7 @@ void MathTools::gaussian_fit(const vector<double> data, double &mu, double &sigm
 	delete[] JTR;
 }
 
-void MathTools::plane_fit(const vector<vector<double>> data, double &a, double &b, double &c){
+void MathTools::plane_fit(const vector<vector<double>> & data, double &a, double &b, double &c){
 	unsigned int nbPts = data.size();
 	double *A = new double[9];
 	double *B = new double[3];
@@ -434,7 +434,7 @@ void MathTools::MatDotAt(const double *mat, const Atom &At, Atom &At_prod){
 	this->buffer_vec_2[0] = At.pos.x;
 	this->buffer_vec_2[1] = At.pos.y;
 	this->buffer_vec_2[2] = At.pos.z;
-	MatDotVec(mat,buffer_vec_2,buffer_vec_2);
+	MatDotRawVec(mat,buffer_vec_2,buffer_vec_2);
 	At_prod.pos.x = this->buffer_vec_2[0];
 	At_prod.pos.y = this->buffer_vec_2[1];
 	At_prod.pos.z = this->buffer_vec_2[2];

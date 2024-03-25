@@ -453,7 +453,7 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 // Constructor for bicrystal with plane GB with given misorientation and GB plane
 Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, double theta, int h_p, int k_p, int l_p, bool rationalize):h_a(h_a), k_a(k_a), l_a(l_a), theta(theta), h_p(h_p), k_p(k_p), l_p(l_p){
 	read_params();
-	double GBspace = 0.; //TODO maybe define elsewhere (in a file in the main prog for example..)
+	double GBspace = 0.5; //TODO maybe define elsewhere (in a file in the main prog for example..)
 	double MaxMisfit = 0.02;
 	unsigned int MaxDup = 50;
 	bool FullGrains = true; // TODO as the variables above
@@ -709,7 +709,7 @@ bool Bicrystal::searchCSL(double *rot_ax_func, double theta_func, int *CSL_vec, 
 		if( verbose == 2 ) cout << "Trying to find CSL base using a tolerance of : " << tol_IntVec << endl;
 		// search if a2_a_1 could be the basic vector for computing DSC lattice
 		for(unsigned int i=0;i<3;i++) searchVec[i] = a2_a[i*3];
-		MT->MatDotVec(a1_inv,searchVec,searchVec);
+		MT->MatDotRawVec(a1_inv,searchVec,searchVec);
 		L = MT->find_integer_vector(searchVec,tol_IntVec,this->SigmaMax,k,IsFindIntVec);
 		if( !IsFindIntVec ){
 			if( verbose == 2 ) cout << "Fail ! Increasing tolerance !" << endl;
@@ -721,7 +721,7 @@ bool Bicrystal::searchCSL(double *rot_ax_func, double theta_func, int *CSL_vec, 
 		// search if this basis is also good for a2_a_2
 		for(unsigned int i=0;i<3;i++) searchVec[i] = a2_a[i*3+1];
 		MT->invert3x3(Ei,Ei_inv);
-		MT->MatDotVec(Ei_inv,searchVec,searchVec);
+		MT->MatDotRawVec(Ei_inv,searchVec,searchVec);
 		L = MT->find_integer_vector(searchVec,tol_IntVec,this->SigmaMax,k,IsFindIntVec);
 		if( !IsFindIntVec ){
 			if( verbose == 2 ) cout << "Fail ! Increasing tolerance !" << endl;
@@ -732,7 +732,7 @@ bool Bicrystal::searchCSL(double *rot_ax_func, double theta_func, int *CSL_vec, 
 		if( L == 1 ){
 			// Yes, test if the basis is also good for a2_a_3
 			for(unsigned int i=0;i<3;i++) searchVec[i] = a2_a[i*3+2];
-			MT->MatDotVec(Ei_inv,searchVec,searchVec);
+			MT->MatDotRawVec(Ei_inv,searchVec,searchVec);
 			M = MT->find_integer_vector(searchVec,tol_IntVec,this->SigmaMax,k,IsFindIntVec);
 			if( !IsFindIntVec ){
 				if( verbose == 2 ) cout << "Fail ! Increasing tolerance !" << endl;
@@ -748,7 +748,7 @@ bool Bicrystal::searchCSL(double *rot_ax_func, double theta_func, int *CSL_vec, 
 			// search if this basis is also good for a2_a_2
 			for(unsigned int i=0;i<3;i++) searchVec[i] = a2_a[i*3+2];
 			MT->invert3x3(Fi,Fi_inv);
-			MT->MatDotVec(Fi_inv,searchVec,searchVec);
+			MT->MatDotRawVec(Fi_inv,searchVec,searchVec);
 			M = MT->find_integer_vector(searchVec,tol_IntVec,this->SigmaMax,k,IsFindIntVec);
 			if( !IsFindIntVec ){
 				if( verbose == 2 ) cout << "Fail ! Increasing tolerance !" << endl;
@@ -786,7 +786,7 @@ bool Bicrystal::searchCSL(double *rot_ax_func, double theta_func, int *CSL_vec, 
 			}
 			BaseFound = false;
 			MT->invert3x3(CSL_Basis_temp,buffer_mat);
-			MT->MatDotVec(buffer_mat,Known_CSL,buffer_vec);
+			MT->MatDotRawVec(buffer_mat,Known_CSL,buffer_vec);
 			tmp = 0.;
 			tmp_1 = 0.;
 			tmp_2 = 0.;
@@ -1181,7 +1181,7 @@ double Bicrystal::RationalizeOri(int h_a_func, int k_a_func, int l_a_func, doubl
 					vec3[ii] = Lat1[i*4+ii+1];
 					vec4[ii] = Lat1[j*4+ii+1];
 				}
-				MT->MatDotVec(RotMat,vec4,vec4);
+				MT->MatDotRawVec(RotMat,vec4,vec4);
 				// compare the angles between the two vector and store the difference
 				sp = 0.;
 				for(unsigned int ii=0;ii<3;ii++) sp += vec3[ii]*vec4[ii];
@@ -1317,29 +1317,6 @@ void Bicrystal::searchGBSize(const int h_p_func, const int k_p_func, const int l
 }
 
 void Bicrystal::setOrientedCrystals(const string& crystalName, bool rationalize){
-	// TEST
-	double *testvec_d = new double[3];
-	double a,b,c;
-	//a = 4.749;
-	//b = 10.1985;
-	//c = 5.9792;
-	a = 4.7;
-	b = 10.;
-	c = 6.;
-	testvec_d[0] = -0.5814;
-	testvec_d[1] = 0.3234;
-	testvec_d[2] = 0.7466;
-	testvec_d[0] /= a;
-	testvec_d[1] /= b;
-	testvec_d[2] /= c;
-	int *testvec_i = new int[3];
-	double tol = 1e-1;
-	unsigned int sigma=100000;
-	bool found;
-	MT->find_integer_vector(testvec_d,tol,sigma,testvec_i,found);
-	if(found) cout << "rat vec : " << testvec_i[0] << " " << testvec_i[1] << " " << testvec_i[2] << endl;
-	else cout << "no rat vec found" << endl;
-	// END TEST
 	setCrystal(crystalName);
 	this->RotCartToGrain2 = new double[9];
 	this->RotGrain1ToGrain2 = new double[9];
@@ -1357,7 +1334,7 @@ void Bicrystal::setOrientedCrystals(const string& crystalName, bool rationalize)
 	double NormRotAx = 0.;
 	// first rotation in the reference frame of the first crystal
 	for(unsigned int i=0;i<3;i++){
-		//rot_ax[i] = this->_MyCrystal->getA1()[i]*h_a+this->_MyCrystal->getA2()[i]*k_a+this->_MyCrystal->getA3()[i]*l_a;
+		rot_ax[i] = this->_MyCrystal->getA1()[i]*h_a+this->_MyCrystal->getA2()[i]*k_a+this->_MyCrystal->getA3()[i]*l_a;
 		NormRotAx += pow(rot_ax[i],2.);
 	}
 	NormRotAx = sqrt(NormRotAx);
@@ -1367,16 +1344,44 @@ void Bicrystal::setOrientedCrystals(const string& crystalName, bool rationalize)
 	MT->MatDotMat(this->RotGrain1ToGrain2,this->_MyCrystal->getRotMat(),this->RotCartToGrain2);
 	this->_MyCrystal2 = new Crystal(crystalName);
 	this->_MyCrystal2->RotateCrystal(this->RotCartToGrain2);
-		searchCSL(rot_ax,this->theta,CSL_vec,0);
-	//FOR TEST
-	searchGBSize(this->h_p, this->k_p, this->l_p);
-	// END TEST
+	
+	searchCSL(rot_ax,this->theta,CSL_vec,0);
+
 	cout << "constructing grains" << endl;
 	cout << "first" << endl;
 	this->_MyCrystal->ConstructOrthogonalCell();
 	this->_MyCrystal->getOrientedSystem()->print_lmp("Crystal1.lmp");
 	cout << "second" << endl;
 	this->_MyCrystal2->ConstructOrthogonalCell();
+	double sp(0.),n1(0.),n2(0.);
+	for(unsigned int i=0;i<3;i++){
+		sp += this->_MyCrystal->getA1()[i]*this->_MyCrystal2->getA1()[i];
+		n1 += pow(this->_MyCrystal->getA1()[i],2.);
+		n2 += pow(this->_MyCrystal2->getA1()[i],2.);
+	}
+	cout << "True misorientation angle a1 : " << acos(sp/(sqrt(n1)*sqrt(n2)))*180/M_PI << endl;
+	sp = 0.;
+	n1 = 0.;
+	n2 = 0.;
+	for(unsigned int i=0;i<3;i++){
+		sp -= this->_MyCrystal->getA2()[i]*this->_MyCrystal2->getA2()[i];
+		n1 += pow(this->_MyCrystal->getA2()[i],2.);
+		n2 += pow(this->_MyCrystal2->getA2()[i],2.);
+	}
+	cout << "True misorientation angle a2 : " << acos(sp/(sqrt(n1)*sqrt(n2)))*180/M_PI << endl;
+	sp = 0.;
+	n1 = 0.;
+	n2 = 0.;
+	for(unsigned int i=0;i<3;i++){
+		sp += this->_MyCrystal->getA3()[i]*this->_MyCrystal2->getA3()[i];
+		n1 += pow(this->_MyCrystal->getA3()[i],2.);
+		n2 += pow(this->_MyCrystal2->getA3()[i],2.);
+	}
+	cout << "True misorientation angle a3 : " << acos(sp/(sqrt(n1)*sqrt(n2)))*180/M_PI << endl;
+	for(unsigned int i=0;i<3;i++) cout << this->_MyCrystal->getA2()[i] << " ";
+	cout << endl;
+	for(unsigned int i=0;i<3;i++) cout << this->_MyCrystal2->getA2()[i] << " ";
+	cout << endl;
 	this->IsCrystal2 = true;
 	this->IsRotMatDefine = true;
 	delete[] rot_ax;

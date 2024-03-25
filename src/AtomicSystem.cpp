@@ -51,21 +51,21 @@ AtomicSystem::AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double z
 	else arr[1] = 0;
 	if( fabs(_MyCrystal->getA1()[2]) >1e-3 ) arr[2] = round(zhi/fabs(_MyCrystal->getA1()[2]));
 	else arr[2] = 0;
-	cla1 = MT->max(arr,3)+1;
+	cla1 = MT->max(arr,3)+2;
 	if( fabs(_MyCrystal->getA2()[0]) >1e-3 ) arr[0] = round(xhi/fabs(_MyCrystal->getA2()[0]));
 	else arr[0] = 0;
 	if( fabs(_MyCrystal->getA2()[1]) >1e-3 ) arr[1] = round(yhi/fabs(_MyCrystal->getA2()[1]));
 	else arr[1] = 0;
 	if( fabs(_MyCrystal->getA2()[2]) >1e-3 ) arr[2] = round(zhi/fabs(_MyCrystal->getA2()[2]));
 	else arr[2] = 0;
-	cla2 = MT->max(arr,3)+1;
+	cla2 = MT->max(arr,3)+2;
 	if( fabs(_MyCrystal->getA3()[0]) >1e-3 ) arr[0] = round(xhi/fabs(_MyCrystal->getA3()[0]));
 	else arr[0] = 0;
 	if( fabs(_MyCrystal->getA3()[1]) >1e-3 ) arr[1] = round(yhi/fabs(_MyCrystal->getA3()[1]));
 	else arr[1] = 0;
 	if( fabs(_MyCrystal->getA3()[2]) >1e-3 ) arr[2] = round(zhi/fabs(_MyCrystal->getA3()[2]));
 	else arr[2] = 0;
-	cla3 = MT->max(arr,3)+1;
+	cla3 = MT->max(arr,3)+2;
 	double delta_x, delta_y, delta_z, xpos, ypos, zpos;
 	unsigned int count;
 	double tolIonPos = 1e-9;
@@ -101,6 +101,7 @@ AtomicSystem::AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double z
 			}
 			if( break_comp) break;
 		}
+		cout << count << endl;
 	}else{
 		// crystals for which some atoms should not be separeted
 		// create array of already stored atoms
@@ -151,6 +152,9 @@ AtomicSystem::AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double z
 								count += 1;
 								// store all its neighboring atoms which should not be separeted from him
 								for(unsigned int s=0;s<_MyCrystal->getNotSepList_size(n);s++){
+									if( count == 635 ){
+										cout << "stop" << endl;
+									}
 									id_s = _MyCrystal->getNotSepList(n,s*4);
 									xpos_n = _MyCrystal->getMotif()[id_s].pos.x + (i+_MyCrystal->getNotSepList(n,s*4+1))*_MyCrystal->getA1()[0] + (j+_MyCrystal->getNotSepList(n,s*4+2))*_MyCrystal->getA2()[0] + (k+_MyCrystal->getNotSepList(n,s*4+3))*_MyCrystal->getA3()[0];
 									ypos_n = _MyCrystal->getMotif()[id_s].pos.y + (i+_MyCrystal->getNotSepList(n,s*4+1))*_MyCrystal->getA1()[1] + (j+_MyCrystal->getNotSepList(n,s*4+2))*_MyCrystal->getA2()[1] + (k+_MyCrystal->getNotSepList(n,s*4+3))*_MyCrystal->getA3()[1];

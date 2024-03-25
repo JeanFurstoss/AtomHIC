@@ -112,8 +112,9 @@ Crystal::Crystal(const string& crystalName){
 // construct a z oriented (hkl) unit cell plane
 void Crystal::RotateCrystal(const int& h_p, const int& k_p, const int& l_p){
 	int arr[3] = {abs(h_p),abs(k_p),abs(l_p)};
-	int maxhkl = MT->max(arr,3)*5;
-	double tolScalarProd = 1e-3;
+	int maxhkl = MT->max(arr,3)*15;
+	cout << maxhkl << endl;
+	double tolScalarProd = 1e-2;
 	vector<double> buffer_vector_d;
 	vector<int> buffer_vector_i;
 	double *normalDir = new double[3];
@@ -154,7 +155,7 @@ void Crystal::RotateCrystal(const int& h_p, const int& k_p, const int& l_p){
 	rot_axis[2] = 1;
        	MT->Vec2rotMat(rot_axis,theta_z,this->rot_mat_total);
 	for(unsigned int i=0;i<3;i++) test_vec[i] = normalDir[i];
-	MT->MatDotVec(this->rot_mat_total,test_vec,test_vec);
+	MT->MatDotRawVec(this->rot_mat_total,test_vec,test_vec);
 	// second rotation around y to align the normal dir with the z axis // I have remplaced normalDir by test_vec in the two following lines
 	if( test_vec[0] >= 0 ) theta_y = -acos(test_vec[2]/sqrt(pow(test_vec[0],2.)+pow(test_vec[1],2.)+pow(test_vec[2],2.)));	
 	else theta_y = acos(test_vec[2]/sqrt(pow(test_vec[0],2.)+pow(test_vec[1],2.)+pow(test_vec[2],2.)));	
@@ -164,7 +165,7 @@ void Crystal::RotateCrystal(const int& h_p, const int& k_p, const int& l_p){
 	MT->Vec2rotMat(rot_axis,theta_y,rot_mat);
 	MT->MatDotMat(rot_mat,this->rot_mat_total,this->rot_mat_total);
 	// last rotation about z axis to align the smallest orthogonal vector with the x direction
-	MT->MatDotVec(this->rot_mat_total,orthoDir,orthoDir);
+	MT->MatDotRawVec(this->rot_mat_total,orthoDir,orthoDir);
 	if( orthoDir[1] <= 0. ) theta_z = acos(orthoDir[0]/sqrt(pow(orthoDir[0],2.)+pow(orthoDir[1],2.)+pow(orthoDir[2],2.)));
 	else theta_z = -acos(orthoDir[0]/sqrt(pow(orthoDir[0],2.)+pow(orthoDir[1],2.)+pow(orthoDir[2],2.)));
 	rot_axis[0] = 0;
@@ -172,11 +173,11 @@ void Crystal::RotateCrystal(const int& h_p, const int& k_p, const int& l_p){
 	rot_axis[2] = 1;
        	MT->Vec2rotMat(rot_axis,theta_z,rot_mat);
 	// last rotation for the orthoDir vector
-	MT->MatDotVec(rot_mat,orthoDir,orthoDir);
+	MT->MatDotRawVec(rot_mat,orthoDir,orthoDir);
 	// compute the total rotation matrix
 	MT->MatDotMat(rot_mat,this->rot_mat_total,this->rot_mat_total);
 	// full rotation of the normal dir
-	MT->MatDotVec(this->rot_mat_total,normalDir,normalDir);
+	MT->MatDotRawVec(this->rot_mat_total,normalDir,normalDir);
 	// verify is the rotation has been well achieved
 	if( fabs(normalDir[0]) > tolScalarProd || fabs(normalDir[1]) > tolScalarProd || fabs(orthoDir[1]) > tolScalarProd || fabs(orthoDir[2]) > tolScalarProd ){
 		cout << "The crystal basis cannot be aligned with the cartesian one, aborting calculation" << endl;
@@ -184,9 +185,9 @@ void Crystal::RotateCrystal(const int& h_p, const int& k_p, const int& l_p){
 	}else cout << "We are constructing a system with the (" << h_p << k_p << l_p << ") plane parallel with (xy) plane and the [" << buffer_vector_i[minhkl*3] << buffer_vector_i[minhkl*3+1] << buffer_vector_i[minhkl*3+2] << "] direction aligned with the x axis" << endl;
 
 	// rotate lattice vectors
-	MT->MatDotVec(this->rot_mat_total,this->a1,this->a1);
-	MT->MatDotVec(this->rot_mat_total,this->a2,this->a2);
-	MT->MatDotVec(this->rot_mat_total,this->a3,this->a3);
+	MT->MatDotRawVec(this->rot_mat_total,this->a1,this->a1);
+	MT->MatDotRawVec(this->rot_mat_total,this->a2,this->a2);
+	MT->MatDotRawVec(this->rot_mat_total,this->a3,this->a3);
 	// recompute reciproqual space as cell parameters may have changed
 	computeReciproqual();
 
@@ -201,9 +202,9 @@ void Crystal::RotateCrystal(const double *RotMat){
 	double xbox, ybox, zbox;
 	for(unsigned int i=0;i<9;i++) this->rot_mat_total[i] = RotMat[i];
 	// rotate lattice vectors
-	MT->MatDotVec(RotMat,this->a1,this->a1);
-	MT->MatDotVec(RotMat,this->a2,this->a2);
-	MT->MatDotVec(RotMat,this->a3,this->a3);
+	MT->MatDotRawVec(RotMat,this->a1,this->a1);
+	MT->MatDotRawVec(RotMat,this->a2,this->a2);
+	MT->MatDotRawVec(RotMat,this->a3,this->a3);
 	// recompute reciproqual space as cell parameters may have changed
 	computeReciproqual();
 }
@@ -254,9 +255,9 @@ void Crystal::ConstructNotSepList(){
 						for(unsigned int s_1=0;s_1<NotSepList.size();s_1++){
 							for(unsigned int s_2=0;s_2<NotSepList[s_1].size()/4;s_2++){
 								// Case where all the motif is not necessarily get
-								// if( round(buffer_vector_d[i][n*5+1]) == NotSepList[s_1][s_2*4] && round(buffer_vector_d[i][n*5+2]) == NotSepList[s_1][s_2*4+1] && round(buffer_vector_d[i][n*5+3]) == NotSepList[s_1][s_2*4+2] && round(buffer_vector_d[i][n*5+4]) == NotSepList[s_1][s_2*4+3] ){
+								if( round(buffer_vector_d[i][n*5+1]) == NotSepList[s_1][s_2*4] && round(buffer_vector_d[i][n*5+2]) == NotSepList[s_1][s_2*4+1] && round(buffer_vector_d[i][n*5+3]) == NotSepList[s_1][s_2*4+2] && round(buffer_vector_d[i][n*5+4]) == NotSepList[s_1][s_2*4+3] ){
 								// Case to have the all motif
-								if( round(buffer_vector_d[i][n*5+1]) == NotSepList[s_1][s_2*4] ){
+								//if( round(buffer_vector_d[i][n*5+1]) == NotSepList[s_1][s_2*4] ){
 									Continue = true;
 									break;
 								}
@@ -343,9 +344,9 @@ void Crystal::ConstructOrthogonalCell(){
 	MT->computeTiltTrans(xh,yh,zh,this->TiltTrans_xyz);
 
 	// apply this transformation to the crystal vectors
-	MT->MatDotVec(TiltTrans_xyz,this->a1,this->a1);
-	MT->MatDotVec(TiltTrans_xyz,this->a2,this->a2);
-	MT->MatDotVec(TiltTrans_xyz,this->a3,this->a3);
+	MT->MatDotRawVec(TiltTrans_xyz,this->a1,this->a1);
+	MT->MatDotRawVec(TiltTrans_xyz,this->a2,this->a2);
+	MT->MatDotRawVec(TiltTrans_xyz,this->a3,this->a3);
 	// verify that the system has now an orthogonal cell
 	for(unsigned int i=0;i<3;i++){
 		xh[i] = this->a1[i]*xh_list[ind_x*3]+this->a2[i]*xh_list[ind_x*3+1]+this->a3[i]*xh_list[ind_x*3+2];
@@ -369,9 +370,9 @@ void Crystal::ConstructOrthogonalCell(){
 	// rescale the crystal vectors as they have been modified by the function
 	double *invTrans = new double[9];
 	MT->invert3x3(this->TiltTrans_xyz,invTrans);
-	MT->MatDotVec(invTrans,this->a1,this->a1);
-	MT->MatDotVec(invTrans,this->a2,this->a2);
-	MT->MatDotVec(invTrans,this->a3,this->a3);
+	//MT->MatDotRawVec(invTrans,this->a1,this->a1);
+	//MT->MatDotRawVec(invTrans,this->a2,this->a2);
+	//MT->MatDotRawVec(invTrans,this->a3,this->a3);
 	// recompute reciproqual space as cell parameters may have changed
 	computeReciproqual();
 

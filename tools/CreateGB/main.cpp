@@ -35,7 +35,8 @@ int main(int argc, char *argv[])
 	iss_lp >> l_p;
 	istringstream iss_cn(argv[8]);
 	iss_cn >> crystalName;
-	Bicrystal MyGB(crystalName,h_a,k_a,l_a,theta,h_p,k_p,l_p);
+	//Bicrystal MyGB(crystalName,h_a,k_a,l_a,theta,h_p,k_p,l_p);
+	Bicrystal MyGB(crystalName,h_a,k_a,l_a,theta,h_p,k_p,l_p,false);
 	MyGB.print_lmp("GB.lmp");
 	MyGB.printCSL("CSL.lmp");
 	MyGB.print_Grains();
