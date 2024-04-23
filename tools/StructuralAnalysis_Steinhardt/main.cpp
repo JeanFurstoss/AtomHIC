@@ -12,7 +12,8 @@ int main(int argc, char *argv[])
 {
 	// check the number of argument
 	if( argc < 3 ){
-		cerr << "Usage: AnalyzeBicrystal_ARGS AtomicInputFilename CrystalName AtomicOutputFilename" << endl;
+		cerr << "Usage: StructuralAnalysis_Steinhardt AtomicInputFilename CrystalName AtomicOutputFilename" << endl;
+		cerr << "this executable performs structural analysis using the Steinhardt parameters in the files /data/Steinhardt/Crystal/*.dat and using Euclidian distances, this method is quite obsolete since the development of the SGMA method so prefer use StructuralAnalysis_Steinhardt_GMM executable" << endl;
 		return EXIT_FAILURE;
 	}
 	string InputFilename = argv[1];

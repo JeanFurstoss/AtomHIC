@@ -87,6 +87,9 @@ public:
 	double* getH1(){ return this->H1; }
 	double* getH2(){ return this->H2; }
 	double* getH3(){ return this->H3; }
+	double* getG1(){ return this->G1; }
+	double* getG2(){ return this->G2; }
+	double* getG3(){ return this->G3; }
 	double get_rcut(){ return this->r_cut_n; }
 	int get_lsph(){ return this->l_sph_st; }
 	// setters

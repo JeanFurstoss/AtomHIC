@@ -1409,7 +1409,7 @@ void ComputeAuxiliary::SteinhardtDatabase_read_GMM(string CrystalName){
 		unsigned int *lines_attype = new unsigned int[nbAt_type];
 
 		string fullpath2data;
-		size_t pos_dim, pos_attype, pos_mu, pos_c, pos_nbC, pos_weight;
+		size_t pos_dim, pos_rc, pos_StStyle, pos_AveStyle, pos_attype, pos_mu, pos_c, pos_nbC, pos_weight;
 		unsigned int line_rc(1000), count, counter_attype, buffer_ui, buffer_ui2, dim;
 		double buffer_d1, buffer_d2;
 		string line, buffer_s_2;
@@ -1427,6 +1427,7 @@ void ComputeAuxiliary::SteinhardtDatabase_read_GMM(string CrystalName){
 					if( pos_dim!=string::npos){
 						istringstream text(line);
 						text >> buffer_s >> dim;
+						this->l_GMM_database = dim;
 						for(unsigned int t=0;t<nbAt_type;t++){
 							for(unsigned int c=0;c<nbClusterMax_GMM;c++){
 								for(unsigned int d1=0;d1<dim;d1++){
@@ -1438,6 +1439,24 @@ void ComputeAuxiliary::SteinhardtDatabase_read_GMM(string CrystalName){
 								}
 							}
 						}
+					}
+					// find cutoff radius 
+					pos_rc=line.find("CUTOFF_RADIUS");
+					if( pos_rc!=string::npos){
+						istringstream text(line);
+						text >> buffer_s >> this->r_GMM_database;
+					}
+					// find Steinhardt style
+					pos_StStyle=line.find("STEINHARDT_STYLE");
+					if( pos_StStyle!=string::npos){
+						istringstream text(line);
+						text >> buffer_s >> this->SteinhardtStyle_GMM_base;
+					}
+					// find average style
+					pos_AveStyle=line.find("AVE_STYLE");
+					if( pos_AveStyle!=string::npos){
+						istringstream text(line);
+						text >> buffer_s >> this->AveStyle_GMM_base;
 					}
 					// find atom type 
 					pos_attype=line.find("ATOM_TYPE");
@@ -1804,10 +1823,14 @@ double* ComputeAuxiliary::StructuralAnalysis_Steinhardt_GMM(const string aux_nam
 	double rc = _MySystem->get_rcut();
 	unsigned int aux_ind;
 	unsigned int aux_size;
-	if( aux_name == "none" ) ComputeSteinhardtParameters(rc, l_sph, "Multi", "Multi");// TODO : add these infos to the GMM database
+	if( aux_name == "none" ) ComputeSteinhardtParameters(this->r_GMM_database, this->l_GMM_database, this->SteinhardtStyle_GMM_base, this->AveStyle_GMM_base);
 	else{
 		aux_ind = _MySystem->getAuxIdAndSize(aux_name,aux_size);
-		if( aux_size != l_sph+1 ) cout << "Warning: the dimension of the provided Steinhardt parameters (" << aux_size << ") is different from the one in /data/FixedParameters/FixedParameters.dat (" << l_sph+1 << " => l_sph+1)" << endl;
+		cout << "From the database we expect " << this->SteinhardtStyle_GMM_base << " Steinhardt parameters, averaged with the " << this->AveStyle_GMM_base << " method, and computed with l = " << this->l_GMM_database << " in a cutoff radius of " << this->r_GMM_database << endl;
+		if( aux_size != (this->l_GMM_database)+1 ){
+			cerr << "The dimension of the provided Steinhardt parameters does not correspond to the expected dimension from the database (" << this->l_GMM_database << "), aborting calculation" << endl;
+			exit(EXIT_FAILURE);
+		}
 	}
 
 	const unsigned int nbAt = _MySystem->getNbAtom();
@@ -1821,8 +1844,8 @@ double* ComputeAuxiliary::StructuralAnalysis_Steinhardt_GMM(const string aux_nam
 	double *Struct = new double[nbAt*2];
 	unsigned int current_type;
 	for(unsigned int i=0;i<nbAt;i++){
-		if( aux_name == "none" ) for(unsigned int l=0;l<l_sph;l++) Filtered_St[l] = SteinhardtParams_ave[i*(l_sph+1)+l+1];
-		else for(unsigned int l=0;l<l_sph;l++) Filtered_St[l] = _MySystem->getAux(aux_ind)[i*(l_sph+1)+l+1];
+		if( aux_name == "none" ) for(unsigned int l=0;l<this->l_GMM_database;l++) Filtered_St[l] = SteinhardtParams_ave[i*(this->l_GMM_database+1)+l+1];
+		else for(unsigned int l=0;l<this->l_GMM_database;l++) Filtered_St[l] = _MySystem->getAux(aux_ind)[i*(this->l_GMM_database+1)+l+1];
 		current_type = _MySystem->getAtom(i).type_uint;
 		N_s[nbStruct] = 0.;
 		for(unsigned int s=0;s<nbStruct;s++){

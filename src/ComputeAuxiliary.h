@@ -43,7 +43,10 @@ protected:
 	std::vector<double> *Mus_GMM; // esperance of structures present in the database ( Mus_GMM[s*nbAtomType*nbClusterMax_GMM+t*nbClusterMax+n][i] => esperance of structure s, atom type t  and cluster n)
 	long double *Det_GMM; // determinant of the covariant matrix for structures present in the database ( Det_GMM[s*nbAtomType*nbClusterMax_GMM+t*nbClusterMax+n] => determinant of structure s, atom type t and cluster n)
 	double *weight_GMM; // weight of the different gaussian distributions for structures present in the database ( weight_GMM[s*nbAtomType*nbClusterMax_GMM+t*nbClusterMax+n] => determinant of structure s, atom type t and cluster n)
-
+	unsigned int l_GMM_database;
+	double r_GMM_database;
+	std::string SteinhardtStyle_GMM_base;
+	std::string AveStyle_GMM_base;
 	// end for gaussian mixture model
 	
 	unsigned int nbRefDef; // number of defect in the database
