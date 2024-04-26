@@ -5,6 +5,15 @@
 ### Commentary: Build of AtomHic library
 ## 
 ######################################################################
+### GMM
+include(FetchContent)
+FetchContent_Declare(
+  gmm
+  GIT_REPOSITORY https://github.com/andreacasalino/Gaussian-Mixture-Model.git
+  #  GIT_TAG        58b3f207cf6df73a0b7cdc8bde933b06d20ab502
+)
+FetchContent_MakeAvailable(gmm)
+
 
 #Project name
 project(AtomHic)
@@ -23,9 +32,14 @@ if(BUILD_SHARED_LIBRARY)
 else()
   set(LIBRARY_TYPE STATIC)
 endif()
-  
+
 #Generate the shared or static library from the sources
 add_library(${PROJECT_NAME} ${LIBRARY_TYPE} ${SOURCES} ${HEADERS})
+
+### GMM
+target_link_libraries(${PROJECT_NAME} PUBLIC
+GaussianMixtureModels
+)
 
 ## #################################################################
 ## Export header file
