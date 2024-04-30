@@ -20,6 +20,106 @@
 
 using namespace std;
 
+bool ComputeTransVec(double *coords, unsigned int nbAt, double *H1, double *H2, double *H3, double *G1, double *G2, double *G3, double &transvec_x, double &transvec_y, double &transvec_z){
+	double tolBound = 2.; // in A, for an ions to be consider in contact with box boundaries
+	double tolRedX = 2./H1[0]; 
+	double tolRedY = 2./H2[1]; 
+	double tolRedZ = 2./H3[2]; 
+	bool XCentered = true;
+	bool YCentered = true;
+	bool ZCentered = true;
+	for(unsigned int i=0;i<nbAt;i++){
+		// Compute reduced coordinates
+		double xpos = coords[i*3]*G1[0]+coords[i*3+1]*G2[0]+coords[i*3+2]*G3[0];
+		double ypos = coords[i*3]*G1[1]+coords[i*3+1]*G2[1]+coords[i*3+2]*G3[1];
+		double zpos = coords[i*3]*G1[2]+coords[i*3+1]*G2[2]+coords[i*3+2]*G3[2];
+		coords[i*3] = xpos;
+		coords[i*3+1] = ypos;
+		coords[i*3+2] = zpos;
+		if( coords[i*3] < tolRedX || coords[i*3] > 1.-tolRedX ) XCentered = false;
+		if( coords[i*3+1] < tolRedY || coords[i*3+1] > 1.-tolRedY ) YCentered = false;
+		if( coords[i*3+2] < tolRedZ || coords[i*3+2] > 1.-tolRedZ ) ZCentered = false;
+	}
+	transvec_x = 0.;
+	transvec_y = 0.;
+	transvec_z = 0.;
+	unsigned int max_count = 10;
+	unsigned int count = 0;
+	double *TempVec = new double[3];
+	while( ( !XCentered || !YCentered || !ZCentered ) && ( count < max_count ) ){
+		if( !XCentered ){
+			XCentered = true;
+			YCentered = true;
+			ZCentered = true;
+			transvec_x += 1./( (double) max_count );
+			for(unsigned int i=0;i<nbAt;i++){
+				// Change reduced coordinates
+				coords[i*3] += 1./( (double) max_count );
+				// Wrapped reduced coordinates
+				if( coords[i*3] >= 1. || coords[i*3] < 0. ) coords[i*3] = coords[i*3]-floor(coords[i*3]);
+				// Wrapped normal coordinates
+				for(unsigned int k=0;k<3;k++) TempVec[k] = coords[i*3]*H1[k] + coords[i*3+1]*H2[k] + coords[i*3+2]*H3[k];
+				// New reduced coordinates
+				for(unsigned int k=0;k<3;k++) coords[i*3+k] = TempVec[0]*G1[k] + TempVec[1]*G2[k] + TempVec[2]*G3[k];
+				if( coords[i*3] < tolRedX || coords[i*3] > 1.-tolRedX ) XCentered = false;
+				if( coords[i*3+1] < tolRedY || coords[i*3+1] > 1.-tolRedY ) YCentered = false;
+				if( coords[i*3+2] < tolRedZ || coords[i*3+2] > 1.-tolRedZ ) ZCentered = false;
+			}
+		}
+		if( !YCentered ){
+			XCentered = true;
+			YCentered = true;
+			ZCentered = true;
+			transvec_y += 1./( (double) max_count );
+			for(unsigned int i=0;i<nbAt;i++){
+				// Change reduced coordinates
+				coords[i*3+1] += 1./( (double) max_count );
+				// Wrapped reduced coordinates
+				if( coords[i*3+1] >= 1. || coords[i*3+1] < 0. ) coords[i*3+1] = coords[i*3+1]-floor(coords[i*3+1]);
+				// Wrapped normal coordinates
+				for(unsigned int k=0;k<3;k++) TempVec[k] = coords[i*3]*H1[k] + coords[i*3+1]*H2[k] + coords[i*3+2]*H3[k];
+				// New reduced coordinates
+				for(unsigned int k=0;k<3;k++) coords[i*3+k] = TempVec[0]*G1[k] + TempVec[1]*G2[k] + TempVec[2]*G3[k];
+				if( coords[i*3+0] < tolRedX || coords[i*3+0] > 1.-tolRedX ) XCentered = false;
+				if( coords[i*3+1] < tolRedY || coords[i*3+1] > 1.-tolRedY ) YCentered = false;
+				if( coords[i*3+2] < tolRedZ || coords[i*3+2] > 1.-tolRedZ ) ZCentered = false;
+			}
+		}
+		if( !ZCentered ){
+			XCentered = true;
+			YCentered = true;
+			ZCentered = true;
+			transvec_z +=1./( (double) max_count );
+			for(unsigned int i=0;i<nbAt;i++){
+				// Change reduced coordinates
+				coords[i*3+2] += 1./( (double) max_count );
+				// Wrapped reduced coordinates
+				if( coords[i*3+2] >= 1. || coords[i*3+2] < 0. ) coords[i*3+2] = coords[i*3+2]-floor(coords[i*3+2]);
+				// Wrapped normal coordinates
+				for(unsigned int k=0;k<3;k++) TempVec[k] = coords[i*3]*H1[k] + coords[i*3+1]*H2[k] + coords[i*3+2]*H3[k];
+				// New reduced coordinates
+				for(unsigned int k=0;k<3;k++) coords[i*3+k] = TempVec[0]*G1[k] + TempVec[1]*G2[k] + TempVec[2]*G3[k];
+				if( coords[i*3+0] < tolRedX || coords[i*3+0] > 1.-tolRedX ) XCentered = false;
+				if( coords[i*3+1] < tolRedY || coords[i*3+1] > 1.-tolRedY ) YCentered = false;
+				if( coords[i*3+2] < tolRedZ || coords[i*3+2] > 1.-tolRedZ ) ZCentered = false;
+			}
+		}
+	count += 1;	
+	} // end while
+	if( count == max_count ){
+		cout << "We didn't find translation" << endl;
+		return false;
+	}else{
+		for(unsigned int k=0;k<3;k++) TempVec[k] = transvec_x*H1[k] + transvec_y*H2[k] + transvec_z*H3[k];
+		transvec_x = TempVec[0];
+		transvec_y = TempVec[1];
+		transvec_z = TempVec[2];
+		//cout << "Translation find with vector : " << transvec_x << " " << transvec_y << " " << transvec_z << endl; 
+		return true;
+	}
+}
+
+
 Eigen::VectorXd make_3d_vector(const double val1, const double val2,
                                const double val3) {
   Eigen::VectorXd result(3);
@@ -123,7 +223,7 @@ int main(int argc, char *argv[])
 	unsigned int size_Struct;
 	unsigned Struct_ind = MySystem.getAuxIdAndSize("Struct",size_Struct);
 	unsigned int size_GBId;
-	unsigned GBId_ind = MySystem.getAuxIdAndSize("GBId_new",size_GBId);
+	unsigned GBId_ind = MySystem.getAuxIdAndSize("GBId",size_GBId);
 	unsigned int size_AtVol;
 	unsigned AtVol_ind = MySystem.getAuxIdAndSize("AtVol",size_AtVol);
 	unsigned int size_Stress;
@@ -182,7 +282,6 @@ int main(int argc, char *argv[])
 	double *TransVec = new double[GBId_arr.size()*6];
 	double *TempVec = new double[3];
 	unsigned int nbMinIonsInGB = 100;
-	// GMM
 	std::vector<std::size_t> NbClustToTest;
 	std::size_t NMax = 3;
   	for(unsigned int i=1;i<NMax+1;i++) NbClustToTest.push_back(i);
@@ -195,7 +294,6 @@ int main(int argc, char *argv[])
 	//double facClust = 0.1;
 	unsigned int nbGBAnalyzed = 0;
 	unsigned int current_nbGBAnalyzed;
-	// END GMM
 	MathTools MT;
 	for(unsigned int g=0;g<GBId_arr.size();g++){
 		cout << "Treating " << GBId_arr[g] << " GB" << endl;
@@ -217,94 +315,41 @@ int main(int argc, char *argv[])
 		GBIons_temp.clear();
 		vector<vector<unsigned int>>().swap(GBIons_temp);
 		current_nbGBAnalyzed = 0;
+		double *coord_for_wrap = new double[3*(GBIons[g*3].size()+GBIons[g*3+1].size())];
 		for(unsigned int gbid=0;gbid<2;gbid++){
-			//coords.clear();
+			for(unsigned int i=0;i<GBIons[g*3+gbid].size();i++){
+				coord_for_wrap[(gbid*GBIons[g*3].size()+i)*3] = MySystem.getWrappedPos(GBIons[g*3+gbid][i]).x;
+				coord_for_wrap[(gbid*GBIons[g*3].size()+i)*3+1] = MySystem.getWrappedPos(GBIons[g*3+gbid][i]).y;
+				coord_for_wrap[(gbid*GBIons[g*3].size()+i)*3+2] = MySystem.getWrappedPos(GBIons[g*3+gbid][i]).z;
+			}
+		}
+		double xtemp,ytemp,ztemp;
+		if( ComputeTransVec(coord_for_wrap, GBIons[g*3].size()+GBIons[g*3+1].size(), MySystem.getH1(), MySystem.getH2(), MySystem.getH3(), MySystem.getG1(), MySystem.getG2(), MySystem.getG3(),xtemp, ytemp, ztemp) ){
+			TransVec[g*3] = xtemp;
+			TransVec[g*3+1] = ytemp;
+			TransVec[g*3+2] = ztemp;
+		}else{
+			cout << "issue" << endl;
+		}
+		delete[] coord_for_wrap;
+		for(unsigned int gbid=0;gbid<2;gbid++){
 			vector<Eigen::VectorXd>().swap(coords);
 			for(unsigned int i=0;i<GBIons[g*3+gbid].size();i++){
-				// Compute reduced coordinates
-				double xpos = MySystem.getWrappedPos(GBIons[g*3+gbid][i]).x*MySystem.getG1()[0]+MySystem.getWrappedPos(GBIons[g*3+gbid][i]).y*MySystem.getG2()[0]+MySystem.getWrappedPos(GBIons[g*3+gbid][i]).z*MySystem.getG3()[0];
-				double ypos = MySystem.getWrappedPos(GBIons[g*3+gbid][i]).x*MySystem.getG1()[1]+MySystem.getWrappedPos(GBIons[g*3+gbid][i]).y*MySystem.getG2()[1]+MySystem.getWrappedPos(GBIons[g*3+gbid][i]).z*MySystem.getG3()[1];
-				double zpos = MySystem.getWrappedPos(GBIons[g*3+gbid][i]).x*MySystem.getG1()[2]+MySystem.getWrappedPos(GBIons[g*3+gbid][i]).y*MySystem.getG2()[2]+MySystem.getWrappedPos(GBIons[g*3+gbid][i]).z*MySystem.getG3()[2];
+				double xpos = MySystem.getWrappedPos(GBIons[g*3+gbid][i]).x+TransVec[g*3];
+				double ypos = MySystem.getWrappedPos(GBIons[g*3+gbid][i]).y+TransVec[g*3+1];
+				double zpos = MySystem.getWrappedPos(GBIons[g*3+gbid][i]).z+TransVec[g*3+2];
+				double xpos_red = xpos*MySystem.getG1()[0]+ypos*MySystem.getG2()[0]+zpos*MySystem.getG3()[0];
+				double ypos_red = xpos*MySystem.getG1()[1]+ypos*MySystem.getG2()[1]+zpos*MySystem.getG3()[1];
+				double zpos_red = xpos*MySystem.getG1()[2]+ypos*MySystem.getG2()[2]+zpos*MySystem.getG3()[2];
+				if( xpos_red >= 1. || xpos_red < 0. ) xpos_red = xpos_red-floor(xpos_red);
+				if( ypos_red >= 1. || xpos_red < 0. ) ypos_red = ypos_red-floor(ypos_red);
+				if( zpos_red >= 1. || xpos_red < 0. ) zpos_red = zpos_red-floor(zpos_red);
+				xpos = xpos_red*MySystem.getH1()[0]+ypos_red*MySystem.getH2()[0]+zpos_red*MySystem.getH3()[0];
+				ypos = xpos_red*MySystem.getH1()[1]+ypos_red*MySystem.getH2()[1]+zpos_red*MySystem.getH3()[1];
+				zpos = xpos_red*MySystem.getH1()[2]+ypos_red*MySystem.getH2()[2]+zpos_red*MySystem.getH3()[2];
 				coords.push_back(make_3d_vector(xpos,ypos,zpos));
-				if( coords[i](0) < tolRedX || coords[i](0) > 1.-tolRedX ) XCentered = false;
-				if( coords[i](1) < tolRedY || coords[i](1) > 1.-tolRedY ) YCentered = false;
-				if( coords[i](2) < tolRedZ || coords[i](2) > 1.-tolRedZ ) ZCentered = false;
 			}
-			for(unsigned int k=0;k<3;k++) TransVec[g*6+(gbid*3)+k] = 0.;
-			unsigned int max_count = 10;
-			unsigned int count = 0;
-			while( ( !XCentered || !YCentered || !ZCentered ) && ( count < max_count ) ){
-				if( !XCentered ){
-					XCentered = true;
-					YCentered = true;
-					ZCentered = true;
-					TransVec[g*6+(gbid*3)] += 1./( (double) max_count );
-					for(unsigned int i=0;i<GBIons[g*3+gbid].size();i++){
-						// Change reduced coordinates
-						coords[i](0) += 1./( (double) max_count );
-						// Wrapped reduced coordinates
-						if( coords[i](0) >= 1. || coords[i](0) < 0. ) coords[i](0) = coords[i](0)-floor(coords[i](0));
-						// Wrapped normal coordinates
-						for(unsigned int k=0;k<3;k++) TempVec[k] = coords[i](0)*MySystem.getH1()[k] + coords[i](1)*MySystem.getH2()[k] + coords[i](2)*MySystem.getH3()[k];
-						// New reduced coordinates
-						for(unsigned int k=0;k<3;k++) coords[i](k) = TempVec[0]*MySystem.getG1()[k] + TempVec[1]*MySystem.getG2()[k] + TempVec[2]*MySystem.getG3()[k];
-						if( coords[i](0) < tolRedX || coords[i](0) > 1.-tolRedX ) XCentered = false;
-						if( coords[i](1) < tolRedY || coords[i](1) > 1.-tolRedY ) YCentered = false;
-						if( coords[i](2) < tolRedZ || coords[i](2) > 1.-tolRedZ ) ZCentered = false;
-					}
-				}
-				if( !YCentered ){
-					XCentered = true;
-					YCentered = true;
-					ZCentered = true;
-					TransVec[g*6+(gbid*3)+1] += 1./( (double) max_count );
-					for(unsigned int i=0;i<GBIons[g*3+gbid].size();i++){
-						// Change reduced coordinates
-						coords[i](1) += 1./( (double) max_count );
-						// Wrapped reduced coordinates
-						if( coords[i](1) >= 1. || coords[i](1) < 0. ) coords[i](1) = coords[i](1)-floor(coords[i](1));
-						// Wrapped normal coordinates
-						for(unsigned int k=0;k<3;k++) TempVec[k] = coords[i](0)*MySystem.getH1()[k] + coords[i](1)*MySystem.getH2()[k] + coords[i](2)*MySystem.getH3()[k];
-						// New reduced coordinates
-						for(unsigned int k=0;k<3;k++) coords[i](k) = TempVec[0]*MySystem.getG1()[k] + TempVec[1]*MySystem.getG2()[k] + TempVec[2]*MySystem.getG3()[k];
-						if( coords[i](0) < tolRedX || coords[i](0) > 1.-tolRedX ) XCentered = false;
-						if( coords[i](1) < tolRedY || coords[i](1) > 1.-tolRedY ) YCentered = false;
-						if( coords[i](2) < tolRedZ || coords[i](2) > 1.-tolRedZ ) ZCentered = false;
-					}
-				}
-				if( !ZCentered ){
-					XCentered = true;
-					YCentered = true;
-					ZCentered = true;
-					TransVec[g*6+(gbid*3)+2] +=1./( (double) max_count );
-					for(unsigned int i=0;i<GBIons[g*3+gbid].size();i++){
-						// Change reduced coordinates
-						coords[i](2) += 1./( (double) max_count );
-						// Wrapped reduced coordinates
-						if( coords[i](2) >= 1. || coords[i](2) < 0. ) coords[i](2) = coords[i](2)-floor(coords[i](2));
-						// Wrapped normal coordinates
-						for(unsigned int k=0;k<3;k++) TempVec[k] = coords[i](0)*MySystem.getH1()[k] + coords[i](1)*MySystem.getH2()[k] + coords[i](2)*MySystem.getH3()[k];
-						// New reduced coordinates
-						for(unsigned int k=0;k<3;k++) coords[i](k) = TempVec[0]*MySystem.getG1()[k] + TempVec[1]*MySystem.getG2()[k] + TempVec[2]*MySystem.getG3()[k];
-						if( coords[i](0) < tolRedX || coords[i](0) > 1.-tolRedX ) XCentered = false;
-						if( coords[i](1) < tolRedY || coords[i](1) > 1.-tolRedY ) YCentered = false;
-						if( coords[i](2) < tolRedZ || coords[i](2) > 1.-tolRedZ ) ZCentered = false;
-					}
-				}
-			count += 1;	
-			} // end while
-			if( count == max_count ) cout << "We didn't find translation" << endl;
-			else{
-				for(unsigned int k=0;k<3;k++) TempVec[k] = TransVec[g*6+(gbid*3)]*MySystem.getH1()[k] + TransVec[g*6+(gbid*3)+1]*MySystem.getH2()[k] + TransVec[g*6+(gbid*3)+2]*MySystem.getH3()[k];
-				for(unsigned int k=0;k<3;k++) TransVec[g*6+(gbid*3)+k] = TempVec[k]; 
-				//cout << "Translation find with vector : " << TransVec[g*6+(gbid*3)] << " " << TransVec[g*6+(gbid*3)+1] << " " << TransVec[g*6+(gbid*3)+2] << endl; 
-			}
-
 			// find the GMM
-			for(unsigned int i=0;i<GBIons[g*3+gbid].size();i++){
-				for(unsigned int k=0;k<3;k++) TempVec[k] = coords[i](0)*MySystem.getH1()[k] + coords[i](1)*MySystem.getH2()[k] + coords[i](2)*MySystem.getH3()[k];
-				for(unsigned int k=0;k<3;k++) coords[i](k) = TempVec[k]; 
-			}
 			//vector<gauss::gmm::Cluster> clusters = gauss::gmm::ExpectationMaximization(samples, clusters_size);
   			//gauss::gmm::GaussianMixtureModel gmm_model(clusters);
 			gauss::TrainSet set(coords);
@@ -442,7 +487,6 @@ int main(int argc, char *argv[])
 				if( coords_am[i](1) < tolRedY || coords_am[i](1) > 1.-tolRedY ) YCentered = false;
 				if( coords_am[i](2) < tolRedZ || coords_am[i](2) > 1.-tolRedZ ) ZCentered = false;
 			}
-			for(unsigned int k=0;k<3;k++) TransVec[g*6+(2*3)+k] = 0.;
 			unsigned int max_count = 10;
 			unsigned int count = 0;
 			while( ( !XCentered || !YCentered || !ZCentered ) && ( count < max_count ) ){
@@ -450,7 +494,6 @@ int main(int argc, char *argv[])
 					XCentered = true;
 					YCentered = true;
 					ZCentered = true;
-					TransVec[g*6+(2*3)] += 1./( (double) max_count );
 					for(unsigned int i=0;i<GBIons[g*3+2].size();i++){
 						// Change reduced coordinates
 						coords_am[i](0) += 1./( (double) max_count );
@@ -469,7 +512,6 @@ int main(int argc, char *argv[])
 					XCentered = true;
 					YCentered = true;
 					ZCentered = true;
-					TransVec[g*6+(2*3)+1] += 1./( (double) max_count );
 					for(unsigned int i=0;i<GBIons[g*3+2].size();i++){
 						// Change reduced coordinates
 						coords_am[i](1) += 1./( (double) max_count );
@@ -488,7 +530,6 @@ int main(int argc, char *argv[])
 					XCentered = true;
 					YCentered = true;
 					ZCentered = true;
-					TransVec[g*6+(2*3)+2] +=1./( (double) max_count );
 					for(unsigned int i=0;i<GBIons[g*3+2].size();i++){
 						// Change reduced coordinates
 						coords_am[i](2) += 1./( (double) max_count );
@@ -603,8 +644,8 @@ int main(int argc, char *argv[])
 		double d1 = 0.;
 		double d2 = 0.;
 		for(unsigned int dim=0;dim<3;dim++){
-			MeanAndCovarClust_Final[i][3+dim] -= TransVec[i*6+dim];
-			MeanAndCovarClust_Final[i][9+dim] -= TransVec[i*6+3+dim];
+			//MeanAndCovarClust_Final[i][3+dim] -= TransVec[i*6+dim];
+			//MeanAndCovarClust_Final[i][9+dim] -= TransVec[i*6+3+dim];
 			d1 += MeanAndCovarClust_Final[i][3+dim]*MeanAndCovarClust_Final[i][12+dim];
 			d2 += MeanAndCovarClust_Final[i][9+dim]*MeanAndCovarClust_Final[i][12+dim];
 		}
@@ -623,22 +664,31 @@ int main(int argc, char *argv[])
 			MeanStress_am[ii] = 0.;
 		}
 		// compute average strain and stress for interface 1
+		double temp_vol = 0.;
 		for(unsigned int n=0;n<GBIons_Final[i*3].size();n++){
 			for(unsigned int ii=0;ii<size_AtStrain;ii++) MeanStrain_1[ii] += MySystem.getAux(AtStrain_ind)[GBIons_Final[i*3][n]*size_AtStrain+ii];
-			for(unsigned int ii=0;ii<size_Stress;ii++) MeanStress_1[ii] += (long double) MySystem.getAux(Stress_ind)[GBIons_Final[i*3][n]*size_Stress+ii] / MySystem.getAux(AtVol_ind)[GBIons_Final[i*3][n]*size_AtVol];
+			for(unsigned int ii=0;ii<size_Stress;ii++) MeanStress_1[ii] += (long double) MySystem.getAux(Stress_ind)[GBIons_Final[i*3][n]*size_Stress+ii];
+		       	temp_vol += MySystem.getAux(AtVol_ind)[GBIons_Final[i*3][n]*size_AtVol];
 		}
+		for(unsigned int ii=0;ii<size_Stress;ii++) MeanStress_1[ii] /= temp_vol;
+		temp_vol = 0.;
 		for(unsigned int ii=0;ii<size_AtStrain;ii++) MeanStrain_1[ii] /= GBIons_Final[i*3].size();
 		// compute average strain and stress for interface 2
 		for(unsigned int n=0;n<GBIons_Final[i*3+1].size();n++){
 			for(unsigned int ii=0;ii<size_AtStrain;ii++) MeanStrain_2[ii] += MySystem.getAux(AtStrain_ind)[GBIons_Final[i*3+1][n]*size_AtStrain+ii];
-			for(unsigned int ii=0;ii<size_Stress;ii++) MeanStress_2[ii] += (long double) MySystem.getAux(Stress_ind)[GBIons_Final[i*3+1][n]*size_Stress+ii] / MySystem.getAux(AtVol_ind)[GBIons_Final[i*3+1][n]*size_AtVol];
+			for(unsigned int ii=0;ii<size_Stress;ii++) MeanStress_2[ii] += (long double) MySystem.getAux(Stress_ind)[GBIons_Final[i*3+1][n]*size_Stress+ii];
+		        temp_vol += MySystem.getAux(AtVol_ind)[GBIons_Final[i*3+1][n]*size_AtVol];
 		}
+		for(unsigned int ii=0;ii<size_Stress;ii++) MeanStress_2[ii] /= temp_vol;
+		temp_vol = 0.;
 		for(unsigned int ii=0;ii<size_AtStrain;ii++) MeanStrain_2[ii] /= GBIons_Final[i*3+1].size();
 		// compute average strain and stress for amorph 
 		for(unsigned int n=0;n<GBIons_Final[i*3+2].size();n++){
 			for(unsigned int ii=0;ii<size_AtStrain;ii++) MeanStrain_am[ii] += MySystem.getAux(AtStrain_ind)[GBIons_Final[i*3+2][n]*size_AtStrain+ii];
-			for(unsigned int ii=0;ii<size_Stress;ii++) MeanStress_am[ii] += (long double) MySystem.getAux(Stress_ind)[GBIons_Final[i*3+2][n]*size_Stress+ii] / MySystem.getAux(AtVol_ind)[GBIons_Final[i*3+2][n]*size_AtVol];
+			for(unsigned int ii=0;ii<size_Stress;ii++) MeanStress_am[ii] += (long double) MySystem.getAux(Stress_ind)[GBIons_Final[i*3+2][n]*size_Stress+ii];
+		        temp_vol += MySystem.getAux(AtVol_ind)[GBIons_Final[i*3+2][n]*size_AtVol];
 		}
+		for(unsigned int ii=0;ii<size_Stress;ii++) MeanStress_am[ii] /= temp_vol;
 		for(unsigned int ii=0;ii<size_AtStrain;ii++) MeanStrain_am[ii] /= GBIons_Final[i*3+2].size();
 
 		f_out_res << MeanAndCovarClust_Final[i][12] << " " << MeanAndCovarClust_Final[i][13] << " " << MeanAndCovarClust_Final[i][14] << " " << GBId_arr_Final[i] - (GBId_arr_Final[i]-floor(GBId_arr_Final[i])) << " " << (int) 10.*(GBId_arr_Final[i]-floor(GBId_arr_Final[i])) << " " << am_thick ;

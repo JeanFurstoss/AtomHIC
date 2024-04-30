@@ -1836,6 +1836,7 @@ unsigned int AtomicSystem::getAuxIdAndSize(std::string auxname, unsigned int &si
 	if( !found ){
 		cout << "Warning, the auxiliary property : \"" << auxname << "\" has not been found !" << endl;
 		ind = 0;
+		size = 0;
 	}
 	return ind; 
 }
