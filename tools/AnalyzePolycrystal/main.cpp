@@ -1,4 +1,5 @@
 // AtomHic library files
+#include <filesystem>
 #include <AtomicSystem.h>
 #include <Bicrystal.h>
 #include <Crystal.h>
@@ -19,6 +20,35 @@
 
 
 using namespace std;
+
+bool read_GTFile(string GTFilename, vector<unsigned int> &IdForGrains){
+	ifstream file_i(GTFilename, ios::in);
+	string line;
+	if( file_i ){
+		getline(file_i,line);
+		while(file_i){
+			getline(file_i,line);
+			IdForGrains.push_back(0);
+		}
+	}else{
+		cout << "cannot open grain tag file" << endl;
+		return false;
+	}
+	ifstream file(GTFilename, ios::in);
+	getline(file,line);
+	unsigned int IdIon, vecRef;
+	for(unsigned int i=0;i<IdForGrains.size();i++){
+		getline(file,line);
+		istringstream text(line);
+		text >> IdIon >> vecRef;
+		unsigned int idGrain = floor(vecRef/10.);
+		unsigned int cellParam = vecRef-idGrain*10;
+		IdForGrains[(idGrain-1)*4+cellParam-1] = IdIon;
+	}
+	return true;
+			
+}
+
 
 bool ComputeTransVec(double *coords, unsigned int nbAt, double *H1, double *H2, double *H3, double *G1, double *G2, double *G3, double &transvec_x, double &transvec_y, double &transvec_z){
 	double tolBound = 2.; // in A, for an ions to be consider in contact with box boundaries
@@ -190,31 +220,89 @@ int main(int argc, char *argv[])
 	// Here we use a dump file containing (1) the structure of a given ion (either interface, amorph or crystal), (2) the GB Id, (3) the atomic volume, (4) strain and (5) stress tensor
 	// the objective is to return a file for each GB Id with:
 	// nx ny nz AmorphousThickness GBSurface Interface1Strain(AndStress)Tensor Interface2Strain(AndStress)Tensor AmorphousStrain(AndStress)Tensor Interface1Strain(AndStress)Invariant Interface2Strain(AndStress)Invariants AmorphousStrain(AndStress)Invariants 
-	string InputFilename, OutputFilename;
+	string InputFilename, OutputFilename, GTFilename;
+	string timestep;
 	double facClust, tolspangle;
+	//unsigned int timestep;
 
-	if( argc == 3 ){
+	if( argc == 5 ){
 		InputFilename = argv[1];
-		OutputFilename = argv[2];
-		//istringstream iss_rc(argv[3]);
-		//iss_rc >> facClust;
+		GTFilename = argv[2];
+		OutputFilename = argv[3];
+		timestep = argv[4];
+		//istringstream iss_rc(argv[4]);
+		//iss_rc >> timestep;
 		//istringstream iss_c(argv[4]);
 		//iss_c >> tolspangle;
 	}else{
-		cerr << "Usage: ./AnalyzePolycrystal InputFilename OutputFilename" << endl;
+		cerr << "Usage: ./AnalyzePolycrystal InputFilename GrainTagsFilename OutputFilename Timestep" << endl;
 		cerr << "TODO description" << endl;
 		return EXIT_FAILURE;
 	}
 
 	tolspangle = 5;
+	double tol_sp = cos(tolspangle*M_PI/180.);
+	
+	// Search the cell vector of each grains
+	vector<unsigned int> IdIonsGrain;
+	bool ok = read_GTFile(GTFilename, IdIonsGrain);
+	if( ok ) cout << "Grain tag file read successfully" << endl;
+	else EXIT_FAILURE;
+	unsigned int nbGrains = IdIonsGrain.size()/4;
+	AtomicSystem MySystem(InputFilename);
+	const unsigned int nbAt = MySystem.getNbAtom();
+	double *CellVectors = new double[9*nbGrains];
+	for(unsigned int i=0;i<nbGrains;i++){
+		for(unsigned int dim=0;dim<3;dim++){
+			CellVectors[i*9+dim*3] = MySystem.getAtom(IdIonsGrain[i*4+dim+1]).pos.x - MySystem.getAtom(IdIonsGrain[i*4]).pos.x;
+			CellVectors[i*9+dim*3+1] = MySystem.getAtom(IdIonsGrain[i*4+dim+1]).pos.y - MySystem.getAtom(IdIonsGrain[i*4]).pos.y;
+			CellVectors[i*9+dim*3+2] = MySystem.getAtom(IdIonsGrain[i*4+dim+1]).pos.z - MySystem.getAtom(IdIonsGrain[i*4]).pos.z;
+		}
+		// verify that the three vectors are almost normal
+		double na(0.),nb(0.),nc(0.),sp(0.);
+		for(unsigned int dim=0;dim<3;dim++){
+			na += pow(CellVectors[i*9+dim],2.);
+			nb += pow(CellVectors[i*9+3+dim],2.);
+			nc += pow(CellVectors[i*9+6+dim],2.);
+		}
+		na = sqrt(na);
+		nb = sqrt(nb);
+		nc = sqrt(nc);
+		//cout << "na = " << na << endl;
+		//cout << "nb = " << nb << endl;
+		//cout << "nc = " << nc << endl;
+		// a,b
+		for(unsigned int k=0;k<3;k++) sp += CellVectors[i*9+k]*CellVectors[i*9+3+k];
+		if( sp/(na*nb) > tol_sp ) cout << "Warning is seems that a and b are not normals in grain " << i+1 << endl;
+		//cout << "a,b angle = " << acos(sp/(na*nb))*180./M_PI << endl;
+		// a,c
+		sp = 0.;
+		for(unsigned int k=0;k<3;k++) sp += CellVectors[i*9+k]*CellVectors[i*9+6+k];
+		if( sp/(na*nc) > tol_sp ) cout << "Warning is seems that a and c are not normals in grain " << i+1 << endl;
+		//cout << "a,c angle = " << acos(sp/(na*nc))*180./M_PI << endl;
+		// b,c
+		sp = 0.;
+		for(unsigned int k=0;k<3;k++) sp += CellVectors[i*9+3+k]*CellVectors[i*9+6+k];
+		if( sp/(nb*nc) > tol_sp ) cout << "Warning is seems that b and c are not normals in grain " << i+1 << endl;
+		//cout << "b,c angle = " << acos(sp/(nb*nc))*180./M_PI << endl;
+	}
+		
+	string namef1 = "GrainCellVec_";
+	string nameext = ".dat";
+	std::ofstream f_out_cv(namef1+timestep+nameext);
+	for(unsigned int i=0;i<nbGrains;i++){
+		for(unsigned int dim1=0;dim1<3;dim1++){
+			f_out_cv << CellVectors[i*9+dim1*3];
+			for(unsigned int dim2=1;dim2<3;dim2++) f_out_cv << " " << CellVectors[i*9+dim1*3+dim2];
+			f_out_cv << endl;
+		}
+	}
+	f_out_cv.close();
+
+
 	facClust = 0.2;
 
-	double tol_sp = cos(tolspangle*M_PI/180.);
-	cout << "tolerance : " << tol_sp << endl;
 
-	AtomicSystem MySystem(InputFilename);
-
-	const unsigned int nbAt = MySystem.getNbAtom();
 
 	unsigned int Struct_GB = 5; //TODO add in argument of exe
 	unsigned int Struct_Amorph = 0;
@@ -701,32 +789,35 @@ int main(int argc, char *argv[])
 		f_out_res << endl;
 
 
-		//string name = "TreatedGB_";
-		//string ext = ".cfg";
-		//string und = "_";
-		//auto ii = to_string(i);
-		//auto gbi = to_string(GBId_arr_Final[i]);
-		//string fullname = name+ii+und+gbi+ext;
-		//std::ofstream f_out(fullname);
-		//f_out << "ITEM: TIMESTEP" << endl;
-		//f_out << "0" << endl;
-		//f_out << "ITEM: NUMBER OF ATOMS" << endl;
-		//f_out << GBIons_Final[i*3].size()+GBIons_Final[i*3+1].size()+GBIons_Final[i*3+2].size() << endl;
-		//f_out << "ITEM: BOX BOUNDS xy xz yz pp pp pp" << endl;
-		//f_out << "0.0 252.478 0.0" << endl;
-		//f_out << "0.0 364.603 0.0" << endl;
-		//f_out << "0.0 252.478 112.125" << endl;
-		//f_out << "ITEM: ATOMS id x y z clustId" << endl;
-		//for(unsigned int n=0;n<GBIons_Final[i*3].size();n++){
-		//	f_out << n+1 << " " << MySystem.getWrappedPos(GBIons_Final[i*3][n]).x << " " << MySystem.getWrappedPos(GBIons_Final[i*3][n]).y << " " << MySystem.getWrappedPos(GBIons_Final[i*3][n]).z << " " << 0 << endl;
-		//}
-		//for(unsigned int n=0;n<GBIons_Final[i*3+1].size();n++){
-		//	f_out << n+1+GBIons_Final[i*3].size() << " " << MySystem.getWrappedPos(GBIons_Final[i*3+1][n]).x << " " << MySystem.getWrappedPos(GBIons_Final[i*3+1][n]).y << " " << MySystem.getWrappedPos(GBIons_Final[i*3+1][n]).z << " " << 1 << endl;
-		//}
-		//for(unsigned int n=0;n<GBIons_Final[i*3+2].size();n++){
-		//	f_out << n+1+GBIons_Final[i*3].size()+GBIons_Final[i*3+1].size() << " " << MySystem.getWrappedPos(GBIons_Final[i*3+2][n]).x << " " << MySystem.getWrappedPos(GBIons_Final[i*3+2][n]).y << " " << MySystem.getWrappedPos(GBIons_Final[i*3+2][n]).z << " " << 2 << endl;
-		//}
-		//f_out.close();
+		string path_1 = "./AtomicSystems_";
+		string path_2 = "/";
+		string fullpath = path_1+timestep+path_2;
+		std::filesystem::create_directory(fullpath);
+		//_mkdir(fullpath.c_str());
+		string name = "TreatedGB_";
+		string ext = ".cfg";
+		string und = "_";
+		auto ii = to_string(i);
+		string fullname = fullpath+name+ii+ext;
+		std::ofstream f_out(fullname);
+		f_out << "ITEM: TIMESTEP" << endl;
+		f_out << timestep << endl;
+		f_out << "ITEM: NUMBER OF ATOMS" << endl;
+		f_out << GBIons_Final[i*3].size()+GBIons_Final[i*3+1].size()+GBIons_Final[i*3+2].size() << endl;
+		double arr[4] = {0.,MySystem.getH2()[0],MySystem.getH3()[0],MySystem.getH2()[0]+MySystem.getH3()[0]};
+                double arr_2[2] = {0.,MySystem.getH3()[1]};
+		f_out << "ITEM: BOX BOUNDS xy xz yz pp pp pp\n" << MT.min(arr,4) << "\t" << MySystem.getH1()[0]+MT.max(arr,4) << "\t" << MySystem.getH2()[0] << "\n" << MT.min(arr_2,2) << "\t" << MySystem.getH2()[1]+MT.max(arr_2,2) << "\t" << MySystem.getH3()[0] << "\n0\t" << MySystem.getH3()[2] << "\t" << MySystem.getH3()[1] << "\n";
+		f_out << "ITEM: ATOMS id x y z clustId" << endl;
+		for(unsigned int n=0;n<GBIons_Final[i*3].size();n++){
+			f_out << n+1 << " " << MySystem.getWrappedPos(GBIons_Final[i*3][n]).x << " " << MySystem.getWrappedPos(GBIons_Final[i*3][n]).y << " " << MySystem.getWrappedPos(GBIons_Final[i*3][n]).z << " " << 0 << endl;
+		}
+		for(unsigned int n=0;n<GBIons_Final[i*3+1].size();n++){
+			f_out << n+1+GBIons_Final[i*3].size() << " " << MySystem.getWrappedPos(GBIons_Final[i*3+1][n]).x << " " << MySystem.getWrappedPos(GBIons_Final[i*3+1][n]).y << " " << MySystem.getWrappedPos(GBIons_Final[i*3+1][n]).z << " " << 1 << endl;
+		}
+		for(unsigned int n=0;n<GBIons_Final[i*3+2].size();n++){
+			f_out << n+1+GBIons_Final[i*3].size()+GBIons_Final[i*3+1].size() << " " << MySystem.getWrappedPos(GBIons_Final[i*3+2][n]).x << " " << MySystem.getWrappedPos(GBIons_Final[i*3+2][n]).y << " " << MySystem.getWrappedPos(GBIons_Final[i*3+2][n]).z << " " << 2 << endl;
+		}
+		f_out.close();
 
 	}
 	f_out_res.close();
