@@ -1750,34 +1750,58 @@ void AtomicSystem::printSystem_aux(const string& filename, const string& AuxName
 	}
 	else writefile << "BOX BOUNDS pp pp pp\n" << "0\t" << H1[0] << "\n0\t" << H2[1] << "\n0\t" << H3[2] << "\n";
 	if( IsElem ){
-		writefile << "ITEM: ATOMS id type element xu yu zu q";
+		writefile << "ITEM: ATOMS id type element xu yu zu";
+		if( this->IsCharge ) writefile << " q";
         	for(unsigned int i=0;i<AuxId.size();i++){
 			if( Aux_size[AuxId[i]] == 1 ) writefile << " " << this->Aux_name[AuxId[i]];
 			else for(unsigned int j=0;j<Aux_size[AuxId[i]];j++) writefile << " " << this->Aux_name[AuxId[i]] << "[" << j+1 << "]";
 		}
 		writefile << "\n";
-		for(unsigned int i=0;i<this->nbAtom;i++){
-			writefile << i+1 << " " << this->AtomList[i].type_uint << " " << this->AtomType[this->AtomList[i].type_uint-1] << " " << this->AtomList[i].pos.x << " " << this->AtomList[i].pos.y << " " << this->AtomList[i].pos.z << " " << this->AtomCharge[this->AtomList[i].type_uint-1];
-        		for(unsigned int j=0;j<AuxId.size();j++){
-				if( Aux_size[AuxId[j]] == 1 ) writefile << " " << this->Aux[AuxId[j]][i];
-				else for(unsigned int k=0;k<Aux_size[AuxId[j]];k++) writefile << " " << this->Aux[AuxId[j]][i*Aux_size[AuxId[j]]+k];
+		if( this->IsCharge ){
+			for(unsigned int i=0;i<this->nbAtom;i++){
+				writefile << i+1 << " " << this->AtomList[i].type_uint << " " << this->AtomType[this->AtomList[i].type_uint-1] << " " << this->AtomList[i].pos.x << " " << this->AtomList[i].pos.y << " " << this->AtomList[i].pos.z << " " << this->AtomCharge[this->AtomList[i].type_uint-1];
+        			for(unsigned int j=0;j<AuxId.size();j++){
+					if( Aux_size[AuxId[j]] == 1 ) writefile << " " << this->Aux[AuxId[j]][i];
+					else for(unsigned int k=0;k<Aux_size[AuxId[j]];k++) writefile << " " << this->Aux[AuxId[j]][i*Aux_size[AuxId[j]]+k];
+				}
+				writefile << "\n";
 			}
-			writefile << "\n";
+		}else{
+			for(unsigned int i=0;i<this->nbAtom;i++){
+				writefile << i+1 << " " << this->AtomList[i].type_uint << " " << this->AtomType[this->AtomList[i].type_uint-1] << " " << this->AtomList[i].pos.x << " " << this->AtomList[i].pos.y << " " << this->AtomList[i].pos.z;
+        			for(unsigned int j=0;j<AuxId.size();j++){
+					if( Aux_size[AuxId[j]] == 1 ) writefile << " " << this->Aux[AuxId[j]][i];
+					else for(unsigned int k=0;k<Aux_size[AuxId[j]];k++) writefile << " " << this->Aux[AuxId[j]][i*Aux_size[AuxId[j]]+k];
+				}
+				writefile << "\n";
+			}
 		}
 	}else{
-		writefile << "ITEM: ATOMS id type xu yu zu q";
+		writefile << "ITEM: ATOMS id type xu yu zu";
+		if( this->IsCharge ) writefile << " q";
         	for(unsigned int i=0;i<AuxId.size();i++){
 			if( Aux_size[AuxId[i]] == 1 ) writefile << " " << this->Aux_name[AuxId[i]];
 			else for(unsigned int j=0;j<Aux_size[AuxId[i]];j++) writefile << " " << this->Aux_name[AuxId[i]] << "[" << j+1 << "]";
 		}
 		writefile << "\n";
-		for(unsigned int i=0;i<this->nbAtom;i++){
-			writefile << i+1 << " " << this->AtomList[i].type_uint << " " << this->AtomList[i].pos.x << " " << this->AtomList[i].pos.y << " " << this->AtomList[i].pos.z << " " << this->AtomCharge[this->AtomList[i].type_uint-1];
-        		for(unsigned int j=0;j<AuxId.size();j++){
-				if( Aux_size[AuxId[j]] == 1 ) writefile << " " << this->Aux[AuxId[j]][i];
-				else for(unsigned int k=0;k<Aux_size[AuxId[j]];k++) writefile << " " << this->Aux[AuxId[j]][i*Aux_size[AuxId[j]]+k];
+		if( this->IsCharge ){
+			for(unsigned int i=0;i<this->nbAtom;i++){
+				writefile << i+1 << " " << this->AtomList[i].type_uint << " " << this->AtomList[i].pos.x << " " << this->AtomList[i].pos.y << " " << this->AtomList[i].pos.z << " " << this->AtomCharge[this->AtomList[i].type_uint-1];
+        			for(unsigned int j=0;j<AuxId.size();j++){
+					if( Aux_size[AuxId[j]] == 1 ) writefile << " " << this->Aux[AuxId[j]][i];
+					else for(unsigned int k=0;k<Aux_size[AuxId[j]];k++) writefile << " " << this->Aux[AuxId[j]][i*Aux_size[AuxId[j]]+k];
+				}
+				writefile << "\n";
 			}
-			writefile << "\n";
+		}else{
+			for(unsigned int i=0;i<this->nbAtom;i++){
+				writefile << i+1 << " " << this->AtomList[i].type_uint << " " << this->AtomList[i].pos.x << " " << this->AtomList[i].pos.y << " " << this->AtomList[i].pos.z;
+        			for(unsigned int j=0;j<AuxId.size();j++){
+					if( Aux_size[AuxId[j]] == 1 ) writefile << " " << this->Aux[AuxId[j]][i];
+					else for(unsigned int k=0;k<Aux_size[AuxId[j]];k++) writefile << " " << this->Aux[AuxId[j]][i*Aux_size[AuxId[j]]+k];
+				}
+				writefile << "\n";
+			}
 		}
 	}
 	writefile.close();

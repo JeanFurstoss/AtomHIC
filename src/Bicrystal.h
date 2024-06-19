@@ -59,6 +59,7 @@ protected:
 	double tolpos_known_CSL;
 	double tol_CSL_integer;
 	double tolAlignment_CSL;
+	double MaxMisfit, GBspace;
 public:
 	// constructors
 	Bicrystal(){};

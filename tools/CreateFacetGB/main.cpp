@@ -14,6 +14,9 @@ int main(int argc, char *argv[])
 {
 	if( argc < 14 ){
 		cerr << "Usage: CreateGB h_RotAxis k_RotAxis l_RotAxis RotAngle h_GBPlane k_GBPlane l_GBPlane h_facet1 k_facet1 l_facet1 h_facet2 k_facet2 l_facet2 Nfacet lCrystalName" << endl;
+		cerr << "This executable creates a faceted GB with two type of facets which have to have a null x normal plane component" << endl;
+		cerr << "warning here h_facet1(2) k_facet1(2) l_facet1(2) represent directions (and not plane normals)" << endl;
+		cerr << "Nfacet is an integer used to control the length of the facets" << endl;
 		return EXIT_FAILURE;
 	}
 	int h_a, k_a ,l_a, h_p, k_p, l_p, hf1, kf1, lf1, hf2, kf2, lf2;

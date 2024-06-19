@@ -1,10 +1,12 @@
 // This file contains the different global variables used by the programm
 
 // Parameters for constructing crystals and bicrystals
-TOL_ORTHO_BOX 1e-3 // tolerance (in A) for searching orthogonal box with inclined crystal cell vectors
+TOL_ORTHO_BOX 1e-2 // tolerance (in A) for searching orthogonal box with inclined crystal cell vectors
 TOL_ORTHO_BOX_Z 1e-1 // tolerance (in A) for searching orthogonal box with inclined crystal cell vectors in Z direction (could be higher than for other direction)
-MIN_BOX_HEIGHT 5. // minimum box heigh (in A)
-MIN_BOX_ASIDE 4. // minimum box aside (in A)
+MIN_BOX_HEIGHT 100. // minimum box heigh (in A)
+MIN_BOX_ASIDE 10. // minimum box aside (in A)
+MAX_MISFIT 0.03 // maximum misfit for pasting crystal over each others when creating bicrystal
+GB_SPACE 0.5 // space between the two crystals (in A)
 
 // Parameters for CSL calculation
 THETA_MAX_ROT_ANGLE_RAT 1e-1 // maximum angle deviation from the rationalized to the given rotation axis

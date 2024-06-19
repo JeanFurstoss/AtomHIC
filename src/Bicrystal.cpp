@@ -17,7 +17,7 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, double theta, int h_p, int k_p, int l_p, vector<int> FacetsType, unsigned int N_facet):h_a(h_a), k_a(k_a), l_a(l_a), theta(theta), h_p(h_p), k_p(k_p), l_p(l_p){ //TODO warning use this-> for the variable in the initialization list
 	this->MT = new MathTools;
 	read_params();
-	setOrientedCrystals(crystalName, true);
+	setOrientedCrystals(crystalName, false);
 	double *Dir1_G1 = new double[3];
 	double *Dir2_G1 = new double[3];
 	double *Dir1_G2 = new double[3];
@@ -68,16 +68,14 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 		exit(EXIT_FAILURE);
 	}
 	// correct the direction accounting for the small deformation applied to crystals during construction of grains
-	MT->MatDotVec(this->_MyCrystal->getTiltTrans(), Dir1_G1, Dir1_G1);
-	MT->MatDotVec(this->_MyCrystal->getTiltTrans(), Dir2_G1, Dir2_G1);
-	MT->MatDotVec(this->_MyCrystal2->getTiltTrans(), Dir1_G1, Dir1_G2);
-	MT->MatDotVec(this->_MyCrystal2->getTiltTrans(), Dir2_G1, Dir2_G2);
+	MT->MatDotRawVec(this->_MyCrystal->getTiltTrans(), Dir1_G1, Dir1_G1);
+	MT->MatDotRawVec(this->_MyCrystal->getTiltTrans(), Dir2_G1, Dir2_G1);
+	MT->MatDotRawVec(this->_MyCrystal2->getTiltTrans(), Dir1_G1, Dir1_G2);
+	MT->MatDotRawVec(this->_MyCrystal2->getTiltTrans(), Dir2_G1, Dir2_G2);
 	n1 *= N_facet;
 	n2 *= N_facet;
 	double DeltaZ = fabs(n1*Dir1_G1[2]);
 	// search the number of linear combination for the two system to have the same x y length
-	double GBspace = 0.5; //TODO maybe define elsewhere (in a file in the main prog for example..)
-	double MaxMisfit = 0.02;
 	unsigned int MaxDup = 50;
 	this->xl1 = this->_MyCrystal->getOrientedSystem()->getH1()[0];
 	this->xl2 = this->_MyCrystal2->getOrientedSystem()->getH1()[0];
@@ -113,6 +111,13 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
     	My1 = final_ybox / (yl1*dupY1);
     	Mx2 = final_xbox / (xl2*dupX2);
     	My2 = final_ybox / (yl2*dupY2);
+	// search if the facets can be putted in the y length
+	double dup_fac_y = final_ybox / ( n1*Dir1_G1[1] + n2*Dir2_G1[1] );
+	if( dup_fac_y < 1. ){
+		final_ybox /= dup_fac_y;
+		dupY1 *= round(1./dup_fac_y);
+		dupY2 *= round(1./dup_fac_y);
+	}
 	// initialize the variables and pointers
 	unsigned int nbAtom1 = this->_MyCrystal->getOrientedSystem()->getNbAtom();
 	unsigned int nbAtom2 = this->_MyCrystal2->getOrientedSystem()->getNbAtom();
@@ -172,6 +177,7 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	double fullFaceLength_2 = My2*(n1*Dir1_G2[1]+n2*Dir2_G2[1]);
 	double slope1_2 = Dir1_G2[2]/(My2*Dir1_G2[1]);
 	double slope2_2 = Dir2_G2[2]/(My2*Dir2_G2[1]);
+	cout << fullFaceLength_1 << " " << fullFaceLength_2 << " " << slope1_1 << " " << slope1_2 << " " << slope2_1 << " " << slope2_2 << endl;
 	double Origin;
 	unsigned int trueNbAt1 = 0;
 	unsigned int trueNbAt2 = 0;
@@ -323,7 +329,7 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	for(unsigned int i=0;i<this->_MyCrystal->getNbAtomType();i++){
 		if( fabs(((double) currentStoich[i]/at_count) - ((double) this->_MyCrystal->getStoich()[i]/this->_MyCrystal->getNbAtom()) ) > 1e-9 ){
 			stoich = false;
-			cout << "Warning the stoichiometry is not the same than parent crystal, ";
+			cout << "The stoichiometry is not the same than parent crystal, ";
 			for(unsigned int t=0;t<this->_MyCrystal->getNbAtomType();t++){
 				cout << "number of " << this->_MyCrystal->getAtomType(t+1) << " : " << currentStoich[t] << ", ";
 			}
@@ -331,8 +337,10 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 			break;
 		}
 	}
+	stoich = true;
 	// adjsut stoichiometry
 	if( !stoich ){
+		cout << "Adjusting stoichiometry.. (this may take a while)" << endl;
 		int *adjust = new int[this->_MyCrystal->getNbAtomType()];
 		int *adjust_tmp = new int[this->_MyCrystal->getNbAtomType()];
 		for(unsigned int i=0;i<this->_MyCrystal->getNbAtomType();i++){
@@ -432,7 +440,7 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	string l_f2_str = to_string(FacetsType[5]);
 	string nbAt1_str = to_string(trueNbAt1);
 	string nbAt2_str = to_string(trueNbAt2);
-	this->File_Heading = " # ["+h_a_str+k_a_str+l_a_str+"]"+theta_str+"°("+h_p_str+k_p_str+l_p_str+") "+crystalName+" grain boundary\n # The grain boundary is faceted with ("+h_f1_str+k_f1_str+l_f1_str+") and ("+h_f2_str+k_f2_str+l_f2_str+") planes\n # The lower grain contains "+nbAt1_str+" atoms and the upper grain contains "+nbAt2_str+" atoms\n";
+	this->File_Heading = " # ["+h_a_str+k_a_str+l_a_str+"]"+theta_str+"°("+h_p_str+k_p_str+l_p_str+") "+crystalName+" grain boundary\n # The grain boundary is faceted with ["+h_f1_str+k_f1_str+l_f1_str+"] and ["+h_f2_str+k_f2_str+l_f2_str+"] directions in the GB plane\n # The lower grain contains "+nbAt1_str+" atoms and the upper grain contains "+nbAt2_str+" atoms\n";
 	this->Grain1->set_File_Heading(" # Lower grain of the ["+h_a_str+k_a_str+l_a_str+"]"+theta_str+"°("+h_p_str+k_p_str+l_p_str+") "+crystalName+" grain boundary\n");
 	this->Grain2->set_File_Heading(" # Upper grain of the ["+h_a_str+k_a_str+l_a_str+"]"+theta_str+"°("+h_p_str+k_p_str+l_p_str+") "+crystalName+" grain boundary\n");
 
@@ -453,10 +461,8 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 // Constructor for bicrystal with plane GB with given misorientation and GB plane
 Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, double theta, int h_p, int k_p, int l_p, bool rationalize):h_a(h_a), k_a(k_a), l_a(l_a), theta(theta), h_p(h_p), k_p(k_p), l_p(l_p){
 	read_params();
-	double GBspace = 0.5; //TODO maybe define elsewhere (in a file in the main prog for example..)
-	double MaxMisfit = 0.02;
 	unsigned int MaxDup = 50;
-	bool FullGrains = true; // TODO as the variables above
+	bool FullGrains = true; 
 	this->MT = new MathTools;
 	cout << "constructing crystals, " ;
 	setOrientedCrystals(crystalName, rationalize);
@@ -1662,7 +1668,7 @@ void Bicrystal::read_params(){
 	string backslash="/";
 	string filename=fp+backslash+FixedParam_Filename;
 	ifstream file(filename, ios::in);
-	size_t pos_thetamax, pos_MaxHKL, pos_toldist, pos_sigmaMax, pos_tolpos_kC, pos_tolCSLint, pos_tolAlign, pos_rcut, pos_lsph;
+	size_t pos_thetamax, pos_MaxHKL, pos_toldist, pos_sigmaMax, pos_tolpos_kC, pos_tolCSLint, pos_tolAlign, pos_rcut, pos_lsph, pos_MaxMisfit, pos_GBSpace;
 	string buffer_s, line;
 	if(file){
 		while(file){
@@ -1701,6 +1707,16 @@ void Bicrystal::read_params(){
 			if(pos_tolAlign!=string::npos){
 				istringstream text(line);
 				text >> buffer_s >> this->tolAlignment_CSL;
+			}
+			pos_GBSpace=line.find("GB_SPACE ");
+			if(pos_GBSpace!=string::npos){
+				istringstream text(line);
+				text >> buffer_s >> this->GBspace;
+			}
+			pos_MaxMisfit=line.find("MAX_MISFIT ");
+			if(pos_MaxMisfit!=string::npos){
+				istringstream text(line);
+				text >> buffer_s >> this->MaxMisfit;
 			}
 		}
 	}else{
