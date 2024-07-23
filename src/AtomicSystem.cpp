@@ -3,6 +3,9 @@
 #include "Crystal.h"
 #include <cmath>
 #include <sstream>
+#include <iostream>
+#include <fstream>
+#include <string>
 #include <vector>
 #include <iomanip>
 #include <chrono>
@@ -338,12 +341,25 @@ void AtomicSystem::FilenameConstructor(const string& filename){
 	this->IsTilted=false;
 	this->nbAtomType = 0;
 	string ext=filename.substr(filename.find_last_of(".") + 1);
+	cout << "Reading " << filename << " file..";
 	if( ext == "lmp" ){
-		this->read_lmp_file(filename);
-	}else if( ext == "cfg" || ext == "xsf" ){
-		this->read_cfg_file(filename);
+		if( !this->read_lmp_file(filename) ){
+			if( !this->read_cfg_file(filename) ){
+				if( !this->read_other_cfg(filename) ){
+					cerr << "The file readers cannot read the given file. Maybe try to change its format using atomsk (supported format lmp, cfg)" << endl;
+					exit(EXIT_FAILURE);
+				}else cout << " done !" << endl;
+			}else cout << " done !" << endl;
+		}else cout << " done !" << endl;
 	}else{
-		cerr << "The \"" << ext << "\" is unknown (known extension : lmp, cfg(or xsf)), aborting the construction of atomic system" << endl;
+		if( !this->read_cfg_file(filename) ){
+			if( !this->read_other_cfg(filename) ){
+				if( !this->read_lmp_file(filename) ){
+					cerr << "The file readers cannot read the given file. Maybe try to change its format using atomsk (supported format lmp, cfg)" << endl;
+					exit(EXIT_FAILURE);
+				}else cout << " done !" << endl;
+			}else cout << " done !" << endl;
+		}else cout << " done !" << endl;
 	}
 	this->MT = new MathTools;
 	this->G1 = new double[3];
@@ -1146,17 +1162,18 @@ void AtomicSystem::printSystem(const string& filename){
 	}
 }
 
-void AtomicSystem::read_lmp_file(const string& filename){
-	cout << "Reading " << filename << " file..";
+bool AtomicSystem::read_lmp_file(const string& filename){
 	ifstream file(filename, ios::in);
-	size_t pos_at, pos_x, pos_y, pos_z, pos_tilt, pos_attype, pos_Mass, pos_At;
-	unsigned int line_Mass(1000), line_At(1000), buffer_uint, buffer_uint_1, count(0);
+	size_t pos_at, pos_x, pos_y, pos_z, pos_tilt, pos_attype, pos_Mass, pos_At, pos_vel;
+	unsigned int line_Mass(1000), line_At(1000), line_vel(1000), buffer_uint, buffer_uint_1, count(0);
 	double buffer_1, buffer_2, buffer_3, buffer_4;
 	double xlo,xhi,ylo,yhi,zlo,zhi;
 	string buffer_s, buffer_s_1, buffer_s_2, line;
+	bool IsVel = false;
+	unsigned int ReadOk(0), NbAtRead(0), NbVelRead(0);
 	if(file){
-		while(file){
-			getline(file,line);
+		while(getline(file,line)){
+			//getline(file,line);
 
 			// find number of atom
 			pos_at=line.find("atoms");
@@ -1165,6 +1182,7 @@ void AtomicSystem::read_lmp_file(const string& filename){
 				text >> buffer_uint;
 				this->nbAtom = buffer_uint;
 				AtomList = new Atom[this->nbAtom];
+				ReadOk++;
 			}
 
 			// find H1 vector
@@ -1174,6 +1192,7 @@ void AtomicSystem::read_lmp_file(const string& filename){
 				text >> buffer_1 >> buffer_2;
 				xhi = buffer_2;
 				xlo = buffer_1;
+				ReadOk++;
 			}
 
 			// find H2 vector
@@ -1183,6 +1202,7 @@ void AtomicSystem::read_lmp_file(const string& filename){
 				text >> buffer_1 >> buffer_2;
 				yhi = buffer_2;
 				ylo = buffer_1;
+				ReadOk++;
 			}
 
 			// find H3 vector
@@ -1192,6 +1212,7 @@ void AtomicSystem::read_lmp_file(const string& filename){
 				text >> buffer_1 >> buffer_2;
 				zhi = buffer_2;
 				zlo = buffer_1;
+				ReadOk++;
 			}
 
 			// find tilts
@@ -1221,6 +1242,7 @@ void AtomicSystem::read_lmp_file(const string& filename){
 				text >> buffer_uint >> buffer_1 >> buffer_s_1 >> buffer_s;
 				this->AtomMass[buffer_uint-1] = buffer_1;
 				this->AtomType[buffer_uint-1] = buffer_s;
+				this->IsElem = true;
 			}
 			pos_At=line.find("Atoms #");
 			if(pos_At!=string::npos){
@@ -1228,8 +1250,9 @@ void AtomicSystem::read_lmp_file(const string& filename){
 				text >> buffer_s_1 >> buffer_s_2 >> buffer_s;
 				if( buffer_s == "charge" ) this->IsCharge = true;
 			       	line_At = count;
+				ReadOk++;
 			}
-			if( count > line_At+1 ){
+			if( count > line_At+1 && count < line_At+2+this->nbAtom ){
 				istringstream text(line);
 				if( this->IsCharge ){
 					text >> buffer_uint >> buffer_uint_1 >> buffer_1 >> buffer_2 >> buffer_3 >> buffer_4;
@@ -1238,6 +1261,7 @@ void AtomicSystem::read_lmp_file(const string& filename){
 					this->AtomList[buffer_uint-1].pos.z = buffer_4;
 					this->AtomList[buffer_uint-1].type_uint = buffer_uint_1;
 					this->AtomCharge[buffer_uint_1-1] = buffer_1;
+					NbAtRead++;
 				}else{
 					text >> buffer_uint >> buffer_uint_1 >> buffer_2 >> buffer_3 >> buffer_4;
 					this->AtomList[buffer_uint-1].pos.x = buffer_2;
@@ -1245,29 +1269,69 @@ void AtomicSystem::read_lmp_file(const string& filename){
 					this->AtomList[buffer_uint-1].pos.z = buffer_4;
 					this->AtomList[buffer_uint-1].type_uint = buffer_uint_1;
 					this->AtomCharge[buffer_uint_1-1] = 0.;
+					NbAtRead++;
 				}
 			}
+			pos_vel=line.find("Velocities");
+			if(pos_vel!=string::npos){
+				istringstream text(line);
+				text >> buffer_s;
+				this->Aux_size.push_back(3);
+				this->Aux_name.push_back("Velocities");
+				this->Aux.push_back(new double[3*this->nbAtom]);
+			       	line_vel = count;
+				IsVel = true;
+			}
 			count += 1;
+			if( !file ) break;
 		}
+		file.close();
 		// compute the cell vectors
-		// TEST
-		//double arr[4] = {0.,this->H2[0],this->H3[0],this->H2[0]+this->H3[0]};
-		//this->H1[0] = xhi-xlo+this->MT->min(arr,4)-this->MT->max(arr,4);
-		//double arr_2[2] = {0.,this->H3[1]};
-		//this->H2[1] = yhi-ylo+this->MT->min(arr_2,2)-this->MT->max(arr_2,2);
-		//this->H3[2] = zhi-zlo; // TODO verify if this is good for tilted box
-		// END TEST
 		this->H1[0] = xhi-xlo;
 		this->H2[1] = yhi-ylo;
-		this->H3[2] = zhi-zlo; // TODO verify if this is good for tilted box
-		file.close();
+		this->H3[2] = zhi-zlo;
+		ifstream file2;
+		file2.open(filename.c_str(), ifstream::in);
+		count = 0;
+		if(file2){
+			while(getline(file2,line)){
+				if( IsVel && count > line_vel+1 && count < line_vel+2+this->nbAtom ){
+					istringstream text2(line);
+					text2 >> buffer_uint_1 >> buffer_1 >> buffer_2 >> buffer_3;	
+					this->Aux[0][(buffer_uint_1-1)*3] = buffer_1;
+					this->Aux[0][(buffer_uint_1-1)*3+1] = buffer_2;
+					this->Aux[0][(buffer_uint_1-1)*3+2] = buffer_3;
+					NbVelRead++;
+				}
+				count++;
+			}
+		}
+		file2.close();
 	}else{
 		cout << "The file " << filename << " cannot be openned" << endl;
+		exit(EXIT_FAILURE);
+		return false;
 	}
-	cout << " done !" << endl;
+	if( ReadOk == 5 ){
+		if( NbAtRead == this->nbAtom ){
+			if( IsVel && NbVelRead == this->nbAtom ){
+				cout << "done !" << endl;
+				return true;
+			}else{
+				if( IsVel ) cout << "warning ! the number of atomic velocities provided does not correspond to the number of atom" << endl;
+				return true;
+			}
+		}else{
+			cout << "the number of atom provided does not correspond to the true number of atom" << endl;
+			exit(EXIT_FAILURE);
+			return false;
+		}
+	}else{
+		return false;
+	}
 }
 
-void AtomicSystem::read_other_cfg(const string& filename){
+bool AtomicSystem::read_other_cfg(const string& filename){
 	ifstream file(filename, ios::in);
 	if(file){
 		unsigned int buffer_uint, count(0), nbAux, line_aux(1000), indId, count_at(0), current_type_uint, count_aux, current_ind;
@@ -1275,6 +1339,7 @@ void AtomicSystem::read_other_cfg(const string& filename){
 		double buffer_1, buffer_2, buffer_3, buffer_4, buffer_5;
 		bool IsId = false, TypeStored;
 		string buffer_s, buffer_s_1, buffer_s_2, buffer_s_3, line;
+		unsigned int ReadOk(0);
 		this->nbAtomType = 0;
 		while(file){
 			getline(file,line);
@@ -1285,6 +1350,7 @@ void AtomicSystem::read_other_cfg(const string& filename){
 				text >> buffer_s >> buffer_s_1 >> buffer_s_2 >> buffer_s_3 >> buffer_uint;
 			       	this->nbAtom = buffer_uint;
 				AtomList = new Atom[this->nbAtom];
+				ReadOk++;
 			}
 			// find cell vectors
 			pos_H1_x=line.find("H0(1,1)");
@@ -1292,54 +1358,63 @@ void AtomicSystem::read_other_cfg(const string& filename){
 				istringstream text(line);
 				text >> buffer_s >> buffer_s_1 >> buffer_1;
 				this->H1[0] = buffer_1;
+				ReadOk++;
 			}
 			pos_H1_y=line.find("H0(1,2)");
 			if(pos_H1_y!=string::npos){
 				istringstream text(line);
 				text >> buffer_s >> buffer_s_1 >> buffer_1;
 				this->H1[1] = buffer_1;
+				ReadOk++;
 			}
 			pos_H1_z=line.find("H0(1,3)");
 			if(pos_H1_z!=string::npos){
 				istringstream text(line);
 				text >> buffer_s >> buffer_s_1 >> buffer_1;
 				this->H1[2] = buffer_1;
+				ReadOk++;
 			}
 			pos_H2_x=line.find("H0(2,1)");
 			if(pos_H2_x!=string::npos){
 				istringstream text(line);
 				text >> buffer_s >> buffer_s_1 >> buffer_1;
 				this->H2[0] = buffer_1;
+				ReadOk++;
 			}
 			pos_H2_y=line.find("H0(2,2)");
 			if(pos_H2_y!=string::npos){
 				istringstream text(line);
 				text >> buffer_s >> buffer_s_1 >> buffer_1;
 				this->H2[1] = buffer_1;
+				ReadOk++;
 			}
 			pos_H2_z=line.find("H0(2,3)");
 			if(pos_H2_z!=string::npos){
 				istringstream text(line);
 				text >> buffer_s >> buffer_s_1 >> buffer_1;
 				this->H2[2] = buffer_1;
+				ReadOk++;
 			}
 			pos_H3_x=line.find("H0(3,1)");
 			if(pos_H3_x!=string::npos){
 				istringstream text(line);
 				text >> buffer_s >> buffer_s_1 >> buffer_1;
 				this->H3[0] = buffer_1;
+				ReadOk++;
 			}
 			pos_H3_y=line.find("H0(3,2)");
 			if(pos_H3_y!=string::npos){
 				istringstream text(line);
 				text >> buffer_s >> buffer_s_1 >> buffer_1;
 				this->H3[1] = buffer_1;
+				ReadOk++;
 			}
 			pos_H3_z=line.find("H0(3,3)");
 			if(pos_H3_z!=string::npos){
 				istringstream text(line);
 				text >> buffer_s >> buffer_s_1 >> buffer_1;
 				this->H3[2] = buffer_1;
+				ReadOk++;
 			}
 			pos_nbAux=line.find("entry_count");
 			if(pos_nbAux!=string::npos){
@@ -1348,6 +1423,7 @@ void AtomicSystem::read_other_cfg(const string& filename){
 				nbAux -= 3; // the three atomic coordinates
 				line_aux = count;
 				if( nbAux > 0 ) this->IsSetAux = true;
+				ReadOk++;
 			}
 			if( count > line_aux && count <= line_aux+nbAux ){
 				istringstream text(line);
@@ -1422,15 +1498,30 @@ void AtomicSystem::read_other_cfg(const string& filename){
 			count += 1;
 		}
 		if( H2[0] != 0 || H3[0] != 0 || H3[1] != 0 ) IsTilted = true;
+		if( ReadOk == 11 ){
+			if( nbAtom == count_at ){
+				return true;
+			}else{
+				cout << "The number of atomic data does not correspond to the number of atom" << endl;
+				exit(EXIT_FAILURE);
+				return false;
+			}
+		}else{
+			return false;
+		}
+	}else{
+		cout << "The file " << filename << " cannot be openned" << endl;
+		exit(EXIT_FAILURE);
+		return false;
 	}
 }
 
-void AtomicSystem::read_cfg_file(const string& filename){
-	cout << "Reading " << filename << " file..";
+bool AtomicSystem::read_cfg_file(const string& filename){
 	ifstream file(filename, ios::in);
+	unsigned int ReadOk(0), NbAtRead(0);
 	if(file){
-		unsigned int line_dt(1000), line_At(1000), line_H_tilt(1000), line_H(1000), line_at(1000), buffer_uint, buffer_uint_1, count_H(0), count(0), nbAux(0), aux_count;
-		size_t pos_dt, pos_At, pos_H_tilt, pos_H, pos_charge, pos_at, pos_aux_vec, pos_elem;
+		unsigned int line_dt(1000), line_At(1000), line_H(1000), line_at(1000), buffer_uint, buffer_uint_1, count_H(0), count(0), nbAux(0), aux_count;
+		size_t pos_dt, pos_At, pos_H, pos_charge, pos_at, pos_aux_vec, pos_elem;
 		double buffer_1, buffer_2, buffer_3, buffer_4, buffer_5;
 		double xlo,xhi,ylo,yhi,zlo,zhi;
 		string buffer_s, buffer_s_1, buffer_s_2, line, aux_name;
@@ -1439,14 +1530,6 @@ void AtomicSystem::read_cfg_file(const string& filename){
 		vector<string> befAuxNames;
 		while(file){
 			getline(file,line);
-			if( count == 0 ){
-				istringstream text(line);
-				text >> buffer_s >> buffer_s_1 >> buffer_s_2;
-				if( buffer_s == "Number" && buffer_s_1 == "of" && buffer_s_2 == "particles" ){
-					other_cfg = true;
-					break;
-				}
-			}
 			// find timestep
 			pos_dt=line.find("TIMESTEP");
 			if( pos_dt!=string::npos ) line_dt = count;
@@ -1464,17 +1547,24 @@ void AtomicSystem::read_cfg_file(const string& filename){
 				text >> buffer_uint;
 			       	this->nbAtom = buffer_uint;
 				AtomList = new Atom[this->nbAtom];
+				ReadOk++;
 			}
 
 			// find box vectors
-			pos_H_tilt=line.find("BOX BOUNDS xy xz yz pp pp pp");
-			if( pos_H_tilt!=string::npos ){
-				line_H_tilt = count;
-				this->IsTilted = true;
+			pos_H=line.find("BOX BOUNDS");
+			if( pos_H!=string::npos ){
+				line_H = count;
+				istringstream text2(line);
+				unsigned int nbCol = 0;
+				do{
+					string sub;
+					text2 >> sub;
+					if( sub.length() ) ++nbCol;
+				}while( text2 );
+				if( nbCol > 6 )	this->IsTilted = true;
+				ReadOk++;
 			}
-			pos_H=line.find("BOX BOUNDS pp pp pp");
-			if( pos_H!=string::npos ) line_H = count;
-			if( IsTilted && count > line_H_tilt && count < line_H_tilt+4 ){
+			if( IsTilted && count > line_H && count < line_H+4 ){
 				istringstream text(line);
 				text >> buffer_1 >> buffer_2 >> buffer_3;
 				if( count_H == 0 ){
@@ -1490,22 +1580,28 @@ void AtomicSystem::read_cfg_file(const string& filename){
 					zhi = buffer_2;
 					this->H3[2] = buffer_2-buffer_1;
 					this->H3[1] = buffer_3;
-
-			double arr[4] = {0.,this->H2[0],this->H3[0],this->H2[0]+this->H3[0]};
-			//this->H1[0] = xhi-this->MT->min(arr,4)-this->MT->max(arr,4);
-			this->H1[0] = xhi-xlo+this->MT->min(arr,4)-this->MT->max(arr,4);
-			double arr_2[2] = {0.,this->H3[1]};
-			//this->H2[1] = yhi-this->MT->min(arr_2,2)-this->MT->max(arr_2,2);
-			this->H2[1] = yhi-ylo+this->MT->min(arr_2,2)-this->MT->max(arr_2,2);
-
+				double arr[4] = {0.,this->H2[0],this->H3[0],this->H2[0]+this->H3[0]};
+				this->H1[0] = xhi-xlo+this->MT->min(arr,4)-this->MT->max(arr,4);
+				double arr_2[2] = {0.,this->H3[1]};
+				this->H2[1] = yhi-ylo+this->MT->min(arr_2,2)-this->MT->max(arr_2,2);
 				}
 				count_H += 1;
 			}else if( !IsTilted && count > line_H && count < line_H+4 ){
 				istringstream text(line);
 				text >> buffer_1 >> buffer_2;
-				if( count_H == 0 ) this->H1[0] = buffer_2-buffer_1;
-				else if( count_H == 1 ) this->H2[1] = buffer_2-buffer_1;
-				else if( count_H == 2 ) this->H3[2] = buffer_2-buffer_1;
+				if( count_H == 0 ){
+					xlo = buffer_1;
+					xhi = buffer_2;
+					this->H1[0] = buffer_2-buffer_1;
+				}else if( count_H == 1 ){
+					ylo = buffer_1;
+					yhi = buffer_2;
+					this->H2[1] = buffer_2-buffer_1;
+				}else if( count_H == 2 ){
+					zlo = buffer_1;
+					zhi = buffer_2;
+					this->H3[2] = buffer_2-buffer_1;
+				}
 				count_H += 1;
 			}
 
@@ -1524,13 +1620,14 @@ void AtomicSystem::read_cfg_file(const string& filename){
 			// find and get atom positions
 			pos_at=line.find("ITEM: ATOMS");
 			if( pos_at!=string::npos ){
+				ReadOk++;
 				istringstream text(line);
 				text >> buffer_s >> buffer_s;
 				while(text >> buffer_s){
 					nbAux += 1;
 					if( nbAux > nbAux_norm ){
 					       this->IsSetAux = true;
-					       // search if auxiliary property is vector (contains "_" follwed by an integer number)
+					       // search if auxiliary property is vector (contains "[" follwed by an integer number)
 					       bool isauxvec = false;
 					       pos_aux_vec=buffer_s.find("[");
 					       if(pos_aux_vec!=string::npos){
@@ -1607,23 +1704,11 @@ void AtomicSystem::read_cfg_file(const string& filename){
 						for(unsigned int au_v=0;au_v<Aux_size[au];au_v++) text >> Aux[au][(buffer_uint-1)*Aux_size[au]+au_v];
 					}
 				}
+				++NbAtRead;
 			}
 			count += 1;
 		}
 		file.close();
-		if( other_cfg ){
-			read_other_cfg(filename);
-			return;
-		}
-		//if( IsTilted ){
-		//	// compute the cell vectors
-		//	// TEST
-		//	double arr[4] = {0.,this->H2[0],this->H3[0],this->H2[0]+this->H3[0]};
-		//	this->H1[0] = xhi-this->MT->min(arr,4)-this->MT->max(arr,4);
-		//	double arr_2[2] = {0.,this->H3[1]};
-		//	this->H2[1] = yhi-this->MT->min(arr_2,2)-this->MT->max(arr_2,2);
-		//	// END TEST
-		//}
 		// search the number of atom type
 		for(unsigned int i=0;i<this->MaxAtomType;i++){
 			if( this->AtomType[i] == "" ){
@@ -1675,8 +1760,19 @@ void AtomicSystem::read_cfg_file(const string& filename){
 	// end read cfg (xsf) file
 	}else{
 		cout << "The file " << filename << " cannot be openned" << endl;
+		exit(EXIT_FAILURE);
 	}
-	cout << " done !" << endl;
+	if( ReadOk == 3 ){
+		if( (NbAtRead-1) == nbAtom ){
+			return true;
+		}else{
+			cout << "the number of atom provided does not correspond to the true number of atom" << endl;
+			exit(EXIT_FAILURE);
+			return false;
+		}
+	}else{
+		return false;
+	}
 }
 
 
