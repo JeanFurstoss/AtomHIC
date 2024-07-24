@@ -13,7 +13,13 @@ int main(int argc, char *argv[])
 {
 	// check the number of argument
 	if( argc < 7 ){
-		cerr << "Usage: AnalyzeBicrystal_ARGS RotAxis_X_Component RotAxis_Y_Component RotAxis_Z_Component Rot_Angle CrystalType Output_Filename" << endl;
+		cerr << "Usage: AnalyzeCSL RotAxis_X_Component RotAxis_Y_Component RotAxis_Z_Component Rot_Angle CrystalType Output_Filename" << endl;
+		cerr << "This executable compute the CSL lattice for a given misorientation and crystal type (which has to be defined in /data/Crystal/)" << endl;
+	        cerr << "It will print in Output_Filename : SigmaValue SallestCSLVector ShapeFactorCSLBasis_1 ShapeFactorCSLBasis_2 c1 c2 c3" << endl;
+		cerr << "Where ShapeFactorCSLBasis_1 = LargestCSLVector / SmallestCSLVector" << endl;
+		cerr << "Where ShapeFactorCSLBasis_2 = LargestCSLVector^2 / Product of the two other CSLVector" << endl;
+		cerr << "c1, c2, c3 are the three CSL basis vectors" << endl;
+		cerr << "The algorithm used for this calculation is based on a iterative procedure developped by Bonnet and Rolland 1975 and permitting to compute near-CSL for low symmetry crystals (for these type of crystals, the numerical parameters defined for CSL in /data/FixedParameters/FixedParameters.dat can be important)" << endl;
 		return EXIT_FAILURE;
 	}
 	double ra_x, ra_y, ra_z, rot_angle;

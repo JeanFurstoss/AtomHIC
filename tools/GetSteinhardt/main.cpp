@@ -12,7 +12,8 @@ using namespace std::chrono;
 
 void error_msg(){
 	cerr << "Usage: GetSteinhardt AtomicInputFilename number_of_struct number_of_struct*(AtomIndexListFileName name_of_struct) OutputFilename SteinhardtStyle AveStyle" << endl;
-	cerr << "or: GetSteinhardt AtomicInputFilename number_of_struct number_of_struct*(x_lo x_hi y_lo y_hi z_lo z_hi name_of_struct) OutputFilename SteinhardtStyle AveStyle" << endl; 
+	cerr << "or: GetSteinhardt AtomicInputFilename number_of_struct number_of_struct*(x_lo x_hi y_lo y_hi z_lo z_hi name_of_struct) OutputFilename SteinhardtStyle AveStyle" << endl;
+        cerr << "number_of_struct different from 0 can be used to separate different local atomic environments in a same atomic system and then use the Q values to train a GMM model" << endl;
 	cerr << "number_of_struct can be 0" << endl;
 	cerr << endl;
 	cerr << "Possible Steinhardt styles : " << endl;

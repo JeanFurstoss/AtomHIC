@@ -32,6 +32,7 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 	AtomicSystem MySystem(InputFilename);
+	MySystem.printSystem_aux("TEST.cfg","vx");
 	const unsigned int nbAt = MySystem.getNbAtom();
 
 	vector<string> AtTypes;

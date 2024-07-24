@@ -13,7 +13,7 @@ using namespace std;
 int main(int argc, char *argv[])
 {
 	if( argc < 8 ){
-		cerr << "Usage: CreateGB h_RotAxis k_RotAxis l_RotAxis RotAngle h_GBPlane k_GBPlane l_GBPlane CrystalName" << endl;
+		cerr << "Usage: CreateGB h_RotAxis k_RotAxis l_RotAxis RotAngle h_GBPlane k_GBPlane l_GBPlane CrystalName(has to be defined in /data/Crystal/)" << endl;
 		return EXIT_FAILURE;
 	}
 	int h_a, k_a ,l_a, h_p, k_p, l_p;
@@ -40,11 +40,5 @@ int main(int argc, char *argv[])
 	MyGB.print_lmp("GB.lmp");
 	MyGB.printCSL("CSL.lmp");
 	MyGB.print_Grains();
-	double x1,x2,y1,y2;
-	x1 = MyGB.getxl1();
-	y1 = MyGB.getyl1();
-	x2 = MyGB.getxl2();
-	y2 = MyGB.getyl2();
-	cout << "Success " << x1 << " " << y1 << " " << x2 << " " << y2 << endl;
 	return 0;
 }

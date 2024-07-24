@@ -7,7 +7,7 @@
 ######################################################################
 
 #Project name
-project(AnalyzeBicrystal)
+project(AnalyzeBicrystal_ARGS)
  
 #The file(GLOB...) allows for wildcard additions:
 file(GLOB HEADERS "*.h")

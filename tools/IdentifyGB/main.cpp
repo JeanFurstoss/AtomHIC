@@ -26,6 +26,7 @@ int main(int argc, char *argv[])
 	}else{
 		cerr << "Usage: ./IdentifyGB InputFilename OutputFilename rcut_large" << endl;
 		cerr << "the GB field returned here consists of G1Id.G2Id => when the number of grain is higher than 9 there is doubt and this program shoudl be modified" << endl;
+		cerr << "This executable has been used for analyzing Mg2SiO4 polycrystal deformation (it would need more development to be applied to other systems)" << endl;
 		return EXIT_FAILURE;
 	}
 	AtomicSystem MySystem(InputFilename);

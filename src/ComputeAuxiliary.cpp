@@ -614,7 +614,7 @@ void ComputeAuxiliary::ComputeSteinhardtParameters_OneL(const double rc, const i
 	if( !_MySystem->getIsNeighbours() || _MySystem->get_current_rc() != rc ){
 		_MySystem->searchNeighbours(rc);
 	}
-	cout << "Computing Steinhart parameter.. ";
+	cout << "Computing Steinhart parameter.. " << endl;
 	const unsigned int nbAt = _MySystem->getNbAtom();
 	const unsigned int nbNMax = _MySystem->getNbMaxN();
 	this->Malpha = new unsigned int[nbAt*(nbNMax+1)]; // array containing the index of neighbours of the same species (or same site in case of multisite crystal) with the first line corresponding to the number of neighbours, i.e. Malpha[i*(nbNMax+1)] = nb of neighbour of atom i, Malpha[i*(nbNMax+1)+j+1] = id of the jth neighbour of atom i
@@ -666,7 +666,7 @@ void ComputeAuxiliary::ComputeSteinhardtParameters_OneL(const double rc, const i
 		// compute normalization factors
 		for(l_loop_2=-l_sph;l_loop_2<l_sph+1;l_loop_2++) Calpha[i] += (pow(Qalpha[i*(l_sph*2+1)+l_loop_2+l_sph].real(), 2.) + pow(Qalpha[i*(l_sph*2+1)+l_loop_2+l_sph].imag(), 2.));
 	}
-	cout << " Done !" << endl;
+	cout << "Done !" << endl;
 }
 
 // Compute bond orientational parameter, based on the work of Steinhardt, P. J. et al. 1983, modified by Chua et al. 2010 and modified by me for accounting for multisite crystals 
@@ -717,7 +717,6 @@ void ComputeAuxiliary::BondOriParam_Multisite(){
 	this->Atom_SiteIndex = new unsigned int[nbAt];
 	vector<double> diff_St;
 	double buffer_d, buffer_d1;
-	cout << 1 << endl;
 	for(unsigned int i=0;i<nbAt;i++){
 		if( this->AtomSiteRefPC[_MySystem->getAtom(i).type_uint-1].size() == 1 ) this->Atom_SiteIndex[i] = 0;
 		else{
