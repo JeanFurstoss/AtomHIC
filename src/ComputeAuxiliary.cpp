@@ -86,6 +86,7 @@ void ComputeAuxiliary::ComputeSteinhardtParameters_Mono(const double rc, const i
 			SteinhardtParams[i*(l_sph+1)+l_loop_st2] = sqrt(SteinhardtParams[i*(l_sph+1)+l_loop_st2]);
 		}
 	}
+	cout << endl;
 	cout << "Done !" << endl;	
 	this->IsSteinhardt_Mono = true;
 }
@@ -96,7 +97,7 @@ void ComputeAuxiliary::ComputeSteinhardtParameters_Multi(const double rc, const 
 	if( !_MySystem->getIsNeighbours() || _MySystem->get_current_rc() != rc ){
 		_MySystem->searchNeighbours(rc);
 	}
-	cout << "Computing Steinhart parameters using all ion type (multi).. ";
+	cout << "Computing Steinhart parameters using all ion type (multi).. " << endl;
 	const unsigned int nbAt = _MySystem->getNbAtom();
 	const unsigned int nbNMax = _MySystem->getNbMaxN();
 	this->Malpha = new unsigned int[nbAt*(nbNMax+1)]; // array containing the index of neighbours of the same species (or same site in case of multisite crystal) with the first line corresponding to the number of neighbours, i.e. Malpha[i*(nbNMax+1)] = nb of neighbour of atom i, Malpha[i*(nbNMax+1)+j+1] = id of the jth neighbour of atom i
@@ -163,6 +164,7 @@ void ComputeAuxiliary::ComputeSteinhardtParameters_Multi(const double rc, const 
 			SteinhardtParams[i*(l_sph+1)+l_loop_st2] = sqrt(SteinhardtParams[i*(l_sph+1)+l_loop_st2]);
 		}
 	}
+	cout << endl;
 	cout << "Done !" << endl;
 	this->IsSteinhardt_Multi = true;
 }
@@ -173,7 +175,7 @@ void ComputeAuxiliary::ComputeSteinhardtParameters_FilteredNeigh(const double rc
 	if( !_MySystem->getIsNeighbours() || _MySystem->get_current_rc() != rc ){
 		_MySystem->searchNeighbours(rc);
 	}
-	cout << "Computing filtered Steinhart parameters (l*(n+1) dimension vector corresponding to the degree l considering all neighboring ion types (n=0) and ion of types n).. ";
+	cout << "Computing filtered Steinhart parameters (l*(n+1) dimension vector corresponding to the degree l considering all neighboring ion types (n=0) and ion of types n).. " << endl;
 	const unsigned int nbAt = _MySystem->getNbAtom();
 	const unsigned int nbNMax = _MySystem->getNbMaxN();
 	const unsigned int kp_max = _MySystem->getCrystal()->getNbAtomType()+1;
@@ -259,6 +261,7 @@ void ComputeAuxiliary::ComputeSteinhardtParameters_FilteredNeigh(const double rc
 			}
 		}
 	}
+	cout << endl;
 	delete[] buffer_Qlm;
 	cout << "Done !" << endl;
 	this->IsSteinhardt_Filtered = true;
@@ -663,7 +666,6 @@ void ComputeAuxiliary::ComputeSteinhardtParameters_OneL(const double rc, const i
 		// compute normalization factors
 		for(l_loop_2=-l_sph;l_loop_2<l_sph+1;l_loop_2++) Calpha[i] += (pow(Qalpha[i*(l_sph*2+1)+l_loop_2+l_sph].real(), 2.) + pow(Qalpha[i*(l_sph*2+1)+l_loop_2+l_sph].imag(), 2.));
 	}
-	cout << 1 << endl;
 	cout << " Done !" << endl;
 }
 

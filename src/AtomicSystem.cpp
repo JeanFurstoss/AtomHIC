@@ -577,7 +577,7 @@ void AtomicSystem::computeWrap(){
 
 // Searching neighbours using cell list algorithm
 unsigned int AtomicSystem::searchNeighbours(const double& rc){
-	cout << "Performing neighbour research" << endl;
+	cout << "Performing neighbour research.." << endl;
 	//auto start = chrono::high_resolution_clock::now();
 	if( !IsWrappedPos ) computeWrap();
 	// construct the cells
@@ -785,7 +785,7 @@ unsigned int AtomicSystem::searchNeighbours(const double& rc){
 	}
 	IsNeighbours = true;
 	this->current_rc_neigh = rc;
-	cout << " done !" << endl;
+	cout << "Done !" << endl;
         //auto end = chrono::high_resolution_clock::now();
         //auto duration = chrono::duration_cast<chrono::microseconds>(end - start);
         //cout << "Execution time : " << duration.count() << endl;
@@ -1793,6 +1793,7 @@ void AtomicSystem::print_lmp(const string& filename){
 		for(unsigned int i=0;i<this->nbAtom;i++) writefile << i+1 << "\t" << this->AtomList[i].type_uint << "\t" << this->AtomList[i].pos.x << "\t" << this->AtomList[i].pos.y << "\t" << this->AtomList[i].pos.z << "\n"; 
 	}
 	writefile.close();
+	cout << "File " << filename << " successfully writted !" << endl;
 }
 
 void AtomicSystem::print_cfg(const string& filename){
@@ -1814,6 +1815,7 @@ void AtomicSystem::print_cfg(const string& filename){
 		for(unsigned int i=0;i<this->nbAtom;i++) writefile << i+1 << " " << this->AtomList[i].type_uint << " " << this->AtomList[i].pos.x << " " << this->AtomList[i].pos.y << " " << this->AtomList[i].pos.z << " " << this->AtomCharge[this->AtomList[i].type_uint-1] << "\n";
 	}
 	writefile.close();
+	cout << "File " << filename << " successfully writted !" << endl;
 }
 
 void AtomicSystem::printSystem_aux(const string& filename, const string& AuxName){
@@ -1901,6 +1903,7 @@ void AtomicSystem::printSystem_aux(const string& filename, const string& AuxName
 		}
 	}
 	writefile.close();
+	cout << "File " << filename << " successfully writted !" << endl;
 }
 
 void AtomicSystem::read_params_atsys(){
