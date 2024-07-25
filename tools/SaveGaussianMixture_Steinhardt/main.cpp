@@ -44,10 +44,6 @@ int main(int argc, char *argv[])
 	vector<double> mu;
 	vector<vector<double>> C, C_inv;
 	long double det;
-	//for(unsigned int i=0;i<data.size();i++){
-	//	for(unsigned int j=0;j<dim;j++) cout << data[i][j] << " " ;
-	//	cout << endl;
-	//}
 	MT.MultidimGaussian(data,mu,C);
 	MT.invMat_LU(C,C_inv,det);
 	cout << "deter : " << det << endl;
