@@ -327,7 +327,15 @@ void MathTools::MatDotRawVec(const double *mat, const double *vec, double *prod)
 	}
 }
 
-
+void MathTools::OuterVecProduct(const vector<double> vec1, const vector<double> vec2, vector<vector<double>> &prod){
+	unsigned int dim1 = vec1.size();
+	unsigned int dim2 = vec2.size();
+	prod.clear();
+	for(unsigned int i=0;i<dim1;i++){
+		prod.push_back(vector<double>());
+		for(unsigned int j=0;j<dim2;j++) prod[i].push_back(vec1[i]*vec2[j]);
+	}
+}
 void MathTools::MatDotVec_vec(const vector<vector<double>> mat, const vector<double> vec, vector<double> &prod){
 	unsigned int dim=vec.size();
 	if( mat[0].size() != dim ) cerr << "The dimensions of matrix and vector to multiply are not consistent (i.e. " << mat.size() << "x" << mat[0].size() << " * " << dim << ")" << endl;
@@ -341,6 +349,18 @@ void MathTools::MatDotVec_vec(const vector<vector<double>> mat, const vector<dou
 	}
 }
 
+void MathTools::MatDotRawVec_vec(const vector<vector<double>> mat, const vector<double> vec, vector<double> &prod){
+	unsigned int dim=vec.size();
+	if( mat[0].size() != dim ) cerr << "The dimensions of matrix and vector to multiply are not consistent (i.e. " << mat.size() << "x" << mat[0].size() << " * " << dim << ")" << endl;
+	vector<double> temp_vec(dim);
+	for(unsigned int i=0;i<dim;i++){
+		temp_vec[i] = vec[i];
+		prod[i] = 0.;
+	}
+	for(unsigned int i=0;i<mat.size();i++){
+		for(unsigned int j=0;j<dim;j++)	prod[i] += mat[j][i]*temp_vec[j];
+	}
+}
 void MathTools::VecDotMat(const double *vec, const double *mat, double *prod){
 	for(unsigned int i=0;i<3;i++){
 		this->buffer_vec_1[i] = vec[i];
@@ -724,6 +744,102 @@ long double MathTools::Prob_MultidimGaussian(const vector<vector<double>> C_inv,
 	return ( 1./ ( pow(2.*M_PI, dim/2.) * sqrt(det_C) ) ) * exp( -.5*sp );
 }
 
+long double MathTools::LogLikelihoodMultidimGaussian(const vector<vector<double>> C_inv, vector<double> mu, const long double det_C, const vector<vector<double>> data, double &BIC){
+	unsigned int dim=mu.size();
+	unsigned int nbDat = data.size();
+	double L = 0.;
+	double fac = -( (dim/2.)*log(2.*M_PI) )	- ( .5*log(det_C) );
+	vector<double> prod(dim);
+	vector<double> XMinusMu(dim);
+	double sp;
+	for(unsigned int k=0;k<nbDat;k++){
+		sp = 0.;
+		for(unsigned int i=0;i<dim;i++) XMinusMu[i] = data[k][i]-mu[i];
+		MatDotVec_vec(C_inv,XMinusMu,prod);
+		for(unsigned int i=0;i<dim;i++) sp -= XMinusMu[i]*prod[i];
+		L += sp;
+	}
+	L *= .5;
+	L += ( fac*nbDat );
+	double NbIndepParams = ( ((double) dim*((double) dim + 1.)/2.) + (double) dim );
+	BIC = -( 2.*L ) + ( log((double) nbDat) * NbIndepParams );
+	return L;
+}
+
+long double MathTools::LogLikelihoodGMM(const vector<vector<vector<double>>> C_inv, vector<vector<double>> mu, const vector<long double> det_C, const vector<double> weight, const vector<vector<double>> data, double &BIC){
+	unsigned int dim=mu[0].size();
+	unsigned int nbClust = weight.size();
+	unsigned int nbDat = data.size();
+	long double L = 0.;
+	for(unsigned int d=0;d<nbClust;d++) L += Prob_MultidimGaussian(C_inv[d],mu[d],det_C[d],data[0])*weight[d];
+	for(unsigned int i=1;i<nbDat;i++){
+		long double sum = 0.;
+		for(unsigned int d=0;d<nbClust;d++) sum += Prob_MultidimGaussian(C_inv[d],mu[d],det_C[d],data[i])*weight[d];
+		L *= sum;
+	}
+	L = log(L);
+	double NbIndepParams = ( ( (double) nbClust * ( ((double) dim*((double) dim + 1.)/2.) + (double) dim + 1. ) ) - 1. );
+	BIC = -( 2.*L ) + ( log((double) nbDat) * NbIndepParams );
+	return L;
+}
+
+double MathTools::ExpectationMaximization_GMM(const vector<vector<vector<double>>> C_inv_0, vector<vector<double>> mu_0, const vector<long double> det_C_0, const vector<double> weight_0, vector<vector<vector<double>>> &C_inv, vector<vector<double>> &mu, vector<long double> &det_C, vector<double> &weight, const vector<vector<double>> data, double &BIC){
+	unsigned int dim=mu_0[0].size();
+	unsigned int nbClust = weight_0.size();
+	unsigned int nbDat = data.size();
+	double *D_i = new double[nbDat];
+	double *C_di = new double[nbClust*nbDat];
+	double *buffer_di = new double[nbDat*nbDat];
+	double *E_d = new double[nbClust];
+	// Expectation
+	for(unsigned int d=0;d<nbClust;d++) E_d[d] = 0.;
+	for(unsigned int i=0;i<nbDat;i++){
+		D_i[i] = 0.;
+		for(unsigned int d=0;d<nbClust;d++){
+			buffer_di[(d*nbDat)+i] = Prob_MultidimGaussian(C_inv_0[d],mu_0[d],det_C_0[d],data[i])*weight_0[d];
+			D_i[i] += buffer_di[(d*nbDat)+i];
+		}
+		for(unsigned int d=0;d<nbClust;d++) C_di[(d*nbDat)+i] = buffer_di[(d*nbDat)+i] / D_i[i];
+		for(unsigned int d=0;d<nbClust;d++) E_d[d] += C_di[(d*nbDat)+i];
+	}
+	// Maximization
+	double *buffer_mat = new double[nbDat*nbDat];
+	for(unsigned int d=0;d<nbClust;d++){
+		// new weights
+		weight[d] = E_d[d]/nbDat;
+		// new means
+		for(unsigned int x=0;x<dim;x++){
+			mu[d][x] = 0.;
+			for(unsigned int i=0;i<nbDat;i++) mu[d][x] += C_di[(d*nbDat)+i]*data[i][x];
+			mu[d][x] /= E_d[d];
+		}
+		// new variances
+		for(unsigned int x1=0;x1<dim;x1++){
+			for(unsigned int x2=x1;x2<dim;x2++){
+				C_inv[d][x1][x2] = 0.;
+				for(unsigned int i=0;i<nbDat;i++) C_inv[d][x1][x2] += C_di[(d*nbDat)+i]*( (data[i][x1] - mu[d][x1]) * (data[i][x2] - mu[d][x2]) );
+				C_inv[d][x1][x2] /= E_d[d];
+			}
+			// symmetric part
+			for(unsigned int x2=x1+1;x2<dim;x2++){
+				C_inv[d][x2][x1] = C_inv[d][x1][x2];
+			}
+		}
+		// invert variances
+		invMat_LU(C_inv[d],C_inv[d],det_C[d]);
+	}
+	// compute and return likelihood difference // TODO maybe it exist a direct formulae for this, if not do not recompute the oldlikelihood when it will be implemented in a class
+	double BIC_0;
+	double L_0 = LogLikelihoodGMM(C_inv_0,mu_0,det_C_0,weight_0,data,BIC_0); 
+	double L = LogLikelihoodGMM(C_inv,mu,det_C,weight,data,BIC);
+	delete[] D_i;
+	delete[] C_di;
+	delete[] buffer_di;
+	delete[] E_d;
+	delete[] buffer_mat;
+	return BIC_0-BIC;
+}
+	
 void MathTools::invMat_LU(const vector<vector<double>> mat, vector<vector<double>> &inv, long double &det){
 	unsigned int dim = mat.size();
 	if( dim != mat[0].size() ){
