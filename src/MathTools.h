@@ -79,6 +79,7 @@ public:
 	long double LogLikelihoodGMM(const std::vector<std::vector<std::vector<double>>> C_inv, std::vector<std::vector<double>> mu, const std::vector<long double> det_C, const std::vector<double> weight, const std::vector<std::vector<double>> data, double &BIC); // compute the log likelihood of a Gaussian Mixture Model regarding a dataset and the Bayes Informed Criteria (BIC) 
 	double ExpectationMaximization_GMM(const std::vector<std::vector<std::vector<double>>> C_inv_0, std::vector<std::vector<double>> mu_0, const std::vector<long double> det_C_0, const std::vector<double> weight_0, std::vector<std::vector<std::vector<double>>> &C_inv, std::vector<std::vector<double>> &mu, std::vector<long double> &det_C, std::vector<double> &weight, const std::vector<std::vector<double>> data, double &BIC); // One iteration of the EM algorithm, return the difference of likelihood with updated parameters of GMM distrib TODO no one iter but all optimization to declare array only once
 	void invMat_LU(const std::vector<std::vector<double>> mat, std::vector<std::vector<double>> &inv, long double &det); // invert a square matrix using the LU method and compute the determinant
+	void invMat_LU(long double *mat, long double *inv, unsigned int dim, unsigned int index, long double &det); // invert a square matrix using the LU method and compute the determinant
 	~MathTools();
 };
 

@@ -772,12 +772,13 @@ long double MathTools::LogLikelihoodGMM(const vector<vector<vector<double>>> C_i
 	unsigned int nbDat = data.size();
 	long double L = 0.;
 	for(unsigned int d=0;d<nbClust;d++) L += Prob_MultidimGaussian(C_inv[d],mu[d],det_C[d],data[0])*weight[d];
+	L = log(L);
 	for(unsigned int i=1;i<nbDat;i++){
 		long double sum = 0.;
 		for(unsigned int d=0;d<nbClust;d++) sum += Prob_MultidimGaussian(C_inv[d],mu[d],det_C[d],data[i])*weight[d];
-		L *= sum;
+		L += log(sum);
 	}
-	L = log(L);
+	//L = log(L);
 	double NbIndepParams = ( ( (double) nbClust * ( ((double) dim*((double) dim + 1.)/2.) + (double) dim + 1. ) ) - 1. );
 	BIC = -( 2.*L ) + ( log((double) nbDat) * NbIndepParams );
 	return L;
@@ -803,7 +804,6 @@ double MathTools::ExpectationMaximization_GMM(const vector<vector<vector<double>
 		for(unsigned int d=0;d<nbClust;d++) E_d[d] += C_di[(d*nbDat)+i];
 	}
 	// Maximization
-	double *buffer_mat = new double[nbDat*nbDat];
 	for(unsigned int d=0;d<nbClust;d++){
 		// new weights
 		weight[d] = E_d[d]/nbDat;
@@ -830,14 +830,12 @@ double MathTools::ExpectationMaximization_GMM(const vector<vector<vector<double>
 	}
 	// compute and return likelihood difference // TODO maybe it exist a direct formulae for this, if not do not recompute the oldlikelihood when it will be implemented in a class
 	double BIC_0;
-	double L_0 = LogLikelihoodGMM(C_inv_0,mu_0,det_C_0,weight_0,data,BIC_0); 
 	double L = LogLikelihoodGMM(C_inv,mu,det_C,weight,data,BIC);
 	delete[] D_i;
 	delete[] C_di;
 	delete[] buffer_di;
 	delete[] E_d;
-	delete[] buffer_mat;
-	return BIC_0-BIC;
+	return L;
 }
 	
 void MathTools::invMat_LU(const vector<vector<double>> mat, vector<vector<double>> &inv, long double &det){
@@ -901,6 +899,18 @@ void MathTools::invMat_LU(const vector<vector<double>> mat, vector<vector<double
 	}
 	// mat-1 = L-1 * U-1
 	MatDotMatVec(U_inv,L_inv,inv);
+}
+
+void MathTools::invMat_LU(long double *mat, long double *inv, unsigned int dim, unsigned int index, long double &det){
+	vector<vector<double>> buf_mat(dim,vector<double>(dim));
+	unsigned int dim2 = dim*dim;
+	for(unsigned int i1=0;i1<dim;i1++){
+		for(unsigned int i2=0;i2<dim;i2++) buf_mat[i1][i2] = mat[index*dim2+i1*dim+i2];
+	}
+	invMat_LU(buf_mat,buf_mat,det);
+	for(unsigned int i1=0;i1<dim;i1++){
+		for(unsigned int i2=0;i2<dim;i2++) inv[index*dim2+i1*dim+i2] = buf_mat[i1][i2];
+	}
 }
 
 MathTools::~MathTools(){
