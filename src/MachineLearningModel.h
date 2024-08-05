@@ -14,6 +14,13 @@ protected:
 	bool IsDescriptor = false;
 	MathTools *MT;
 
+	double *buffer_vec_1_dim;
+	double *buffer_vec_2_dim;
+	
+	unsigned int dim;
+	unsigned int dim2;
+	unsigned int nbDat;
+
 public:
 	// constructors
 	MachineLearningModel();

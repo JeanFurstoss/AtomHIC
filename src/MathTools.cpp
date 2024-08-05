@@ -101,6 +101,24 @@ double MathTools::max_p(const double* arr, unsigned int size){
 	return max;
 }
 
+unsigned int MathTools::min_p_ind(const double* arr, unsigned int &size){
+	unsigned int imin = 0;
+	for(unsigned int i=0;i<size;i++) if( arr[i] < arr[imin] ) imin = i;
+	return imin;
+}
+
+unsigned int MathTools::max_p_ind(const double* arr, unsigned int &size){
+	unsigned int imax = 0;
+	for(unsigned int i=0;i<size;i++) if( arr[i] > arr[imax] ) imax = i;
+return imax;
+}
+
+unsigned int MathTools::max_p_ind(const long double* arr, unsigned int &size){
+	unsigned int imax = 0;
+	for(unsigned int i=0;i<size;i++) if( arr[i] > arr[imax] ) imax = i;
+return imax;
+}
+
 unsigned int MathTools::min_p(const unsigned int* arr, unsigned int size){
 	unsigned min = arr[0];
 	for(unsigned int i=0;i<size;i++) if( arr[i] < min ) min = arr[i];
