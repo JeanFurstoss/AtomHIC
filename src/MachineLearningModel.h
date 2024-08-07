@@ -19,7 +19,8 @@ protected:
 	
 	unsigned int dim;
 	unsigned int dim2;
-	unsigned int nbDat;
+	unsigned int nbDatMax;
+	unsigned int nbFilter; // number of filter (e.g. if filtered by element, the number of element)
 
 public:
 	// constructors

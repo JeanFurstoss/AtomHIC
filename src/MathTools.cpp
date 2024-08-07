@@ -47,6 +47,16 @@ double MathTools::max_vec(const vector<double> arr){
 	}
 }
 
+unsigned int MathTools::max_vec(const vector<unsigned int> arr){
+	if( arr.size() > 0 ){
+		unsigned int max = arr[0];
+		for(unsigned int i=0;i<arr.size()-1;i++) if( arr[i+1] > max ) max = arr[i+1];
+		return max;
+	}else{
+		return 0.;
+	}
+}
+
 unsigned int MathTools::max(const unsigned int arr[], unsigned int size){
 	unsigned int max = arr[0];
 	for(unsigned int i=0;i<size;i++) if( arr[i] > max ) max = arr[i];
@@ -919,15 +929,15 @@ void MathTools::invMat_LU(const vector<vector<double>> mat, vector<vector<double
 	MatDotMatVec(U_inv,L_inv,inv);
 }
 
-void MathTools::invMat_LU(long double *mat, long double *inv, unsigned int dim, unsigned int index, long double &det){
+void MathTools::invMat_LU(long double *mat, long double *inv, unsigned int dim, unsigned int index, unsigned int nbFilter, unsigned int filter_value, long double &det){ //TODO recode without copy
 	vector<vector<double>> buf_mat(dim,vector<double>(dim));
 	unsigned int dim2 = dim*dim;
 	for(unsigned int i1=0;i1<dim;i1++){
-		for(unsigned int i2=0;i2<dim;i2++) buf_mat[i1][i2] = mat[index*dim2+i1*dim+i2];
+		for(unsigned int i2=0;i2<dim;i2++) buf_mat[i1][i2] = mat[index*dim2*nbFilter+i1*dim*nbFilter+i2*nbFilter+filter_value];
 	}
 	invMat_LU(buf_mat,buf_mat,det);
 	for(unsigned int i1=0;i1<dim;i1++){
-		for(unsigned int i2=0;i2<dim;i2++) inv[index*dim2+i1*dim+i2] = buf_mat[i1][i2];
+		for(unsigned int i2=0;i2<dim;i2++) inv[index*dim2*nbFilter+i1*dim*nbFilter+i2*nbFilter+filter_value] = buf_mat[i1][i2];
 	}
 }
 
