@@ -43,9 +43,16 @@ private:
 	double *buffer_di;
 	double *E_d;
 
+	// Variables for the labelling of the GMM
+	bool IsLabelled = false;
+	unsigned int *ClusterLabel; // ClusterLabel[k*nbFilter+f] = l
+	long double *AveLabelProb; // AveLabelProb[k*nbFilter+f] = Average probability associated to the labelled cluster
+	double tolLabelSize = .7; // tolerance for warning message for repartition of descriptor in labels
+	double tol2ndProb = .01; // tolerance for warning message for 2nd prob after labeling with the highest prob
+
 	// Parameters to put in FixedParameters
 	unsigned int nbMaxClusters = 50;
-	double tol_Lkh_EM = 1e-3;
+	double tol_Lkh_EM = 1e-2;
 	unsigned int MaxIter_EM = 500;
 	double fac_elbow = .1; // reduction factor for considering that its is a real elbow
 
@@ -67,7 +74,10 @@ public:
 	void ComputeBIC(unsigned int &filter_value);
 	void PrintModelParams(std::string filename, unsigned int &filter_value);
 	void EM(unsigned int &filter_value);
-	long double Prob_Cluster(unsigned int index_cluster, unsigned int DescriptorIndex, unsigned int &filter_value);
+	long double Prob_Cluster(unsigned int &index_cluster, unsigned int &DescriptorIndex, unsigned int &filter_value);
+	double MaximumLikelihoodClassifier(unsigned int &index_cluster, unsigned int &DescriptorIndex, unsigned int &filter_value);
+	void Labelling();
+	void PrintToDatabase();
 	//void ReadModelParamFromDatabase();
 	// getters
 	unsigned int getNbClust(unsigned int &filter_value){ return nbClust[filter_value]; }

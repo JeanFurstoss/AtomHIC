@@ -32,7 +32,11 @@ void KMeans::setDescriptors(Descriptors *D){
 
 double KMeans::SquareEuclidianDistance(const unsigned int &DescriptorIndex, const unsigned int &ClusterIndex, unsigned int &filter_value){
 	double dist = 0.;
-	for(unsigned int d=0;d<dim;d++) dist += ( _MyDescriptors->getDescriptors()[filter_value*nbDatMax*dim+DescriptorIndex*dim+d] - centroids[ClusterIndex*dim*nbFilter+d*nbFilter+filter_value] ) * ( _MyDescriptors->getDescriptors()[filter_value*nbDatMax*dim+DescriptorIndex*dim+d] - centroids[ClusterIndex*dim*nbFilter+d*nbFilter+filter_value] );
+	double temp;
+	for(unsigned int d=0;d<dim;d++){
+		temp = ( _MyDescriptors->getDescriptors()[filter_value*nbDatMax*dim+DescriptorIndex*dim+d] - centroids[ClusterIndex*dim*nbFilter+d*nbFilter+filter_value] );
+		dist += temp*temp;
+	}
 	return dist;
 }
 
@@ -94,8 +98,9 @@ void KMeans::TrainModel(unsigned int &_nbClust, unsigned int &filter_value){
 			AffectData2Cluster(filter_value);
 			for(unsigned int k=0;k<nbClust[filter_value];k++){
 				for(unsigned int d=0;d<dim;d++){
-					centroids_old[k*dim*nbFilter+d*nbFilter+filter_value] = centroids[k*dim*nbFilter+d*nbFilter+filter_value];
-					centroids[k*dim*nbFilter+d*nbFilter+filter_value] = 0.;
+					unsigned int ind = k*dim*nbFilter+d*nbFilter+filter_value;
+					centroids_old[ind] = centroids[ind];
+					centroids[ind] = 0.;
 				}
 			}
 			for(unsigned int i=0;i<nbDat[filter_value];i++){
@@ -104,8 +109,9 @@ void KMeans::TrainModel(unsigned int &_nbClust, unsigned int &filter_value){
 			res = 0.;
 			for(unsigned int k=0;k<nbClust[filter_value];k++){
 				for(unsigned int d=0;d<dim;d++){
-					centroids[k*dim*nbFilter+d*nbFilter+filter_value] /= nbDat2Cluster[k*nbFilter+filter_value];
-					res += (centroids[k*dim*nbFilter+d*nbFilter+filter_value]-centroids_old[k*dim*nbFilter+d*nbFilter+filter_value]) * (centroids[k*dim*nbFilter+d*nbFilter+filter_value]-centroids_old[k*dim*nbFilter+d*nbFilter+filter_value]);
+					unsigned int ind = k*dim*nbFilter+d*nbFilter+filter_value;
+					centroids[ind] /= nbDat2Cluster[k*nbFilter+filter_value];
+					res += (centroids[ind]-centroids_old[ind]) * (centroids[ind]-centroids_old[ind]);
 				}
 			}
 			iter++;
@@ -129,13 +135,16 @@ void KMeans::TrainModel(unsigned int &_nbClust, unsigned int &filter_value){
 	}
 	LogLikelihood[filter_value] = saved_LogLikelihood[index_opt*nbFilter+filter_value];
 	for(unsigned int k=0;k<nbClust[filter_value];k++){
-		nbDat2Cluster[k*nbFilter+filter_value]  = saved_nbDat2Cluster[index_opt*nbClustMax*nbFilter+k*nbFilter+filter_value];
-		det_V[k*nbFilter+filter_value] = saved_det_V[index_opt*nbClustMax*nbFilter+k*nbFilter+filter_value];
+		unsigned int ind = index_opt*nbClustMax*nbFilter+k*nbFilter+filter_value;
+		nbDat2Cluster[k*nbFilter+filter_value]  = saved_nbDat2Cluster[ind];
+		det_V[k*nbFilter+filter_value] = saved_det_V[ind];
 		for(unsigned int d1=0;d1<dim;d1++){
 			centroids[k*dim*nbFilter+d1*nbFilter+filter_value] = saved_centroids[index_opt*nbClustMax*dim*nbFilter+k*dim*nbFilter+d1*nbFilter+filter_value];
 			for(unsigned int d2=0;d2<dim;d2++){
-				V[k*dim2*nbFilter+d1*dim*nbFilter+d2*nbFilter+filter_value] = saved_V[index_opt*nbClustMax*dim2*nbFilter+k*dim2*nbFilter+d1*dim*nbFilter+d2*nbFilter+filter_value];
-				V_inv[k*dim2*nbFilter+d1*dim*nbFilter+d2*nbFilter+filter_value] = saved_V_inv[index_opt*nbClustMax*dim2*nbFilter+k*dim2*nbFilter+d1*dim*nbFilter+d2*nbFilter+filter_value];
+				unsigned int ind1 = k*dim2*nbFilter+d1*dim*nbFilter+d2*nbFilter+filter_value;
+				unsigned int ind2 = index_opt*nbClustMax*dim2*nbFilter+k*dim2*nbFilter+d1*dim*nbFilter+d2*nbFilter+filter_value;
+				V[ind1] = saved_V[ind2];
+				V_inv[ind1] = saved_V_inv[ind2];
 			}
 		}
 	}
@@ -145,13 +154,16 @@ void KMeans::TrainModel(unsigned int &_nbClust, unsigned int &filter_value){
 void KMeans::SaveVariables(unsigned int &current, unsigned int &filter_value){
 	saved_LogLikelihood[current*nbFilter+filter_value] = LogLikelihood[filter_value];
 	for(unsigned int k=0;k<nbClust[filter_value];k++){
-		saved_nbDat2Cluster[current*nbClustMax*nbFilter+k*nbFilter+filter_value] = nbDat2Cluster[k*nbFilter+filter_value];
-		saved_det_V[current*nbClustMax*nbFilter+k*nbFilter+filter_value] = det_V[k*nbFilter+filter_value];
+		unsigned int ind = current*nbClustMax*nbFilter+k*nbFilter+filter_value;
+		saved_nbDat2Cluster[ind] = nbDat2Cluster[k*nbFilter+filter_value];
+		saved_det_V[ind] = det_V[k*nbFilter+filter_value];
 		for(unsigned int d1=0;d1<dim;d1++){
 			saved_centroids[current*nbClustMax*dim*nbFilter+k*dim*nbFilter+d1*nbFilter+filter_value] = centroids[k*dim*nbFilter+d1*nbFilter+filter_value];
 			for(unsigned int d2=0;d2<dim;d2++){
-				saved_V[current*nbClustMax*dim2*nbFilter+k*dim2*nbFilter+d1*dim*nbFilter+d2*nbFilter+filter_value] = V[k*dim2*nbFilter+d1*dim*nbFilter+d2*nbFilter+filter_value];
-				saved_V_inv[current*nbClustMax*dim2*nbFilter+k*dim2*nbFilter+d1*dim*nbFilter+d2*nbFilter+filter_value] = V_inv[k*dim2*nbFilter+d1*dim*nbFilter+d2*nbFilter+filter_value];
+				unsigned int ind1 = current*nbClustMax*dim2*nbFilter+k*dim2*nbFilter+d1*dim*nbFilter+d2*nbFilter+filter_value;
+				unsigned int ind2 = k*dim2*nbFilter+d1*dim*nbFilter+d2*nbFilter+filter_value;
+				saved_V[ind1] = V[ind2];
+				saved_V_inv[ind1] = V_inv[ind2];
 			}
 		}
 	}
@@ -161,9 +173,10 @@ void KMeans::ComputeFullVariances(unsigned int &filter_value){
 	for(unsigned int k=0;k<nbClust[filter_value];k++){
 		for(unsigned int d1=0;d1<dim;d1++){
 			for(unsigned int d2=d1;d2<dim;d2++){
-				V[k*dim2*nbFilter+d1*dim*nbFilter+d2*nbFilter+filter_value] = 0.;
-				for(unsigned int i=0;i<nbDat[filter_value];i++) V[k*dim2*nbFilter+d1*dim*nbFilter+d2*nbFilter+filter_value] += ( _MyDescriptors->getDescriptors()[filter_value*nbDatMax*dim+i*dim+d1] - centroids[k*dim*nbFilter+d1*nbFilter+filter_value] ) * ( _MyDescriptors->getDescriptors()[filter_value*nbDatMax*dim+i*dim+d2] - centroids[k*dim*nbFilter+d2*nbFilter+filter_value] );
-				V[k*dim2*nbFilter+d1*dim*nbFilter+d2*nbFilter+filter_value] /= nbDat[filter_value];
+				unsigned int ind = k*dim2*nbFilter+d1*dim*nbFilter+d2*nbFilter+filter_value;
+				V[ind] = 0.;
+				for(unsigned int i=0;i<nbDat[filter_value];i++) V[ind] += ( _MyDescriptors->getDescriptors()[filter_value*nbDatMax*dim+i*dim+d1] - centroids[k*dim*nbFilter+d1*nbFilter+filter_value] ) * ( _MyDescriptors->getDescriptors()[filter_value*nbDatMax*dim+i*dim+d2] - centroids[k*dim*nbFilter+d2*nbFilter+filter_value] );
+				V[ind] /= nbDat[filter_value];
 			}
 			for(unsigned int d2=d1+1;d2<dim;d2++) V[k*dim2*nbFilter+d2*dim*nbFilter+d1*nbFilter+filter_value] = V[k*dim2*nbFilter+d1*dim*nbFilter+d2*nbFilter+filter_value];
 		}

@@ -8,7 +8,7 @@
 
 class ATOMHIC_EXPORT Descriptors {
 private:
-	std::string name;
+	std::string name = "none";
 	AtomicSystem *_MySystem;
 	MathTools *MT;
 	unsigned int dim; // dimension of descriptors
@@ -31,8 +31,12 @@ public:
 	Descriptors(const std::string& FilenameOrDir); // constructor from file reading 
 	Descriptors(const std::string& FilenameOrDir, const std::string& DescriptorName, const std::string& _FilteringType); // constructor from file reading 
 	// methods
+	void printDescriptorsPropToDatabase(std::ofstream &writefile);
+	// getters
 	double *getDescriptors(){ return _Descriptors; }
 	unsigned int *getLabels_uint(){ return Labels_uint; }
+	unsigned int getLabelsSize(const unsigned int &f, unsigned int &l){ return LabelsSize[f*Labels.size()+l]; }
+	unsigned int getNbLabels(){ return Labels.size(); }
 	std::string getLabels(const unsigned int &l){ return Labels[l]; }
 	unsigned int getDim(){ return dim; }
 	unsigned int getNbDat(const unsigned int &f){ return nbDat[f]; }

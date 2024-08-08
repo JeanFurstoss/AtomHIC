@@ -25,3 +25,5 @@
      - generate "RUN_TESTS_VERBOSE" solution under visual
 
 ### some documentation for using the library and generating executable is present in doc/
+
+Some part of the code are parallelized using openmpi, to benefit for this, use : export OMP_NUM_THREADS="number of thread you want to use"

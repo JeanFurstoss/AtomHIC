@@ -363,6 +363,14 @@ Descriptors::Descriptors(const string &FilenameOrDir, const string &DescriptorNa
 		exit(EXIT_FAILURE);
 	}
 }
+	
+void Descriptors::printDescriptorsPropToDatabase(ofstream &writefile){
+	writefile << name << endl;
+	writefile << "NUMBER_OF_DIMENSION 12" << endl << "CUTOFF_RADIUS 5." << endl << "STEINHARDT_STYLE Multi" << endl << "AVE_STYLE Multi" << endl;
+}
+
+
+
 Descriptors::~Descriptors(){
 	delete[] _Descriptors;
 	delete MT;
