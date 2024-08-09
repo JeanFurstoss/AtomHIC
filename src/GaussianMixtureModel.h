@@ -45,6 +45,7 @@ private:
 
 	// Variables for the labelling of the GMM
 	bool IsLabelled = false;
+	std::vector<std::string> Labels; // Labels[l] = name of the label l
 	unsigned int *ClusterLabel; // ClusterLabel[k*nbFilter+f] = l
 	long double *AveLabelProb; // AveLabelProb[k*nbFilter+f] = Average probability associated to the labelled cluster
 	double tolLabelSize = .7; // tolerance for warning message for repartition of descriptor in labels
@@ -77,8 +78,8 @@ public:
 	long double Prob_Cluster(unsigned int &index_cluster, unsigned int &DescriptorIndex, unsigned int &filter_value);
 	double MaximumLikelihoodClassifier(unsigned int &index_cluster, unsigned int &DescriptorIndex, unsigned int &filter_value);
 	void Labelling();
-	void PrintToDatabase();
-	//void ReadModelParamFromDatabase();
+	void PrintToDatabase(const std::string &name_of_database);
+	void ReadModelParamFromDatabase(const std::string &name_of_database);
 	// getters
 	unsigned int getNbClust(unsigned int &filter_value){ return nbClust[filter_value]; }
 	double getBIC(unsigned int &filter_value){ return BIC[filter_value]; }

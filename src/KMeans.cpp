@@ -34,7 +34,7 @@ double KMeans::SquareEuclidianDistance(const unsigned int &DescriptorIndex, cons
 	double dist = 0.;
 	double temp;
 	for(unsigned int d=0;d<dim;d++){
-		temp = ( _MyDescriptors->getDescriptors()[filter_value*nbDatMax*dim+DescriptorIndex*dim+d] - centroids[ClusterIndex*dim*nbFilter+d*nbFilter+filter_value] );
+		temp = ( _MyDescriptors->getDescriptors()[_MyDescriptors->getFilterIndex(filter_value*nbDatMax+DescriptorIndex)*dim+d] - centroids[ClusterIndex*dim*nbFilter+d*nbFilter+filter_value] );
 		dist += temp*temp;
 	}
 	return dist;
@@ -60,7 +60,7 @@ void KMeans::KMeansPPInitialization(unsigned int &_nbClust, unsigned int &filter
 	srand(time(0));
 	unsigned int rand_index = rand() % ( nbDat[filter_value] + 1 );
 	// Initialize the first centroid from data points randomly
-	for(unsigned int d=0;d<dim;d++) centroids[d*nbFilter+filter_value] = _MyDescriptors->getDescriptors()[filter_value*nbDatMax*dim+rand_index*dim+d];
+	for(unsigned int d=0;d<dim;d++) centroids[d*nbFilter+filter_value] = _MyDescriptors->getDescriptors()[_MyDescriptors->getFilterIndex(filter_value*nbDatMax+rand_index)*dim+d];
 	for(unsigned int k1=1;k1<nbClust[filter_value];k1++){
 		for(unsigned int p=0;p<nbDat[filter_value];p++){
 			// find out the closest cluster to the point
@@ -69,7 +69,7 @@ void KMeans::KMeansPPInitialization(unsigned int &_nbClust, unsigned int &filter
 		}
 		// Initialize the next centroid with the data point with largest distance
 		unsigned int ind = MT->max_p_ind(buffer_dat,nbDat[filter_value]);
-		for(unsigned int d=0;d<dim;d++) centroids[k1*dim*nbFilter+d*nbFilter+filter_value] = _MyDescriptors->getDescriptors()[filter_value*nbDatMax*dim+MT->max_p_ind(buffer_dat,nbDat[filter_value])*dim+d];
+		for(unsigned int d=0;d<dim;d++) centroids[k1*dim*nbFilter+d*nbFilter+filter_value] = _MyDescriptors->getDescriptors()[_MyDescriptors->getFilterIndex(filter_value*nbDatMax+MT->max_p_ind(buffer_dat,nbDat[filter_value]))*dim+d];
 	}
 }
 
@@ -104,7 +104,7 @@ void KMeans::TrainModel(unsigned int &_nbClust, unsigned int &filter_value){
 				}
 			}
 			for(unsigned int i=0;i<nbDat[filter_value];i++){
-				for(unsigned int d=0;d<dim;d++) centroids[Data2Cluster[i*nbFilter+filter_value]*dim*nbFilter+d*nbFilter+filter_value] += _MyDescriptors->getDescriptors()[filter_value*nbDatMax*dim+i*dim+d];
+				for(unsigned int d=0;d<dim;d++) centroids[Data2Cluster[i*nbFilter+filter_value]*dim*nbFilter+d*nbFilter+filter_value] += _MyDescriptors->getDescriptors()[_MyDescriptors->getFilterIndex(filter_value*nbDatMax+i)*dim+d];
 			}
 			res = 0.;
 			for(unsigned int k=0;k<nbClust[filter_value];k++){
@@ -175,7 +175,7 @@ void KMeans::ComputeFullVariances(unsigned int &filter_value){
 			for(unsigned int d2=d1;d2<dim;d2++){
 				unsigned int ind = k*dim2*nbFilter+d1*dim*nbFilter+d2*nbFilter+filter_value;
 				V[ind] = 0.;
-				for(unsigned int i=0;i<nbDat[filter_value];i++) V[ind] += ( _MyDescriptors->getDescriptors()[filter_value*nbDatMax*dim+i*dim+d1] - centroids[k*dim*nbFilter+d1*nbFilter+filter_value] ) * ( _MyDescriptors->getDescriptors()[filter_value*nbDatMax*dim+i*dim+d2] - centroids[k*dim*nbFilter+d2*nbFilter+filter_value] );
+				for(unsigned int i=0;i<nbDat[filter_value];i++) V[ind] += ( _MyDescriptors->getDescriptors()[_MyDescriptors->getFilterIndex(filter_value*nbDatMax+i)*dim+d1] - centroids[k*dim*nbFilter+d1*nbFilter+filter_value] ) * ( _MyDescriptors->getDescriptors()[_MyDescriptors->getFilterIndex(filter_value*nbDatMax+i)*dim+d2] - centroids[k*dim*nbFilter+d2*nbFilter+filter_value] );
 				V[ind] /= nbDat[filter_value];
 			}
 			for(unsigned int d2=d1+1;d2<dim;d2++) V[k*dim2*nbFilter+d2*dim*nbFilter+d1*nbFilter+filter_value] = V[k*dim2*nbFilter+d1*dim*nbFilter+d2*nbFilter+filter_value];
@@ -186,7 +186,7 @@ void KMeans::ComputeFullVariances(unsigned int &filter_value){
 
 double KMeans::ComputeGaussianProb(unsigned int &DescriptorIndex, unsigned int &filter_value){
         double sp = 0.;
-        for(unsigned int j=0;j<dim;j++) buffer_vec_2_dim[j] = (_MyDescriptors->getDescriptors()[filter_value*nbDatMax*dim+DescriptorIndex*dim+j]-centroids[Data2Cluster[DescriptorIndex*nbFilter+filter_value]*dim*nbFilter+j*nbFilter+filter_value]);
+        for(unsigned int j=0;j<dim;j++) buffer_vec_2_dim[j] = (_MyDescriptors->getDescriptors()[_MyDescriptors->getFilterIndex(filter_value*nbDatMax+DescriptorIndex)*dim+j]-centroids[Data2Cluster[DescriptorIndex*nbFilter+filter_value]*dim*nbFilter+j*nbFilter+filter_value]);
         for(unsigned int i=0;i<dim;i++){
                 buffer_vec_1_dim[i] = 0.;
                 for(unsigned int j=0;j<dim;j++) buffer_vec_1_dim[i] += V_inv[Data2Cluster[DescriptorIndex*nbFilter+filter_value]*dim2*nbFilter+i*dim*nbFilter+j*nbFilter+filter_value]*buffer_vec_2_dim[j];

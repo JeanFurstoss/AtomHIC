@@ -6,13 +6,13 @@
 ## 
 ######################################################################
 ### GMM
-include(FetchContent)
-FetchContent_Declare(
-  gmm
-  GIT_REPOSITORY https://github.com/andreacasalino/Gaussian-Mixture-Model.git
-  #  GIT_TAG        58b3f207cf6df73a0b7cdc8bde933b06d20ab502
-)
-FetchContent_MakeAvailable(gmm)
+#include(FetchContent)
+#FetchContent_Declare(
+#  gmm
+#  GIT_REPOSITORY https://github.com/andreacasalino/Gaussian-Mixture-Model.git
+#  #  GIT_TAG        58b3f207cf6df73a0b7cdc8bde933b06d20ab502
+#)
+#FetchContent_MakeAvailable(gmm)
 
 
 #Project name
@@ -37,9 +37,9 @@ endif()
 add_library(${PROJECT_NAME} ${LIBRARY_TYPE} ${SOURCES} ${HEADERS})
 
 ### GMM
-target_link_libraries(${PROJECT_NAME} PUBLIC
-GaussianMixtureModels
-)
+#target_link_libraries(${PROJECT_NAME} PUBLIC
+#GaussianMixtureModels
+#)
 
 ## #################################################################
 ## Export header file

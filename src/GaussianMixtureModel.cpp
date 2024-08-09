@@ -1,6 +1,8 @@
 #include "GaussianMixtureModel.h"
 #include "AtomHicConfig.h"
 #include <cmath>
+#include <filesystem>
+#include <dirent.h>
 
 using namespace std; 
 
@@ -269,7 +271,7 @@ void GaussianMixtureModel::EM(unsigned int &filter_value){
 		for(unsigned int x=0;x<dim;x++){
 			unsigned int ind = d*dim*nbFilter+x*nbFilter+filter_value;
 			mu[ind] = 0.;
-			for(unsigned int i=0;i<nbDat[filter_value];i++) mu[ind] += C_di[(d*nbDat[filter_value])+i]*_MyDescriptors->getDescriptors()[filter_value*nbDatMax*dim+i*dim+x];
+			for(unsigned int i=0;i<nbDat[filter_value];i++) mu[ind] += C_di[(d*nbDat[filter_value])+i]*_MyDescriptors->getDescriptors()[_MyDescriptors->getFilterIndex(filter_value*nbDatMax+i)*dim+x];
 			mu[ind] /= E_d[d];
 		}
 		// new variances
@@ -279,7 +281,7 @@ void GaussianMixtureModel::EM(unsigned int &filter_value){
 				unsigned int ind1 = d*dim*nbFilter+x1*nbFilter+filter_value;
 				unsigned int ind2 = d*dim*nbFilter+x2*nbFilter+filter_value;
 				V[ind] = 0.;
-				for(unsigned int i=0;i<nbDat[filter_value];i++) V[ind] += C_di[(d*nbDat[filter_value])+i]*( (_MyDescriptors->getDescriptors()[filter_value*nbDatMax*dim+i*dim+x1] - mu[ind1]) * (_MyDescriptors->getDescriptors()[filter_value*nbDatMax*dim+i*dim+x2] - mu[ind2]) );
+				for(unsigned int i=0;i<nbDat[filter_value];i++) V[ind] += C_di[(d*nbDat[filter_value])+i]*( (_MyDescriptors->getDescriptors()[_MyDescriptors->getFilterIndex(filter_value*nbDatMax+i)*dim+x1] - mu[ind1]) * (_MyDescriptors->getDescriptors()[_MyDescriptors->getFilterIndex(filter_value*nbDatMax+i)*dim+x2] - mu[ind2]) );
 				V[ind] /= E_d[d];
 			}
 			// symmetric part
@@ -296,7 +298,7 @@ void GaussianMixtureModel::EM(unsigned int &filter_value){
 
 long double GaussianMixtureModel::Prob_Cluster(unsigned int &index_cluster, unsigned int &DescriptorIndex, unsigned int &filter_value){
 	double sp = 0.;
-	for(unsigned int j=0;j<dim;j++) buffer_vec_2_dim[j] = (_MyDescriptors->getDescriptors()[filter_value*nbDatMax*dim+DescriptorIndex*dim+j]-mu[index_cluster*dim*nbFilter+j*nbFilter+filter_value]);
+	for(unsigned int j=0;j<dim;j++) buffer_vec_2_dim[j] = (_MyDescriptors->getDescriptors()[_MyDescriptors->getFilterIndex(filter_value*nbDatMax+DescriptorIndex)*dim+j]-mu[index_cluster*dim*nbFilter+j*nbFilter+filter_value]); //not sure
 	for(unsigned int i=0;i<dim;i++){
 		buffer_vec_1_dim[i] = 0.;
 		for(unsigned int j=0;j<dim;j++) buffer_vec_1_dim[i] += V_inv[index_cluster*dim2*nbFilter+i*dim*nbFilter+j*nbFilter+filter_value]*buffer_vec_2_dim[j];
@@ -427,7 +429,7 @@ void GaussianMixtureModel::Labelling(){
 
 }
 
-void GaussianMixtureModel::PrintToDatabase(){
+void GaussianMixtureModel::PrintToDatabase(const string &name_of_database){
 	if( !IsDescriptor ){
 		cerr << "The GMM does not have descriptors, we then cannot print to database the model, aborting" << endl;
 		exit(EXIT_FAILURE);
@@ -436,10 +438,12 @@ void GaussianMixtureModel::PrintToDatabase(){
 		cerr << "The GMM is not labelled, we then cannot print it to the database, aborting" << endl;
 		exit(EXIT_FAILURE);
 	}
-	// TODO print training.out
+
+	string path2base = getDatabasePath(name_of_database);	
+
 	unsigned int nbLabel = _MyDescriptors->getNbLabels();
-	
-	ofstream writefile_train("labelling.out");
+
+	ofstream writefile_train(path2base+"labelling.out");
 	for(unsigned int f=0;f<nbFilter;f++){
 		writefile_train << "For descriptor filter \"" << _MyDescriptors->getFilterValue(f) << "\"" << endl;
 		for(unsigned int l=0;l<nbLabel;l++){
@@ -451,28 +455,23 @@ void GaussianMixtureModel::PrintToDatabase(){
 	}
 	writefile_train.close();
 
-	string base_filename="GMM_";
-	//string ext=".ath";
-	string ext=".dat";
+	string ext=".ath";
 	for(unsigned int l=0;l<nbLabel;l++){
-		string full_filename=base_filename+_MyDescriptors->getLabels(l)+ext;
-		ofstream writefile(full_filename);
+		string full_filename=_MyDescriptors->getLabels(l)+ext;
+		ofstream writefile(path2base+full_filename);
 		_MyDescriptors->printDescriptorsPropToDatabase(writefile);
 		for(unsigned int f=0;f<nbFilter;f++){
-			//writefile << "FILTER TYPE " << _MyDescriptors->getFilteringType() << endl;
-			//writefile << "FILTER VALUE " << _MyDescriptors->getFilterValue(f) << endl;
-			writefile << "ATOM_TYPE " << _MyDescriptors->getFilterValue(f) << endl;
+			writefile << "FILTER_VALUE " << _MyDescriptors->getFilterValue(f) << endl;
 			unsigned int nb = 0;
 			for(unsigned int k=0;k<nbClust[f];k++) if( ClusterLabel[k*nbFilter+f] == l ) nb++;
 			writefile << "NUMBER_OF_CLUSTER " << nb << endl;
 			for(unsigned int k=0;k<nbClust[f];k++){
 				if( ClusterLabel[k*nbFilter+f] == l ){
 					writefile << "WEIGHT " << weights[k*nbFilter+f] << endl;
-					//writefile << "DETERMINANT_OF_COV_MATRIX " << det_V[k*nbFilter+f] << endl;
-					writefile << "DETERMINANT " << det_V[k*nbFilter+f] << endl;
+					writefile << "DETERMINANT_OF_COV_MATRIX " << det_V[k*nbFilter+f] << endl;
 					writefile << "ESPERANCE";
 					for(unsigned int d=0;d<dim;d++) writefile << " " << mu[k*dim*nbFilter+d*nbFilter+f];
-				 	writefile << endl << "INVERSE OF COVARIANCE MATRIX" << endl;
+				 	writefile << endl << "INVERSE_OF_COVARIANCE_MATRIX" << endl;
 					for(unsigned int d1=0;d1<dim;d1++){
 						for(unsigned int d2=0;d2<dim;d2++) writefile << V_inv[k*dim2*nbFilter+d1*dim*nbFilter+d2*nbFilter+f] << " ";
 						writefile << endl;
@@ -488,6 +487,33 @@ double GaussianMixtureModel::MaximumLikelihoodClassifier(unsigned int &index_clu
 	long double sumProbs = 0.;
 	for(unsigned int k=0;k<nbClust[filter_value];k++) sumProbs += Prob_Cluster(k,DescriptorIndex,filter_value);
 	return Prob_Cluster(index_cluster,DescriptorIndex,filter_value) / sumProbs;
+}
+
+void GaussianMixtureModel::ReadModelParamFromDatabase(const std::string &name_of_database){
+	string path2base = getMLDatabasePath()+name+"/"+name_of_database+"/";	
+	string ext=".ath";
+	string end, buffer_s;
+	struct dirent *diread;
+	const char *env = path2base.c_str();
+	DIR *dir;
+	if( (dir = opendir(env) ) != nullptr ){
+		cout << "Reading \"" << name_of_database << "\" GMM database" << endl;
+		while( (diread = readdir(dir)) != nullptr ){
+			buffer_s = diread->d_name;
+			if( buffer_s.size() > 4 ){
+				end = buffer_s.substr(buffer_s.size()-4,buffer_s.size());
+				if( end == ext ) Labels.push_back(buffer_s.substr(0,buffer_s.size()-4));
+			}
+		}
+		cout << Labels.size() << " different labels : ";
+		for(unsigned int l=0;l<Labels.size();l++) cout << Labels[l] << " ";
+		cout << endl;
+		closedir(dir);
+		//for(unsigned int l=0;l<Labels.size();l++){	
+	}else{
+		cerr << "The database environment \"" << path2base << "\" cannot be openned, aborting" << endl;
+		exit(EXIT_FAILURE);
+	}
 }
 
 GaussianMixtureModel::~GaussianMixtureModel(){

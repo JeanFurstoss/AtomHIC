@@ -28,6 +28,8 @@ public:
 	// methods
 	void setDescriptors(Descriptors *D);
 	void TrainModel();
+	std::string getMLDatabasePath();
+	std::string getDatabasePath(const std::string &name_of_database);
 	//void ReadModelParamFromDatabase();
 	//void Predict();
 	// destructor

@@ -1,3 +1,4 @@
+#define __STDCPP_WANT_MATH_SPEC_FUNCS__ 1
 #include <iostream>
 #include <vector>
 #include "MathTools.h"
@@ -940,6 +941,18 @@ void MathTools::invMat_LU(long double *mat, long double *inv, unsigned int dim, 
 		for(unsigned int i2=0;i2<dim;i2++) inv[index*dim2*nbFilter+i1*dim*nbFilter+i2*nbFilter+filter_value] = buf_mat[i1][i2];
 	}
 }
+
+complex<double> MathTools::spherical_harmonics(const unsigned int& l, int& m, double& theta, double& phi){
+	int mabs;
+	if( m < 0 ) mabs = -m;
+	else mabs = m;
+	double leg = std::sph_legendre(l, mabs, theta);
+	if( m < 0 ) leg *= pow(-1., .5*(m-mabs));
+	std::complex<double> sph_harm(leg*cos(phi*m),leg*sin(phi*m));
+	return sph_harm;
+}
+
+
 
 MathTools::~MathTools(){
 	delete[] buffer_mat_1;

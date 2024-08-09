@@ -1710,12 +1710,19 @@ bool AtomicSystem::read_cfg_file(const string& filename){
 		}
 		file.close();
 		// search the number of atom type
-		for(unsigned int i=0;i<this->MaxAtomType;i++){
-			if( this->AtomType[i] == "" ){
-				this->nbAtomType = i;
-				break;
+		vector<unsigned int> AtTypeDif;
+		bool already;
+		for(unsigned int i=0;i<nbAtom;i++){
+			already = false;
+			for(unsigned int k=0;k<AtTypeDif.size();k++){
+				if( AtomList[i].type_uint == AtTypeDif[k] ){
+					already = true;
+					break;
+				}
 			}
+			if( !already ) AtTypeDif.push_back(AtomList[i].type_uint); // TODO here do better thing with type_uint
 		}
+		nbAtomType = AtTypeDif.size();
 
 		// read MASSES database to get the masses of ions
 		vector<string> element;
