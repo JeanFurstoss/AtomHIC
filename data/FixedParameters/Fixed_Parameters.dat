@@ -26,6 +26,6 @@ DESCRIPTORS_FILTERING_TYPE element // could be one of the auxiliary properties o
 
 // Parameters for Steinhardt descriptors
 STEINHARDT_DESCRIPTORS_RCUT 5. // cutoff radius for neighbour research
-STEINHARDT_DESCRIPTORS_L_SPH 13 // spherical harmonic degree
-STEINHARDT_DESCRIPTORS_STYLE Mono // could be Mono, Multi
+STEINHARDT_DESCRIPTORS_L_SPH 12 // spherical harmonic degree
+STEINHARDT_DESCRIPTORS_STYLE Multi // could be Mono, Multi
 STEINHARDT_DESCRIPTORS_AVERAGE_STYLE Multi // could be Mono, Multi, none

@@ -14,10 +14,11 @@ protected:
 	MathTools *MT;
 	unsigned int dim; // dimension of descriptors
 	std::vector<unsigned int> nbDat; // nbDat[f] number of data with filter f
-	unsigned int nbDatMax; // maximum number of data in all filter WARNING HERE for systems having several filters with low number of data and one with large number of data which will cause high memory cost for nothing
+	unsigned int nbDatMax; // maximum number of data in all filter
 	unsigned int nbDatTot;
 	unsigned int *FilterIndex; // FilterIndex[f*nbDatMax+j] = i index in _Descriptor array of jth descriptor having filter f
 	double *_Descriptors; // [i*dim+d] component d of descriptor i
+	bool AreDescriptorsMine = true;
 	// label associated to each data, used for supervised learning (e.g. labeling of a GMM for structural analysis)
 	unsigned int *Labels_uint; // [f*nbDatMax+i] = l with l the unsigned int label of descriptor i with filter f
 	std::vector<std::string> Labels; // Labels[l] = name of the label l
@@ -33,13 +34,17 @@ protected:
 public:
 	// constructors
 	Descriptors(AtomicSystem *_MySystem);
+	Descriptors(AtomicSystem *_MySystem, std::vector<std::string> _Properties);
+	Descriptors(AtomicSystem *_MySystem, std::string& DescriptorName, std::string &_FilteringType);
 	Descriptors(const std::string& FilenameOrDir); // constructor from file reading 
-	Descriptors(const std::string& FilenameOrDir, const std::string& DescriptorName, const std::string& _FilteringType); // constructor from file reading 
+	Descriptors(const std::string& FilenameOrDir, const std::string& DescriptorName); // constructor from file reading 
 	// methods
 	void printDescriptorsPropToDatabase(std::ofstream &writefile);
 	void setProperties(){};
 	void ComputeDescriptors(){};
 	void readFixedParams();
+	void ConstructFilterIndexArray(AtomicSystem *_MySystem);
+	void readProperties(std::vector<std::string> _Properties);
 	// getters
 	double *getDescriptors(){ return _Descriptors; }
 	unsigned int *getLabels_uint(){ return Labels_uint; }

@@ -11,7 +11,6 @@
 class ATOMHIC_EXPORT GaussianMixtureModel : public MachineLearningModel {
 private:
 	unsigned int *nbClust; // [f] number of cluster in the GMM with filter f
-	unsigned int *nbDat; // [f] number of data with filter f
 	double *weights; // weights[k*nbFilter+f] weight of cluster k with filter f
 	double *mu; // mu[k*dim*nbFilter+d*nbFilter+f] d component of the mean of cluster k with filter f
 	long double *V; // V[k*dim2*nbFilter+d1*dim*nbFilter+d2*nbFilter+f] d1,d2 component of variance of cluster k with filter f
@@ -44,8 +43,6 @@ private:
 	double *E_d;
 
 	// Variables for the labelling of the GMM
-	bool IsLabelled = false;
-	std::vector<std::string> Labels; // Labels[l] = name of the label l
 	unsigned int *ClusterLabel; // ClusterLabel[k*nbFilter+f] = l
 	long double *AveLabelProb; // AveLabelProb[k*nbFilter+f] = Average probability associated to the labelled cluster
 	double tolLabelSize = .7; // tolerance for warning message for repartition of descriptor in labels
@@ -63,9 +60,12 @@ private:
 public:
 	// constructors
 	GaussianMixtureModel();
-	// methods
+	// base methods of MachineLearningModels
 	void setDescriptors(Descriptors *D);
+	void Classify();
+	void ChangeFilterIndex();
 	void TrainModel(unsigned int &_nbClust, unsigned int &filter_value);
+	// specific methods of GMM
 	void fitOptimalGMM(unsigned int &_nbClust_min, unsigned int &_nbClust_max);
 	void InitFromKMeans(unsigned int &_nbClust, unsigned int &filter_value);
 	void SaveVariables(unsigned int &current_nbClust, unsigned int &filter_value);
@@ -87,6 +87,7 @@ public:
 	KMeans *getKMeans(){ return MyKM; }
 	long double *getCov(){ return V_inv; }
 	double *getMu(){ return mu; }
+	std::vector<std::string> getDescriptorProperties(){ return DescriptorProperties; }
 	// destructor
 	~GaussianMixtureModel();
 };

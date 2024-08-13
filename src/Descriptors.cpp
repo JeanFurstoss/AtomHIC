@@ -15,13 +15,90 @@ Descriptors::Descriptors(AtomicSystem *_MySystem):_MySystem(_MySystem){
 	readFixedParams();
 	MT = new MathTools();
 	nbDatTot = _MySystem->getNbAtom();
-	// Construct FilterIndex array
-	if( FilteringType == "element" || FilteringType == "type" ){
+	ConstructFilterIndexArray(_MySystem);
+}
+
+Descriptors::Descriptors(AtomicSystem *_MySystem, string& DescriptorName, string& _FilteringType):_MySystem(_MySystem){
+	FilteringType = _FilteringType;
+	MT = new MathTools();
+	nbDatTot = _MySystem->getNbAtom();
+	ConstructFilterIndexArray(_MySystem);
+	unsigned int aux_size, aux_id;
+	aux_id = _MySystem->getAuxIdAndSize(DescriptorName,aux_size);
+	if( aux_size == 0 ){
+		cerr << "The provided descriptor name cannot be found in the auxiliary properties of the atomic system, aborting" << endl;
+		exit(EXIT_FAILURE);
+	}
+	dim = aux_size;
+	_Descriptors = _MySystem->getAux(aux_id);
+	AreDescriptorsMine = false;
+}
+
+Descriptors::Descriptors(AtomicSystem *_MySystem, vector<string> _Properties):_MySystem(_MySystem){
+	readProperties(_Properties);
+	MT = new MathTools();
+	nbDatTot = _MySystem->getNbAtom();
+	ConstructFilterIndexArray(_MySystem);
+}
+
+void Descriptors::readProperties(vector<string> _Properties){
+	Properties.clear();
+	for(unsigned int s=0;s<_Properties.size();s++) Properties.push_back(_Properties[s]);
+	size_t pos_ftype;
+	string buffer_s;
+	for(unsigned int s=0;s<_Properties.size();s++){
+		pos_ftype = _Properties[s].find("FILTER_TYPE");
+		if( pos_ftype!=string::npos ){
+			istringstream text(_Properties[s]);
+			text >> buffer_s >> FilteringType;
+			break;
+		}
+	}
+}
+
+void Descriptors::ConstructFilterIndexArray(AtomicSystem *_MySystem){
+	FilterValue.clear();
+	if( FilteringType == "none" ){
+		nbFilter = 1;
+		FilterValue.push_back("none");
+		nbDat.push_back(_MySystem->getNbAtom());
+		FilterIndex = new unsigned int[nbDat[0]];
+		for(unsigned int i=0;i<nbDat[0];i++) FilterIndex[i] = i;
+	}else if( FilteringType == "element" || FilteringType == "type" ){
 		nbFilter = _MySystem->getNbAtomType();
+		for(unsigned int f=0;f<nbFilter;f++) FilterValue.push_back("");
 		if( nbFilter > nbMaxFilter ) cout << "Warning there is " << nbFilter << " different filters, which is a lot" << endl;
-		for(unsigned int f=0;f<nbFilter;f++){
-			nbDat.push_back(0);
-			FilterValue.push_back(_MySystem->getAtomType(f));
+		if( _MySystem->getAtomType(0) == "" ){
+			vector<unsigned int> type_t2e;
+			vector<string> element_t2e;
+			unsigned int buffer_i;
+			string buffer_s, line;
+			cout << "The element names are not provided in the atomic system" << endl;
+			ifstream file_e2t("Type2Element.ath", ifstream::in);
+			if( file_e2t ){
+				cout << "Reading the correspondance between type and element in Type2Element.ath" << endl;
+				while(getline(file_e2t,line)){
+					istringstream text(line);
+					text >> buffer_i >> buffer_s;
+					type_t2e.push_back(buffer_i);
+					element_t2e.push_back(buffer_s);
+				}
+				for(unsigned int f=0;f<nbFilter;f++){
+					nbDat.push_back(0);
+					FilterValue[type_t2e[f]-1] = element_t2e[f];
+				}
+				FilteringType = "element";
+			}else{
+				cout << "You can provide a Type2Element.ath file giving the correspondance between type and element in the working directory (an example is present in /data/ExampleFiles/)" << endl;
+				cout << "As this file has not been found, we will simply filter the descriptors by type which could lead to dramatic confusion depending on what you are doing" << endl;
+				FilteringType = "type";
+			}
+		}else{
+			for(unsigned int f=0;f<nbFilter;f++){
+				nbDat.push_back(0);
+				FilterValue[f] = _MySystem->getAtomType(f);
+			}
+			FilteringType = "element";
 		}
 		for(unsigned int i=0;i<nbDatTot;i++) nbDat[_MySystem->getAtom(i).type_uint-1]++;
 		nbDatMax = MT->max_vec(nbDat);
@@ -89,9 +166,33 @@ Descriptors::Descriptors(const string &FilenameOrDir){ // This constructor read 
 	DIR *dir;
 	if( (dir = opendir(env) ) != nullptr ){
 		cout << "Reading labelled descriptors from directory " << FilenameOrDir << endl;
+		ifstream prop_file(full_path+"/DescriptorProperties.ath");
+		if(prop_file){
+			string line;
+			cout << "Reading descriptor properties from " << FilenameOrDir+"/DescriptorProperties.ath" << endl;
+			size_t pos;
+			while(getline(prop_file,line)){
+				pos = line.find("DESCRIPTOR_NAME");
+				if(pos!=string::npos){
+					istringstream text(line);
+					text >> buffer_s;
+					text >> name;
+				}else Properties.push_back(line);
+			}
+			if( name == "none" ) cout << "Warning, the descriptor name has not been read from the DescriptorProperties.ath file" << endl;
+			prop_file.close();
+		}else{
+			cout << "No file describing the descriptor properties is present in " << full_path << endl;
+			cout << "The descriptor properties will be set to null" << endl;
+			cout << "If you are fitting and labelling a machine learning model to put in the AtomHIC database, it is strongly encouraged to describe the descriptor properties by generating a DescriptorProperties.ath file in " << full_path << " directory" << endl;
+			cout << "An example of such file can be found in /data/ExampleFiles/DescriptorProperties.ath" << endl;
+		}
+
 		while( (diread = readdir(dir)) != nullptr ){
 			buffer_s = diread->d_name;
-			if( buffer_s != "." && buffer_s != ".." ) Labels.push_back(buffer_s);
+			size_t pos = buffer_s.find(".");
+			if( pos==string::npos ) Labels.push_back(buffer_s);
+			//if( buffer_s != "." && buffer_s != ".." ) Labels.push_back(buffer_s);
 		}
 		cout << Labels.size() << " different labels : ";
 		for(unsigned int l=0;l<Labels.size();l++) cout << Labels[l] << " ";
@@ -150,6 +251,7 @@ Descriptors::Descriptors(const string &FilenameOrDir){ // This constructor read 
 		nbDatMax = nbDat[0];
 		_Descriptors = new double[dim*nbDat[0]];
 		Labels_uint = new unsigned int[nbDat[0]];
+		LabelsSize = new unsigned int[Labels.size()];
 		nbFilter = 1;
 		FilterIndex = new unsigned int[nbDatMax];
 		for(unsigned int i=0;i<nbDatMax;i++) FilterIndex[i] = i;
@@ -158,6 +260,7 @@ Descriptors::Descriptors(const string &FilenameOrDir){ // This constructor read 
 
 		count_dat = 0;
 		for(unsigned int l1=0;l1<Labels.size();l1++){
+			LabelsSize[l1] = 0;
 			for(unsigned int l2=0;l2<full_filenames[l1].size();l2++){
 				unsigned int subcount_dat(0), subcount_dim(0);
 				ifstream file(full_filenames[l1][l2]);
@@ -167,6 +270,7 @@ Descriptors::Descriptors(const string &FilenameOrDir){ // This constructor read 
 						istringstream text(line);
 						for(unsigned int i=0;i<dim;i++) text >> _Descriptors[count_dat*dim+i];
 						Labels_uint[count_dat] = l1;
+						LabelsSize[l1]++;
 						count_dat++;
 					}
 					file.close();
@@ -228,9 +332,9 @@ Descriptors::Descriptors(const string &FilenameOrDir){ // This constructor read 
 	this->MT = new MathTools();
 }
 
-Descriptors::Descriptors(const string &FilenameOrDir, const string &DescriptorName, const string &_FilteringType){ // This constructor read labelled descriptors from atomic file or labelled descriptors from a directory containing subdirectories having the name of the label and containing files with the descriptors
+Descriptors::Descriptors(const string &FilenameOrDir, const string &DescriptorName){ // This constructor read labelled descriptors from atomic file or labelled descriptors from a directory containing subdirectories having the name of the label and containing files with the descriptors
 	// Test if the provided string is a directory or not
-	FilteringType = _FilteringType;
+	readFixedParams();
 	string wd = filesystem::current_path();
 	string full_path = wd+'/'+FilenameOrDir;
 	string buffer_s, beg;
@@ -286,6 +390,7 @@ Descriptors::Descriptors(const string &FilenameOrDir, const string &DescriptorNa
 		}
 		// first read of file to know the number of data point and dimension
 		bool IsFiltered = false;
+		bool Type2Element = false;
 		if( FilteringType != "none" ) IsFiltered = true;
 		unsigned int count_dat(0), count_dim(0), line_At(1000), line_aux(1000), ReadOk, index_des, index_fil(100000), nbAux;
 		size_t pos_At, pos_Aux, pos_aux_vec;
@@ -329,8 +434,27 @@ Descriptors::Descriptors(const string &FilenameOrDir, const string &DescriptorNa
 									cerr << "The filtering type is based on a vector, which is not implemented yet, aborting" << endl;
 									exit(EXIT_FAILURE);
 								}else if( subcount_filter == 0 ){
-									cerr << "The filtering value \"" << FilteringType << "\" has not been found in the file \"" << full_filenames[l1][l2] << "\", aborting" << endl;
-									exit(EXIT_FAILURE);
+									if( FilteringType == "element" ){
+										istringstream text(line);
+										unsigned int subsub = 0;
+										Type2Element = false;
+										while( text >> buffer_s ){
+											if( buffer_s == "type" ){
+												index_fil = subsub-2;
+												Type2Element = true;
+												break;
+											}
+											subsub++;
+										}
+										if( !Type2Element ){
+											cerr << "Neither element nor type can be read from atomic file for filtering data, aborting" << endl;
+											cerr << "If you don't want to filter the data you can set the DESCRIPTORS_FILTERING_TYPE parameter to none in /data/FixedParameters/FixedParameters.dat" << endl;
+											exit(EXIT_FAILURE);
+										}
+									}else{
+										cerr << "The filtering value \"" << FilteringType << "\" has not been found in the file \"" << full_filenames[l1][l2] << "\", aborting" << endl;
+										exit(EXIT_FAILURE);
+									}
 								}
 							}
 							ReadOk++;
@@ -377,6 +501,7 @@ Descriptors::Descriptors(const string &FilenameOrDir, const string &DescriptorNa
 			}
 		}
 		
+
 		dim = count_dim;
 		if( !IsFiltered ){
 			nbDat.push_back(count_dat);
@@ -438,6 +563,34 @@ Descriptors::Descriptors(const string &FilenameOrDir, const string &DescriptorNa
 				}
 			}
 		}
+
+		vector<unsigned int> type_t2e;
+		vector<string> element_t2e;
+		unsigned int buffer_i;
+		if( FilteringType == "element" && Type2Element ){
+			cout << "The elements are not provided in the atomic systems" << endl;
+			ifstream file_e2t("Type2Element.ath", ifstream::in);
+			if( file_e2t ){
+				cout << "Reading the correspondance between type and element in Type2Element.ath" << endl;
+				while(getline(file_e2t,line)){
+					istringstream text(line);
+					text >> buffer_i >> buffer_s;
+					type_t2e.push_back(buffer_i);
+					element_t2e.push_back(buffer_s);
+				}
+				for(unsigned int f1=0;f1<nbFilter;f1++){
+					for(unsigned int f2=0;f2<type_t2e.size();f2++){
+						if( FilterValue[f1] == to_string(type_t2e[f2]) ){
+							FilterValue[f1] = element_t2e[f2];
+							break;
+						}
+					}
+				}
+			}else{
+				cout << "You can provide a Type2Element.ath file giving the correspondance between type and element in the working directory (an example is present in /data/ExampleFiles/)" << endl;
+				cout << "As this file has not been found, we will simply filter the descriptors by type" << endl;
+			}
+		}
 		cout << nbDatTot << " descriptors of dimension " << this->dim << ", successfully read from directory " << FilenameOrDir << endl;
 		if( nbFilter > 1 ){
 			cout << "The descriptors are filtered by " << FilteringType << ", with :" << endl;
@@ -462,8 +615,22 @@ Descriptors::Descriptors(const string &FilenameOrDir, const string &DescriptorNa
 	
 void Descriptors::printDescriptorsPropToDatabase(ofstream &writefile){
 	setProperties();
-	writefile << "DESCRIPTOR_NAME " << name << endl;
-	writefile << "FILTER_TYPE " << FilteringType << endl;
+	string buffer_s;
+	bool IsDesName = false;
+	bool Isftype = false;
+	bool IsNbDim = false;
+	size_t pos_d, pos_t, pos_ndim;
+	for(unsigned int s=0;s<Properties.size();s++){
+		pos_d = Properties[s].find("DESCRIPTOR_NAME");
+		if( pos_d!=string::npos ) IsDesName = true;
+		pos_t = Properties[s].find("FILTER_TYPE");
+		if( pos_t!=string::npos ) Isftype = true;
+		pos_ndim = Properties[s].find("NUMBER_OF_DIMENSION");
+		if( pos_ndim!=string::npos ) IsNbDim = true;
+	}
+	if( !IsDesName ) writefile << "DESCRIPTOR_NAME " << name << endl;
+	if( !Isftype ) writefile << "FILTER_TYPE " << FilteringType << endl;
+	if( !IsNbDim ) writefile << "NUMBER_OF_DIMENSION " << dim << endl;
 	for(unsigned int s=0;s<Properties.size();s++) writefile << Properties[s] << endl;
 }
 
@@ -496,6 +663,6 @@ void Descriptors::readFixedParams(){
 
 Descriptors::~Descriptors(){
 	delete[] FilterIndex;
-	delete[] _Descriptors;
+	if( AreDescriptorsMine ) delete[] _Descriptors;
 	delete MT;
 }

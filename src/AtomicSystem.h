@@ -65,7 +65,7 @@ public:
 	AtomicSystem(const std::string& filename); // construct AtomicSystem by reading file
 	AtomicSystem(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3); // construct AtomicSystem giving AtomList and cell vectors 
 	void AtomListConstructor(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3); // construct AtomicSystem giving AtomList and cell vectors 
-	void FilenameConstructor(const std::string& filename);
+	bool FilenameConstructor(const std::string& filename);
 	// getters
 	std::string getAtomType(const unsigned int i){ return this->AtomType[i]; };
 	unsigned int getNbAtomType(){ return this->nbAtomType; };
@@ -105,6 +105,7 @@ public:
 	// methods
 	void read_params_atsys();
 	void computeInverseCellVec();
+	bool ReadAtomicFile(const std::string& filename);
 	bool read_lmp_file(const std::string& filename);
 	bool read_cfg_file(const std::string& filename);
 	bool read_other_cfg(const std::string& filename);

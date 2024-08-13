@@ -8,7 +8,7 @@
       - mkdir build
       - cd build
       - cmake ..
-      - ccmake .. (generate sheared lib and tools) 
+      - ccmake .. (generate shared lib and tools) 
       - make
 - Run
    - Linux

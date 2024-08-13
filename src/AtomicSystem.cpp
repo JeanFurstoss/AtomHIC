@@ -308,10 +308,13 @@ void AtomicSystem::AtomListConstructor(Atom *AtomList, unsigned int nbAtom, Crys
 
 // Constructor using the filename of an atomic file (.cfg, .lmp, .xsf,..)
 AtomicSystem::AtomicSystem(const string& filename){
-	FilenameConstructor(filename);
+	if( !FilenameConstructor(filename) ){
+		cerr << "Maybe try to change its format using atomsk or generate it with AtomHic (supported format lmp, cfg)" << endl;
+		exit(EXIT_FAILURE);
+	}
 }
 
-void AtomicSystem::FilenameConstructor(const string& filename){
+bool AtomicSystem::FilenameConstructor(const string& filename){
 	if( FilenameConstructed ){
 		delete[] AtomType;
 		delete[] AtomMass;
@@ -340,35 +343,61 @@ void AtomicSystem::FilenameConstructor(const string& filename){
 	this->IsCharge=false;
 	this->IsTilted=false;
 	this->nbAtomType = 0;
+	this->MT = new MathTools;
+	this->G1 = new double[3];
+	this->G2 = new double[3];
+	this->G3 = new double[3];
+	this->IsG = true;
+
+	if( !ReadAtomicFile(filename) ){
+		cout << "The atomic file readers cannot read the given file." << endl;
+		IsAtomListMine = false;
+		return false;
+	}
+	computeInverseCellVec();
+	computeWrap();
+	this->FilenameConstructed = true;
+	return true;
+}
+
+bool AtomicSystem::ReadAtomicFile(const string &filename){
 	string ext=filename.substr(filename.find_last_of(".") + 1);
 	cout << "Reading " << filename << " file..";
 	if( ext == "lmp" ){
 		if( !this->read_lmp_file(filename) ){
 			if( !this->read_cfg_file(filename) ){
 				if( !this->read_other_cfg(filename) ){
-					cerr << "The file readers cannot read the given file. Maybe try to change its format using atomsk (supported format lmp, cfg)" << endl;
-					exit(EXIT_FAILURE);
-				}else cout << " done !" << endl;
-			}else cout << " done !" << endl;
-		}else cout << " done !" << endl;
+					return false;
+				}else{
+					cout << " done !" << endl;
+					return true;
+				}
+			}else{
+				cout << " done !" << endl;
+				return true;
+			}
+		}else{
+			cout << " done !" << endl;
+				return true;
+		}
 	}else{
 		if( !this->read_cfg_file(filename) ){
 			if( !this->read_other_cfg(filename) ){
 				if( !this->read_lmp_file(filename) ){
-					cerr << "The file readers cannot read the given file. Maybe try to change its format using atomsk (supported format lmp, cfg)" << endl;
-					exit(EXIT_FAILURE);
-				}else cout << " done !" << endl;
-			}else cout << " done !" << endl;
-		}else cout << " done !" << endl;
+					return false;
+				}else{
+					cout << " done !" << endl;
+					return true;
+				}
+			}else{
+				cout << " done !" << endl;
+				return true;
+			}
+		}else{
+			cout << " done !" << endl;
+			return true;
+		}
 	}
-	this->MT = new MathTools;
-	this->G1 = new double[3];
-	this->G2 = new double[3];
-	this->G3 = new double[3];
-	this->IsG = true;
-	computeInverseCellVec();
-	computeWrap();
-	this->FilenameConstructed = true;
 }
 
 void AtomicSystem::computeInverseCellVec(){
@@ -1725,44 +1754,44 @@ bool AtomicSystem::read_cfg_file(const string& filename){
 		nbAtomType = AtTypeDif.size();
 
 		// read MASSES database to get the masses of ions
-		vector<string> element;
-		vector<double> masses;
-		char *database_env = getenv("MASSES_DATABASE");
-		string database;
-		if (database_env) {
-			database = database_env;
-		} else {
-			#ifdef MASSES_DATABASE
-			database = MASSES_DATABASE;
-			#endif
-		}
-		if( database.empty() ) cout << "Warning database environment for masses is empty" << endl;
-		else{
-			string dataname = database + "/Masses.txt";
-			ifstream filedata(dataname, ios::in);
-			if( filedata ){
-				while( filedata ){
-					filedata >> buffer_s >> buffer_1;
-					if( !filedata ) break;
-					element.push_back(buffer_s);
-					masses.push_back(buffer_1);
-				}
-				filedata.close();
-			}
-		}
+		//vector<string> element;
+		//vector<double> masses;
+		//char *database_env = getenv("MASSES_DATABASE");
+		//string database;
+		//if (database_env) {
+		//	database = database_env;
+		//} else {
+		//	#ifdef MASSES_DATABASE
+		//	database = MASSES_DATABASE;
+		//	#endif
+		//}
+		//if( database.empty() ) cout << "Warning database environment for masses is empty" << endl;
+		//else{
+		//	string dataname = database + "/Masses.txt";
+		//	ifstream filedata(dataname, ios::in);
+		//	if( filedata ){
+		//		while( filedata ){
+		//			filedata >> buffer_s >> buffer_1;
+		//			if( !filedata ) break;
+		//			element.push_back(buffer_s);
+		//			masses.push_back(buffer_1);
+		//		}
+		//		filedata.close();
+		//	}
+		//}
 
-		bool element_find;
-		for(unsigned int j=0;j<this->nbAtomType;j++){
-			element_find= false;
-			for(unsigned int i=0;i<element.size();i++){
-				if( this->AtomType[j] == element[i] ){
-					this->AtomMass[j] = masses[i];
-					element_find = true;
-					break;
-				}
-			}
-			if( !element_find ) cout << "The mass for element " << this->AtomType[j] << " has not been found in the masses databse" << endl;
-		}
+		//bool element_find;
+		//for(unsigned int j=0;j<this->nbAtomType;j++){
+		//	element_find= false;
+		//	for(unsigned int i=0;i<element.size();i++){
+		//		if( this->AtomType[j] == element[i] ){
+		//			this->AtomMass[j] = masses[i];
+		//			element_find = true;
+		//			break;
+		//		}
+		//	}
+		//	if( !element_find ) cout << "The mass for element " << this->AtomType[j] << " has not been found in the masses databse" << endl;
+		//}
 
 	// end read cfg (xsf) file
 	}else{

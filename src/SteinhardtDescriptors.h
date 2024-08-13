@@ -30,7 +30,9 @@ private:
 public:
 	// constructors
 	SteinhardtDescriptors(AtomicSystem *_MySystem);
+	SteinhardtDescriptors(AtomicSystem *_MySystem, std::vector<std::string> _Properties);
 	// methods
+	void readProperties(std::vector<std::string> _Properties);
 	void ComputeDescriptors();
 	void setProperties();
 	void readFixedParams();

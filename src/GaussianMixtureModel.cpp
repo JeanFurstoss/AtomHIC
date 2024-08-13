@@ -7,18 +7,23 @@
 using namespace std; 
 
 GaussianMixtureModel::GaussianMixtureModel(){
-	this->name = "GaussianMixtureModel"; // TODO the user could affect name to the model or it could be read from database
+	this->name = "GaussianMixtureModel"; 
 }
 
 void GaussianMixtureModel::setDescriptors(Descriptors *D){
 	MachineLearningModel::setDescriptors(D);
 
-	weights = new double[nbMaxClusters*nbFilter];
-	mu = new double[dim*nbMaxClusters*nbFilter];
-	V = new long double[dim2*nbMaxClusters*nbFilter];
-	V_inv = new long double[dim2*nbMaxClusters*nbFilter];
-	det_V = new long double[nbMaxClusters*nbFilter];
+	if( !IsRead ){
+		weights = new double[nbMaxClusters*nbFilter];
+		mu = new double[dim*nbMaxClusters*nbFilter];
+		V_inv = new long double[dim2*nbMaxClusters*nbFilter];
+		det_V = new long double[nbMaxClusters*nbFilter];
+		nbClust = new unsigned int[nbFilter];
+	}
 	
+	if( IsFilterIndexModified ) ChangeFilterIndex();
+	
+	V = new long double[dim2*nbMaxClusters*nbFilter];
 	D_i = new double[nbDatMax];
 	C_di = new double[nbMaxClusters*nbDatMax];
 	buffer_di = new double[nbMaxClusters*nbDatMax];
@@ -32,9 +37,6 @@ void GaussianMixtureModel::setDescriptors(Descriptors *D){
 
 	BIC = new double[nbFilter];
 	LogLikelihood = new long double[nbFilter];
-	nbClust = new unsigned int[nbFilter];
-	nbDat = new unsigned int[nbFilter];
-	for(unsigned int f=0;f<nbFilter;f++) nbDat[f] = _MyDescriptors->getNbDat(f);
 }
 
 void GaussianMixtureModel::fitOptimalGMM(unsigned int &_nbClust_min, unsigned int &_nbClust_max){
@@ -296,17 +298,6 @@ void GaussianMixtureModel::EM(unsigned int &filter_value){
 	}
 }
 
-long double GaussianMixtureModel::Prob_Cluster(unsigned int &index_cluster, unsigned int &DescriptorIndex, unsigned int &filter_value){
-	double sp = 0.;
-	for(unsigned int j=0;j<dim;j++) buffer_vec_2_dim[j] = (_MyDescriptors->getDescriptors()[_MyDescriptors->getFilterIndex(filter_value*nbDatMax+DescriptorIndex)*dim+j]-mu[index_cluster*dim*nbFilter+j*nbFilter+filter_value]); //not sure
-	for(unsigned int i=0;i<dim;i++){
-		buffer_vec_1_dim[i] = 0.;
-		for(unsigned int j=0;j<dim;j++) buffer_vec_1_dim[i] += V_inv[index_cluster*dim2*nbFilter+i*dim*nbFilter+j*nbFilter+filter_value]*buffer_vec_2_dim[j];
-		sp += buffer_vec_1_dim[i]*buffer_vec_2_dim[i];
-	}
-	return ( weights[index_cluster*nbFilter+filter_value] / ( pow(2.*M_PI, (double) dim/2.) * sqrt(det_V[index_cluster*nbFilter+filter_value]) ) ) * exp( -.5*sp );
-}
-
 void GaussianMixtureModel::ComputeLogLikelihood(unsigned int &filter_value){
 	LogLikelihood[filter_value] = 0.;
 	unsigned int zero_val = 0;
@@ -324,27 +315,9 @@ void GaussianMixtureModel::ComputeBIC(unsigned int &filter_value){
 	BIC[filter_value] = -( 2.*LogLikelihood[filter_value] ) + ( log((double) nbDat[filter_value]) * (double) NbIndepParams );
 }
 
-void GaussianMixtureModel::PrintModelParams(string filename, unsigned int &filter_value){
-	ofstream writefile(filename);
-	writefile << "The Gaussian Mixture Model is composed by " << nbClust << " clusters" << endl;
-        for(unsigned int k=0;k<nbClust[filter_value];k++){
-                writefile << "Cluster " << k+1 << endl;
-                writefile << "weight = " << weights[k*nbFilter+filter_value] << endl;
-                writefile << "mean = ";
-                for(unsigned int i=0;i<dim;i++) writefile << mu[k*dim*nbFilter+i*nbFilter+filter_value] << " ";
-                writefile << endl;
-                writefile << "variance = " << endl;
-                for(unsigned int i=0;i<dim;i++){
-                        for(unsigned int j=0;j<dim;j++) writefile << V[k*dim2*nbFilter+i*dim*nbFilter+j*nbFilter+filter_value] << " ";
-                        writefile << endl;
-                }
-        }
-	writefile << endl;
-}
-
 // Label the GMM by affecting to each cluster the label which has the highest probability in its and return the second highest value to see if there is overlapping between labels 
 void GaussianMixtureModel::Labelling(){
-	unsigned int nbLabel = _MyDescriptors->getNbLabels();
+	nbLabel = _MyDescriptors->getNbLabels();
 	if( nbLabel < 2 ){
 		cerr << "The descriptors are not labelled, or the label has only one value, we then cannot label the GMM, aborting" << endl;
 		exit(EXIT_FAILURE);
@@ -374,7 +347,7 @@ void GaussianMixtureModel::Labelling(){
 	for(unsigned int f=0;f<nbFilter;f++){
 		for(unsigned int i=0;i<nbDat[f];i++){
 			//for(unsigned int k=0;k<nbClust[f];k++) AveLabelProb[k*nbFilter*nbLabel+_MyDescriptors->getLabels_uint()[f*nbDatMax+i]*nbFilter+f] += Prob_Cluster(k,i,f);
-			for(unsigned int k=0;k<nbClust[f];k++) AveLabelProb[k*nbFilter*nbLabel+_MyDescriptors->getLabels_uint()[f*nbDatMax+i]*nbFilter+f] += MaximumLikelihoodClassifier(k,i,f);
+			for(unsigned int k=0;k<nbClust[f];k++) AveLabelProb[k*nbFilter*nbLabel+_MyDescriptors->getLabels_uint()[f*nbDatMax+i]*nbFilter+f] += MaximumLikelihoodClassifier(k,i,f); // TODO warning with change in the MLC function
 		}
 	}
 	
@@ -429,39 +402,195 @@ void GaussianMixtureModel::Labelling(){
 
 }
 
-void GaussianMixtureModel::PrintToDatabase(const string &name_of_database){
-	if( !IsDescriptor ){
-		cerr << "The GMM does not have descriptors, we then cannot print to database the model, aborting" << endl;
+long double GaussianMixtureModel::Prob_Cluster(unsigned int &index_cluster, unsigned int &DescriptorIndex, unsigned int &filter_value){
+	double sp = 0.;
+	for(unsigned int j=0;j<dim;j++){
+		unsigned int index = _MyDescriptors->getFilterIndex(filter_value*nbDatMax+DescriptorIndex);
+		buffer_vec_2_dim[j] = (_MyDescriptors->getDescriptors()[_MyDescriptors->getFilterIndex(filter_value*nbDatMax+DescriptorIndex)*dim+j]-mu[index_cluster*dim*nbFilter+j*nbFilter+filter_value]);
+	}
+	for(unsigned int i=0;i<dim;i++){
+		buffer_vec_1_dim[i] = 0.;
+		for(unsigned int j=0;j<dim;j++) buffer_vec_1_dim[i] += V_inv[index_cluster*dim2*nbFilter+i*dim*nbFilter+j*nbFilter+filter_value]*buffer_vec_2_dim[j];
+		sp += buffer_vec_1_dim[i]*buffer_vec_2_dim[i];
+	}
+	return ( weights[index_cluster*nbFilter+filter_value] / ( pow(2.*M_PI, (double) dim/2.) * sqrt(det_V[index_cluster*nbFilter+filter_value]) ) ) * exp( -.5*sp );
+}
+
+double GaussianMixtureModel::MaximumLikelihoodClassifier(unsigned int &index_cluster, unsigned int &DescriptorIndex, unsigned int &filter_value){
+	long double sumProbs = 0.;
+	for(unsigned int k=0;k<nbClust[filter_value];k++) sumProbs += Prob_Cluster(k,DescriptorIndex,filter_value);
+	return Prob_Cluster(index_cluster,DescriptorIndex,filter_value) / sumProbs;
+}
+
+// Classify the data using the maximum likelihood classifier
+void GaussianMixtureModel::Classify(){
+	if( !IsLabelled && !IsRead ){
+		cerr << "The GMM is not labelled, we then cannot classify the data, aborting" << endl;
 		exit(EXIT_FAILURE);
 	}
-	if( !IsLabelled ){
+	if( !IsDescriptor ){
+		cerr << "We dont have descriptor to classify, aborting" << endl;
+		exit(EXIT_FAILURE);
+	}
+	cout << "Classifying the descriptors.." << endl;
+	unsigned int nbDatTot = 0;
+	for(unsigned int f=0;f<nbFilter;f++) nbDatTot += nbDat[f];
+	if( !IsClassified ){
+		IsClassified = true;
+		Classificator = new double[2*nbDatTot];
+	}
+	
+	long double *LabelProb = new long double[nbLabel];
+	for(unsigned int f=0;f<nbFilter;f++){
+		for(unsigned int j=0;j<nbDat[f];j++){
+			double sum = 0.;
+			for(unsigned int l=0;l<nbLabel;l++) LabelProb[l] = 0.;
+			for(unsigned int k=0;k<nbClust[f];k++){
+				LabelProb[ClusterLabel[k*nbFilter+f]] += Prob_Cluster(k,j,f);
+			}
+			for(unsigned int l=0;l<nbLabel;l++) sum += LabelProb[l];
+			if( sum != 0. ){
+				unsigned int index_maxp = MT->max_p_ind(LabelProb,nbLabel);
+				Classificator[_MyDescriptors->getFilterIndex(f*nbDatMax+j)*2] = index_maxp;
+				Classificator[_MyDescriptors->getFilterIndex(f*nbDatMax+j)*2+1] = LabelProb[index_maxp] / sum;
+			}else{
+				Classificator[_MyDescriptors->getFilterIndex(f*nbDatMax+j)*2] = nbLabel; 
+				Classificator[_MyDescriptors->getFilterIndex(f*nbDatMax+j)*2+1] = 0.;
+			}	
+		}
+	}
+
+        // write the StructureIndex.txt file
+        ofstream writefile("StructureIndex.txt");
+        writefile << "Structures index used for the Gaussian Mixture Model structural analysis" << endl;
+        for(unsigned int l=0;l<nbLabel;l++) writefile << l << " " << Labels[l] << endl;
+        writefile << nbLabel << " Not identified" << endl;
+        writefile.close();
+
+	delete[] LabelProb;
+	cout << "Done" << endl;
+	cout << "The StructureIndex.txt file containing the names of the labels has been printed" << endl;
+}
+
+void GaussianMixtureModel::ChangeFilterIndex(){
+	unsigned int *nbClust_tmp = new unsigned int[nbFilter];
+	string *FilterValue_tmp = new string[nbFilter];
+	double *weights_tmp = new double[nbMaxClusters*nbFilter];
+	long double *det_V_tmp = new long double[nbMaxClusters*nbFilter];
+	unsigned int *ClusterLabel_tmp = new unsigned int[nbMaxClusters*nbFilter];
+	double *mu_tmp = new double[dim*nbMaxClusters*nbFilter];
+	long double *V_inv_tmp = new long double[dim2*nbMaxClusters*nbFilter];
+
+	// Copy data and reinitialize them
+	for(unsigned int f=0;f<nbFilter;f++){
+		nbClust_tmp[f] = nbClust[f];
+		nbClust[f] = 0;
+		FilterValue_tmp[f] = FilterValue[f];
+		FilterValue[f] = 0.;
+		for(unsigned int k=0;k<nbClust_tmp[f];k++){
+			weights_tmp[k*nbFilter+f] = weights[k*nbFilter+f];
+			weights[k*nbFilter+f] = 0.;
+			det_V_tmp[k*nbFilter+f] = det_V[k*nbFilter+f];
+			det_V[k*nbFilter+f] = 0.;
+			ClusterLabel_tmp[k*nbFilter+f] = ClusterLabel[k*nbFilter+f];
+			ClusterLabel[k*nbFilter+f] = 0.;
+			for(unsigned int d1=0;d1<dim;d1++){
+				mu_tmp[k*dim*nbFilter+d1*nbFilter+f] = mu[k*dim*nbFilter+d1*nbFilter+f];
+				mu[k*dim*nbFilter+d1*nbFilter+f] = 0.;
+				for(unsigned int d2=0;d2<dim;d2++){
+					V_inv_tmp[k*dim2*nbFilter+d1*dim*nbFilter+d2*nbFilter+f] = V_inv[k*dim2*nbFilter+d1*dim*nbFilter+d2*nbFilter+f];
+					V_inv[k*dim2*nbFilter+d1*dim*nbFilter+d2*nbFilter+f] = 0.;
+				}
+			}
+		}
+	}
+	for(unsigned int f=0;f<nbFilter;f++){
+		nbClust[f] = nbClust_tmp[FilterIndexToModify[f]];
+		FilterValue[f] = FilterValue_tmp[FilterIndexToModify[f]];
+		for(unsigned int k=0;k<nbClust[f];k++){
+			weights[k*nbFilter+f] = weights_tmp[k*nbFilter+FilterIndexToModify[f]];
+			det_V[k*nbFilter+f] = det_V_tmp[k*nbFilter+FilterIndexToModify[f]];
+			ClusterLabel[k*nbFilter+f] = ClusterLabel_tmp[k*nbFilter+FilterIndexToModify[f]];
+			for(unsigned int d1=0;d1<dim;d1++){
+				mu[k*dim*nbFilter+d1*nbFilter+f] = mu_tmp[k*dim*nbFilter+d1*nbFilter+FilterIndexToModify[f]];
+				for(unsigned int d2=0;d2<dim;d2++) V_inv[k*dim2*nbFilter+d1*dim*nbFilter+d2*nbFilter+f] = V_inv_tmp[k*dim2*nbFilter+d1*dim*nbFilter+d2*nbFilter+FilterIndexToModify[f]];
+			}
+		}
+	}
+
+	delete[] nbClust_tmp;
+	delete[] FilterValue_tmp;
+	delete[] weights_tmp;
+	delete[] det_V_tmp;
+	delete[] ClusterLabel_tmp;
+	delete[] mu_tmp;
+	delete[] V_inv_tmp;
+
+}
+
+// Readers and printers
+
+void GaussianMixtureModel::PrintModelParams(string filename, unsigned int &filter_value){
+	ofstream writefile(filename);
+	writefile << "The Gaussian Mixture Model is composed by " << nbClust << " clusters" << endl;
+        for(unsigned int k=0;k<nbClust[filter_value];k++){
+                writefile << "Cluster " << k+1 << endl;
+                writefile << "weight = " << weights[k*nbFilter+filter_value] << endl;
+                writefile << "mean = ";
+                for(unsigned int i=0;i<dim;i++) writefile << mu[k*dim*nbFilter+i*nbFilter+filter_value] << " ";
+                writefile << endl;
+                writefile << "variance = " << endl;
+                for(unsigned int i=0;i<dim;i++){
+                        for(unsigned int j=0;j<dim;j++) writefile << V[k*dim2*nbFilter+i*dim*nbFilter+j*nbFilter+filter_value] << " ";
+                        writefile << endl;
+                }
+        }
+	writefile << endl;
+}
+
+void GaussianMixtureModel::PrintToDatabase(const string &name_of_database){
+	if( !IsLabelled && !IsRead ){
 		cerr << "The GMM is not labelled, we then cannot print it to the database, aborting" << endl;
 		exit(EXIT_FAILURE);
 	}
+	if( !IsDescriptor ){
+		if( !IsRead ){
+			cerr << "The GMM does not have descriptors, we then cannot print to database the model, aborting" << endl;
+			exit(EXIT_FAILURE);
+		}else nbLabel = Labels.size();
+	}else nbLabel = _MyDescriptors->getNbLabels();
 
 	string path2base = getDatabasePath(name_of_database);	
 
-	unsigned int nbLabel = _MyDescriptors->getNbLabels();
-
-	ofstream writefile_train(path2base+"labelling.out");
-	for(unsigned int f=0;f<nbFilter;f++){
-		writefile_train << "For descriptor filter \"" << _MyDescriptors->getFilterValue(f) << "\"" << endl;
-		for(unsigned int l=0;l<nbLabel;l++){
-			writefile_train << "Average cluster probabilities for label : \"" << _MyDescriptors->getLabels(l) << "\":\t\t";
-			for(unsigned int k=0;k<nbClust[f];k++) writefile_train << AveLabelProb[k*nbFilter*nbLabel+l*nbFilter+f] << "\t";
+	if( !IsRead ){
+		ofstream writefile_train(path2base+"labelling.out");
+		for(unsigned int f=0;f<nbFilter;f++){
+			writefile_train << "For descriptor filter \"" << _MyDescriptors->getFilterValue(f) << "\"" << endl;
+			for(unsigned int l=0;l<nbLabel;l++){
+				writefile_train << "Average cluster probabilities for label : \"" << _MyDescriptors->getLabels(l) << "\":\t\t";
+				for(unsigned int k=0;k<nbClust[f];k++) writefile_train << AveLabelProb[k*nbFilter*nbLabel+l*nbFilter+f] << "\t";
+				writefile_train << endl;
+			}	       
 			writefile_train << endl;
-		}	       
-		writefile_train << endl;
+		}
+		writefile_train.close();
 	}
-	writefile_train.close();
 
 	string ext=".ath";
 	for(unsigned int l=0;l<nbLabel;l++){
-		string full_filename=_MyDescriptors->getLabels(l)+ext;
+		string full_filename;
+		if( IsRead ) full_filename=Labels[l]+ext;
+		else full_filename=_MyDescriptors->getLabels(l)+ext;
 		ofstream writefile(path2base+full_filename);
-		_MyDescriptors->printDescriptorsPropToDatabase(writefile);
+		if( IsRead ){
+			writefile << "DESCRIPTOR_NAME " << DescriptorName << endl;
+			writefile << "FILTER_TYPE " << FilteringType << endl;
+			for(unsigned int p=0;p<DescriptorProperties.size();p++) writefile << DescriptorProperties[p] << endl;
+		}else _MyDescriptors->printDescriptorsPropToDatabase(writefile);
+
 		for(unsigned int f=0;f<nbFilter;f++){
-			writefile << "FILTER_VALUE " << _MyDescriptors->getFilterValue(f) << endl;
+			if( IsRead ) writefile << "FILTER_VALUE " << FilterValue[f] << endl;
+			else writefile << "FILTER_VALUE " << _MyDescriptors->getFilterValue(f) << endl;
 			unsigned int nb = 0;
 			for(unsigned int k=0;k<nbClust[f];k++) if( ClusterLabel[k*nbFilter+f] == l ) nb++;
 			writefile << "NUMBER_OF_CLUSTER " << nb << endl;
@@ -483,19 +612,17 @@ void GaussianMixtureModel::PrintToDatabase(const string &name_of_database){
 	}
 }
 
-double GaussianMixtureModel::MaximumLikelihoodClassifier(unsigned int &index_cluster, unsigned int &DescriptorIndex, unsigned int &filter_value){
-	long double sumProbs = 0.;
-	for(unsigned int k=0;k<nbClust[filter_value];k++) sumProbs += Prob_Cluster(k,DescriptorIndex,filter_value);
-	return Prob_Cluster(index_cluster,DescriptorIndex,filter_value) / sumProbs;
-}
-
 void GaussianMixtureModel::ReadModelParamFromDatabase(const std::string &name_of_database){
 	string path2base = getMLDatabasePath()+name+"/"+name_of_database+"/";	
 	string ext=".ath";
-	string end, buffer_s;
+	string end, buffer_s, line;
 	struct dirent *diread;
 	const char *env = path2base.c_str();
 	DIR *dir;
+	size_t pos_filter_type, pos_filter_val, pos_des_name, pos_dim, pos_name;
+	unsigned int buffer_i;
+	nbFilter = 0;
+	dim = 0;
 	if( (dir = opendir(env) ) != nullptr ){
 		cout << "Reading \"" << name_of_database << "\" GMM database" << endl;
 		while( (diread = readdir(dir)) != nullptr ){
@@ -505,15 +632,202 @@ void GaussianMixtureModel::ReadModelParamFromDatabase(const std::string &name_of
 				if( end == ext ) Labels.push_back(buffer_s.substr(0,buffer_s.size()-4));
 			}
 		}
-		cout << Labels.size() << " different labels : ";
-		for(unsigned int l=0;l<Labels.size();l++) cout << Labels[l] << " ";
+		nbLabel = Labels.size();
+		cout << nbLabel << " different labels : ";
+		for(unsigned int l=0;l<nbLabel;l++) cout << Labels[l] << " ";
 		cout << endl;
 		closedir(dir);
-		//for(unsigned int l=0;l<Labels.size();l++){	
+		vector<unsigned int> NClust_temp;
+		for(unsigned int l=0;l<nbLabel;l++){
+			unsigned int line_fval(1000), line_ftype(1000);
+			unsigned int count(0), current_filter_val;
+			string full_file_path = path2base+Labels[l]+ext;
+			ifstream file(full_file_path.c_str(), ifstream::in);
+			if( file ){
+				while(getline(file,line)){
+					pos_name=line.find("DESCRIPTOR_NAME ");
+					if(pos_name!=string::npos){
+						istringstream text(line);
+						text >> buffer_s;
+						text >> DescriptorName;
+					}
+					pos_filter_type=line.find("FILTER_TYPE ");
+					if(pos_filter_type!=string::npos){
+						line_ftype = count;
+						istringstream text(line);
+						text >> buffer_s;
+						text >> buffer_s;
+						if( nbFilter == 0 ) FilteringType = buffer_s;
+						else if( buffer_s != FilteringType ){
+							cerr << "The filtering type is not the same in the different labels, aborting" << endl;
+							exit(EXIT_FAILURE);
+						}
+					}
+					pos_dim=line.find("NUMBER_OF_DIMENSION ");
+					if(pos_dim!=string::npos){
+						istringstream text(line);
+						text >> buffer_s;
+						text >> dim;
+						dim2 = dim*dim;
+					}
+					pos_filter_val=line.find("FILTER_VALUE ");
+					if(pos_filter_val!=string::npos){
+						line_fval = count;
+						istringstream text(line);
+						text >> buffer_s;
+						text >> buffer_s;
+						bool already = false;
+						for(unsigned int f=0;f<nbFilter;f++){
+							if( buffer_s == FilterValue[f] ){
+								current_filter_val = f;
+								already = true;
+								break;
+							}
+						}
+						if( !already ){
+							nbFilter++;
+							NClust_temp.push_back(0);
+							FilterValue.push_back(buffer_s);
+							current_filter_val = nbFilter-1;
+						}
+					}
+					if( count == line_fval+1 ){
+						istringstream text(line);
+						text >> buffer_s;
+						text >> buffer_i;
+						NClust_temp[current_filter_val] += buffer_i;
+					}
+					count++;
+				}
+			}else{
+				cerr << "The file " << Labels[l] << ".ath cannot be openned" << endl;
+				exit(EXIT_FAILURE);
+			}
+		}
+		if( dim == 0 ){
+			cerr << "The number of dimension cannot be read from the database, aborting" << endl;
+			exit(EXIT_FAILURE);
+		}
+		nbClust = new unsigned int[nbFilter];
+		for(unsigned int f=0;f<nbFilter;f++){
+			nbClust[f] = NClust_temp[f];
+			NClust_temp[f] = 0;
+		}
+		weights = new double[nbMaxClusters*nbFilter];
+		mu = new double[dim*nbMaxClusters*nbFilter];
+		V_inv = new long double[dim2*nbMaxClusters*nbFilter];
+		det_V = new long double[nbMaxClusters*nbFilter];
+		ClusterLabel = new unsigned int[nbFilter*nbMaxClusters];
+		IsRead = true;
+		vector<string> Prop_temp;
+		for(unsigned int l=0;l<nbLabel;l++){
+			Prop_temp.clear();
+			unsigned int line_ftype(1000), line_fval(1000);
+			unsigned int count(0), current_filter_val;
+			string filter_val;
+			bool stop_read_prop = false;
+			string full_file_path = path2base+Labels[l]+ext;
+			ifstream file(full_file_path.c_str(), ifstream::in);
+			if( file ){
+				while(getline(file,line)){
+					pos_filter_type=line.find("FILTER_TYPE ");
+					if(pos_filter_type!=string::npos) line_ftype = count;
+					pos_filter_val=line.find("FILTER_VALUE ");
+					if(pos_filter_val!=string::npos){
+						istringstream text(line);
+						text >> buffer_s;
+						text >> filter_val;
+						line_fval = count;
+						stop_read_prop = true;
+					}
+					if( !stop_read_prop ){
+						if( l == 0 ){
+							DescriptorProperties.push_back(line);
+							Prop_temp.push_back(line);
+						}else Prop_temp.push_back(line);
+					}
+					if( count > line_fval ){
+						for(unsigned int f=0;f<nbFilter;f++){
+							if( FilterValue[f] == filter_val ){
+								current_filter_val = f;
+								break;
+							}
+						}
+						istringstream text(line);
+						text >> buffer_s;
+						unsigned int currentK;
+						text >> currentK;
+						for(unsigned int k=0;k<currentK;k++){
+							ClusterLabel[NClust_temp[current_filter_val]*nbFilter+current_filter_val] = l;
+							getline(file,line);
+							istringstream text2(line);
+							text2 >> buffer_s;
+							if( buffer_s == "WEIGHT" ) text2 >> weights[NClust_temp[current_filter_val]*nbFilter+current_filter_val];
+							else{
+								cerr << "Issue when reading weight of GMM" << endl;
+								exit(EXIT_FAILURE);
+							}
+							getline(file,line);
+							istringstream text3(line);
+							text3 >> buffer_s;
+							if( buffer_s == "DETERMINANT_OF_COV_MATRIX" ) text3 >> det_V[NClust_temp[current_filter_val]*nbFilter+current_filter_val];
+							else{
+								cerr << "Issue when reading determinant of cov mat of GMM" << endl;
+								exit(EXIT_FAILURE);
+							}
+							getline(file,line);
+							istringstream text4(line);
+							text4 >> buffer_s;
+							if( buffer_s == "ESPERANCE" ) for(unsigned int d=0;d<dim;d++) text4 >> mu[NClust_temp[current_filter_val]*nbFilter*dim+d*nbFilter+current_filter_val];
+							else{
+								cerr << "Issue when reading esperance of GMM" << endl;
+								exit(EXIT_FAILURE);
+							}
+							getline(file,line);
+							istringstream text5(line);
+							text5 >> buffer_s;
+							if( buffer_s == "INVERSE_OF_COVARIANCE_MATRIX" ){
+								for(unsigned int d1=0;d1<dim;d1++){
+									getline(file,line);
+									istringstream text6(line);
+									for(unsigned int d2=0;d2<dim;d2++) text6 >> V_inv[NClust_temp[current_filter_val]*nbFilter*dim2+d1*nbFilter*dim+nbFilter*d2+current_filter_val];
+								}
+							}else{
+								cerr << "Issue when reading inverse of cov mat of GMM" << endl;
+								exit(EXIT_FAILURE);
+							}
+							NClust_temp[current_filter_val]++;
+						}
+					}
+					// read clusters
+					count++;
+				}
+				if( DescriptorProperties.size() == Prop_temp.size() ){
+					bool same = true;
+					for(unsigned int s=0;s<DescriptorProperties.size();s++){
+						if( DescriptorProperties[s] != Prop_temp[s] ){
+							same = false;
+							break;
+						}
+					}
+					if( !same ){
+						cerr << "The properties of the descriptors are not the same in the different labels of the database, aborting" << endl;
+						exit(EXIT_FAILURE);
+					}
+				}else{
+						cerr << "The properties of the descriptors are not the same in the different labels of the database, aborting" << endl;
+						exit(EXIT_FAILURE);
+				}
+			}else{
+				cerr << "The file " << Labels[l] << ".ath cannot be openned" << endl;
+				exit(EXIT_FAILURE);
+			}
+		}
 	}else{
 		cerr << "The database environment \"" << path2base << "\" cannot be openned, aborting" << endl;
 		exit(EXIT_FAILURE);
 	}
+	cout << path2base << " GMM model successfully read !" << endl;
 }
 
 GaussianMixtureModel::~GaussianMixtureModel(){
@@ -551,5 +865,18 @@ GaussianMixtureModel::~GaussianMixtureModel(){
 	if( IsLabelled ){
 		delete[] AveLabelProb;
 		delete[] ClusterLabel;
+	}
+	if( IsRead ){
+		if( !IsDescriptor ){
+			delete[] nbClust;
+			delete[] weights;
+			delete[] mu;
+			delete[] V_inv;
+			delete[] det_V;
+		}
+		delete[] ClusterLabel;
+	}
+	if( IsClassified ){
+		delete[] Classificator;
 	}
 }

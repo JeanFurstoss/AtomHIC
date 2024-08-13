@@ -27,6 +27,54 @@ SteinhardtDescriptors::SteinhardtDescriptors(AtomicSystem *_MySystem):Descriptor
 	ComputeDescriptors();
 }
 
+SteinhardtDescriptors::SteinhardtDescriptors(AtomicSystem *_MySystem, vector<string> _Properties):Descriptors(_MySystem,_Properties){
+	this->name = "Steinhardt";
+	readProperties(_Properties);
+	dim = l_sph;
+	// if neighbours have not been searched perform the research
+	if( !_MySystem->getIsNeighbours() || _MySystem->get_current_rc() != rc ){
+		_MySystem->searchNeighbours(rc);
+	}
+	nbNMax = _MySystem->getNbMaxN();
+	_Descriptors = new double[nbDatTot*l_sph]; // TODO case with one L or filtered
+	lsph2 = (l_sph+1)*(l_sph*2+1.);
+	lsph1 = l_sph*2+1;
+	Malpha = new unsigned int [nbDatTot*(nbNMax+1)];
+	Qlm = new complex<double>[nbDatTot*lsph2];
+	for(unsigned int i=0;i<nbDatTot*(l_sph*2+1);i++){
+		for(unsigned int j=0;j<l_sph+1;j++) Qlm[i*j+j] = (0.,0.);
+	}
+	ComputeDescriptors();
+}
+
+void SteinhardtDescriptors::readProperties(vector<string> _Properties){
+	Descriptors::readProperties(_Properties);
+	size_t pos_rcut, pos_lsph, pos_StStyle, pos_AveStyle;
+	string buffer_s, line;
+	for(unsigned int s=0;s<_Properties.size();s++){
+		pos_lsph=_Properties[s].find("NUMBER_OF_DIMENSION");
+		if( pos_lsph!=string::npos ){
+			istringstream text(_Properties[s]);
+			text >> buffer_s >> l_sph;
+		}
+		pos_rcut=_Properties[s].find("CUTOFF_RADIUS");
+		if( pos_rcut!=string::npos ){
+			istringstream text(_Properties[s]);
+			text >> buffer_s >> rc;
+		}
+		pos_StStyle=_Properties[s].find("STEINHARDT_STYLE");
+		if( pos_StStyle!=string::npos ){
+			istringstream text(_Properties[s]);
+			text >> buffer_s >> SteinhardtStyle;
+		}
+		pos_AveStyle=_Properties[s].find("AVE_STYLE");
+		if( pos_AveStyle!=string::npos ){
+			istringstream text(_Properties[s]);
+			text >> buffer_s >> AverageStyle;
+		}
+	}
+}
+
 void SteinhardtDescriptors::readFixedParams(){
 	string fp;
 	#ifdef FIXEDPARAMETERS

@@ -1852,7 +1852,9 @@ double* ComputeAuxiliary::StructuralAnalysis_Steinhardt_GMM(const string aux_nam
 		N_s[nbStruct] = 0.;
 		for(unsigned int s=0;s<nbStruct;s++){
 			N_s[s] = 0.;
-			for(unsigned int c=0;c<nbCluster_GMM[s*nbAt_type+(current_type-1)];c++)	N_s[s] += MT->Prob_MultidimGaussian(this->ICovs_GMM[s*nbAt_type*nbClusterMax_GMM+(current_type-1)*nbClusterMax_GMM+c], this->Mus_GMM[s*nbAt_type*nbClusterMax_GMM+(current_type-1)*nbClusterMax_GMM+c], this->Det_GMM[s*nbAt_type*nbClusterMax_GMM+(current_type-1)*nbClusterMax_GMM+c], Filtered_St)*weight_GMM[s*nbAt_type*nbClusterMax_GMM+(current_type-1)*nbClusterMax_GMM+c];
+			for(unsigned int c=0;c<nbCluster_GMM[s*nbAt_type+(current_type-1)];c++){
+				N_s[s] += MT->Prob_MultidimGaussian(this->ICovs_GMM[s*nbAt_type*nbClusterMax_GMM+(current_type-1)*nbClusterMax_GMM+c], this->Mus_GMM[s*nbAt_type*nbClusterMax_GMM+(current_type-1)*nbClusterMax_GMM+c], this->Det_GMM[s*nbAt_type*nbClusterMax_GMM+(current_type-1)*nbClusterMax_GMM+c], Filtered_St)*weight_GMM[s*nbAt_type*nbClusterMax_GMM+(current_type-1)*nbClusterMax_GMM+c];
+			}
 			N_s[nbStruct] += N_s[s];
 		}
 		if( N_s[nbStruct] != 0 ){

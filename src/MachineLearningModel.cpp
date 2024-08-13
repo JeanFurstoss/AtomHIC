@@ -12,12 +12,47 @@ MachineLearningModel::MachineLearningModel(){
 void MachineLearningModel::setDescriptors(Descriptors *D){ 
 	_MyDescriptors = D;
 	this->IsDescriptor = true;
-	dim = _MyDescriptors->getDim();
-	dim2 = dim*dim;
+	if( IsRead ){ // Case where the ML model is read from database, check that descriptors are consistent with base informations
+		if( FilteringType != _MyDescriptors->getFilteringType() ){
+			cerr << "The filtering type is different between the descriptors and the read ML database, aborting" << endl;
+			exit(EXIT_FAILURE);
+		}
+		if( nbFilter != _MyDescriptors->getNbFilter() ){
+			cerr << "The number of filter is different between the descriptors and the read ML database, aborting" << endl;
+			exit(EXIT_FAILURE);
+		}
+		if( dim != _MyDescriptors->getDim() ){
+			cerr << "The number of dimension is different between the descriptors and the read ML database, aborting" << endl;
+			exit(EXIT_FAILURE);
+		}
+		FilterIndexToModify = new unsigned int[nbFilter];
+		for(unsigned int f1=0;f1<nbFilter;f1++){
+			bool found = false;
+			for(unsigned int f2=0;f2<nbFilter;f2++){
+				if( FilterValue[f1] == _MyDescriptors->getFilterValue(f2) ){
+					found = true;       
+					if( f1 != f2 ) IsFilterIndexModified = true;
+					FilterIndexToModify[f1] = f2;
+					break;
+				}
+			}
+			if( !found ){
+				cerr << "The filter value are different between the decriptors and the read ML database, aborting" << endl;
+				exit(EXIT_FAILURE);
+			}
+		}
+	}else{
+		dim = _MyDescriptors->getDim();
+		dim2 = dim*dim;
+		nbFilter = _MyDescriptors->getNbFilter();
+	}
+	
+	nbDat = new unsigned int[nbFilter];
+	for(unsigned int f=0;f<nbFilter;f++) nbDat[f] = _MyDescriptors->getNbDat(f);
+	
 	nbDatMax = _MyDescriptors->getNbDatMax();
 	buffer_vec_1_dim = new double[dim];
 	buffer_vec_2_dim = new double[dim];
-	nbFilter = _MyDescriptors->getNbFilter();
 }
 
 string MachineLearningModel::getMLDatabasePath(){
@@ -100,8 +135,27 @@ string MachineLearningModel::getDatabasePath(const string &name_of_database){
 	return path2base;
 }
 
+void MachineLearningModel::PrintClassifiedData(string filename){
+	if( !IsClassified ){
+		cerr << "The data are not classified, we thus cannot print them, aborting" << endl;
+		exit(EXIT_FAILURE);
+	}
+	ofstream writefile(filename);
+	unsigned int nbDatTot = 0;
+	for(unsigned int f=0;f<nbFilter;f++){
+		for(unsigned int j=0;j<nbDat[f];j++){
+			for(unsigned int d=0;d<dim;d++) writefile << _MyDescriptors->getDescriptors()[_MyDescriptors->getFilterIndex(f*nbDatMax+j)*dim+d] << " ";
+			writefile << Classificator[_MyDescriptors->getFilterIndex(f*nbDatMax+j)*2] << " " << Classificator[_MyDescriptors->getFilterIndex(f*nbDatMax+j)*2+1] << endl;
+		}
+	}
+	writefile.close();
+	cout << "Classified data successfully printed in \"" << filename << "\" under format : DescriptorValues LabelIndex MaximumLikelihoodClassifier" << endl;
+}
+
 MachineLearningModel::~MachineLearningModel(){
 	delete MT;
-	delete[] buffer_vec_1_dim;
-	delete[] buffer_vec_2_dim;
+	if( IsDescriptor ){
+		delete[] buffer_vec_1_dim;
+		delete[] buffer_vec_2_dim;
+	}
 }

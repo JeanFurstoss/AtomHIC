@@ -7,7 +7,7 @@
 ######################################################################
 
 #Project name
-project(GMMTest)
+project(GMMClassification)
  
 #The file(GLOB...) allows for wildcard additions:
 file(GLOB HEADERS "*.h")
