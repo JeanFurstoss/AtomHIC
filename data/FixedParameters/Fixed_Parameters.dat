@@ -29,3 +29,15 @@ STEINHARDT_DESCRIPTORS_RCUT 5. // cutoff radius for neighbour research
 STEINHARDT_DESCRIPTORS_L_SPH 12 // spherical harmonic degree
 STEINHARDT_DESCRIPTORS_STYLE Multi // could be Mono, Multi
 STEINHARDT_DESCRIPTORS_AVERAGE_STYLE Multi // could be Mono, Multi, none
+
+// Parameters for Gaussian Mixture Model
+GMM_NB_MAX_CLUSTER 50 // maximum number of cluster for Gaussian Mixture Model
+GMM_TOL_LKH_EM 1e-2 // difference between likelihoods for reaching convergence of the Expectation Maximization algorithm
+GMM_MAX_ITER_EM 500 // maximum iterations of the Expectation Maximization algorithm
+GMM_ELBOW_FACTOR 0.1 // for the optimization of the number of cluster K when a BIC minimum is not found, minimum reduction factor of the BIC=f(K) slope between the two first and two last K values for considering that the curve form an elbow
+
+// Parameters for KMeans 
+KMEANS_NB_MAX_CLUSTER 100 // maximum number of cluster for KMeans
+KMEANS_TOL 1e-5 // tolerance for reaching KMeans convergence
+KMEANS_MAX_ITER 1000 // maximum iteration of the KMeans algorithm
+KMEANS_NB_INIT 100 // number of random initialization of the KMeans algorithm (at the end, the one with the highest likelihood is keept) 

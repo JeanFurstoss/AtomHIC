@@ -39,6 +39,8 @@ protected:
 	// Variables for classification
 	double *Classificator; // [n*2] = index of *the label with highest probability for descriptors n (index in _Descriptor array), [n*2+1] = probability
 	bool IsClassified = false;	
+	
+	std::string FixedParam_Filename = "Fixed_Parameters.dat";
 
 public:
 	// constructors
@@ -52,9 +54,11 @@ public:
 	//void ReadModelParamFromDatabase(); // TODO implement base fonction here
 	void Classify();
 	void PrintClassifiedData(std::string filename);
+	void readFixedParams();
 	// getters
 	double *getClassificator(){ return Classificator; }
 	std::string getFilteringType(){ return FilteringType; }
+	std::vector<std::string> getDescriptorProperties(){ return DescriptorProperties; }
 	// destructor
 	~MachineLearningModel();
 	

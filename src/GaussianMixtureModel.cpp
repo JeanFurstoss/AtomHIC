@@ -8,6 +8,7 @@ using namespace std;
 
 GaussianMixtureModel::GaussianMixtureModel(){
 	this->name = "GaussianMixtureModel"; 
+	readFixedParams();
 }
 
 void GaussianMixtureModel::setDescriptors(Descriptors *D){
@@ -828,6 +829,56 @@ void GaussianMixtureModel::ReadModelParamFromDatabase(const std::string &name_of
 		exit(EXIT_FAILURE);
 	}
 	cout << path2base << " GMM model successfully read !" << endl;
+}
+
+void GaussianMixtureModel::readFixedParams(){
+	string fp;
+	#ifdef FIXEDPARAMETERS
+	fp = FIXEDPARAMETERS;
+	#endif
+	string backslash="/";
+	string filename=fp+backslash+FixedParam_Filename;
+	ifstream file(filename, ios::in);
+	size_t pos_nbCMax, pos_tol, pos_maxIter, pos_elfac;
+	string buffer_s, line;
+	unsigned int ReadOk(0);
+	if(file){
+		while(file){
+			getline(file,line);
+			pos_nbCMax=line.find("GMM_NB_MAX_CLUSTER");
+			if(pos_nbCMax!=string::npos){
+				istringstream text(line);
+				text >> buffer_s >> nbMaxClusters;
+				ReadOk++;
+			}
+			pos_tol=line.find("GMM_TOL_LKH_EM");
+			if(pos_tol!=string::npos){
+				istringstream text(line);
+				text >> buffer_s >> tol_Lkh_EM;
+				ReadOk++;
+			}
+			pos_maxIter=line.find("GMM_MAX_ITER_EM");
+			if(pos_maxIter!=string::npos){
+				istringstream text(line);
+				text >> buffer_s >> MaxIter_EM;
+				ReadOk++;
+			}
+			pos_elfac=line.find("GMM_ELBOW_FACTOR");
+			if(pos_elfac!=string::npos){
+				istringstream text(line);
+				text >> buffer_s >> fac_elbow;
+				ReadOk++;
+			}
+		}
+	}else{
+		cerr << "Can't read /data/FixedParameters/Fixed_Parameters.dat file !" << endl;
+		exit(EXIT_FAILURE);
+	}
+	file.close();
+	if( ReadOk != 4 ){
+		cerr << "Error during reading of FixedParameters.dat for GaussianMixtureModel, aborting" << endl;
+		exit(EXIT_FAILURE);
+	}
 }
 
 GaussianMixtureModel::~GaussianMixtureModel(){

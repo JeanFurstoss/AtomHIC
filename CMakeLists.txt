@@ -27,8 +27,8 @@ option(BUILD_TOOLS true)
 option(BUILD_TESTS true)
 
 # build type : Release or Debug
-set(CMAKE_BUILD_TYPE "Debug")
-#set(CMAKE_BUILD_TYPE "Release")
+#set(CMAKE_BUILD_TYPE "Debug")
+set(CMAKE_BUILD_TYPE "Release")
 
 #Secondary cmake path (in order to not increase size of this main file)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake")

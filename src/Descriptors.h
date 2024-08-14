@@ -27,7 +27,7 @@ protected:
 	unsigned int nbFilter = 0; //
 	std::string FilteringType = "none";
 	std::vector<std::string> FilterValue; // FilterValue[f] = name of the f filter
-	unsigned int nbMaxFilter = 100; // only used for warning TODO
+	unsigned int nbMaxFilter = 100; // only used for warning
 	
 	std::string FixedParam_Filename = "Fixed_Parameters.dat";
 

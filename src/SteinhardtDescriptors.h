@@ -40,6 +40,7 @@ public:
 	void ComputeSteinhardtParameters_Multi();
 	void AverageSteinhardtParameters_Mono();
 	void AverageSteinhardtParameters_Multi();
+	void printDescriptorsPropToDatabase(std::ofstream &writefile);
 	// destructor
 	~SteinhardtDescriptors();
 	

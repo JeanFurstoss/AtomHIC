@@ -7,7 +7,7 @@
 ######################################################################
 
 #Project name
-project(SaveGaussianMixture_Steinhardt)
+project(ComputeDescriptors)
  
 #The file(GLOB...) allows for wildcard additions:
 file(GLOB HEADERS "*.h")

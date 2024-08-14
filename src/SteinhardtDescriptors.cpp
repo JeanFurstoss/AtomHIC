@@ -330,6 +330,11 @@ void SteinhardtDescriptors::setProperties(){
 	Properties.push_back("STEINHARDT_STYLE "+SteinhardtStyle);
 	Properties.push_back("AVE_STYLE "+AverageStyle);
 }
-	
+
+void SteinhardtDescriptors::printDescriptorsPropToDatabase(ofstream &writefile){
+	setProperties();
+	Descriptors::printDescriptorsPropToDatabase(writefile);
+}
+
 SteinhardtDescriptors::~SteinhardtDescriptors(){
 }

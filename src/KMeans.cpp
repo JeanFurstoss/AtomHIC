@@ -6,6 +6,7 @@ using namespace std;
 
 KMeans::KMeans(){
 	this->name = "KMeans"; // TODO the user could affect name to the model or it could be read from database
+	readFixedParams();
 }
 
 void KMeans::setDescriptors(Descriptors *D){
@@ -108,11 +109,16 @@ void KMeans::TrainModel(unsigned int &_nbClust, unsigned int &filter_value){
 			}
 			res = 0.;
 			for(unsigned int k=0;k<nbClust[filter_value];k++){
+				double norm(0.),res_temp(0.);
 				for(unsigned int d=0;d<dim;d++){
 					unsigned int ind = k*dim*nbFilter+d*nbFilter+filter_value;
 					centroids[ind] /= nbDat2Cluster[k*nbFilter+filter_value];
-					res += (centroids[ind]-centroids_old[ind]) * (centroids[ind]-centroids_old[ind]);
+				//	res += (centroids[ind]-centroids_old[ind]) * (centroids[ind]-centroids_old[ind]);
+				//}
+					res_temp += (centroids[ind]-centroids_old[ind]) * (centroids[ind]-centroids_old[ind]);
+					norm += centroids[ind]*centroids[ind];
 				}
+				if( norm != 0. ) res += res_temp/norm;
 			}
 			iter++;
 		}while( iter < MaxIter_KMeans && res > tol_KMeans );
@@ -214,6 +220,56 @@ void KMeans::PrintModelParams(unsigned int &filter_value){
                 for(unsigned int i=0;i<dim;i++) cout << centroids[k*dim*nbFilter+i*nbFilter+filter_value] << " ";
                 cout << endl;
         }
+}
+
+void KMeans::readFixedParams(){
+	string fp;
+	#ifdef FIXEDPARAMETERS
+	fp = FIXEDPARAMETERS;
+	#endif
+	string backslash="/";
+	string filename=fp+backslash+FixedParam_Filename;
+	ifstream file(filename, ios::in);
+	size_t pos_nbCMax, pos_tol, pos_maxIter, pos_nbInit;
+	string buffer_s, line;
+	unsigned int ReadOk(0);
+	if(file){
+		while(file){
+			getline(file,line);
+			pos_nbCMax=line.find("KMEANS_NB_MAX_CLUSTER");
+			if(pos_nbCMax!=string::npos){
+				istringstream text(line);
+				text >> buffer_s >> nbClustMax;
+				ReadOk++;
+			}
+			pos_tol=line.find("KMEANS_TOL");
+			if(pos_tol!=string::npos){
+				istringstream text(line);
+				text >> buffer_s >> tol_KMeans;
+				ReadOk++;
+			}
+			pos_maxIter=line.find("KMEANS_MAX_ITER");
+			if(pos_maxIter!=string::npos){
+				istringstream text(line);
+				text >> buffer_s >> MaxIter_KMeans;
+				ReadOk++;
+			}
+			pos_nbInit=line.find("KMEANS_NB_INIT");
+			if(pos_nbInit!=string::npos){
+				istringstream text(line);
+				text >> buffer_s >> nbInit;
+				ReadOk++;
+			}
+		}
+	}else{
+		cerr << "Can't read /data/FixedParameters/Fixed_Parameters.dat file !" << endl;
+		exit(EXIT_FAILURE);
+	}
+	file.close();
+	if( ReadOk != 4 ){
+		cerr << "Error during reading of FixedParameters.dat for KMeans, aborting" << endl;
+		exit(EXIT_FAILURE);
+	}
 }
 
 KMeans::~KMeans(){

@@ -1879,6 +1879,7 @@ double* ComputeAuxiliary::StructuralAnalysis_Steinhardt_GMM(const string aux_nam
 	return Struct;
 }
 
+// MOVE THIS FUNCTION TO A ML MODEL
 double* ComputeAuxiliary::StructuralAnalysis_Steinhardt(){
 	// read database
 	SteinhardtDatabase_read(_MySystem->getCrystal()->getName());
@@ -2093,7 +2094,9 @@ string ComputeAuxiliary::getSteinhardtDatabase(string CrystalName){
 
 }
 
-void ComputeAuxiliary::read_params(){
+// KEEP ALL BELLOW
+
+void ComputeAuxiliary::read_params(){ // nothing to read for the moment
 	string fp;
 	#ifdef FIXEDPARAMETERS
 	fp = FIXEDPARAMETERS;

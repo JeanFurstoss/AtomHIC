@@ -474,10 +474,7 @@ Descriptors::Descriptors(const string &FilenameOrDir, const string &DescriptorNa
 								FilterValue.push_back(buffer_s);
 								nbDat.push_back(1);
 								nbFilter++;
-								if( nbFilter >= nbMaxFilter ){
-									cerr << "The number of filter is higher than maximum allowed, if you know what you are doing you can change its value in /data/FixedParameters/FixedParameters.dat" << endl;
-									exit(EXIT_FAILURE);
-								}
+								if( nbFilter >= nbMaxFilter ) cout << "Warning there is " << nbFilter << " different filters, which is a lot" << endl;
 							}
 						}
 						count++;
@@ -658,7 +655,7 @@ void Descriptors::readFixedParams(){
 		exit(EXIT_FAILURE);
 	}
 	file.close();
-	cout << "From /data/FixedParameters/FixedParameters.dat the descriptors will be filtered by \"" << FilteringType << "\"" << endl;
+	//cout << "From /data/FixedParameters/FixedParameters.dat the descriptors will be filtered by \"" << FilteringType << "\"" << endl;
 }
 
 Descriptors::~Descriptors(){

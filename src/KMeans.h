@@ -33,16 +33,17 @@ private:
 	double *buffer_k;
 	double *buffer_dat;
 
-	// Parameters to put in FixedParameters
-	unsigned int nbClustMax = 100;
-	double tol_KMeans = 1e-5;
-	unsigned int MaxIter_KMeans = 1000;
-	unsigned int nbInit = 100; // number of random initialization (we keep at the end the one with the highest likelihood)
+	// FixedParameters
+	unsigned int nbClustMax;
+	double tol_KMeans;
+	unsigned int MaxIter_KMeans;
+	unsigned int nbInit; // number of random initialization (we keep at the end the one with the highest likelihood)
 
 public:
 	// constructors
 	KMeans();
 	// methods
+	void readFixedParams();
 	void setDescriptors(Descriptors *D);
 	double SquareEuclidianDistance(const unsigned int &DescriptorIndex, const unsigned int &ClusterIndex, unsigned int &filter_value);
 	void TrainModel(unsigned int &_nbClust, unsigned int &filter_value);

@@ -48,14 +48,14 @@ private:
 	double tolLabelSize = .7; // tolerance for warning message for repartition of descriptor in labels
 	double tol2ndProb = .01; // tolerance for warning message for 2nd prob after labeling with the highest prob
 
-	// Parameters to put in FixedParameters
-	unsigned int nbMaxClusters = 50;
-	double tol_Lkh_EM = 1e-2;
-	unsigned int MaxIter_EM = 500;
-	double fac_elbow = .1; // reduction factor for considering that its is a real elbow
-
 	bool IsKMeans = false;
 	KMeans *MyKM;
+
+	// FixedParameters
+	unsigned int nbMaxClusters;
+	double tol_Lkh_EM;
+	unsigned int MaxIter_EM;
+	double fac_elbow; // reduction factor for considering that its is a real elbow
 
 public:
 	// constructors
@@ -65,6 +65,7 @@ public:
 	void Classify();
 	void ChangeFilterIndex();
 	void TrainModel(unsigned int &_nbClust, unsigned int &filter_value);
+	void readFixedParams();
 	// specific methods of GMM
 	void fitOptimalGMM(unsigned int &_nbClust_min, unsigned int &_nbClust_max);
 	void InitFromKMeans(unsigned int &_nbClust, unsigned int &filter_value);
@@ -87,7 +88,6 @@ public:
 	KMeans *getKMeans(){ return MyKM; }
 	long double *getCov(){ return V_inv; }
 	double *getMu(){ return mu; }
-	std::vector<std::string> getDescriptorProperties(){ return DescriptorProperties; }
 	// destructor
 	~GaussianMixtureModel();
 };
