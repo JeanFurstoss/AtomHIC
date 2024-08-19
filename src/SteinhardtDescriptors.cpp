@@ -10,114 +10,54 @@ using namespace std;
 SteinhardtDescriptors::SteinhardtDescriptors(AtomicSystem *_MySystem):Descriptors(_MySystem){
 	this->name = "Steinhardt";
 	readFixedParams();
-	dim = l_sph;
-	// if neighbours have not been searched perform the research
-	if( !_MySystem->getIsNeighbours() || _MySystem->get_current_rc() != rc ){
-		_MySystem->searchNeighbours(rc);
-	}
-	nbNMax = _MySystem->getNbMaxN();
-	_Descriptors = new double[nbDatTot*l_sph]; // TODO case with one L or filtered
-	lsph2 = (l_sph+1)*(l_sph*2+1.);
-	lsph1 = l_sph*2+1;
-	Malpha = new unsigned int [nbDatTot*(nbNMax+1)];
-	Qlm = new complex<double>[nbDatTot*lsph2];
-	for(unsigned int i=0;i<nbDatTot*(l_sph*2+1);i++){
-		for(unsigned int j=0;j<l_sph+1;j++) Qlm[i*j+j] = (0.,0.);
-	}
+	InitializeArrays();
 	ComputeDescriptors();
 }
 
 SteinhardtDescriptors::SteinhardtDescriptors(AtomicSystem *_MySystem, vector<string> _Properties):Descriptors(_MySystem,_Properties){
 	this->name = "Steinhardt";
 	readProperties(_Properties);
-	dim = l_sph;
+	InitializeArrays();
+	ComputeDescriptors();
+}
+
+void SteinhardtDescriptors::InitializeArrays(){
 	// if neighbours have not been searched perform the research
 	if( !_MySystem->getIsNeighbours() || _MySystem->get_current_rc() != rc ){
 		_MySystem->searchNeighbours(rc);
 	}
 	nbNMax = _MySystem->getNbMaxN();
-	_Descriptors = new double[nbDatTot*l_sph]; // TODO case with one L or filtered
-	lsph2 = (l_sph+1)*(l_sph*2+1.);
-	lsph1 = l_sph*2+1;
-	Malpha = new unsigned int [nbDatTot*(nbNMax+1)];
-	Qlm = new complex<double>[nbDatTot*lsph2];
-	for(unsigned int i=0;i<nbDatTot*(l_sph*2+1);i++){
-		for(unsigned int j=0;j<l_sph+1;j++) Qlm[i*j+j] = (0.,0.);
-	}
-	ComputeDescriptors();
-}
-
-void SteinhardtDescriptors::readProperties(vector<string> _Properties){
-	Descriptors::readProperties(_Properties);
-	size_t pos_rcut, pos_lsph, pos_StStyle, pos_AveStyle;
-	string buffer_s, line;
-	for(unsigned int s=0;s<_Properties.size();s++){
-		pos_lsph=_Properties[s].find("NUMBER_OF_DIMENSION");
-		if( pos_lsph!=string::npos ){
-			istringstream text(_Properties[s]);
-			text >> buffer_s >> l_sph;
-		}
-		pos_rcut=_Properties[s].find("CUTOFF_RADIUS");
-		if( pos_rcut!=string::npos ){
-			istringstream text(_Properties[s]);
-			text >> buffer_s >> rc;
-		}
-		pos_StStyle=_Properties[s].find("STEINHARDT_STYLE");
-		if( pos_StStyle!=string::npos ){
-			istringstream text(_Properties[s]);
-			text >> buffer_s >> SteinhardtStyle;
-		}
-		pos_AveStyle=_Properties[s].find("AVE_STYLE");
-		if( pos_AveStyle!=string::npos ){
-			istringstream text(_Properties[s]);
-			text >> buffer_s >> AverageStyle;
-		}
-	}
-}
-
-void SteinhardtDescriptors::readFixedParams(){
-	string fp;
-	#ifdef FIXEDPARAMETERS
-	fp = FIXEDPARAMETERS;
-	#endif
-	string backslash="/";
-	string filename=fp+backslash+FixedParam_Filename;
-	ifstream file(filename, ios::in);
-	size_t pos_rcut, pos_lsph, pos_StStyle, pos_AveStyle;
-	string buffer_s, line;
-	if(file){
-		while(file){
-			getline(file,line);
-			pos_rcut=line.find("STEINHARDT_DESCRIPTORS_RCUT ");
-			if(pos_rcut!=string::npos){
-				istringstream text(line);
-				text >> buffer_s >> rc;
-			}
-			pos_lsph=line.find("STEINHARDT_DESCRIPTORS_L_SPH ");
-			if(pos_lsph!=string::npos){
-				istringstream text(line);
-				text >> buffer_s >> l_sph;
-			}
-			pos_StStyle=line.find("STEINHARDT_DESCRIPTORS_STYLE ");
-			if(pos_StStyle!=string::npos){
-				istringstream text(line);
-				text >> buffer_s >> SteinhardtStyle;
-			}
-			pos_AveStyle=line.find("STEINHARDT_DESCRIPTORS_AVERAGE_STYLE ");
-			if(pos_AveStyle!=string::npos){
-				istringstream text(line);
-				text >> buffer_s >> AverageStyle;
-			}
-		}
+	if( mode == "OneL" ){
+		dim = 1;
+		_Descriptors = new double[nbDatTot];
+		lsph2 = (l_sph+1)*(l_sph*2+1.);
+		lsph1 = l_sph*2+1;
+		Malpha = new unsigned int[nbDatTot*(nbNMax+1)];
+		Calpha = new double[nbDatTot];
+		Qlm = new complex<double>[nbDatTot*lsph1];
+		for(unsigned int i=0;i<nbDatTot*lsph1;i++) Qlm[i] = (0.,0.);
+	}else if( mode == "Full" ){
+		dim = l_sph;
+		_Descriptors = new double[nbDatTot*l_sph];
+		lsph2 = (l_sph+1)*(l_sph*2+1.);
+		lsph1 = l_sph*2+1;
+		Malpha = new unsigned int [nbDatTot*(nbNMax+1)];
+		Qlm = new complex<double>[nbDatTot*lsph2];
+		for(unsigned int i=0;i<nbDatTot*lsph2;i++) Qlm[i] = (0.,0.);
 	}else{
-		cerr << "Can't read /data/FixedParameters/Fixed_Parameters.dat file !" << endl;
+		cerr << "The Steinhardt mode has not been recognize, possible modes are: OneL, Full" << endl;
 		exit(EXIT_FAILURE);
 	}
-	file.close();
-	cout << "From /data/FixedParameters/FixedParameters.dat we will compute Steinhardt descriptors using cutoff radius of " << rc << " and degree " << l_sph << " with style \"" << SteinhardtStyle << "\" and average style \"" << AverageStyle << "\"" << endl;
 }
 
 void SteinhardtDescriptors::ComputeDescriptors(){
+	// Bond orientational parameter
+	if( mode == "OneL" ){
+		cout << "Computing bond orientational parameter" << endl;
+		ComputeBondOriParam();
+		cout << "Done" << endl;
+		return;
+	}
 	// Steinhardt style
 	cout << "Computing Steinhardt parameters" << endl;
 	if( SteinhardtStyle == "Mono" ) ComputeSteinhardtParameters_Mono();
@@ -144,6 +84,61 @@ void SteinhardtDescriptors::ComputeDescriptors(){
 	}
 }
 
+void SteinhardtDescriptors::ComputeBondOriParam(){
+	#pragma omp parallel for
+	for(unsigned int i=0;i<nbDatTot;i++){
+		double xpos = _MySystem->getWrappedPos(i).x;
+		double ypos = _MySystem->getWrappedPos(i).y;
+		double zpos = _MySystem->getWrappedPos(i).z;
+		Malpha[i*(nbNMax+1)] = 0; 
+		Calpha[i] = 0; 
+		for(unsigned int j_loop=0;j_loop<_MySystem->getNeighbours(i*(nbNMax+1));j_loop++){
+			unsigned int id = _MySystem->getNeighbours(i*(nbNMax+1)+j_loop+1);
+			unsigned int ind1 = i*nbNMax*3+j_loop*3;
+			unsigned int ind2 = ind1+1;
+			unsigned int ind3 = ind2+1;
+			// get distance vector
+			double xp = _MySystem->getWrappedPos(id).x+_MySystem->getCLNeighbours(ind1)*_MySystem->getH1()[0]+_MySystem->getCLNeighbours(ind2)*_MySystem->getH2()[0]+_MySystem->getCLNeighbours(ind3)*_MySystem->getH3()[0]-xpos;
+			double yp = _MySystem->getWrappedPos(id).y+_MySystem->getCLNeighbours(ind1)*_MySystem->getH1()[1]+_MySystem->getCLNeighbours(ind2)*_MySystem->getH2()[1]+_MySystem->getCLNeighbours(ind3)*_MySystem->getH3()[1]-ypos;
+			double zp = _MySystem->getWrappedPos(id).z+_MySystem->getCLNeighbours(ind1)*_MySystem->getH1()[2]+_MySystem->getCLNeighbours(ind2)*_MySystem->getH2()[2]+_MySystem->getCLNeighbours(ind3)*_MySystem->getH3()[2]-zpos;
+			// compute colatitude and longitudinal angles
+			double colat = acos(zp/sqrt(pow(xp,2.)+pow(yp,2.)+pow(zp,2.)));
+			double longit;
+			if( xp > 0 ) longit = atan(yp/xp);
+	                else if( ( xp < 0 ) && ( yp >= 0 ) ) longit = atan(yp/xp) + M_PI;
+	                else if( ( xp < 0 ) and ( yp < 0 ) ) longit = atan(yp/xp) - M_PI;
+	                else if( ( fabs(xp) < zeronum ) and ( yp > 0 ) ) longit = M_PI/2.;
+	                else if( ( fabs(xp) < zeronum ) and ( yp < 0 ) ) longit = -M_PI/2.;
+	                else if( ( fabs(xp) < zeronum ) and ( fabs(yp) < zeronum ) ) longit = 0.;
+			// compute spherical harmonics
+			for(int l_loop=-l_sph;l_loop<l_sph+1;l_loop++) Qlm[i*(l_sph*2+1)+l_loop+l_sph] += MT->spherical_harmonics((unsigned int) l_sph, l_loop, colat, longit);
+			// Store the neighbour index into Malpha if it is of the same specy
+			if( _MySystem->getAtom(i).type_uint == _MySystem->getAtom(id).type_uint ){
+				Malpha[i*(nbNMax+1)] += 1;
+				Malpha[i*(nbNMax+1)+Malpha[i*(nbNMax+1)]] = id;
+			}
+		}
+		// compute normalization factors
+		for(int l_loop_2=-l_sph;l_loop_2<l_sph+1;l_loop_2++) Calpha[i] += (pow(Qlm[i*(l_sph*2+1)+l_loop_2+l_sph].real(), 2.) + pow(Qlm[i*(l_sph*2+1)+l_loop_2+l_sph].imag(), 2.));
+	}
+
+	#pragma omp parallel for
+	for(unsigned int i=0;i<nbDatTot;i++){
+		_Descriptors[i] = 0;
+		unsigned int nbN = Malpha[i*(nbNMax+1)];
+		for(unsigned int j=0;j<nbN;j++){
+			unsigned int NId = Malpha[i*(nbNMax+1)+j+1];
+			for(unsigned int l=0;l<(l_sph*2+1);l++){
+				_Descriptors[i] += ((Qlm[i*(l_sph*2+1)+l].real()*Qlm[NId*(l_sph*2+1)+l].real())+Qlm[i*(l_sph*2+1)+l].imag()*Qlm[NId*(l_sph*2+1)+l].imag())/(pow(Calpha[i],.5)*pow(Calpha[NId],.5)); 
+			}
+		}
+		if( nbN == 0 ) _Descriptors[i] = 0;
+		else _Descriptors[i] /= nbN;
+		if( _Descriptors[i] > 1. || _Descriptors[i] < -1. ) _Descriptors[i] = 1.;
+		if( _Descriptors[i] < 0. ) _Descriptors[i] = -_Descriptors[i];
+	}
+}
+	
 // Compute Steinhart parameters which correspond to a vector of dimension l_sph*2+1 for each atom representing the complex norm of Qalpha components
 void SteinhardtDescriptors::ComputeSteinhardtParameters_Mono(){
 	prog=0;
@@ -329,6 +324,7 @@ void SteinhardtDescriptors::setProperties(){
 	Properties.push_back("CUTOFF_RADIUS "+to_string(rc));
 	Properties.push_back("STEINHARDT_STYLE "+SteinhardtStyle);
 	Properties.push_back("AVE_STYLE "+AverageStyle);
+	Properties.push_back("STEINHARDT_MODE "+mode);
 }
 
 void SteinhardtDescriptors::printDescriptorsPropToDatabase(ofstream &writefile){
@@ -336,5 +332,91 @@ void SteinhardtDescriptors::printDescriptorsPropToDatabase(ofstream &writefile){
 	Descriptors::printDescriptorsPropToDatabase(writefile);
 }
 
+void SteinhardtDescriptors::readProperties(vector<string> _Properties){
+	Descriptors::readProperties(_Properties);
+	readFixedParams(); // read fixed parameters to almost have all values initialized even if _Properties does not contain everything
+	size_t pos_rcut, pos_lsph, pos_StStyle, pos_AveStyle, pos_mode;
+	string buffer_s, line;
+	for(unsigned int s=0;s<_Properties.size();s++){
+		pos_mode=_Properties[s].find("STEINHARDT_MODE");
+		if( pos_mode!=string::npos ){
+			istringstream text(_Properties[s]);
+			text >> buffer_s >> mode;
+		}
+		pos_lsph=_Properties[s].find("NUMBER_OF_DIMENSION");
+		if( pos_lsph!=string::npos ){
+			istringstream text(_Properties[s]);
+			text >> buffer_s >> l_sph;
+		}
+		pos_rcut=_Properties[s].find("CUTOFF_RADIUS");
+		if( pos_rcut!=string::npos ){
+			istringstream text(_Properties[s]);
+			text >> buffer_s >> rc;
+		}
+		pos_StStyle=_Properties[s].find("STEINHARDT_STYLE");
+		if( pos_StStyle!=string::npos ){
+			istringstream text(_Properties[s]);
+			text >> buffer_s >> SteinhardtStyle;
+		}
+		pos_AveStyle=_Properties[s].find("AVE_STYLE");
+		if( pos_AveStyle!=string::npos ){
+			istringstream text(_Properties[s]);
+			text >> buffer_s >> AverageStyle;
+		}
+	}
+}
+
+void SteinhardtDescriptors::readFixedParams(){
+	Descriptors::readFixedParams();
+	string fp;
+	#ifdef FIXEDPARAMETERS
+	fp = FIXEDPARAMETERS;
+	#endif
+	string backslash="/";
+	string filename=fp+backslash+FixedParam_Filename;
+	ifstream file(filename, ios::in);
+	size_t pos_rcut, pos_lsph, pos_StStyle, pos_AveStyle, pos_mode;
+	string buffer_s, line;
+	if(file){
+		while(file){
+			getline(file,line);
+			pos_mode=line.find("STEINHARDT_DESCRIPTORS_MODE ");
+			if(pos_mode!=string::npos){
+				istringstream text(line);
+				text >> buffer_s >> mode;
+			}
+			pos_rcut=line.find("STEINHARDT_DESCRIPTORS_RCUT ");
+			if(pos_rcut!=string::npos){
+				istringstream text(line);
+				text >> buffer_s >> rc;
+			}
+			pos_lsph=line.find("STEINHARDT_DESCRIPTORS_L_SPH ");
+			if(pos_lsph!=string::npos){
+				istringstream text(line);
+				text >> buffer_s >> l_sph;
+			}
+			pos_StStyle=line.find("STEINHARDT_DESCRIPTORS_STYLE ");
+			if(pos_StStyle!=string::npos){
+				istringstream text(line);
+				text >> buffer_s >> SteinhardtStyle;
+			}
+			pos_AveStyle=line.find("STEINHARDT_DESCRIPTORS_AVERAGE_STYLE ");
+			if(pos_AveStyle!=string::npos){
+				istringstream text(line);
+				text >> buffer_s >> AverageStyle;
+			}
+		}
+	}else{
+		cerr << "Can't read /data/FixedParameters/Fixed_Parameters.dat file !" << endl;
+		exit(EXIT_FAILURE);
+	}
+	file.close();
+	//cout << "From /data/FixedParameters/FixedParameters.dat we will compute Steinhardt descriptors using cutoff radius of " << rc << " and degree " << l_sph << " with style \"" << SteinhardtStyle << "\" and average style \"" << AverageStyle << "\"" << endl;
+}
+
+
 SteinhardtDescriptors::~SteinhardtDescriptors(){
+	if( mode == "OneL" ) delete[] Calpha;
+	delete[] Malpha;
+	delete[] Qlm;
 }

@@ -35,6 +35,7 @@ Descriptors::Descriptors(AtomicSystem *_MySystem, string& DescriptorName, string
 }
 
 Descriptors::Descriptors(AtomicSystem *_MySystem, vector<string> _Properties):_MySystem(_MySystem){
+	readFixedParams(); // read fixed parameters before in order to have all values initialized even if some are missing in _Properties
 	readProperties(_Properties);
 	MT = new MathTools();
 	nbDatTot = _MySystem->getNbAtom();
@@ -150,10 +151,11 @@ void Descriptors::ConstructFilterIndexArray(AtomicSystem *_MySystem){
 			}
 		}
 	}
-	if( nbFilter < nbMaxFilter ){
-		cout << "The computed descriptors will be filtered by " << FilteringType << ", with :" << endl;
-		for(unsigned int f=0;f<nbFilter;f++) cout << nbDat[f] << " descriptor having filter value: " << FilterValue[f] << endl;
-	}
+	// TODO verbose
+	//if( nbFilter < nbMaxFilter ){
+	//	cout << "The computed descriptors will be filtered by " << FilteringType << ", with :" << endl;
+	//	for(unsigned int f=0;f<nbFilter;f++) cout << nbDat[f] << " descriptor having filter value: " << FilterValue[f] << endl;
+	//}
 }
 
 Descriptors::Descriptors(const string &FilenameOrDir){ // This constructor read unlabelled descriptors from file or labelled descriptors from a directory containing subdirectories having the name of the label and containing files with the descriptors. This constructor considere that the data are not filtered

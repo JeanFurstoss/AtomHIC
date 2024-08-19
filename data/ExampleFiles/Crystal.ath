@@ -13,11 +13,11 @@ DONOTSEPARE ..
 	0.00 c zlo zhi // where c is the third cell parameter
 Masses
 
-	i masse_i # element_name number_of_site // where masse1 is the mass of element i and number_of_site is the number of crystallographic site for element i
+	i masse_i # element_name number_of_site // where masse1 is the mass of element i and number_of_site is the number of crystallographic site for element i (number_of_site can be 0 if you don't know and it can be computed and printed in the file using the ./SaveNonCSCrystalBondOriParam executable)
 	j masse_j ...
 
 Atoms # charge/atomic // charge if the atoms have a charge, else atomic
 
-	N_i n_i (c_i) x_i y_i z_i s_i // N_i id of atom i, n_i element number of atom i, c_i charge (if atoms are charged) of atom i, x_i y_i z_i cartesian coordinates of atom i, s_i crystallographic site of atom i
+	N_i n_i (c_i) x_i y_i z_i s_i // N_i id of atom i, n_i element number of atom i, c_i charge (if atoms are charged) of atom i, x_i y_i z_i cartesian coordinates of atom i, s_i crystallographic site of atom i (1-based and increasing from 1 to number of different site) if unknown you can put 1 everywhere
 	N_i+1 n_i+1 ..
 

@@ -19,7 +19,7 @@ private:
 	unsigned int *AtomType_uint;
 	unsigned int *AtomSite;
 	unsigned int *NbAtomSite; // array such as NbAtomSite[i] = number of site for atom type AtomType[i]
-	bool IsCharge;
+	bool IsCharge = false;
 	double *AtomMass;
 	double *AtomCharge;
 	// Cell vectors
@@ -33,9 +33,8 @@ private:
 	double *a3_star;
 	double V; // elementary volum
 	Atom *Motif;
-	const std::string database_extension=".dat";
-	bool IsOrientedSystem;
-	bool IsMultisite;
+	bool IsOrientedSystem = false;
+	bool IsMultisite = false;
 	AtomicSystem *OrientedSystem;
 	MathTools *MT;
 	std::vector<std::vector<unsigned int>> DoNotSep; // contain the number neighbour which should not be separe from a given atom type <=> do not separe atom type DoNotSep[i][0] from its DoNotSep[i][1] first neighbors of atom type DoNotSep[i][2]
@@ -43,7 +42,10 @@ private:
 	bool IsDoNotSep = false;
 	double *rot_mat_total; // rotation matrix used to pass from the database oriented crystal to the current orientation
 	double *TiltTrans_xyz; // transformation matrix used to construct oriented systems
-        unsigned int *Stoichiometry;	
+        unsigned int *Stoichiometry;
+	bool IsReferenceBondOriParam = false;
+	std::vector<std::vector<double>> ReferenceBondOriParam; // ReferenceBondOriParam[t][s] = reference bond orientational parameter (used for searching atom site and computing order parameter of multisite and non centrosymmetric crystal) of atom type t and crystallographic site s
+	std::vector<std::string> BondOriParamProperties;
 	// Parameters to read
 	std::string FixedParam_Filename = "Fixed_Parameters.dat";
 	double TolOrthoBox;
@@ -57,20 +59,21 @@ public:
 	// getters
 	const std::string& getName(){ return this->name; }
 	const std::string& getCrystallo(){ return this->crystallo; }
-	const Atom* getMotif(){ return this->Motif; }
-	const double* getA1(){ return this->a1; };
-	const double* getA2(){ return this->a2; };
-	const double* getA3(){ return this->a3; };
+	Atom* getMotif(){ return this->Motif; } // TODO warning the const has been removed here
+	double* getA1(){ return this->a1; };
+	double* getA2(){ return this->a2; };
+	double* getA3(){ return this->a3; };
 	const double* getA1_star(){ return this->a1_star; };
 	const double* getA2_star(){ return this->a2_star; };
 	const double* getA3_star(){ return this->a3_star; };
 	const double* getALength(){ return this->alength; };
 	const double getVol(){ return this->V; };
-	const unsigned int getNbAtom(){ return this->nbAtom; }
-	const unsigned int getNbAtomType(){ return this->nbAtomType; }
-	const unsigned int getAtomSite(const unsigned int i){ return this->AtomSite[i]; }
+	unsigned int getNbAtom(){ return this->nbAtom; }
+	unsigned int getNbAtomType(){ return this->nbAtomType; }
+	unsigned int getAtomSite(const unsigned int i){ return this->AtomSite[i]; }
 	const bool getIsMultisite(){ return this->IsMultisite; }
-	const unsigned int getNbAtomSite(const unsigned int typeuint){ return this->NbAtomSite[typeuint-1]; }
+	unsigned int getNbAtomSite(const unsigned int typeuint){ return this->NbAtomSite[typeuint-1]; }
+	unsigned int *getNbAtomSite(){ return this->NbAtomSite; }
 	const double* getTiltTrans(){ return this->TiltTrans_xyz; }
 	const std::string getAtomType(const unsigned int typeuint){ return this->AtomType[typeuint-1]; }
 	std::string* getAtomType(){ return this->AtomType; }
@@ -86,6 +89,10 @@ public:
 	int getNotSepList(const unsigned int i, const unsigned int j){ return this->NotSepList[i][j]; }
 	std::vector<std::vector<unsigned int>> getDoNotSep(){ return this->DoNotSep; }
 	unsigned int *getStoich(){ return this->Stoichiometry; }
+	std::string getDatabasePath(std::string crystalName);
+	std::vector<std::string> getBondOriParamProperties(){ return BondOriParamProperties; }
+	std::vector<std::vector<double>> getReferenceBondOriParam(){ return ReferenceBondOriParam; }
+	bool getIsReferenceBondOriParam(){ return IsReferenceBondOriParam; }
 	// methods
 	void read_params();
 	void read_database();

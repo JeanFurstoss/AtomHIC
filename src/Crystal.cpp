@@ -42,9 +42,27 @@ Crystal::Crystal(const string& crystalName){
 	this->TiltTrans_xyz[6] = 0.;
 	this->TiltTrans_xyz[7] = 0.;
 	this->TiltTrans_xyz[8] = 1.;
+	this->path2database = getDatabasePath(crystalName);
+	read_database();
+	this->alength = new double[3];
+	this->alength[0] = sqrt(pow(this->a1[0],2.)+pow(this->a1[1],2.)+pow(this->a1[2],2.));
+	this->alength[1] = sqrt(pow(this->a2[0],2.)+pow(this->a2[1],2.)+pow(this->a2[2],2.));
+	this->alength[2] = sqrt(pow(this->a3[0],2.)+pow(this->a3[1],2.)+pow(this->a3[2],2.));
+	if( this->IsDoNotSep == true ) ConstructNotSepList();
+	computeReciproqual();
+	computeStoich();
+	for(unsigned int i=0;i<this->nbAtomType;i++){
+		if( this->NbAtomSite[i] > 1 ){
+			this->IsMultisite = true;
+			break;
+		}
+	}
+}
+
+string Crystal::getDatabasePath(string crystalName){
 	// Read the crystal database
 	char *database_env = getenv("CRYSTAL_DATABASE");
-	string database;
+	string database, returned_path;
 	unsigned int crystal_index;
 	if (database_env) {
 		database = database_env;
@@ -66,8 +84,8 @@ Crystal::Crystal(const string& crystalName){
 		if( (dir = opendir(env) ) != nullptr ){
 			while( (diread = readdir(dir)) != nullptr ){
 				buffer_s = diread->d_name;
-				pos = buffer_s.find(this->database_extension);
-				if(pos!=string::npos) AvailableCrystals.push_back(buffer_s.erase(buffer_s.size()-this->database_extension.size()));
+				pos = buffer_s.find(".ath");
+				if(pos!=string::npos) AvailableCrystals.push_back(buffer_s.erase(buffer_s.size()-4));
 			}
 			closedir(dir);
 		}else{
@@ -85,28 +103,16 @@ Crystal::Crystal(const string& crystalName){
 			}
 		}
 		if( !crystalok ){
-			cout << "The crystal \"" << crystalName << "\" does not exist in the crystal database, please create \"" << crystalName << ".dat\" in the /data/Crystal/ directory of AtomHic or use an other Crystal constructor" << endl;
-			cout << "List of available crystals :" << endl;
-			for(unsigned int i=0;i<AvailableCrystals.size();i++) cout << AvailableCrystals[i] << endl;
+			cerr << "The crystal \"" << crystalName << "\" does not exist in the crystal database, please create \"" << crystalName << ".ath\" in the /data/Crystal/ directory following the example in /data/ExampleFiles/Crystal.ath or use an other Crystal constructor" << endl;
+			cerr << "List of available crystals :" << endl;
+			for(unsigned int i=0;i<AvailableCrystals.size();i++) cerr << AvailableCrystals[i] << endl;
+			exit(EXIT_FAILURE);
 		}else{
-			this->path2database = database+"/"+AvailableCrystals[crystal_index]+this->database_extension;
-		}
-		read_database();
-		this->alength = new double[3];
-		this->alength[0] = sqrt(pow(this->a1[0],2.)+pow(this->a1[1],2.)+pow(this->a1[2],2.));
-		this->alength[1] = sqrt(pow(this->a2[0],2.)+pow(this->a2[1],2.)+pow(this->a2[2],2.));
-		this->alength[2] = sqrt(pow(this->a3[0],2.)+pow(this->a3[1],2.)+pow(this->a3[2],2.));
-		if( this->IsDoNotSep == true ) ConstructNotSepList();
-		computeReciproqual();
-		computeStoich();
-		this->IsMultisite = false;
-		for(unsigned int i=0;i<this->nbAtomType;i++){
-			if( this->NbAtomSite[i] > 1 ){
-				this->IsMultisite = true;
-				break;
-			}
+			returned_path = database+"/"+AvailableCrystals[crystal_index]+".ath";
 		}
 	}
+	return returned_path;
+
 }
 
 // construct a z oriented (hkl) unit cell plane
@@ -403,8 +409,8 @@ void Crystal::computeReciproqual(){
 
 void Crystal::read_database(){
 	ifstream file(this->path2database, ios::in);
-	size_t pos_at, pos_x, pos_y, pos_z, pos_attype, pos_Mass, pos_At, pos_Crystal, pos_tilt, pos_DNS;
-	unsigned int line_Mass(1000), line_At(1000), buffer_uint, buffer_uint_1, buffer_uint_2, count(0);
+	size_t pos_at, pos_x, pos_y, pos_z, pos_attype, pos_Mass, pos_At, pos_Crystal, pos_tilt, pos_DNS, pos_bondori;
+	unsigned int line_Mass(1000), line_At(1000), buffer_uint, buffer_uint_1, buffer_uint_2, count(0), line_bondori(1000), nbref2read(0);
 	double buffer_1, buffer_2, buffer_3, buffer_4;
 	string buffer_s, buffer_s_1, buffer_s_2, line;
 	if(file){
@@ -503,7 +509,7 @@ void Crystal::read_database(){
 				if( buffer_s == "charge" ) this->IsCharge = true;
 			       	line_At = count;
 			}
-			if( count > line_At+1 ){
+			if( count > line_At+1 && count < line_At+nbAtom+2 ){
 				istringstream text(line);
 				if( this->IsCharge ){
 					text >> buffer_uint >> buffer_uint_1 >> buffer_1 >> buffer_2 >> buffer_3 >> buffer_4 >> buffer_uint_2;
@@ -521,6 +527,21 @@ void Crystal::read_database(){
 					this->Motif[buffer_uint-1].type_uint = buffer_uint_1;
 					this->AtomSite[buffer_uint-1] = buffer_uint_2-1;
 				}
+			}
+			pos_bondori=line.find("REFERENCE_BOND_ORIENTATIONAL_PARAMETERS");
+			if(pos_bondori!=string::npos){
+				line_bondori = count;
+				IsReferenceBondOriParam = true;
+				for(unsigned int t=0;t<nbAtomType;t++) nbref2read += NbAtomSite[t];
+			}
+			if( count > line_bondori && count < line_bondori+4 ) BondOriParamProperties.push_back(line);
+			if( count > line_bondori+3 && count < line_bondori+4+nbref2read ){
+				istringstream text(line);
+				unsigned int type, site;
+				double bondori;
+				text >> type >> site >> bondori;
+				if( type != ReferenceBondOriParam.size() ) ReferenceBondOriParam.push_back(vector<double>());
+				ReferenceBondOriParam[type-1].push_back(bondori);
 			}
 			count += 1;
 		}
@@ -609,5 +630,7 @@ Crystal::~Crystal(){
 	delete[] TiltTrans_xyz;
 	delete[] alength;
 	delete[] Stoichiometry;
+	delete[] AtomSite;
+	delete[] AtomCharge;
 	if( IsOrientedSystem ) delete OrientedSystem;
 }

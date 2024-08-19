@@ -7,7 +7,7 @@
 ######################################################################
 
 #Project name
-project(StructuralAnalysis_Steinhardt)
+project(SaveNonCSCrystalBondOriParam)
  
 #The file(GLOB...) allows for wildcard additions:
 file(GLOB HEADERS "*.h")

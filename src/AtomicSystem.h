@@ -38,8 +38,8 @@ protected:
 	bool IsG = false;
 	bool IsElem = false;
 	double timestep; // timestep related to the atomic system (cfg lammps file)
-	bool IsCharge;
-	bool IsTilted;
+	bool IsCharge = false;
+	bool IsTilted = false;
 	bool IsCrystalDefined = false;
 	bool IsCrystalMine = false;
 	bool FilenameConstructed = false;

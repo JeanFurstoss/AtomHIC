@@ -290,6 +290,7 @@ void AtomicSystem::AtomListConstructor(Atom *AtomList, unsigned int nbAtom, Crys
 	this->IsWrappedPos = false;
 	this->IsAtomListMine = false;
 	this->IsCellVecMine = false;
+	IsCrystalDefined = true;
 	this->nbAtomType = _MyCrystal->getNbAtomType();
 	this->AtomType = _MyCrystal->getAtomType();
 	this->AtomMass = _MyCrystal->getAtomMass();
@@ -730,11 +731,11 @@ unsigned int AtomicSystem::searchNeighbours(const double& rc){
 		if( Cells[i].size() > this->nbMaxN ) this->nbMaxN = Cells[i].size();
 	}
 	if( nbAt_test != this->nbAtom ) cout << "We miss atoms during cell list" << endl;
-	this->nbMaxN *= (int) (1.5*4.*M_PI*pow(rc,3.)/(3.*CellSizeX*CellSizeY*CellSizeZ)); // 1.5 is a security factor
+	this->nbMaxN *= (int) (2.*4.*M_PI*pow(rc,3.)/(3.*CellSizeX*CellSizeY*CellSizeZ)); // 2. is a security factor TODO put it in FixedParameters
 	if( this->IsNeighbours ){
 		delete[] this->Neighbours;
 		delete[] this->CLNeighbours;
-	} // TODO maybe issue here if we delete the var we may need to reclare them ?
+	}
 	this->Neighbours = new unsigned int[(this->nbMaxN+1)*this->nbAtom];
 	this->CLNeighbours = new int[(this->nbMaxN*3)*this->nbAtom]; // contain the periodic condition (Nclx, Ncly, Nclz) applied for atom to be a neighbour
 	// Perform neighbour research
@@ -1000,7 +1001,7 @@ unsigned int AtomicSystem::searchNeighbours_restricted(const double& rc, const v
 	}
 	if( nbAt_test != nbForSearch ) cout << "We miss atoms during cell list" << endl;
 	if( nbAt_test_ToSearch != nbToSearch ) cout << "We miss atoms during cell list" << endl;
-	this->nbMaxN *= (int) (1.5*4.*M_PI*pow(rc,3.)/(3.*CellSizeX*CellSizeY*CellSizeZ)); // 1.5 is a security factor
+	this->nbMaxN *= (int) (2.*4.*M_PI*pow(rc,3.)/(3.*CellSizeX*CellSizeY*CellSizeZ)); // 2. is a security factor
 	if( this->IsNeighbours ){
 		delete[] this->Neighbours;
 		delete[] this->CLNeighbours;
