@@ -42,21 +42,6 @@ Descriptors::Descriptors(AtomicSystem *_MySystem, vector<string> _Properties):_M
 	ConstructFilterIndexArray(_MySystem);
 }
 
-void Descriptors::readProperties(vector<string> _Properties){
-	Properties.clear();
-	for(unsigned int s=0;s<_Properties.size();s++) Properties.push_back(_Properties[s]);
-	size_t pos_ftype;
-	string buffer_s;
-	for(unsigned int s=0;s<_Properties.size();s++){
-		pos_ftype = _Properties[s].find("FILTER_TYPE");
-		if( pos_ftype!=string::npos ){
-			istringstream text(_Properties[s]);
-			text >> buffer_s >> FilteringType;
-			break;
-		}
-	}
-}
-
 void Descriptors::ConstructFilterIndexArray(AtomicSystem *_MySystem){
 	FilterValue.clear();
 	if( FilteringType == "none" ){
@@ -631,6 +616,21 @@ void Descriptors::printDescriptorsPropToDatabase(ofstream &writefile){
 	if( !Isftype ) writefile << "FILTER_TYPE " << FilteringType << endl;
 	if( !IsNbDim ) writefile << "NUMBER_OF_DIMENSION " << dim << endl;
 	for(unsigned int s=0;s<Properties.size();s++) writefile << Properties[s] << endl;
+}
+
+void Descriptors::readProperties(vector<string> _Properties){
+	Properties.clear();
+	for(unsigned int s=0;s<_Properties.size();s++) Properties.push_back(_Properties[s]);
+	size_t pos_ftype;
+	string buffer_s;
+	for(unsigned int s=0;s<_Properties.size();s++){
+		pos_ftype = _Properties[s].find("FILTER_TYPE");
+		if( pos_ftype!=string::npos ){
+			istringstream text(_Properties[s]);
+			text >> buffer_s >> FilteringType;
+			break;
+		}
+	}
 }
 
 void Descriptors::readFixedParams(){

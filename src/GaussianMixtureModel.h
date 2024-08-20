@@ -50,6 +50,8 @@ private:
 
 	bool IsKMeans = false;
 	KMeans *MyKM;
+	bool IsKMeansProperties = false;
+	std::vector<std::string> KMeansProperties;
 
 	// FixedParameters
 	unsigned int nbMaxClusters;
@@ -74,13 +76,15 @@ public:
 	void UpdateParams(unsigned int &filter_value);
 	void ComputeLogLikelihood(unsigned int &filter_value);
 	void ComputeBIC(unsigned int &filter_value);
-	void PrintModelParams(std::string filename, unsigned int &filter_value);
+	void PrintModelParams(std::string filename);
 	void EM(unsigned int &filter_value);
 	long double Prob_Cluster(unsigned int &index_cluster, unsigned int &DescriptorIndex, unsigned int &filter_value);
 	double MaximumLikelihoodClassifier(unsigned int &index_cluster, unsigned int &DescriptorIndex, unsigned int &filter_value);
 	void Labelling();
 	void PrintToDatabase(const std::string &name_of_database);
 	void ReadModelParamFromDatabase(const std::string &name_of_database);
+	void ReadProperties(std::vector<std::string> Properties);
+	void SetKMeansProperties(std::vector<std::string> Properties);
 	// getters
 	unsigned int getNbClust(unsigned int &filter_value){ return nbClust[filter_value]; }
 	double getBIC(unsigned int &filter_value){ return BIC[filter_value]; }

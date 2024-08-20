@@ -15,6 +15,7 @@ private:
 	std::string path2database;
 	unsigned int nbAtom;
 	unsigned int nbAtomType;
+	unsigned int MaxAtomType = 15;
 	std::string *AtomType; // the different atom species present in the system
 	unsigned int *AtomType_uint;
 	unsigned int *AtomSite;
@@ -44,7 +45,7 @@ private:
 	double *TiltTrans_xyz; // transformation matrix used to construct oriented systems
         unsigned int *Stoichiometry;
 	bool IsReferenceBondOriParam = false;
-	std::vector<std::vector<double>> ReferenceBondOriParam; // ReferenceBondOriParam[t][s] = reference bond orientational parameter (used for searching atom site and computing order parameter of multisite and non centrosymmetric crystal) of atom type t and crystallographic site s
+	std::vector<double> *ReferenceBondOriParam; // ReferenceBondOriParam[t][s] = reference bond orientational parameter (used for searching atom site and computing order parameter of multisite and non centrosymmetric crystal) of atom type t and crystallographic site s
 	std::vector<std::string> BondOriParamProperties;
 	// Parameters to read
 	std::string FixedParam_Filename = "Fixed_Parameters.dat";
@@ -59,7 +60,7 @@ public:
 	// getters
 	const std::string& getName(){ return this->name; }
 	const std::string& getCrystallo(){ return this->crystallo; }
-	Atom* getMotif(){ return this->Motif; } // TODO warning the const has been removed here
+	Atom* getMotif(){ return this->Motif; } 
 	double* getA1(){ return this->a1; };
 	double* getA2(){ return this->a2; };
 	double* getA3(){ return this->a3; };
@@ -91,7 +92,7 @@ public:
 	unsigned int *getStoich(){ return this->Stoichiometry; }
 	std::string getDatabasePath(std::string crystalName);
 	std::vector<std::string> getBondOriParamProperties(){ return BondOriParamProperties; }
-	std::vector<std::vector<double>> getReferenceBondOriParam(){ return ReferenceBondOriParam; }
+	std::vector<double> *getReferenceBondOriParam(){ return ReferenceBondOriParam; }
 	bool getIsReferenceBondOriParam(){ return IsReferenceBondOriParam; }
 	// methods
 	void read_params();
@@ -102,6 +103,7 @@ public:
 	void ConstructNotSepList();
 	void ConstructOrthogonalCell();
 	void computeStoich();
+	void ChangeTypes(unsigned int *CorresArray);
 	// destructor
 	~Crystal();
 	

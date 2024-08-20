@@ -272,6 +272,33 @@ void KMeans::readFixedParams(){
 	}
 }
 
+void KMeans::ReadProperties(vector<string> Properties){
+	size_t pos_nbCMax, pos_tol, pos_maxIter, pos_nbInit;
+	string buffer_s;
+	for(unsigned int i=0;i<Properties.size();i++){
+		pos_nbCMax=Properties[i].find("KMEANS_NB_MAX_CLUSTER");
+		if(pos_nbCMax!=string::npos){
+			istringstream text(Properties[i]);
+			text >> buffer_s >> nbClustMax;
+		}
+		pos_tol=Properties[i].find("KMEANS_TOL");
+		if(pos_tol!=string::npos){
+			istringstream text(Properties[i]);
+			text >> buffer_s >> tol_KMeans;
+		}
+		pos_maxIter=Properties[i].find("KMEANS_MAX_ITER");
+		if(pos_maxIter!=string::npos){
+			istringstream text(Properties[i]);
+			text >> buffer_s >> MaxIter_KMeans;
+		}
+		pos_nbInit=Properties[i].find("KMEANS_NB_INIT");
+		if(pos_nbInit!=string::npos){
+			istringstream text(Properties[i]);
+			text >> buffer_s >> nbInit;
+		}
+	}
+}
+
 KMeans::~KMeans(){
 	if( IsDescriptor ){
 		delete[] buffer_k;

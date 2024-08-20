@@ -103,6 +103,7 @@ public:
 	void setCrystal(const std::string& CrystalName);
 	void set_File_Heading(const std::string& Heading){ this->File_Heading = Heading; }
 	// methods
+	void UpdateTypes2Crystal();
 	void read_params_atsys();
 	void computeInverseCellVec();
 	bool ReadAtomicFile(const std::string& filename);

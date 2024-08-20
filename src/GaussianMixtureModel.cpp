@@ -163,7 +163,7 @@ void GaussianMixtureModel::TrainModel(unsigned int &_nbClust, unsigned int &filt
 	ComputeBIC(filter_value);
 
 	if( eps > tol_Lkh_EM ){
-		cout << "The EM algorythm does not converge until tolerance for a number of cluster = " << nbClust << ", final residual = " << eps << endl;
+		cout << "The EM algorythm does not converge until tolerance for a number of cluster = " << nbClust[filter_value] << ", final residual = " << eps << endl;
 		cout << "Maybe increase number of iteration or the tolerance for EM in /data/FixedParameters/FixedParameters.dat" << endl;
 	}
 }
@@ -216,6 +216,7 @@ void GaussianMixtureModel::SaveVariables(unsigned int &current, unsigned int &fi
 void GaussianMixtureModel::InitFromKMeans(unsigned int &_nbClust, unsigned int &filter_value){
 	if( !IsKMeans ){
 		MyKM = new KMeans();
+		if( IsKMeansProperties ) MyKM->ReadProperties(KMeansProperties);
 		MyKM->setDescriptors(_MyDescriptors);
 	}
 
@@ -531,22 +532,32 @@ void GaussianMixtureModel::ChangeFilterIndex(){
 
 // Readers and printers
 
-void GaussianMixtureModel::PrintModelParams(string filename, unsigned int &filter_value){
+void GaussianMixtureModel::PrintModelParams(string filename){
 	ofstream writefile(filename);
-	writefile << "The Gaussian Mixture Model is composed by " << nbClust << " clusters" << endl;
-        for(unsigned int k=0;k<nbClust[filter_value];k++){
-                writefile << "Cluster " << k+1 << endl;
-                writefile << "weight = " << weights[k*nbFilter+filter_value] << endl;
-                writefile << "mean = ";
-                for(unsigned int i=0;i<dim;i++) writefile << mu[k*dim*nbFilter+i*nbFilter+filter_value] << " ";
-                writefile << endl;
-                writefile << "variance = " << endl;
-                for(unsigned int i=0;i<dim;i++){
-                        for(unsigned int j=0;j<dim;j++) writefile << V[k*dim2*nbFilter+i*dim*nbFilter+j*nbFilter+filter_value] << " ";
-                        writefile << endl;
-                }
-        }
-	writefile << endl;
+	for(unsigned int l=0;l<nbLabel;l++){
+	writefile << "For label " << _MyDescriptors->getLabels(l) << endl;
+		for(unsigned int f=0;f<nbFilter;f++){
+			if( IsRead ) writefile << "FILTER_VALUE " << FilterValue[f] << endl;
+			else writefile << "FILTER_VALUE " << _MyDescriptors->getFilterValue(f) << endl;
+			unsigned int nb = 0;
+			for(unsigned int k=0;k<nbClust[f];k++) if( ClusterLabel[k*nbFilter+f] == l ) nb++;
+			writefile << "NUMBER_OF_CLUSTER " << nb << endl;
+			for(unsigned int k=0;k<nbClust[f];k++){
+				if( ClusterLabel[k*nbFilter+f] == l ){
+					writefile << "WEIGHT " << weights[k*nbFilter+f] << endl;
+					writefile << "DETERMINANT_OF_COV_MATRIX " << det_V[k*nbFilter+f] << endl;
+					writefile << "ESPERANCE";
+					for(unsigned int d=0;d<dim;d++) writefile << " " << mu[k*dim*nbFilter+d*nbFilter+f];
+				 	writefile << endl << "COVARIANCE_MATRIX" << endl;
+					for(unsigned int d1=0;d1<dim;d1++){
+						for(unsigned int d2=0;d2<dim;d2++) writefile << V[k*dim2*nbFilter+d1*dim*nbFilter+d2*nbFilter+f] << " ";
+						writefile << endl;
+					}
+				}
+			}
+		}
+	}
+	writefile.close();
 }
 
 void GaussianMixtureModel::PrintToDatabase(const string &name_of_database){
@@ -613,7 +624,7 @@ void GaussianMixtureModel::PrintToDatabase(const string &name_of_database){
 	}
 }
 
-void GaussianMixtureModel::ReadModelParamFromDatabase(const std::string &name_of_database){
+void GaussianMixtureModel::ReadModelParamFromDatabase(const string &name_of_database){
 	string path2base = getMLDatabasePath()+name+"/"+name_of_database+"/";	
 	string ext=".ath";
 	string end, buffer_s, line;
@@ -879,6 +890,38 @@ void GaussianMixtureModel::readFixedParams(){
 		cerr << "Error during reading of FixedParameters.dat for GaussianMixtureModel, aborting" << endl;
 		exit(EXIT_FAILURE);
 	}
+}
+
+void GaussianMixtureModel::ReadProperties(vector<string> Properties){
+	size_t pos_nbCMax, pos_tol, pos_maxIter, pos_elfac;
+	string buffer_s;
+	for(unsigned int i=0;i<Properties.size();i++){
+		pos_nbCMax=Properties[i].find("GMM_NB_MAX_CLUSTER");
+		if(pos_nbCMax!=string::npos){
+			istringstream text(Properties[i]);
+			text >> buffer_s >> nbMaxClusters;
+		}
+		pos_tol=Properties[i].find("GMM_TOL_LKH_EM");
+		if(pos_tol!=string::npos){
+			istringstream text(Properties[i]);
+			text >> buffer_s >> tol_Lkh_EM;
+		}
+		pos_maxIter=Properties[i].find("GMM_MAX_ITER_EM");
+		if(pos_maxIter!=string::npos){
+			istringstream text(Properties[i]);
+			text >> buffer_s >> MaxIter_EM;
+		}
+		pos_elfac=Properties[i].find("GMM_ELBOW_FACTOR");
+		if(pos_elfac!=string::npos){
+			istringstream text(Properties[i]);
+			text >> buffer_s >> fac_elbow;
+		}
+	}
+}
+
+void GaussianMixtureModel::SetKMeansProperties(vector<string> Properties){
+	KMeansProperties = Properties;
+	IsKMeansProperties = true;
 }
 
 GaussianMixtureModel::~GaussianMixtureModel(){

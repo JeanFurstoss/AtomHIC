@@ -63,6 +63,7 @@ public:
 	long double *getV(){ return V; }
 	long double *getV_inv(){ return V_inv; }
 	long double *getDet_V(){ return det_V; }
+	void ReadProperties(std::vector<std::string> Properties);
 	//void ReadModelParamFromDatabase();
 	// destructor
 	~KMeans();

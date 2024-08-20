@@ -572,18 +572,75 @@ void AtomicSystem::Print1dDensity(string filename, string auxname){
 	writefile.close();
 }
 
-// TODO : add verification that AtomType_uint of _MyCrystal and correspond to the same atom type
 void AtomicSystem::setCrystal(Crystal* MyCrystal){
 	this->_MyCrystal = MyCrystal;
 	this->IsCrystalDefined = true;
+	UpdateTypes2Crystal();
 }
 
-// TODO : add verification that AtomType_uint of _MyCrystal and correspond to the same atom type
 void AtomicSystem::setCrystal(const std::string& CrystalName){
 	cout << "Setting crystal : " << CrystalName << endl;
 	this->_MyCrystal = new Crystal(CrystalName);
 	this->IsCrystalDefined = true;
 	this->IsCrystalMine = true;
+	UpdateTypes2Crystal();
+}
+
+// This function modifies the ordering of type and type_uint of _MyCrystal for consistency
+void AtomicSystem::UpdateTypes2Crystal(){
+	if( !IsCrystalDefined ){
+		cerr << "The crystal is not defined, aborting" << endl;
+		exit(EXIT_FAILURE);
+	}
+	if( !IsElem ){
+		vector<unsigned int> type_t2e;
+		vector<string> element_t2e;
+		unsigned int buffer_i;
+		string buffer_s, line;
+		cout << "The element names are not provided in the atomic system" << endl;
+		ifstream file_e2t("Type2Element.ath", ifstream::in);
+		if( file_e2t ){
+			cout << "Reading the correspondance between type and element in Type2Element.ath" << endl;
+			while(getline(file_e2t,line)){
+				istringstream text(line);
+				text >> buffer_i >> buffer_s;
+				type_t2e.push_back(buffer_i);
+				element_t2e.push_back(buffer_s);
+			}
+			nbAtomType = type_t2e.size();
+			AtomType = new string[nbAtomType];
+			for(unsigned int t=0;t<nbAtomType;t++) AtomType[type_t2e[t]-1] = element_t2e[t];
+		}else{
+			cout << "You can provide a Type2Element.ath file giving the correspondance between type and element in the working directory (an example is present in /data/ExampleFiles/)" << endl;
+			cout << "As this file has not been found, we will simply based correspondance with crystal database on type (integer-based) which could lead to dramatic confusion depending on what you are doing" << endl;
+		}
+	}
+	bool ok = true;
+	if( nbAtomType == 0 || nbAtomType < _MyCrystal->getNbAtomType() ){ 
+		cerr << "We cannot update atomic system atom types with crystal" << endl;
+	       exit(EXIT_FAILURE);
+	}
+	// we want to allows considering ion types which are not in the crystal (e.g. solute ions)
+	for(unsigned int t=0;t<_MyCrystal->getNbAtomType();t++){
+		if( AtomType[t] != _MyCrystal->getAtomType()[t] ){
+			ok = false;
+			break;
+		}
+	}
+	if( ok ) return;
+	else{
+		// Compute the correspondance array
+		unsigned int *CorresArray = new unsigned int[_MyCrystal->getNbAtomType()];
+		for(unsigned int tc=0;tc<_MyCrystal->getNbAtomType();tc++){
+			for(unsigned int ta=0;ta<nbAtomType;ta++){
+				if( AtomType[ta] == _MyCrystal->getAtomType()[tc] ){
+					CorresArray[tc] = ta;
+					break;
+				}
+			}
+		}
+		_MyCrystal->ChangeTypes(CorresArray);
+	}
 }
 
 void AtomicSystem::computeWrap(){

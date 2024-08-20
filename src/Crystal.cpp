@@ -472,11 +472,11 @@ void Crystal::read_database(){
 				istringstream text(line);
 				text >> buffer_1 >> buffer_s >> buffer_s_1;
 				this->nbAtomType = buffer_1;
-				AtomType = new string[this->nbAtomType];
-				AtomType_uint = new unsigned int[this->nbAtomType];
-				NbAtomSite = new unsigned int[this->nbAtomType];
-				AtomMass = new double[this->nbAtomType];
-				AtomCharge = new double[this->nbAtomType];
+				AtomType = new string[this->MaxAtomType];
+				AtomType_uint = new unsigned int[this->MaxAtomType];
+				NbAtomSite = new unsigned int[this->MaxAtomType];
+				AtomMass = new double[this->MaxAtomType];
+				AtomCharge = new double[this->MaxAtomType];
 			}
 
 			// read DoNotSep array
@@ -532,6 +532,7 @@ void Crystal::read_database(){
 			if(pos_bondori!=string::npos){
 				line_bondori = count;
 				IsReferenceBondOriParam = true;
+				ReferenceBondOriParam = new vector<double>[MaxAtomType];
 				for(unsigned int t=0;t<nbAtomType;t++) nbref2read += NbAtomSite[t];
 			}
 			if( count > line_bondori && count < line_bondori+4 ) BondOriParamProperties.push_back(line);
@@ -540,7 +541,7 @@ void Crystal::read_database(){
 				unsigned int type, site;
 				double bondori;
 				text >> type >> site >> bondori;
-				if( type != ReferenceBondOriParam.size() ) ReferenceBondOriParam.push_back(vector<double>());
+				//if( type != ReferenceBondOriParam.size() ) ReferenceBondOriParam.push_back(vector<double>());
 				ReferenceBondOriParam[type-1].push_back(bondori);
 			}
 			count += 1;
@@ -561,8 +562,8 @@ void Crystal::read_database(){
 }
 
 void Crystal::computeStoich(){
-	this->Stoichiometry = new unsigned int[this->nbAtomType];
-	for(unsigned int i=0;i<this->nbAtomType;i++) this->Stoichiometry[i] = 0;
+	this->Stoichiometry = new unsigned int[this->MaxAtomType];
+	for(unsigned int i=0;i<this->MaxAtomType;i++) this->Stoichiometry[i] = 0;
 	for(unsigned int i=0;i<this->nbAtom;i++){
 		for(unsigned int t=0;t<this->nbAtomType;t++){
 			if( this->Motif[i].type_uint == this->AtomType_uint[t] ){
@@ -613,6 +614,66 @@ void Crystal::read_params(){
 	}
 }
 
+void Crystal::ChangeTypes(unsigned int *CorresArray){
+	// Variables to modify:
+	// AtomType AtomType_uint NbAtomSite AtomMass AtomCharge, Motif, DoNotSep, Stoichiometry, ReferenceBondOriParam
+	// Update Motif
+	for(unsigned int n=0;n<nbAtom;n++){
+		unsigned int old_type = Motif[n].type_uint;
+		Motif[n].type_uint = CorresArray[old_type-1]+1;
+	}
+	// Update DoNotSep list
+	for(unsigned int d=0;d<DoNotSep.size();d++){
+		unsigned int old_type1 = DoNotSep[d][0];
+		unsigned int old_type2 = DoNotSep[d][2];
+		DoNotSep[d][0] = CorresArray[old_type1-1]+1;
+		DoNotSep[d][2] = CorresArray[old_type2-1]+1;
+	}
+	// Copy the data
+	string *AtomType_tmp = new string[MaxAtomType];	
+	unsigned int *AtomType_uint_tmp = new unsigned int[MaxAtomType];
+	unsigned int *NbAtomSite_tmp = new unsigned int[MaxAtomType];
+	double *AtomMass_tmp = new double[MaxAtomType];
+	double *AtomCharge_tmp = new double[MaxAtomType];
+	vector<double> *ReferenceBondOriParam_tmp = new vector<double>[MaxAtomType];
+	unsigned int *Stoichiometry_tmp = new unsigned int[this->MaxAtomType];
+	for(unsigned int n=0;n<MaxAtomType;n++){
+		AtomType_tmp[n] = AtomType[n];
+		AtomType[n] = "";
+		AtomType_uint_tmp[n] = AtomType_uint[n];
+		AtomType_uint[n] = 0;
+		NbAtomSite_tmp[n] = NbAtomSite[n];
+		NbAtomSite[n] = 0;
+		AtomMass_tmp[n] = AtomMass[n];
+		AtomMass[n] = 0.;
+		AtomCharge_tmp[n] = AtomCharge[n];
+		AtomCharge[n] = 0.;
+		Stoichiometry_tmp[n] = Stoichiometry[n];
+		Stoichiometry[n] = 0;
+		for(unsigned int b=0;b<ReferenceBondOriParam[n].size();b++) ReferenceBondOriParam_tmp[n].push_back(ReferenceBondOriParam[n][b]);
+		ReferenceBondOriParam[n].clear();
+	}
+	// Update the data
+	for(unsigned int n=0;n<nbAtomType;n++){
+		AtomType[n] = AtomType_tmp[CorresArray[n]];
+		AtomType_uint[n] = AtomType_uint_tmp[CorresArray[n]];
+		NbAtomSite[n] = NbAtomSite_tmp[CorresArray[n]];
+		AtomMass[n] = AtomMass_tmp[CorresArray[n]];
+		AtomCharge[n] = AtomCharge_tmp[CorresArray[n]];
+		Stoichiometry[n] = Stoichiometry_tmp[CorresArray[n]];
+		for(unsigned int b=0;b<ReferenceBondOriParam_tmp[CorresArray[n]].size();b++) ReferenceBondOriParam[n].push_back(ReferenceBondOriParam_tmp[CorresArray[n]][b]);
+	}
+	delete[] AtomType_tmp;	
+	delete[] AtomType_uint_tmp;
+	delete[] NbAtomSite_tmp;
+	delete[] AtomMass_tmp;
+	delete[] AtomCharge_tmp;
+	for(unsigned int t=0;t<MaxAtomType;t++) ReferenceBondOriParam_tmp[t].clear();
+	delete[] ReferenceBondOriParam_tmp;
+	delete[] Stoichiometry_tmp;
+
+}
+
 Crystal::~Crystal(){
 	delete[] a1;
 	delete[] a2;
@@ -633,4 +694,8 @@ Crystal::~Crystal(){
 	delete[] AtomSite;
 	delete[] AtomCharge;
 	if( IsOrientedSystem ) delete OrientedSystem;
+	if( IsReferenceBondOriParam ){
+		for(unsigned int t=0;t<MaxAtomType;t++) ReferenceBondOriParam[t].clear();
+		delete[] ReferenceBondOriParam;
+	}
 }

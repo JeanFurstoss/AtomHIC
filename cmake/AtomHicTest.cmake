@@ -47,11 +47,15 @@ endwhile()
 ## Copy input files in working directory of test
 ######################################################################
 
-file(GLOB_RECURSE INPUT_FILES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} *.dat *.txt *.xsf *.lmp *.cfg)
+file(GLOB_RECURSE INPUT_FILES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} *.dat *.txt *.xsf *.lmp *.cfg *.ath)
 
 list(REMOVE_ITEM INPUT_FILES "CMakeLists.txt")
 
 list(LENGTH INPUT_FILES NUMBER_OF_INPUT_FILES)
+
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/ForTest)
+	file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/ForTest DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+endif()
 
 ######################################################################
 ## Configure test

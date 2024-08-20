@@ -5,7 +5,7 @@ TOL_ORTHO_BOX 1e-1 // tolerance (in A) for searching orthogonal box with incline
 TOL_ORTHO_BOX_Z 1e-1 // tolerance (in A) for searching orthogonal box with inclined crystal cell vectors in Z direction (could be higher than for other direction)
 MIN_BOX_HEIGHT 10. // minimum box heigh (in A)
 MIN_BOX_ASIDE 9. // minimum box aside (in A)
-MAX_MISFIT 0.075 // maximum misfit for pasting crystal over each others when creating bicrystal
+MAX_MISFIT 0.01 // maximum misfit for pasting crystal over each others when creating bicrystal
 GB_SPACE 0.5 // space between the two crystals (in A)
 
 // Parameters for CSL calculation
@@ -22,12 +22,12 @@ RCUT_NEIGHBOURS 5 // cutoff radius for neighbour research
 L_SPH_ST 13 // spherical harmonic degree for the computation of Steinhardt parameters
 
 // Parameters for descriptors
-DESCRIPTORS_FILTERING_TYPE element // could be one of the auxiliary properties of the atomic system read maybe move this to the parent class descriptor or could be none
+DESCRIPTORS_FILTERING_TYPE element // could be none, type element or one of the auxiliary properties of the atomic system read, this parameter is only used for training of ML models 
 
 // Parameters for Steinhardt descriptors
-STEINHARDT_DESCRIPTORS_MODE OneL // OneL (compute only one parameter, in this case the descriptor is a bond orientational parameter) or Full (compute all parameters between 1 and L_SPH)
-STEINHARDT_DESCRIPTORS_RCUT 4.5 // cutoff radius for neighbour research
-STEINHARDT_DESCRIPTORS_L_SPH 10 // spherical harmonic degree
+STEINHARDT_DESCRIPTORS_MODE Full // OneL (compute only one parameter, in this case the descriptor is a bond orientational parameter) or Full (compute all parameters between 1 and L_SPH)
+STEINHARDT_DESCRIPTORS_RCUT 5. // cutoff radius for neighbour research
+STEINHARDT_DESCRIPTORS_L_SPH 12 // spherical harmonic degree
 STEINHARDT_DESCRIPTORS_STYLE Multi // could be Mono, Multi
 STEINHARDT_DESCRIPTORS_AVERAGE_STYLE Multi // could be Mono, Multi, none
 
