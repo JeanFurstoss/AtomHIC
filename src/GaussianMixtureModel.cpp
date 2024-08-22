@@ -425,7 +425,7 @@ double GaussianMixtureModel::MaximumLikelihoodClassifier(unsigned int &index_clu
 }
 
 // Classify the data using the maximum likelihood classifier
-void GaussianMixtureModel::Classify(){
+void GaussianMixtureModel::LabelClassification(){
 	if( !IsLabelled && !IsRead ){
 		cerr << "The GMM is not labelled, we then cannot classify the data, aborting" << endl;
 		exit(EXIT_FAILURE);
@@ -472,6 +472,41 @@ void GaussianMixtureModel::Classify(){
 	delete[] LabelProb;
 	cout << "Done" << endl;
 	cout << "The StructureIndex.txt file containing the names of the labels has been printed" << endl;
+}
+
+// Classify the data using the maximum likelihood classifier
+void GaussianMixtureModel::Classify(){
+	if( !IsDescriptor ){
+		cerr << "We dont have descriptor to classify, aborting" << endl;
+		exit(EXIT_FAILURE);
+	}
+	cout << "Classifying the descriptors.." << endl;
+	unsigned int nbDatTot = 0;
+	for(unsigned int f=0;f<nbFilter;f++) nbDatTot += nbDat[f];
+	if( !IsClassified ){
+		IsClassified = true;
+		Classificator = new double[2*nbDatTot];
+	}
+	
+	for(unsigned int f=0;f<nbFilter;f++){
+		long double *ClusterProb = new long double[nbClust[f]];
+		for(unsigned int j=0;j<nbDat[f];j++){
+			double sum = 0.;
+			for(unsigned int k=0;k<nbClust[f];k++){
+				ClusterProb[k] = Prob_Cluster(k,j,f);
+				sum += ClusterProb[k];
+			}
+			if( sum != 0. ){
+				unsigned int index_maxp = MT->max_p_ind(ClusterProb,nbClust[f]);
+				Classificator[_MyDescriptors->getFilterIndex(f*nbDatMax+j)*2] = index_maxp;
+				Classificator[_MyDescriptors->getFilterIndex(f*nbDatMax+j)*2+1] = ClusterProb[index_maxp] / sum;
+			}else{
+				Classificator[_MyDescriptors->getFilterIndex(f*nbDatMax+j)*2] = nbClust[f]; 
+				Classificator[_MyDescriptors->getFilterIndex(f*nbDatMax+j)*2+1] = 0.;
+			}	
+		}
+		delete[] ClusterProb;
+	}
 }
 
 void GaussianMixtureModel::ChangeFilterIndex(){

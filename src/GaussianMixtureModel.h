@@ -64,6 +64,7 @@ public:
 	GaussianMixtureModel();
 	// base methods of MachineLearningModels
 	void setDescriptors(Descriptors *D);
+	void LabelClassification();
 	void Classify();
 	void ChangeFilterIndex();
 	void TrainModel(unsigned int &_nbClust, unsigned int &filter_value);
@@ -90,7 +91,7 @@ public:
 	double getBIC(unsigned int &filter_value){ return BIC[filter_value]; }
 	double getLogLikelihood(unsigned int &filter_value){ return LogLikelihood[filter_value]; }
 	KMeans *getKMeans(){ return MyKM; }
-	long double *getCov(){ return V_inv; }
+	long double *getCov(){ return V; }
 	double *getMu(){ return mu; }
 	// destructor
 	~GaussianMixtureModel();

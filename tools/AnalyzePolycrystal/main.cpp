@@ -11,15 +11,12 @@
 #include <string>
 #include "MathTools.h"
 #include "MyStructs.h"
-
-#include <GaussianUtils/TrainSet.h>
-#include <GaussianMixtureModel/ExpectationMaximization.h>
-#include <GaussianMixtureModel/GaussianMixtureModel.h>
-#include <GaussianMixtureModel/GaussianMixtureModelFactory.h>
-#include <Eigen/Eigenvalues>
-
+#include "Descriptors.h"
+#include "GaussianMixtureModel.h"
 
 using namespace std;
+
+// For this I think it better to decrease tolerance for GMM fit to 1e-4 and increase the number of KMean initialization to 400 to have more reproductible results
 
 bool read_GTFile(string GTFilename, vector<unsigned int> &IdForGrains){
 	ifstream file_i(GTFilename, ios::in);
@@ -149,72 +146,6 @@ bool ComputeTransVec(double *coords, unsigned int nbAt, double *H1, double *H2, 
 	}
 }
 
-
-Eigen::VectorXd make_3d_vector(const double val1, const double val2,
-                               const double val3) {
-  Eigen::VectorXd result(3);
-  result << val1, val2, val3;
-  return result;
-};
-
-unsigned int getMax(Eigen::VectorXd vec){
-        unsigned int max = 0;
-        for(unsigned int i=0;i<vec.size();i++){
-                if( vec(i) > vec(max) ) max = i;
-        }
-        return max;
-}
-
-gauss::gmm::GaussianMixtureModel fitOptimalGMM(
-    const gauss::TrainSet &train_set,
-    const vector<size_t> &N_clusters_to_try,
-    const size_t &Iterations = 1000) {
-  if (N_clusters_to_try.empty()) {
-    throw gauss::Error("No clusters to try");
-  }
-  gauss::gmm::TrainInfo info;
-  info.maxIterations = Iterations;
-
-  double MaxDiff = 0.05;
-  double old_likelihood, new_likelihood;
-  vector<gauss::gmm::Cluster> old_model = vector<gauss::gmm::Cluster>(ExpectationMaximization(train_set, N_clusters_to_try.front(), info, &old_likelihood));
-  for (size_t k = 1; k < N_clusters_to_try.size(); ++k) {
-    vector<gauss::gmm::Cluster> new_model = vector<gauss::gmm::Cluster>(ExpectationMaximization(train_set, N_clusters_to_try[k], info, &new_likelihood));
-    if( fabs(2.*(old_likelihood-new_likelihood)/(old_likelihood+new_likelihood)) < MaxDiff ) break;
-    //cout << N_clusters_to_try[k] << " " << 2.*(old_likelihood-new_likelihood)/(old_likelihood+new_likelihood) << endl;
-    old_likelihood = new_likelihood;
-    old_model = move(new_model);
-  }
-  return gauss::gmm::GaussianMixtureModel (old_model);
-}
-
-gauss::gmm::GaussianMixtureModel fitOptimalGMM_am(
-    const gauss::TrainSet train_set,
-    const vector<size_t> &N_clusters_to_try,
-    const size_t &Iterations = 1000) {
-  if (N_clusters_to_try.empty()) {
-    throw gauss::Error("No clusters to try");
-  }
-  gauss::gmm::TrainInfo info;
-  info.maxIterations = Iterations;
-
-  double MaxDiff = 0.05;
-  double old_likelihood, new_likelihood;
-  vector<gauss::gmm::Cluster> old_model =
-      vector<gauss::gmm::Cluster>(ExpectationMaximization(
-          train_set, N_clusters_to_try.front(), info, &old_likelihood));
-  for (size_t k = 1; k < N_clusters_to_try.size(); ++k) {
-    vector<gauss::gmm::Cluster> new_model =
-        vector<gauss::gmm::Cluster>(ExpectationMaximization(
-            train_set, N_clusters_to_try[k], info, &new_likelihood));
-    if( fabs(2.*(old_likelihood-new_likelihood)/(old_likelihood+new_likelihood)) < MaxDiff ) break;
-    //cout << N_clusters_to_try[k] << " " << 2.*(old_likelihood-new_likelihood)/(old_likelihood+new_likelihood) << endl;
-    old_likelihood = new_likelihood;
-    old_model = move(new_model);
-  }
-  return gauss::gmm::GaussianMixtureModel (old_model);
-}
-
 int main(int argc, char *argv[])
 {
 	// Here we use a dump file containing (1) the structure of a given ion (either interface, amorph or crystal), (2) the GB Id, (3) the atomic volume, (4) strain and (5) stress tensor
@@ -300,8 +231,10 @@ int main(int argc, char *argv[])
 	f_out_cv.close();
 
 
-	facClust = 0.2;
+	facClust = 0.10;
 
+	unsigned int nclust_min=1;
+	unsigned int nclust_max=3;
 
 
 	unsigned int Struct_GB = 5; //TODO add in argument of exe
@@ -311,7 +244,7 @@ int main(int argc, char *argv[])
 	unsigned int size_Struct;
 	unsigned Struct_ind = MySystem.getAuxIdAndSize("Struct",size_Struct);
 	unsigned int size_GBId;
-	unsigned GBId_ind = MySystem.getAuxIdAndSize("GBId",size_GBId);
+	unsigned GBId_ind = MySystem.getAuxIdAndSize("GBId_new",size_GBId);
 	unsigned int size_AtVol;
 	unsigned AtVol_ind = MySystem.getAuxIdAndSize("AtVol",size_AtVol);
 	unsigned int size_Stress;
@@ -365,8 +298,6 @@ int main(int argc, char *argv[])
 	double tolRedX = 2./MySystem.getH1()[0]; 
 	double tolRedY = 2./MySystem.getH2()[1]; 
 	double tolRedZ = 2./MySystem.getH3()[2]; 
-	vector<Eigen::VectorXd> coords;
-	vector<Eigen::VectorXd> coords_am;
 	double *TransVec = new double[GBId_arr.size()*6];
 	double *TempVec = new double[3];
 	unsigned int nbMinIonsInGB = 100;
@@ -379,7 +310,6 @@ int main(int argc, char *argv[])
 	vector<vector<double>> MeanAndCovarClust_Final;
 	vector<double> GBId_arr_Final;
 	vector<vector<unsigned int>> GBIons_Final;
-	//double facClust = 0.1;
 	unsigned int nbGBAnalyzed = 0;
 	unsigned int current_nbGBAnalyzed;
 	MathTools MT;
@@ -421,7 +351,7 @@ int main(int argc, char *argv[])
 		}
 		delete[] coord_for_wrap;
 		for(unsigned int gbid=0;gbid<2;gbid++){
-			vector<Eigen::VectorXd>().swap(coords);
+			double *coords_for_GMM = new double[GBIons[g*3+gbid].size()*3];
 			for(unsigned int i=0;i<GBIons[g*3+gbid].size();i++){
 				double xpos = MySystem.getWrappedPos(GBIons[g*3+gbid][i]).x+TransVec[g*3];
 				double ypos = MySystem.getWrappedPos(GBIons[g*3+gbid][i]).y+TransVec[g*3+1];
@@ -432,65 +362,62 @@ int main(int argc, char *argv[])
 				if( xpos_red >= 1. || xpos_red < 0. ) xpos_red = xpos_red-floor(xpos_red);
 				if( ypos_red >= 1. || xpos_red < 0. ) ypos_red = ypos_red-floor(ypos_red);
 				if( zpos_red >= 1. || xpos_red < 0. ) zpos_red = zpos_red-floor(zpos_red);
-				xpos = xpos_red*MySystem.getH1()[0]+ypos_red*MySystem.getH2()[0]+zpos_red*MySystem.getH3()[0];
-				ypos = xpos_red*MySystem.getH1()[1]+ypos_red*MySystem.getH2()[1]+zpos_red*MySystem.getH3()[1];
-				zpos = xpos_red*MySystem.getH1()[2]+ypos_red*MySystem.getH2()[2]+zpos_red*MySystem.getH3()[2];
-				coords.push_back(make_3d_vector(xpos,ypos,zpos));
+				coords_for_GMM[i*3] = xpos_red*MySystem.getH1()[0]+ypos_red*MySystem.getH2()[0]+zpos_red*MySystem.getH3()[0];
+				coords_for_GMM[i*3+1] = xpos_red*MySystem.getH1()[1]+ypos_red*MySystem.getH2()[1]+zpos_red*MySystem.getH3()[1];
+				coords_for_GMM[i*3+2] = xpos_red*MySystem.getH1()[2]+ypos_red*MySystem.getH2()[2]+zpos_red*MySystem.getH3()[2];
 			}
 			// find the GMM
-			//vector<gauss::gmm::Cluster> clusters = gauss::gmm::ExpectationMaximization(samples, clusters_size);
-  			//gauss::gmm::GaussianMixtureModel gmm_model(clusters);
-			gauss::TrainSet set(coords);
-			//if( fabs(GBId_arr[g]-2.3) < 1e-2 ){ // here is a bug when NbClustToTest is higher than 3
-			//	cout << "stop" << endl;
-			//}
-			gauss::gmm::GaussianMixtureModel new_gmm_model = fitOptimalGMM(set,NbClustToTest);
-			unsigned int nbClustFinal = new_gmm_model.getClusters().size();
-			Eigen::MatrixXd *Covars = new Eigen::MatrixXd[nbClustFinal];
-			Eigen::VectorXd *Means = new Eigen::VectorXd[nbClustFinal];
-			Eigen::EigenSolver<Eigen::MatrixXd> Solv;
+			Descriptors GMM_des(coords_for_GMM,GBIons[g*3+gbid].size(),3);
+			GaussianMixtureModel GMM;
+			GMM.setDescriptors(&GMM_des);
+			GMM.fitOptimalGMM(nclust_min,nclust_max);
+			unsigned int zero=0;
+			unsigned int nbClustFinal = GMM.getNbClust(zero);
+			GMM.Classify();
 			vector<double> *Ids = new vector<double>[nbClustFinal];
-			for(unsigned int i=0;i<GBIons[g*3+gbid].size();i++) Ids[getMax(new_gmm_model.Classify(coords[i]))].push_back(GBIons[g*3+gbid][i]);
+			for(unsigned int i=0;i<GBIons[g*3+gbid].size();i++){
+				if( GMM.getClassificator()[i*2+1] != 0 ) Ids[(unsigned int) GMM.getClassificator()[i*2]].push_back(GBIons[g*3+gbid][i]);
+			}
 			
 			for(unsigned int i=0;i<nbClustFinal;i++){
 				if( Ids[i].size() >  nbMinIonsInGB ){
-			        	Covars[i] = new_gmm_model.getClusters()[i].distribution->getCovariance();
-			        	Means[i] = new_gmm_model.getClusters()[i].distribution->getMean();
-			        	Solv.compute(Covars[i]);
-					double ev1 = Solv.eigenvalues().col(0)[0].real();
-					double ev2 = Solv.eigenvalues().col(0)[1].real();
-					double ev3 = Solv.eigenvalues().col(0)[2].real();
-			        	//cout << "for cluster " << i << endl;
-			        	//cout << "eigenvalue " << Solv.eigenvalues().col(0)[0].real() << ", eigenvector " << Solv.eigenvectors().col(0)[0].real() << "  " << Solv.eigenvectors().col(0)[1].real() << "  " << Solv.eigenvectors().col(0)[2].real() << endl;
-			        	//cout << "eigenvalue " << Solv.eigenvalues().col(0)[1].real() << ", eigenvector " << Solv.eigenvectors().col(1)[0].real() << "  " << Solv.eigenvectors().col(1)[1].real() << "  " << Solv.eigenvectors().col(1)[2].real() << endl;
-			        	//cout << "eigenvalue " << Solv.eigenvalues().col(0)[2].real() << ", eigenvector " << Solv.eigenvectors().col(2)[0].real() << "  " << Solv.eigenvectors().col(2)[1].real() << "  " << Solv.eigenvectors().col(2)[2].real() << endl;
+					double *covar = new double[9];
+					double *eigval = new double[3];
+					double *eigvec = new double[9];
+					for(unsigned int d1=0;d1<3;d1++){
+						for(unsigned int d2=0;d2<3;d2++) covar[d1*3+d2] = GMM.getCov()[i*9+d1*3+d2];
+					}
+					MT.EigenDecomposition(covar,3,eigval,eigvec);
+					double ev1 = eigval[0]; 
+					double ev2 = eigval[1]; 
+					double ev3 = eigval[2]; 
 					bool tostore = false;
-					if( ( ev1 < facClust*ev2 ) && ( ev1 < facClust*ev3 ) ){ // todo mean
-						MeanAndCovarClust_temp[gbid].push_back(Solv.eigenvectors().col(0)[0].real());
-						MeanAndCovarClust_temp[gbid].push_back(Solv.eigenvectors().col(0)[1].real());
-						MeanAndCovarClust_temp[gbid].push_back(Solv.eigenvectors().col(0)[2].real());
+					if( ( ev1 < facClust*ev2 ) && ( ev1 < facClust*ev3 ) ){ 
+						MeanAndCovarClust_temp[gbid].push_back(eigvec[0]);
+						MeanAndCovarClust_temp[gbid].push_back(eigvec[1]);
+						MeanAndCovarClust_temp[gbid].push_back(eigvec[2]);
 						tostore = true;
 					}else if( ( ev2 < facClust*ev1 ) && ( ev2 < facClust*ev3 ) ){
-						MeanAndCovarClust_temp[gbid].push_back(Solv.eigenvectors().col(1)[0].real());
-						MeanAndCovarClust_temp[gbid].push_back(Solv.eigenvectors().col(1)[1].real());
-						MeanAndCovarClust_temp[gbid].push_back(Solv.eigenvectors().col(1)[2].real());
+						MeanAndCovarClust_temp[gbid].push_back(eigvec[3]);
+						MeanAndCovarClust_temp[gbid].push_back(eigvec[4]);
+						MeanAndCovarClust_temp[gbid].push_back(eigvec[5]);
 						tostore = true;
 					}else if( ( ev3 < facClust*ev2 ) && ( ev3 < facClust*ev1 ) ){
-						MeanAndCovarClust_temp[gbid].push_back(Solv.eigenvectors().col(2)[0].real());
-						MeanAndCovarClust_temp[gbid].push_back(Solv.eigenvectors().col(2)[1].real());
-						MeanAndCovarClust_temp[gbid].push_back(Solv.eigenvectors().col(2)[2].real());
+						MeanAndCovarClust_temp[gbid].push_back(eigvec[6]);
+						MeanAndCovarClust_temp[gbid].push_back(eigvec[7]);
+						MeanAndCovarClust_temp[gbid].push_back(eigvec[8]);
 						tostore = true;
 					} 
 					if( tostore && gbid == 0 ){
-						MeanAndCovarClust_temp[gbid].push_back(Means[i](0));
-						MeanAndCovarClust_temp[gbid].push_back(Means[i](1));
-						MeanAndCovarClust_temp[gbid].push_back(Means[i](2));
+						MeanAndCovarClust_temp[gbid].push_back(GMM.getMu()[i*3]);
+						MeanAndCovarClust_temp[gbid].push_back(GMM.getMu()[i*3+1]);
+						MeanAndCovarClust_temp[gbid].push_back(GMM.getMu()[i*3+2]);
 						GBIons_temp.push_back(vector<unsigned int>());
 						for(unsigned int n=0;n<Ids[i].size();n++) GBIons_temp[GBIons_temp.size()-1].push_back(Ids[i][n]);
 					}else if( tostore && gbid == 1 ){
-						MeanAndCovarClust_temp[gbid].push_back(Means[i](0));
-						MeanAndCovarClust_temp[gbid].push_back(Means[i](1));
-						MeanAndCovarClust_temp[gbid].push_back(Means[i](2));
+						MeanAndCovarClust_temp[gbid].push_back(GMM.getMu()[i*3]);
+						MeanAndCovarClust_temp[gbid].push_back(GMM.getMu()[i*3+1]);
+						MeanAndCovarClust_temp[gbid].push_back(GMM.getMu()[i*3+2]);
 						// search if there is corresponding GB 1 with almost the same normal
 						bool isAssociated = false;
 						//double tol_sp = 1-(5e-3);
@@ -555,25 +482,26 @@ int main(int argc, char *argv[])
 							GBIons_temp.erase(GBIons_temp.begin()+index_clust_ass);
 						}
 					}
+					delete[] covar;
+					delete[] eigval;
+					delete[] eigvec;
 				}
 			}
 			delete[] Ids;
-			delete[] Covars;
-			delete[] Means;
+			delete[] coords_for_GMM;
 		} // end gbid loop
 		cout << current_nbGBAnalyzed << " interfaces analyzed for this GB" << endl;
 		// Amorph phase
 		if( current_nbGBAnalyzed != 0 && GBIons[g*3+2].size() > nbMinIonsInGB ){
-			vector<Eigen::VectorXd>().swap(coords_am);
+			double *coords_am_for_GMM = new double[GBIons[g*3+2].size()*3];
 			for(unsigned int i=0;i<GBIons[g*3+2].size();i++){
 				// Compute reduced coordinates
-				double xpos = MySystem.getWrappedPos(GBIons[g*3+2][i]).x*MySystem.getG1()[0]+MySystem.getWrappedPos(GBIons[g*3+2][i]).y*MySystem.getG2()[0]+MySystem.getWrappedPos(GBIons[g*3+2][i]).z*MySystem.getG3()[0];
-				double ypos = MySystem.getWrappedPos(GBIons[g*3+2][i]).x*MySystem.getG1()[1]+MySystem.getWrappedPos(GBIons[g*3+2][i]).y*MySystem.getG2()[1]+MySystem.getWrappedPos(GBIons[g*3+2][i]).z*MySystem.getG3()[1];
-				double zpos = MySystem.getWrappedPos(GBIons[g*3+2][i]).x*MySystem.getG1()[2]+MySystem.getWrappedPos(GBIons[g*3+2][i]).y*MySystem.getG2()[2]+MySystem.getWrappedPos(GBIons[g*3+2][i]).z*MySystem.getG3()[2];
-				coords_am.push_back(make_3d_vector(xpos,ypos,zpos));
-				if( coords_am[i](0) < tolRedX || coords_am[i](0) > 1.-tolRedX ) XCentered = false;
-				if( coords_am[i](1) < tolRedY || coords_am[i](1) > 1.-tolRedY ) YCentered = false;
-				if( coords_am[i](2) < tolRedZ || coords_am[i](2) > 1.-tolRedZ ) ZCentered = false;
+				coords_am_for_GMM[i*3] = MySystem.getWrappedPos(GBIons[g*3+2][i]).x*MySystem.getG1()[0]+MySystem.getWrappedPos(GBIons[g*3+2][i]).y*MySystem.getG2()[0]+MySystem.getWrappedPos(GBIons[g*3+2][i]).z*MySystem.getG3()[0];
+				coords_am_for_GMM[i*3+1] = MySystem.getWrappedPos(GBIons[g*3+2][i]).x*MySystem.getG1()[1]+MySystem.getWrappedPos(GBIons[g*3+2][i]).y*MySystem.getG2()[1]+MySystem.getWrappedPos(GBIons[g*3+2][i]).z*MySystem.getG3()[1];
+				coords_am_for_GMM[i*3+2] = MySystem.getWrappedPos(GBIons[g*3+2][i]).x*MySystem.getG1()[2]+MySystem.getWrappedPos(GBIons[g*3+2][i]).y*MySystem.getG2()[2]+MySystem.getWrappedPos(GBIons[g*3+2][i]).z*MySystem.getG3()[2];
+				if( coords_am_for_GMM[i*3] < tolRedX || coords_am_for_GMM[i*3] > 1.-tolRedX ) XCentered = false;
+				if( coords_am_for_GMM[i*3+1] < tolRedY || coords_am_for_GMM[i*3+1] > 1.-tolRedY ) YCentered = false;
+				if( coords_am_for_GMM[i*3+2] < tolRedZ || coords_am_for_GMM[i*3+2] > 1.-tolRedZ ) ZCentered = false;
 			}
 			unsigned int max_count = 10;
 			unsigned int count = 0;
@@ -584,16 +512,27 @@ int main(int argc, char *argv[])
 					ZCentered = true;
 					for(unsigned int i=0;i<GBIons[g*3+2].size();i++){
 						// Change reduced coordinates
-						coords_am[i](0) += 1./( (double) max_count );
+						coords_am_for_GMM[i*3] += 1./( (double) max_count );
 						// Wrapped reduced coordinates
-						if( coords_am[i](0) >= 1. || coords_am[i](0) < 0. ) coords_am[i](0) = coords_am[i](0)-floor(coords_am[i](0));
+						if( coords_am_for_GMM[i*3] >= 1. || coords_am_for_GMM[i*3] < 0. ) coords_am_for_GMM[i*3] = coords_am_for_GMM[i*3]-floor(coords_am_for_GMM[i*3]);
 						// Wrapped normal coordinates
-						for(unsigned int k=0;k<3;k++) TempVec[k] = coords_am[i](0)*MySystem.getH1()[k] + coords_am[i](1)*MySystem.getH2()[k] + coords_am[i](2)*MySystem.getH3()[k];
+						for(unsigned int k=0;k<3;k++) TempVec[k] = coords_am_for_GMM[i*3]*MySystem.getH1()[k] + coords_am_for_GMM[i*3+1]*MySystem.getH2()[k] + coords_am_for_GMM[i*3+2]*MySystem.getH3()[k];
 						// New reduced coordinates
-						for(unsigned int k=0;k<3;k++) coords_am[i](k) = TempVec[0]*MySystem.getG1()[k] + TempVec[1]*MySystem.getG2()[k] + TempVec[2]*MySystem.getG3()[k];
-						if( coords_am[i](0) < tolRedX || coords_am[i](0) > 1.-tolRedX ) XCentered = false;
-						if( coords_am[i](1) < tolRedY || coords_am[i](1) > 1.-tolRedY ) YCentered = false;
-						if( coords_am[i](2) < tolRedZ || coords_am[i](2) > 1.-tolRedZ ) ZCentered = false;
+						for(unsigned int k=0;k<3;k++) coords_am_for_GMM[i*3+k] = TempVec[0]*MySystem.getG1()[k] + TempVec[1]*MySystem.getG2()[k] + TempVec[2]*MySystem.getG3()[k];
+						if( coords_am_for_GMM[i*3+0] < tolRedX || coords_am_for_GMM[i*3+0] > 1.-tolRedX ) XCentered = false;
+						if( coords_am_for_GMM[i*3+1] < tolRedY || coords_am_for_GMM[i*3+1] > 1.-tolRedY ) YCentered = false;
+						if( coords_am_for_GMM[i*3+2] < tolRedZ || coords_am_for_GMM[i*3+2] > 1.-tolRedZ ) ZCentered = false;
+						// Change reduced coordinates
+						coords_am_for_GMM[i*3] += 1./( (double) max_count );
+						// Wrapped reduced coordinates
+						if( coords_am_for_GMM[i*3] >= 1. || coords_am_for_GMM[i*3] < 0. ) coords_am_for_GMM[i*3] = coords_am_for_GMM[i*3]-floor(coords_am_for_GMM[i*3]);
+						// Wrapped normal coordinates
+						for(unsigned int k=0;k<3;k++) TempVec[k] = coords_am_for_GMM[i*3]*MySystem.getH1()[k] + coords_am_for_GMM[i*3+1]*MySystem.getH2()[k] + coords_am_for_GMM[i*3+2]*MySystem.getH3()[k];
+						// New reduced coordinates
+						for(unsigned int k=0;k<3;k++) coords_am_for_GMM[i*3+k] = TempVec[0]*MySystem.getG1()[k] + TempVec[1]*MySystem.getG2()[k] + TempVec[2]*MySystem.getG3()[k];
+						if( coords_am_for_GMM[i*3+0] < tolRedX || coords_am_for_GMM[i*3+0] > 1.-tolRedX ) XCentered = false;
+						if( coords_am_for_GMM[i*3+1] < tolRedY || coords_am_for_GMM[i*3+1] > 1.-tolRedY ) YCentered = false;
+						if( coords_am_for_GMM[i*3+2] < tolRedZ || coords_am_for_GMM[i*3+2] > 1.-tolRedZ ) ZCentered = false;
 					}
 				}
 				if( !YCentered ){
@@ -602,16 +541,16 @@ int main(int argc, char *argv[])
 					ZCentered = true;
 					for(unsigned int i=0;i<GBIons[g*3+2].size();i++){
 						// Change reduced coordinates
-						coords_am[i](1) += 1./( (double) max_count );
+						coords_am_for_GMM[i*3+1] += 1./( (double) max_count );
 						// Wrapped reduced coordinates
-						if( coords_am[i](1) >= 1. || coords_am[i](1) < 0. ) coords_am[i](1) = coords_am[i](1)-floor(coords_am[i](1));
+						if( coords_am_for_GMM[i*3+1] >= 1. || coords_am_for_GMM[i*3+1] < 0. ) coords_am_for_GMM[i*3+1] = coords_am_for_GMM[i*3+1]-floor(coords_am_for_GMM[i*3+1]);
 						// Wrapped normal coordinates
-						for(unsigned int k=0;k<3;k++) TempVec[k] = coords_am[i](0)*MySystem.getH1()[k] + coords_am[i](1)*MySystem.getH2()[k] + coords_am[i](2)*MySystem.getH3()[k];
+						for(unsigned int k=0;k<3;k++) TempVec[k] = coords_am_for_GMM[i*3+0]*MySystem.getH1()[k] + coords_am_for_GMM[i*3+1]*MySystem.getH2()[k] + coords_am_for_GMM[i*3+2]*MySystem.getH3()[k];
 						// New reduced coordinates
-						for(unsigned int k=0;k<3;k++) coords_am[i](k) = TempVec[0]*MySystem.getG1()[k] + TempVec[1]*MySystem.getG2()[k] + TempVec[2]*MySystem.getG3()[k];
-						if( coords_am[i](0) < tolRedX || coords_am[i](0) > 1.-tolRedX ) XCentered = false;
-						if( coords_am[i](1) < tolRedY || coords_am[i](1) > 1.-tolRedY ) YCentered = false;
-						if( coords_am[i](2) < tolRedZ || coords_am[i](2) > 1.-tolRedZ ) ZCentered = false;
+						for(unsigned int k=0;k<3;k++) coords_am_for_GMM[i*3+k] = TempVec[0]*MySystem.getG1()[k] + TempVec[1]*MySystem.getG2()[k] + TempVec[2]*MySystem.getG3()[k];
+						if( coords_am_for_GMM[i*3+0] < tolRedX || coords_am_for_GMM[i*3+0] > 1.-tolRedX ) XCentered = false;
+						if( coords_am_for_GMM[i*3+1] < tolRedY || coords_am_for_GMM[i*3+1] > 1.-tolRedY ) YCentered = false;
+						if( coords_am_for_GMM[i*3+2] < tolRedZ || coords_am_for_GMM[i*3+2] > 1.-tolRedZ ) ZCentered = false;
 					}
 				}
 				if( !ZCentered ){
@@ -620,55 +559,61 @@ int main(int argc, char *argv[])
 					ZCentered = true;
 					for(unsigned int i=0;i<GBIons[g*3+2].size();i++){
 						// Change reduced coordinates
-						coords_am[i](2) += 1./( (double) max_count );
+						coords_am_for_GMM[i*3+2] += 1./( (double) max_count );
 						// Wrapped reduced coordinates
-						if( coords_am[i](2) >= 1. || coords_am[i](2) < 0. ) coords_am[i](2) = coords_am[i](2)-floor(coords_am[i](2));
+						if( coords_am_for_GMM[i*3+2] >= 1. || coords_am_for_GMM[i*3+2] < 0. ) coords_am_for_GMM[i*3+2] = coords_am_for_GMM[i*3+2]-floor(coords_am_for_GMM[i*3+2]);
 						// Wrapped normal coordinates
-						for(unsigned int k=0;k<3;k++) TempVec[k] = coords_am[i](0)*MySystem.getH1()[k] + coords_am[i](1)*MySystem.getH2()[k] + coords_am[i](2)*MySystem.getH3()[k];
+						for(unsigned int k=0;k<3;k++) TempVec[k] = coords_am_for_GMM[i*3+0]*MySystem.getH1()[k] + coords_am_for_GMM[i*3+1]*MySystem.getH2()[k] + coords_am_for_GMM[i*3+2]*MySystem.getH3()[k];
 						// New reduced coordinates
-						for(unsigned int k=0;k<3;k++) coords_am[i](k) = TempVec[0]*MySystem.getG1()[k] + TempVec[1]*MySystem.getG2()[k] + TempVec[2]*MySystem.getG3()[k];
-						if( coords_am[i](0) < tolRedX || coords_am[i](0) > 1.-tolRedX ) XCentered = false;
-						if( coords_am[i](1) < tolRedY || coords_am[i](1) > 1.-tolRedY ) YCentered = false;
-						if( coords_am[i](2) < tolRedZ || coords_am[i](2) > 1.-tolRedZ ) ZCentered = false;
+						for(unsigned int k=0;k<3;k++) coords_am_for_GMM[i*3+k] = TempVec[0]*MySystem.getG1()[k] + TempVec[1]*MySystem.getG2()[k] + TempVec[2]*MySystem.getG3()[k];
+						if( coords_am_for_GMM[i*3+0] < tolRedX || coords_am_for_GMM[i*3+0] > 1.-tolRedX ) XCentered = false;
+						if( coords_am_for_GMM[i*3+1] < tolRedY || coords_am_for_GMM[i*3+1] > 1.-tolRedY ) YCentered = false;
+						if( coords_am_for_GMM[i*3+2] < tolRedZ || coords_am_for_GMM[i*3+2] > 1.-tolRedZ ) ZCentered = false;
 					}
 				}
 			count += 1;	
 			} // end while
 			if( count == max_count ) cout << "We didn't find translation" << endl;
-			//else{
-			//	for(unsigned int k=0;k<3;k++) TempVec[k] = TransVec[g*6+(2*3)]*MySystem.getH1()[k] + TransVec[g*6+(2*3)+1]*MySystem.getH2()[k] + TransVec[g*6+(2*3)+2]*MySystem.getH3()[k];
-			//	for(unsigned int k=0;k<3;k++) TransVec[g*6+(2*3)+k] = TempVec[k]; 
-			//	//cout << "Translation find with vector : " << TransVec[g*6+(gbid*3)] << " " << TransVec[g*6+(gbid*3)+1] << " " << TransVec[g*6+(gbid*3)+2] << endl; 
-			//}
 
 			// find the GMM
 			for(unsigned int i=0;i<GBIons[g*3+2].size();i++){
-				for(unsigned int k=0;k<3;k++) TempVec[k] = coords_am[i](0)*MySystem.getH1()[k] + coords_am[i](1)*MySystem.getH2()[k] + coords_am[i](2)*MySystem.getH3()[k];
-				for(unsigned int k=0;k<3;k++) coords_am[i](k) = TempVec[k]; 
+				for(unsigned int k=0;k<3;k++) TempVec[k] = coords_am_for_GMM[i*3+0]*MySystem.getH1()[k] + coords_am_for_GMM[i*3+1]*MySystem.getH2()[k] + coords_am_for_GMM[i*3+2]*MySystem.getH3()[k];
+				for(unsigned int k=0;k<3;k++) coords_am_for_GMM[i*3+k] = TempVec[k]; 
 			}
-			gauss::TrainSet set_am(coords_am);
-			gauss::gmm::GaussianMixtureModel new_gmm_model_am = fitOptimalGMM_am(set_am,NbClustToTest);
-			unsigned int nbClustFinal = new_gmm_model_am.getClusters().size();
-			Eigen::MatrixXd *Covars = new Eigen::MatrixXd[nbClustFinal];
-			Eigen::VectorXd *Means = new Eigen::VectorXd[nbClustFinal];
-			Eigen::EigenSolver<Eigen::MatrixXd> Solv;
+
+			Descriptors GMM_des(coords_am_for_GMM,GBIons[g*3+2].size(),3);
+			GaussianMixtureModel GMM;
+			GMM.setDescriptors(&GMM_des);
+			GMM.fitOptimalGMM(nclust_min,nclust_max);
+			unsigned int zero=0;
+			unsigned int nbClustFinal = GMM.getNbClust(zero);
+			GMM.Classify();
 			vector<double> *Ids = new vector<double>[nbClustFinal];
+			for(unsigned int i=0;i<GBIons[g*3+2].size();i++){
+				if( GMM.getClassificator()[i*2+1] != 0 ) Ids[(unsigned int) GMM.getClassificator()[i*2]].push_back(GBIons[g*3+2][i]);
+			}
 			double *normal_vec = new double[3*nbClustFinal];
-			for(unsigned int i=0;i<GBIons[g*3+2].size();i++) Ids[getMax(new_gmm_model_am.Classify(coords_am[i]))].push_back(GBIons[g*3+2][i]);
 			for(unsigned int i=0;i<nbClustFinal;i++){
-			        Covars[i] = new_gmm_model_am.getClusters()[i].distribution->getCovariance();
-			        Means[i] = new_gmm_model_am.getClusters()[i].distribution->getMean();
-			        Solv.compute(Covars[i]);
-				double ev1 = Solv.eigenvalues().col(0)[0].real();
-				double ev2 = Solv.eigenvalues().col(0)[1].real();
-				double ev3 = Solv.eigenvalues().col(0)[2].real();
-				if( ( ev1 < ev2 ) && ( ev1 < ev3 ) ){ 
-					for(unsigned int dim=0;dim<3;dim++) normal_vec[i*3+dim] = Solv.eigenvectors().col(0)[dim].real();
-				}else if( ( ev2 < ev1 ) && ( ev2 < ev3 ) ){
-					for(unsigned int dim=0;dim<3;dim++) normal_vec[i*3+dim] = Solv.eigenvectors().col(1)[dim].real();
-				}else if( ( ev3 < ev2 ) && ( ev3 < ev1 ) ){
-					for(unsigned int dim=0;dim<3;dim++) normal_vec[i*3+dim] = Solv.eigenvectors().col(2)[dim].real();
+				double *covar = new double[9];
+				double *eigval = new double[3];
+				double *eigvec = new double[9];
+				for(unsigned int d1=0;d1<3;d1++){
+					for(unsigned int d2=0;d2<3;d2++) covar[d1*3+d2] = GMM.getCov()[i*9+d1*3+d2];
 				}
+				MT.EigenDecomposition(covar,3,eigval,eigvec);
+				double ev1 = eigval[0]; 
+				double ev2 = eigval[1]; 
+				double ev3 = eigval[2]; 
+				if( ( ev1 < ev2 ) && ( ev1 < ev3 ) ){ 
+					for(unsigned int dim=0;dim<3;dim++) normal_vec[i*3+dim] = eigvec[dim];
+				}else if( ( ev2 < ev1 ) && ( ev2 < ev3 ) ){
+					for(unsigned int dim=0;dim<3;dim++) normal_vec[i*3+dim] = eigvec[3+dim];
+				}else if( ( ev3 < ev2 ) && ( ev3 < ev1 ) ){
+					for(unsigned int dim=0;dim<3;dim++) normal_vec[i*3+dim] = eigvec[6+dim];
+				}
+				delete[] covar;
+				delete[] eigvec;
+				delete[] eigval;
 			}
 			double n0, n1, sp, fullsp;
 			vector<unsigned int> indexes;
@@ -707,9 +652,6 @@ int main(int argc, char *argv[])
 				for(unsigned int nb=0;nb<Ids[index_clust_ass].size();nb++) GBIons_Final[(nbGBAnalyzed-1-n)*3+2].push_back(Ids[index_clust_ass][nb]);
 			}
 			delete[] normal_vec;
-			delete[] Covars;
-			delete[] Means;
-			delete[] Ids;
 		}// end amorph
 	}
 

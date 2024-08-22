@@ -86,6 +86,7 @@ public:
 	void invMat_LU(const std::vector<std::vector<double>> mat, std::vector<std::vector<double>> &inv, long double &det); // invert a square matrix using the LU method and compute the determinant
 	void invMat_LU(long double *mat, long double *inv, unsigned int dim, unsigned int index, unsigned int nbFilter, unsigned int filter_value, long double &det); // invert a square matrix using the LU method and compute the determinant
 	std::complex<double> spherical_harmonics(const unsigned int& l, int& m, double& theta, double& phi);
+	void EigenDecomposition(double *Matrix, unsigned int dim, double *EigenValues, double *EigenVectors); // find eigenvalues and eigenvectors of Matrix and return them sorted from the highest to the lowest eigenvalue (power iterative method)
 	~MathTools();
 };
 

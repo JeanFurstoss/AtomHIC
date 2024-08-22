@@ -952,7 +952,59 @@ complex<double> MathTools::spherical_harmonics(const unsigned int& l, int& m, do
 	return sph_harm;
 }
 
+void MathTools::EigenDecomposition(double *Matrix, unsigned int dim, double *EigenValues, double *EigenVectors){
+	const unsigned int max_iterations = 1000;
+	const double tolerance = 1e-10;
+	double *current_matrix = new double[dim*dim];
+	for(unsigned int i=0;i<dim*dim;i++) current_matrix[i] = Matrix[i];
+	
+	double *vec = new double[dim];
+	double *next_vec = new double[dim];
 
+	for(unsigned int k=0;k<dim;++k){
+		double eigenvalue = 0.0;
+		for(unsigned int i=0;i<dim;i++) vec[i] = 1.;
+		for(unsigned int iter=0;iter<max_iterations;++iter){
+			// Multiply the matrix by the vector
+			for(unsigned int i=0;i<dim;++i){
+				next_vec[i] = 0.0;
+				for(unsigned int j=0;j<dim;++j) next_vec[i] += current_matrix[i*dim+j]*vec[j];
+			}
+			
+			// Normalize the resulting vector
+			double norm = 0.0;
+			for(unsigned int i=0;i<dim;++i) norm += next_vec[i]*next_vec[i];
+			norm = sqrt(norm);
+			for(unsigned int i=0;i<dim;++i) next_vec[i] /= norm;
+			
+			// Approximate the eigenvalue
+			double next_eigenvalue = 0.0;
+			for(unsigned int i=0;i<dim;++i) next_eigenvalue += next_vec[i]*vec[i];
+			next_eigenvalue *= norm;
+			
+			// Check for convergence
+			if(abs(next_eigenvalue-eigenvalue) < tolerance){
+				eigenvalue = next_eigenvalue;
+				for(unsigned int i=0;i<dim;i++) EigenVectors[k*dim+i] = next_vec[i];
+				break;
+			}
+			
+			eigenvalue = next_eigenvalue;
+			for(unsigned int i=0;i<dim;i++) vec[i] = next_vec[i];
+		}
+		
+		// Store the found eigenvalue
+		EigenValues[k] = eigenvalue;
+		
+		// Apply deflation to remove the influence of the found eigenvalue/eigenvector
+		for(unsigned int i=0;i<dim;++i){
+			for(unsigned int j=0;j<dim;++j) current_matrix[i*dim+j] -= eigenvalue*next_vec[i]*next_vec[j];
+		}
+	}
+	delete[] current_matrix;
+	delete[] vec;
+	delete[] next_vec;
+}
 
 MathTools::~MathTools(){
 	delete[] buffer_mat_1;

@@ -47,7 +47,7 @@ int main(int argc, char *argv[])
 			if( DescriptorName == "Steinhardt" ){
 				SteinhardtDescriptors MyDescriptors(&MySystem,GMM.getDescriptorProperties());
 				GMM.setDescriptors(&MyDescriptors);
-				GMM.Classify();
+				GMM.LabelClassification();
 				MySystem.setAux_vec(MyDescriptors.getDescriptors(),MyDescriptors.getDim(),"Steinhardt");
 				MySystem.setAux_vec(GMM.getClassificator(),2,"Struct");
 				MySystem.printSystem_aux(OutputFilename,"Steinhardt Struct");

@@ -38,6 +38,7 @@ public:
 	Descriptors(AtomicSystem *_MySystem, std::string& DescriptorName, std::string &_FilteringType);
 	Descriptors(const std::string& FilenameOrDir); // constructor from file reading 
 	Descriptors(const std::string& FilenameOrDir, const std::string& DescriptorName); // constructor from file reading 
+	Descriptors(double *Descriptors, unsigned int nbdat, unsigned int dim);
 	// methods
 	void printDescriptorsPropToDatabase(std::ofstream &writefile);
 	void setProperties(){};

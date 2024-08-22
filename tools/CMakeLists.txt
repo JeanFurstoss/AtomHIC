@@ -9,6 +9,7 @@
 add_subdirectory(scripts)
 add_subdirectory(compare)
 add_subdirectory(AnalyzeBicrystal)
+add_subdirectory(AnalyzePolycrystal)
 add_subdirectory(AnalyzeCSL)
 add_subdirectory(CreateOrientedPlane)
 add_subdirectory(CreateGB)

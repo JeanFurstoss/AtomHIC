@@ -42,12 +42,28 @@ Descriptors::Descriptors(AtomicSystem *_MySystem, vector<string> _Properties):_M
 	ConstructFilterIndexArray(_MySystem);
 }
 
+Descriptors::Descriptors(double *Descriptors, unsigned int nbdat, unsigned int dim){
+	_Descriptors = Descriptors;
+	MT = new MathTools();
+	nbDat.push_back(nbdat);
+	nbDatMax = nbDat[0];
+	nbDatTot = nbDat[0];
+	nbFilter = 1;
+	FilterValue.push_back("none");
+	FilterIndex = new unsigned int[nbDat[0]];
+	for(unsigned int i=0;i<nbDat[0];i++) FilterIndex[i] = i;
+	this->dim = dim;
+	AreDescriptorsMine = false;
+}
+
 void Descriptors::ConstructFilterIndexArray(AtomicSystem *_MySystem){
 	FilterValue.clear();
 	if( FilteringType == "none" ){
 		nbFilter = 1;
 		FilterValue.push_back("none");
 		nbDat.push_back(_MySystem->getNbAtom());
+		nbDatMax = nbDat[0];
+		nbDatTot = nbDat[0];
 		FilterIndex = new unsigned int[nbDat[0]];
 		for(unsigned int i=0;i<nbDat[0];i++) FilterIndex[i] = i;
 	}else if( FilteringType == "element" || FilteringType == "type" ){
