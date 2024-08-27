@@ -50,7 +50,9 @@ public:
 	double gaussian(double x, double mu, double sigma);
 	double gaussian_prefac(double x, double mu, double sigma, double prefac);
 	double det(const double *mat);
+	double det(const std::vector<std::vector<double>> &mat);
 	void invert3x3(const double *mat, double *inv);
+	double invert3x3(const std::vector<std::vector<double>> &mat, std::vector<std::vector<double>> &inv);
 	void plane_fit(const std::vector<std::vector<double>> & data, double &a, double &b, double &c);
 	void gaussian_fit(const std::vector<double> data, double &mu, double &sigma, double &prefac);
 	void Vec2rotMat(const double *vec, const double &theta, double *rotMat);

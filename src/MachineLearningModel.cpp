@@ -11,7 +11,6 @@ MachineLearningModel::MachineLearningModel(){
 
 void MachineLearningModel::setDescriptors(Descriptors *D){ 
 	_MyDescriptors = D;
-	this->IsDescriptor = true;
 	if( IsRead ){ // Case where the ML model is read from database, check that descriptors are consistent with base informations
 		if( FilteringType != _MyDescriptors->getFilteringType() ){
 			cerr << "The filtering type is different between the descriptors and the read ML database, aborting" << endl;
@@ -25,6 +24,7 @@ void MachineLearningModel::setDescriptors(Descriptors *D){
 			cerr << "The number of dimension is different between the descriptors and the read ML database, aborting" << endl;
 			exit(EXIT_FAILURE);
 		}
+		if( this->IsDescriptor ) delete[] FilterIndexToModify;
 		FilterIndexToModify = new unsigned int[nbFilter];
 		for(unsigned int f1=0;f1<nbFilter;f1++){
 			bool found = false;
@@ -46,13 +46,19 @@ void MachineLearningModel::setDescriptors(Descriptors *D){
 		dim2 = dim*dim;
 		nbFilter = _MyDescriptors->getNbFilter();
 	}
-	
+
+	if( this->IsDescriptor ){
+		delete[] nbDat;	
+		delete[] buffer_vec_1_dim;
+		delete[] buffer_vec_2_dim;
+	}
 	nbDat = new unsigned int[nbFilter];
 	for(unsigned int f=0;f<nbFilter;f++) nbDat[f] = _MyDescriptors->getNbDat(f);
 	
 	nbDatMax = _MyDescriptors->getNbDatMax();
 	buffer_vec_1_dim = new double[dim];
 	buffer_vec_2_dim = new double[dim];
+	this->IsDescriptor = true;
 }
 
 string MachineLearningModel::getMLDatabasePath(){
@@ -154,7 +160,8 @@ void MachineLearningModel::PrintClassifiedData(string filename){
 
 MachineLearningModel::~MachineLearningModel(){
 	delete MT;
-	if( IsDescriptor ){
+	if( this->IsDescriptor ){
+		delete[] nbDat;
 		delete[] buffer_vec_1_dim;
 		delete[] buffer_vec_2_dim;
 	}

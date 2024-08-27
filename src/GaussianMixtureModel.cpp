@@ -24,6 +24,21 @@ void GaussianMixtureModel::setDescriptors(Descriptors *D){
 	
 	if( IsFilterIndexModified ) ChangeFilterIndex();
 	
+	if( this->IsDescriptor ){
+		delete[] V;
+		delete[] D_i;
+		delete[] C_di;
+		delete[] buffer_di;
+		delete[] E_d; 
+		delete[] weights_old;
+		delete[] mu_old;
+		delete[] V_old;
+		delete[] V_inv_old;
+		delete[] det_V_old;
+		delete[] BIC;
+		delete[] LogLikelihood;
+	}
+	this->IsDescriptor = true;
 	V = new long double[dim2*nbMaxClusters*nbFilter];
 	D_i = new double[nbDatMax];
 	C_di = new double[nbMaxClusters*nbDatMax];
@@ -108,6 +123,7 @@ void GaussianMixtureModel::fitOptimalGMM(unsigned int &_nbClust_min, unsigned in
 				opt = nbRun-1;
 			}else{
 				unsigned int opt_N = round( ( saved_bic[(nbRun-1)*nbFilter+f] - saved_bic[f] + ( (double) saved_nbClust[f] * diff_beg ) - ( (double) saved_nbClust[(nbRun-1)*nbFilter+f] * diff_end ) ) / ( diff_beg - diff_end ) );
+				if( opt_N < 1 ) opt_N = 1;
 				for(unsigned int i=0;i<nbRun;i++){
 					if( saved_nbClust[i*nbFilter+f] == opt_N ){
 						opt = i;
@@ -489,6 +505,7 @@ void GaussianMixtureModel::Classify(){
 	}
 	
 	for(unsigned int f=0;f<nbFilter;f++){
+		cout << "NBCLUST " << nbClust[f] << endl;
 		long double *ClusterProb = new long double[nbClust[f]];
 		for(unsigned int j=0;j<nbDat[f];j++){
 			double sum = 0.;

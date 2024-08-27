@@ -293,6 +293,46 @@ double MathTools::det(const double *mat){
 	det += mat[2]*(mat[3]*mat[7]-(mat[4]*mat[6]));
 	return det;
 }
+
+double MathTools::det(const vector<vector<double>> &mat){
+	double det = 0.;
+	det += mat[0][0]*(mat[1][1]*mat[2][2]-(mat[1][2]*mat[2][1]));
+	det -= mat[0][1]*(mat[1][0]*mat[2][2]-(mat[1][2]*mat[2][0]));
+	det += mat[0][2]*(mat[1][0]*mat[2][1]-(mat[1][1]*mat[2][0]));
+	return det;
+}
+
+double MathTools::invert3x3(const vector<vector<double>> &mat, vector<vector<double>> &inv){
+	// compute determinant
+	double deter = det(mat);
+	if( fabs(deter) < 1e-50 ){
+		cout << "Trying to inverse a null determinant matrix !" << endl;
+		return 0.;
+	}
+	for(unsigned int i=0;i<3;i++){
+		for(unsigned int j=0;j<3;j++) buffer_mat_1[i*3+j] = mat[i][j];
+	}
+	inv[0][0] = (buffer_mat_1[4]*buffer_mat_1[8]-(buffer_mat_1[5]*buffer_mat_1[7]))/deter;
+	inv[1][0] = -(buffer_mat_1[3]*buffer_mat_1[8]-(buffer_mat_1[5]*buffer_mat_1[6]))/deter;
+	inv[2][0] = (buffer_mat_1[3]*buffer_mat_1[7]-(buffer_mat_1[4]*buffer_mat_1[6]))/deter;
+	inv[0][1] = -(buffer_mat_1[1]*buffer_mat_1[8]-(buffer_mat_1[2]*buffer_mat_1[7]))/deter;
+	inv[1][1] = (buffer_mat_1[0]*buffer_mat_1[8]-(buffer_mat_1[2]*buffer_mat_1[6]))/deter;
+	inv[2][1] = -(buffer_mat_1[0]*buffer_mat_1[7]-(buffer_mat_1[6]*buffer_mat_1[1]))/deter;
+	inv[2][0] = (buffer_mat_1[1]*buffer_mat_1[5]-(buffer_mat_1[2]*buffer_mat_1[4]))/deter;
+	inv[1][2] = -(buffer_mat_1[0]*buffer_mat_1[5]-(buffer_mat_1[2]*buffer_mat_1[3]))/deter;
+	inv[2][2] = (buffer_mat_1[0]*buffer_mat_1[4]-(buffer_mat_1[1]*buffer_mat_1[3]))/deter;
+
+	//inv[0][0] = (buffer_mat_1[1][1]*buffer_mat_1[2][2]-(buffer_mat_1[1][2]*buffer_mat_1[2][1]))/deter;
+	//inv[1][0] = -(buffer_mat_1[1][0]*buffer_mat_1[2][2]-(buffer_mat_1[1][2]*buffer_mat_1[2][0]))/deter;
+	//inv[2][0] = (buffer_mat_1[1][0]*buffer_mat_1[2][1]-(buffer_mat_1[1][1]*buffer_mat_1[2][0]))/deter;
+	//inv[0][1] = -(buffer_mat_1[0][1]*buffer_mat_1[2][2]-(buffer_mat_1[0][2]*buffer_mat_1[2][1]))/deter;
+	//inv[1][1] = (buffer_mat_1[0][0]*buffer_mat_1[2][2]-(buffer_mat_1[0][2]*buffer_mat_1[2][0]))/deter;
+	//inv[2][1] = -(buffer_mat_1[0][0]*buffer_mat_1[2][1]-(buffer_mat_1[2][0]*buffer_mat_1[0][1]))/deter;
+	//inv[2][0] = (buffer_mat_1[0][1]*buffer_mat_1[1][2]-(buffer_mat_1[0][2]*buffer_mat_1[1][1]))/deter;
+	//inv[1][2] = -(buffer_mat_1[0][0]*buffer_mat_1[1][2]-(buffer_mat_1[0][2]*buffer_mat_1[1][0]))/deter;
+	//inv[2][2] = (buffer_mat_1[0][0]*buffer_mat_1[1][1]-(buffer_mat_1[0][1]*buffer_mat_1[1][0]))/deter;
+	return deter;
+}
 void MathTools::invert3x3(const double *mat, double *inv){
 	// compute determinant
 	double deter = det(mat);
@@ -301,16 +341,6 @@ void MathTools::invert3x3(const double *mat, double *inv){
 		return;
 	}
 	for(unsigned int i=0;i<9;i++) buffer_mat_1[i] = mat[i];
-
-	//inv[0] = (mat[4]*mat[8]-(mat[5]*mat[7]))/deter; // to see if it has not change other results
-	//inv[1] = -(mat[3]*mat[8]-(mat[5]*mat[6]))/deter;
-	//inv[2] = (mat[3]*mat[7]-(mat[4]*mat[6]))/deter;
-	//inv[3] = -(mat[1]*mat[8]-(mat[2]*mat[7]))/deter;
-	//inv[4] = (mat[0]*mat[8]-(mat[2]*mat[6]))/deter;
-	//inv[5] = -(mat[0]*mat[7]-(mat[6]*mat[1]))/deter;
-	//inv[6] = (mat[1]*mat[5]-(mat[2]*mat[4]))/deter;
-	//inv[7] = -(mat[0]*mat[5]-(mat[2]*mat[3]))/deter;
-	//inv[8] = (mat[0]*mat[4]-(mat[1]*mat[3]))/deter;
 	inv[0] = (buffer_mat_1[4]*buffer_mat_1[8]-(buffer_mat_1[5]*buffer_mat_1[7]))/deter;
 	inv[3] = -(buffer_mat_1[3]*buffer_mat_1[8]-(buffer_mat_1[5]*buffer_mat_1[6]))/deter;
 	inv[6] = (buffer_mat_1[3]*buffer_mat_1[7]-(buffer_mat_1[4]*buffer_mat_1[6]))/deter;
@@ -321,7 +351,6 @@ void MathTools::invert3x3(const double *mat, double *inv){
 	inv[5] = -(buffer_mat_1[0]*buffer_mat_1[5]-(buffer_mat_1[2]*buffer_mat_1[3]))/deter;
 	inv[8] = (buffer_mat_1[0]*buffer_mat_1[4]-(buffer_mat_1[1]*buffer_mat_1[3]))/deter;
 }
-
 void MathTools::Vec2rotMat(const double *vec, const double &theta, double *rotMat){
 	double c = cos(theta);
 	double s = sin(theta);

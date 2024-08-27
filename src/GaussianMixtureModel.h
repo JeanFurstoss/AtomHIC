@@ -10,6 +10,7 @@
 
 class ATOMHIC_EXPORT GaussianMixtureModel : public MachineLearningModel {
 private:
+	bool IsDescriptor = false;
 	unsigned int *nbClust; // [f] number of cluster in the GMM with filter f
 	double *weights; // weights[k*nbFilter+f] weight of cluster k with filter f
 	double *mu; // mu[k*dim*nbFilter+d*nbFilter+f] d component of the mean of cluster k with filter f
@@ -93,6 +94,7 @@ public:
 	KMeans *getKMeans(){ return MyKM; }
 	long double *getCov(){ return V; }
 	double *getMu(){ return mu; }
+	unsigned int getNbMaxCluster(){ return nbMaxClusters; }
 	// destructor
 	~GaussianMixtureModel();
 };

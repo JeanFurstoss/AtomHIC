@@ -11,7 +11,23 @@ KMeans::KMeans(){
 
 void KMeans::setDescriptors(Descriptors *D){
 	MachineLearningModel::setDescriptors(D);
-
+	if( this->IsDescriptor ){
+		delete[] BIC;
+		delete[] LogLikelihood;
+		delete[] nbClust;
+		delete[] centroids;
+		delete[] V;
+		delete[] V_inv;
+		delete[] det_V;
+		delete[] centroids_old;
+		delete[] nbDat2Cluster;
+		delete[] Data2Cluster;
+		delete[] buffer_k;
+		delete[] buffer_dat;
+	}
+	
+	this->IsDescriptor = true;
+	
 	BIC = new double[nbFilter];
 	LogLikelihood = new long double[nbFilter];
 	nbClust = new unsigned int[nbFilter];
@@ -27,8 +43,6 @@ void KMeans::setDescriptors(Descriptors *D){
 	
 	buffer_k = new double[nbClustMax];
 	buffer_dat = new double[nbDatMax];
-	nbDat = new unsigned int[nbFilter];
-	for(unsigned int f=0;f<nbFilter;f++) nbDat[f] = _MyDescriptors->getNbDat(f);
 }
 
 double KMeans::SquareEuclidianDistance(const unsigned int &DescriptorIndex, const unsigned int &ClusterIndex, unsigned int &filter_value){
@@ -300,7 +314,7 @@ void KMeans::ReadProperties(vector<string> Properties){
 }
 
 KMeans::~KMeans(){
-	if( IsDescriptor ){
+	if( this->IsDescriptor ){
 		delete[] buffer_k;
 		delete[] nbDat2Cluster;
 		delete[] centroids;

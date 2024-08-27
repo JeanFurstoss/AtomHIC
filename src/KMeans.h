@@ -9,6 +9,7 @@
 
 class ATOMHIC_EXPORT KMeans : public MachineLearningModel {
 private:
+	bool IsDescriptor = false;
 	unsigned int *nbClust; // [f]
 	double *centroids; // centroids[k*dim*nbFilter+d*nbFilter+f] d component of the centroid of cluster k with filter f
 	long double *V; // V[k*dim2*nbFilter+d1*dim*nbFilter+d2*nbFilter+f] d1,d2 component of variance of cluster k with filter f

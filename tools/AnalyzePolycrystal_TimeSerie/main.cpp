@@ -207,6 +207,9 @@ void ConstructGBIdAndGBIonsArrays(AtomicSystem &MySystem, vector<double> &GBId_a
 }
 
 void ShiftAndWrapAmorph(AtomicSystem &MySystem, vector<vector<unsigned int>> &GBIons, vector<vector<double>> &coords, unsigned int &g, vector<double> &current_TransVec){
+	cout << "TRANSVEC" << endl;
+	for(unsigned int dim=0;dim<3;dim++) cout << current_TransVec[dim] << " ";
+	cout << endl;
 	for(unsigned int i=0;i<GBIons[g*3+2].size();i++){
 		coords.push_back(vector<double>());
 		coords[i].push_back(MySystem.getWrappedPos(GBIons[g*3+2][i]).x+current_TransVec[0]);
@@ -377,7 +380,7 @@ unsigned int GetIndexNbClust(double GBId, vector<double> &GBId_ForNbClust_Init){
 
 vector<unsigned int> GetIndexesPrevious(double &GBId, vector<double> &GBId_ForNbClust_Init, vector<vector<vector<unsigned int>>> &Previous_GBIons){
 	vector<unsigned int> indexes;
-	double tol=1e-8; 
+	double tol=1e-8;
 	for(unsigned int i=0;i<GBId_ForNbClust_Init.size();i++){
 		if( fabs(GBId-GBId_ForNbClust_Init[i]) < tol && Previous_GBIons[i][0].size() != 0 && Previous_GBIons[i][1].size() != 0 ) indexes.push_back(i);
 	}
@@ -467,16 +470,6 @@ void printAtomicFile(AtomicSystem &MySystem, string &fullname, string &timestep,
 	f_out.close();
 }
 
-void savePreviousVariables(vector<double> &GBIdOverTimestep, vector<vector<vector<double>>> &Previous_MeanAndCovarClust, vector<vector<vector<unsigned int>>> &Previous_GBIons, vector<vector<double>> &Previous_TransVec, vector<vector<unsigned int>> &Previous_NbClust, vector<vector<double>> &MeanAndCovarClust_Final, vector<double> &GBId_arr_Final, vector<vector<unsigned int>> &GBIons_Final, vector<vector<unsigned int>> &NbClustAndGB_Init, vector<double> &GBId_ForNbClust_Init, vector<vector<double>> &TransVec){
-	for(unsigned int i=0;i<GBIdOverTimestep.size();i++){
-		if( GBIdOverTimestep[i] == GBId_arr_Final[i] ){
-			i++;
-		}else{
-			cout << "Warning" << endl;
-		}
-	}
-}
-
 int main(int argc, char *argv[])
 {
 
@@ -521,13 +514,16 @@ int main(int argc, char *argv[])
 	// TODO make global variables
 	double tolspangle = 10.;
 	double tol_sp = cos(tolspangle*M_PI/180.);
-	double facClust = 0.9;
-	double facNbIons = .1; // increase (1.+fac) or decrease (1.-fac) factor for the number ions allowed for following a GB from one timestep to another (used to adapt number of cluster for GMM)
+	double facClust = 0.2;
+	double facNbIons = .4; // increase (1.+fac) or decrease (1.-fac) factor for the number ions allowed for following a GB from one timestep to another (used to adapt number of cluster for GMM)
 	long double minProbAmorph = 1e-6;
-	unsigned int nbMinIonsInGB = 100;
+	unsigned int nbMinIonsInGB = 500;
 	unsigned int Struct_GB = 5; //TODO add in argument of exe
 	unsigned int Struct_Amorph = 0;
-
+	unsigned int nclust_min_opt=1;
+	unsigned int nclust_max_opt=4;
+	
+	unsigned int zero=0;
 	MathTools MT;
 
 	vector<double> GBIdOverTimestep; // GBIdOverTimestep[i] = GBId of the ith stored GB
@@ -753,7 +749,6 @@ int main(int argc, char *argv[])
 			cout << current_nbGBAnalyzed << " interfaces analyzed for this GB" << endl;
 		}
 
-		//savePreviousVariables(GBIdOverTimestep, Previous_MeanAndCovarClust, Previous_GBIons, Previous_TransVec, Previous_NbClust, MeanAndCovarClust_Final, GBId_arr_Final, GBIons_Final, NbClustAndGB_Init, GBId_ForNbClust_Init, TransVec);
 		for(unsigned int i=0;i<nbGBAnalyzed;i++){
 			GBIdOverTimestep.push_back(GBId_arr_Final[i]);
 			Previous_GBIons.push_back(vector<vector<unsigned int>>());
@@ -765,7 +760,7 @@ int main(int argc, char *argv[])
 				for(unsigned int n=0;n<GBIons_Final[i*3+gbid].size();n++) Previous_GBIons[i][gbid].push_back(GBIons_Final[i*3+gbid][n]);
 			}
 		}
-		
+	
 		double *MeanStrain_1 = new double[8];
 		double *MeanStrain_2 = new double[8];
 		double *MeanStrain_am = new double[8];
@@ -793,6 +788,7 @@ int main(int argc, char *argv[])
 			for(unsigned int ii=0;ii<6;ii++) f_out_res << " " << MeanStress_1[ii]; 
 			for(unsigned int ii=0;ii<6;ii++) f_out_res << " " << MeanStress_2[ii]; 
 			for(unsigned int ii=0;ii<6;ii++) f_out_res << " " << MeanStress_am[ii]; 
+			f_out_res << endl;
 			f_out_res.close();
 
 			string name = "GB_";
@@ -838,6 +834,7 @@ int main(int argc, char *argv[])
 		vector<vector<unsigned int>> GBIons_Final_prev;
 		vector<vector<double>> TransVec;
 		vector<unsigned int> IndexesInPreviousVariables;
+		vector<vector<unsigned int>> NbClustToSaveInPrevious;
 		unsigned int nbGBAnalyzed = 0;
 		unsigned int nbGBAnalyzed_prev = 0;
 		unsigned int current_nbGBAnalyzed;
@@ -849,8 +846,12 @@ int main(int argc, char *argv[])
 				continue;
 			}
 
+			cout << 1 << endl;
+		cout << "Size of prevs : " << GBIdOverTimestep.size() << " " << Previous_GBIons.size() << endl;
 			vector<unsigned int> indexes_Previous = GetIndexesPrevious(GBId_arr[g],GBIdOverTimestep, Previous_GBIons);
-
+		
+			vector<unsigned int> NbClustToSaveInPrevious_temp;
+			
 			MeanAndCovarClust_temp.clear();
 			MeanAndCovarClust_temp.push_back(vector<double>());
 			MeanAndCovarClust_temp.push_back(vector<double>());
@@ -868,8 +869,8 @@ int main(int argc, char *argv[])
 				GBIons_temp_prev[i].clear();
 				vector<unsigned int>().swap(GBIons_temp_prev[i]);
 			}
-			GBIons_temp.clear();
-			vector<vector<unsigned int>>().swap(GBIons_temp);
+			GBIons_temp_prev.clear();
+			vector<vector<unsigned int>>().swap(GBIons_temp_prev);
 
 			// Variables for identifying amorph ions 
 			vector<vector<vector<double>>> AverageCov; // compute before the avergae of covariance and then inverse for identification of amorph
@@ -889,10 +890,12 @@ int main(int argc, char *argv[])
 			current_nbGBAnalyzed = 0;
 			current_nbGBAnalyzed_prev = 0;
 
+			cout << 2 << endl;
 			// Center the system and store the vector needed for it
 			vector<double*> current_coords;
 			for(unsigned int gbid=0;gbid<2;gbid++) current_coords.push_back(new double[GBIons[g*3+gbid].size()*3]);
 			TransVec.push_back(CenterGBSubsystems(MySystem,GBIons,current_coords,g));
+			cout << 3 << endl;
 			// Compute the difference with the previous TransVec
 			// For the moment we will test to identify the GBs bsaed onyl on ion indexes
 			//vector<double> TransVec_diff(3);
@@ -901,88 +904,128 @@ int main(int argc, char *argv[])
 			vector<vector<double>> current_coords_am;
 			ShiftAndWrapAmorph(MySystem,GBIons,current_coords_am,g,TransVec[g]);
 
+			cout << 4 << endl;
 			for(unsigned int gbid=0;gbid<2;gbid++){
+				vector<unsigned int> indexes_Previous_temp = GetIndexesPrevious(GBId_arr[g],GBIdOverTimestep, Previous_GBIons); // get one more time this array because it may have change depending in gbid value
+				indexes_Previous.clear();
+				vector<unsigned int>().swap(indexes_Previous);
+				for(unsigned int ind=0;ind<indexes_Previous_temp.size();ind++) indexes_Previous.push_back(indexes_Previous_temp[ind]);
 				GaussianMixtureModel GMM; // TODO warning here using multiples time setDescriptors have not been tested for the moment
 				Descriptors GMM_des(current_coords[gbid],GBIons[g*3+gbid].size(),3);
 				GMM.setDescriptors(&GMM_des);
 				bool fitting_ok = false;
-				unsigned int max_count = 25;
+				unsigned int max_count = 10;
 				unsigned int count = 0;
 				unsigned int current_NbClust;
 				vector<vector<unsigned int>> Final_Ids;
-				unsigned int *ClusterIndexAssociated = new unsigned int[indexes_Previous.size()];
-				bool *fitting_ok_all = new bool[indexes_Previous.size()];
-				if( indexes_Previous.size() == 0 ) current_NbClust = Previous_NbClust[indexes_Previous[0]][gbid];
-				else current_NbClust = 1; // TODO maybe do other thing
-				cout << "Trying to retrieve previous GBs" << endl;
-				while( !fitting_ok && count < max_count ){
-					// find the GMM
-					unsigned int zero=0;
-					cout << "NbClust= " << current_NbClust << endl;
-					GMM.TrainModel(current_NbClust,zero);
+				if( indexes_Previous.size() != 0 ) current_NbClust = Previous_NbClust[indexes_Previous[0]][gbid];
+				else current_NbClust = 1; // in this case fit an optimal GMM
+				unsigned int *ClusterIndexAssociated = new unsigned int[current_NbClust];
+				bool *fitting_ok_all = new bool[current_NbClust];
+				if( indexes_Previous.size() == 0 ){
+					cout << "Trying to find new GBs using optimal fitting of GMM" << endl;
+					GMM.fitOptimalGMM(nclust_min_opt,nclust_max_opt);
+					current_NbClust = GMM.getNbClust(zero);
 					GMM.Classify();
-					vector<unsigned int> *Ids = new vector<unsigned int>[current_NbClust];
+					for(unsigned int c=0;c<current_NbClust;c++) Final_Ids.push_back(vector<unsigned int>());
 					for(unsigned int i=0;i<GBIons[g*3+gbid].size();i++){
-						if( GMM.getClassificator()[i*2+1] != 0 ) Ids[(unsigned int) GMM.getClassificator()[i*2]].push_back(GBIons[g*3+gbid][i]);
+						if( GMM.getClassificator()[i*2+1] != 0 ) Final_Ids[(unsigned int) GMM.getClassificator()[i*2]].push_back(GBIons[g*3+gbid][i]);
 					}
-					// loop over the GB already find and still active (with non-null number of ions) for this id
-					// search wich cluster have most comon ions with the previous GB
-					// TODO parallel ?
-					for(unsigned int Np=0;Np<indexes_Previous.size();Np++){
-						vector<double> RatioComonIon;
-						fitting_ok_all[Np] = false;
-						for(unsigned int Nc=0;Nc<current_NbClust;Nc++){
-							RatioComonIon.push_back(0.);
-							for(unsigned int indp=0;indp<Previous_GBIons[indexes_Previous[Np]][gbid].size();indp++){
-								for(unsigned int indc=0;indc<Ids[Nc].size();indc++){
-									if( Previous_GBIons[indexes_Previous[Np]][gbid][indp] == Ids[Nc][indc] ){
-										RatioComonIon[Nc] += 1;
-										break;
+				}else{
+					cout << "Trying to retrieve previous GBs" << endl;
+					while( !fitting_ok && count < max_count ){
+						// find the GMM
+						unsigned int zero=0;
+						cout << "NbClust= " << current_NbClust << endl;
+						GMM.TrainModel(current_NbClust,zero);
+						GMM.Classify();
+						vector<unsigned int> *Ids = new vector<unsigned int>[current_NbClust];
+						unsigned int init_Ids_size = current_NbClust;
+						for(unsigned int i=0;i<GBIons[g*3+gbid].size();i++){
+							if( GMM.getClassificator()[i*2+1] != 0 ) Ids[(unsigned int) GMM.getClassificator()[i*2]].push_back(GBIons[g*3+gbid][i]);
+						}
+						// loop over the GB already find and still active (with non-null number of ions) for this id
+						// search wich cluster have most comon ions with the previous GB
+						bool breaked = false;
+						// TODO parallel ?
+						for(unsigned int Np=0;Np<indexes_Previous.size();Np++){
+							vector<double> RatioComonIon;
+							fitting_ok_all[Np] = false;
+							for(unsigned int Nc=0;Nc<current_NbClust;Nc++){
+								RatioComonIon.push_back(0.);
+								for(unsigned int indp=0;indp<Previous_GBIons[indexes_Previous[Np]][gbid].size();indp++){
+									for(unsigned int indc=0;indc<Ids[Nc].size();indc++){
+										if( Previous_GBIons[indexes_Previous[Np]][gbid][indp] == Ids[Nc][indc] ){
+											RatioComonIon[Nc] += 1;
+											break;
+										}
 									}
 								}
+								RatioComonIon[Nc] /= Previous_GBIons[indexes_Previous[Np]][gbid].size();
 							}
-							RatioComonIon[Nc] /= Previous_GBIons[indexes_Previous[Np]][gbid].size();
+							ClusterIndexAssociated[Np] = MT.max(RatioComonIon);
+							
+							unsigned int old_nbions = Previous_GBIons[indexes_Previous[Np]][gbid].size();
+							unsigned int new_nbions = Ids[ClusterIndexAssociated[Np]].size();
+							// if the number of ion is much lower, decrease current_nbClust
+							if( new_nbions < (1.-facNbIons)*old_nbions ){
+								cout << "Decreasing nb clust, old ions " << old_nbions << ", new " << new_nbions << endl;
+								if( current_NbClust > indexes_Previous.size() ){
+									current_NbClust--;
+									breaked = true;
+									break;
+								}else count = max_count;
+							// if the number of ion is much higher, increase current_nbClust
+							}else if( new_nbions > (1.+facNbIons)*old_nbions ){
+								cout << "Increasing nb clust, old ions " << old_nbions << ", new " << new_nbions << endl;
+								if( current_NbClust < GMM.getNbMaxCluster() ){
+									current_NbClust++;
+									breaked = true;
+									break;
+								}else count = max_count;
+							}else fitting_ok_all[Np] = true;
+							if( breaked ) break;
 						}
-						ClusterIndexAssociated[Np] = MT.max(RatioComonIon);
-						
-						unsigned int old_nbions = Previous_GBIons[indexes_Previous[Np]][gbid].size();
-						unsigned int new_nbions = Ids[ClusterIndexAssociated[Np]].size();
-						// if the number of ion is much lower, decrease current_nbClust
-						if( new_nbions < (1.-facNbIons)*old_nbions ){
-							if( current_NbClust >= indexes_Previous.size() ) current_NbClust--;
-							else count = max_count;
-						// if the number of ion is much higher, increase current_nbClust
-						}else if( new_nbions > (1.+facNbIons)*old_nbions ){
-							if( current_NbClust < GMM.getNbMaxCluster() ) current_NbClust++;
-							else count = max_count;
-						}else fitting_ok_all[Np] = true;
-					}
-					fitting_ok = true;
-					for(unsigned int Np=0;Np<indexes_Previous.size();Np++) fitting_ok *= fitting_ok_all[Np];
-					if( fitting_ok ){
-						cout << "All GBs were retrieved" << endl;
-						for(unsigned int c=0;c<current_NbClust;c++){
-							Final_Ids.push_back(vector<unsigned int>());
-							for(unsigned int id=0;id<Ids[c].size();id++) Final_Ids[c].push_back(Ids[c][id]);
+						fitting_ok = true;
+						for(unsigned int Np=0;Np<indexes_Previous.size();Np++) fitting_ok *= fitting_ok_all[Np];
+						if( fitting_ok ){
+							cout << "All GBs were retrieved" << endl;
+							for(unsigned int c=0;c<current_NbClust;c++){
+								Final_Ids.push_back(vector<unsigned int>());
+								for(unsigned int id=0;id<Ids[c].size();id++) Final_Ids[c].push_back(Ids[c][id]);
+							}
 						}
-					}
-					for(unsigned int id=0;id<current_NbClust;id++){
-						Ids[id].clear();
-						vector<unsigned int>().swap(Ids[id]);
-					}
-					delete[] Ids;
-					count++;
-				} // end while
-				if( count >= max_count ){
-					cout << "Issue when identifying GB from previous timesteps" << endl;
-					// Update Previous_GBIons to zero meaning that this GB are no longer active
-					for(unsigned int ind=0;ind<indexes_Previous.size();ind++){
-						Previous_GBIons[indexes_Previous[ind]][0].clear(); // set to zero ions
-						Previous_GBIons[indexes_Previous[ind]][1].clear(); // set to zero ions
-					}
-					indexes_Previous.clear();
+						cout << "clearing vars" << endl;
+						for(unsigned int id=0;id<init_Ids_size;id++){
+							Ids[id].clear();
+							vector<unsigned int>().swap(Ids[id]);
+						}
+						delete[] Ids;
+						count++;
+					} // end while
+					if( count >= max_count ){
+						cout << "Issue when identifying GB from previous timesteps" << endl;
+						// Update Previous_GBIons to zero meaning that this GB are no longer active
+						for(unsigned int ind=0;ind<indexes_Previous.size();ind++){
+							Previous_GBIons[indexes_Previous[ind]][0].clear(); // set to zero ions
+							vector<unsigned int>().swap(Previous_GBIons[indexes_Previous[ind]][0]);
+							Previous_GBIons[indexes_Previous[ind]][1].clear(); // set to zero ions
+							vector<unsigned int>().swap(Previous_GBIons[indexes_Previous[ind]][1]);
+						}
+						indexes_Previous.clear();
+						// then fit an optimal GMM
+						cout << "Trying to find new GBs using optimal fitting of GMM" << endl;
+						GMM.fitOptimalGMM(nclust_min_opt,nclust_max_opt);
+						current_NbClust = GMM.getNbClust(zero);
+						GMM.Classify();
+						for(unsigned int c=0;c<current_NbClust;c++) Final_Ids.push_back(vector<unsigned int>());
+						for(unsigned int i=0;i<GBIons[g*3+gbid].size();i++){
+							if( GMM.getClassificator()[i*2+1] != 0 ) Final_Ids[(unsigned int) GMM.getClassificator()[i*2]].push_back(GBIons[g*3+gbid][i]);
+						}
+					} //TODO update nbClustPrevious in all GB Id
 				}
 				// treat the existing GBs 
+					cout << "treating prevs" << endl; 
 				for(unsigned int Np=0;Np<indexes_Previous.size();Np++){
 					if( Final_Ids[ClusterIndexAssociated[Np]].size() >  nbMinIonsInGB ){
 						double *covar = new double[9];
@@ -1078,19 +1121,22 @@ int main(int argc, char *argv[])
 
 							// Update Previous_Variables
 							Previous_GBIons[indexes_Previous[Np]][0].clear();
+							vector<unsigned int>().swap(Previous_GBIons[indexes_Previous[Np]][0]);
 							for(unsigned int n=0;n<GBIons_Final_prev[(nbGBAnalyzed_prev-1)*3].size();n++) Previous_GBIons[indexes_Previous[Np]][0].push_back(GBIons_Final_prev[(nbGBAnalyzed_prev-1)*3][n]);
 							Previous_GBIons[indexes_Previous[Np]][1].clear();
+							vector<unsigned int>().swap(Previous_GBIons[indexes_Previous[Np]][1]);
 							for(unsigned int n=0;n<GBIons_Final_prev[(nbGBAnalyzed_prev-1)*3+1].size();n++) Previous_GBIons[indexes_Previous[Np]][1].push_back(GBIons_Final_prev[(nbGBAnalyzed_prev-1)*3+1][n]);
 							Previous_NbClust[indexes_Previous[Np]][1] = current_NbClust;
 
-
-							// delete this cluster
-							for(unsigned int dim=0;dim<6;dim++) MeanAndCovarClust_temp_prev[0].erase(MeanAndCovarClust_temp_prev[0].begin()+6*Np);
-							GBIons_temp_prev.erase(GBIons_temp_prev.begin()+Np);
 						}else if( !fitting_ok_all[Np] ){
 							cout << "Loosing GB because not good shape" << endl;
 							Previous_GBIons[indexes_Previous[Np]][0].clear(); // set to zero ions
+							vector<unsigned int>().swap(Previous_GBIons[indexes_Previous[Np]][0]);
 							Previous_GBIons[indexes_Previous[Np]][1].clear(); // set to zero ions
+							vector<unsigned int>().swap(Previous_GBIons[indexes_Previous[Np]][1]);
+							// delete this cluster
+							//for(unsigned int dim=0;dim<6;dim++) MeanAndCovarClust_temp_prev[0].erase(MeanAndCovarClust_temp_prev[0].begin());
+							//GBIons_temp_prev.erase(GBIons_temp_prev.begin());
 						}
 						delete[] covar;
 						delete[] eigval;
@@ -1098,26 +1144,159 @@ int main(int argc, char *argv[])
 					}else{
 						cout << "Loosing GB because not enough ions" << endl;
 						Previous_GBIons[indexes_Previous[Np]][0].clear(); // set to zero ions
+						vector<unsigned int>().swap(Previous_GBIons[indexes_Previous[Np]][0]);
 						Previous_GBIons[indexes_Previous[Np]][1].clear(); // set to zero ions
+						vector<unsigned int>().swap(Previous_GBIons[indexes_Previous[Np]][1]);
 					}
-				} // now we have found the GB and updated Previous_variables
-				
+				} // end nclust loop, now we have found the GB and updated Previous_variables
 				
 				// Now search if new GB
+				cout << "Searching if there is new GBs" << endl;	
+				for(unsigned int i=0;i<Final_Ids.size();i++){
+					bool to_treat = true;
+					for(unsigned int c=0;c<indexes_Previous.size();c++){
+						if( ClusterIndexAssociated[c] == i ){
+							to_treat = false;
+							break;
+						}
+					}
+					if( Final_Ids[i].size() >  nbMinIonsInGB && to_treat ){
+						double *covar = new double[9];
+						double *eigval = new double[3];
+						double *eigvec = new double[9];
+						for(unsigned int d1=0;d1<3;d1++){
+							for(unsigned int d2=0;d2<3;d2++) covar[d1*3+d2] = GMM.getCov()[i*9+d1*3+d2];
+						}
+						MT.EigenDecomposition(covar,3,eigval,eigvec);
+						bool tostore = false;
+						if( ( eigval[0] < facClust*eigval[1] ) && ( eigval[0] < facClust*eigval[2] ) ){
+						        for(unsigned int dim=0;dim<3;dim++) MeanAndCovarClust_temp[gbid].push_back(eigvec[dim]);	
+							tostore = true;
+						}else if( ( eigval[1] < facClust*eigval[0] ) && ( eigval[1] < facClust*eigval[2] ) ){
+						        for(unsigned int dim=0;dim<3;dim++) MeanAndCovarClust_temp[gbid].push_back(eigvec[3+dim]);	
+							tostore = true;
+						}else if( ( eigval[2] < facClust*eigval[1] ) && ( eigval[2] < facClust*eigval[0] ) ){
+						        for(unsigned int dim=0;dim<3;dim++) MeanAndCovarClust_temp[gbid].push_back(eigvec[6+dim]);	
+							tostore = true;
+						} 
+						if( tostore && gbid == 0 ){
+						        for(unsigned int dim=0;dim<3;dim++) MeanAndCovarClust_temp[gbid].push_back(GMM.getMu()[i*3+dim]);	
+							GBIons_temp.push_back(vector<unsigned int>());
+							for(unsigned int n=0;n<Final_Ids[i].size();n++) GBIons_temp[GBIons_temp.size()-1].push_back(Final_Ids[i][n]);
+							NbClustToSaveInPrevious_temp.push_back(Final_Ids[i].size());
+							// Store cov and mean for averaging and identifying amorph ions 
+							AverageCov_temp.push_back(vector<vector<double>>(3,vector<double>(3)));
+							AverageMu_temp.push_back(vector<double>(3));
+							for(unsigned int am_g_1=0;am_g_1<3;am_g_1++){
+								AverageMu_temp[AverageMu_temp.size()-1][am_g_1] = GMM.getMu()[i*3+am_g_1];
+								for(unsigned int am_g_2=0;am_g_2<3;am_g_2++) AverageCov_temp[AverageCov_temp.size()-1][am_g_1][am_g_2] = GMM.getCov()[i*9+am_g_1*3+am_g_2];
+							}
+						}else if( tostore && gbid == 1 ){
+						        for(unsigned int dim=0;dim<3;dim++) MeanAndCovarClust_temp[gbid].push_back(GMM.getMu()[i*3+dim]);	
+							// search if there is corresponding GB 1 with almost the same normal
+							bool isAssociated = false;
+							double n0, n1, sp, fullsp;
+							vector<unsigned int> indexes;
+							vector<double> scalarprod;
+							unsigned int index_clust_ass;
+							for(unsigned int n=0;n<GBIons_temp.size();n++){
+								sp = 0.;
+								n0 = 0.;
+								n1 = 0.;
+								for(unsigned int dim=0;dim<3;dim++){
+									sp += MeanAndCovarClust_temp[0][6*n+dim]*MeanAndCovarClust_temp[1][((MeanAndCovarClust_temp[1].size()/6)-1)*6+dim];
+									n0 += pow(MeanAndCovarClust_temp[0][6*n+dim],2.);
+									n1 += pow(MeanAndCovarClust_temp[1][((MeanAndCovarClust_temp[1].size()/6)-1)*6+dim],2.);
+								}
+								n0 = sqrt(n0);
+								n1 = sqrt(n1);
+								fullsp = fabs(sp/(n1*n0));
+								if( fullsp > tol_sp ){
+									isAssociated = true;
+									scalarprod.push_back(fullsp);
+									indexes.push_back(n);
+								}
+							}
+							if( isAssociated ){
+
+								index_clust_ass = indexes[MT.max(scalarprod)];
+								nbGBAnalyzed += 1;
+								current_nbGBAnalyzed += 1;
+								GBIons_Final.push_back(vector<unsigned int>());
+								GBIons_Final.push_back(vector<unsigned int>());
+								GBIons_Final.push_back(vector<unsigned int>());
+								NbClustToSaveInPrevious.push_back(vector<unsigned int>());
+								NbClustToSaveInPrevious[nbGBAnalyzed-1].push_back(NbClustToSaveInPrevious_temp[index_clust_ass]);
+								NbClustToSaveInPrevious[nbGBAnalyzed-1].push_back(Final_Ids[i].size());
+
+								// Average covariance and mean of the two interfaces and search amorph ions belonging to this GB 
+								AverageCov.push_back(vector<vector<double>>(3,vector<double>(3)));
+								AverageMu.push_back(vector<double>(3));
+								for(unsigned int am_g_1=0;am_g_1<3;am_g_1++){
+									AverageMu[current_nbGBAnalyzed-1][am_g_1] = GMM.getMu()[i*3+am_g_1];
+									AverageMu[current_nbGBAnalyzed-1][am_g_1] += AverageMu_temp[index_clust_ass][am_g_1];
+									AverageMu[current_nbGBAnalyzed-1][am_g_1] /= 2.;
+									for(unsigned int am_g_2=0;am_g_2<3;am_g_2++){
+										AverageCov[current_nbGBAnalyzed-1][am_g_1][am_g_2] = GMM.getCov()[i*9+am_g_1*3+am_g_2];
+										AverageCov[current_nbGBAnalyzed-1][am_g_1][am_g_2] += AverageCov_temp[index_clust_ass][am_g_1][am_g_2];
+										AverageCov[current_nbGBAnalyzed-1][am_g_1][am_g_2] /= 2.;
+									}
+								}
+								AverageInvCov.push_back(vector<vector<double>>(3,vector<double>(3)));
+								AverageDetC.push_back(MT.invert3x3(AverageCov[current_nbGBAnalyzed-1],AverageInvCov[current_nbGBAnalyzed-1]));
+								// an amorph ion is considered to belong to this GB if its prob is higher than minProbAmorph
+								for(unsigned int am=0;am<GBIons[g*3+2].size();am++){
+									if( MT.Prob_MultidimGaussian(AverageInvCov[current_nbGBAnalyzed-1],AverageMu[current_nbGBAnalyzed-1],AverageDetC[current_nbGBAnalyzed-1],current_coords_am[am]) > minProbAmorph ) GBIons_Final[(nbGBAnalyzed-1)*3+2].push_back(GBIons[g*3+2][am]);
+								}
+
+								// Store normals and mean positions for this GB and average of normals
+								MeanAndCovarClust_Final.push_back(vector<double>());
+								for(unsigned int dim=0;dim<6;dim++) MeanAndCovarClust_Final[nbGBAnalyzed-1].push_back(MeanAndCovarClust_temp[0][6*index_clust_ass+dim]);
+								for(unsigned int dim=0;dim<6;dim++) MeanAndCovarClust_Final[nbGBAnalyzed-1].push_back(MeanAndCovarClust_temp[1][6*((MeanAndCovarClust_temp[1].size()/6)-1)+dim]);
+								double x1 = MeanAndCovarClust_temp[0][6*index_clust_ass+0];
+								double y1 = MeanAndCovarClust_temp[0][6*index_clust_ass+1];
+								double z1 = MeanAndCovarClust_temp[0][6*index_clust_ass+2];
+								double x2 = MeanAndCovarClust_temp[1][6*((MeanAndCovarClust_temp[1].size()/6)-1)+0];
+								double y2 = MeanAndCovarClust_temp[1][6*((MeanAndCovarClust_temp[1].size()/6)-1)+1];
+								double z2 = MeanAndCovarClust_temp[1][6*((MeanAndCovarClust_temp[1].size()/6)-1)+2];
+								if( ( fabs(x1) > 1e-1 && fabs(x2) > 1e-1 && x1*x2 < 0. ) ||  ( fabs(y1) > 1e-1 && fabs(y2) > 1e-1 && y1*y2 < 0. ) || ( fabs(z1) > 1e-1 && fabs(z2) > 1e-1 && z1*z2 < 0. ) ){
+									double norm = 0.;
+									for(unsigned int dim=0;dim<3;dim++) norm += pow((MeanAndCovarClust_temp[1][6*((MeanAndCovarClust_temp[1].size()/6)-1)+dim]-MeanAndCovarClust_temp[0][6*index_clust_ass+dim])/2.,2.);
+									norm = sqrt(norm);
+									for(unsigned int dim=0;dim<3;dim++) MeanAndCovarClust_Final[nbGBAnalyzed-1].push_back((MeanAndCovarClust_temp[1][6*((MeanAndCovarClust_temp[1].size()/6)-1)+dim]-MeanAndCovarClust_temp[0][6*index_clust_ass+dim])/(2.*norm));
+								}else{
+									double norm = 0.;
+									for(unsigned int dim=0;dim<3;dim++) norm += pow((MeanAndCovarClust_temp[1][6*((MeanAndCovarClust_temp[1].size()/6)-1)+dim]+MeanAndCovarClust_temp[0][6*index_clust_ass+dim])/2.,2.);
+									for(unsigned int dim=0;dim<3;dim++) MeanAndCovarClust_Final[nbGBAnalyzed-1].push_back((MeanAndCovarClust_temp[1][6*((MeanAndCovarClust_temp[1].size()/6)-1)+dim]+MeanAndCovarClust_temp[0][6*index_clust_ass+dim])/(2.*norm));
+								}
+								// Store ions ID for this GB
+								for(unsigned int nb=0;nb<GBIons_temp[index_clust_ass].size();nb++) GBIons_Final[(nbGBAnalyzed-1)*3].push_back(GBIons_temp[index_clust_ass][nb]);
+								for(unsigned int nb=0;nb<Final_Ids[i].size();nb++) GBIons_Final[(nbGBAnalyzed-1)*3+1].push_back(Final_Ids[i][nb]);
+
+								// Stored ids of grain
+								GBId_arr_Final.push_back(GBId_arr[g]);
+
+								// delete this cluster
+								for(unsigned int dim=0;dim<6;dim++) MeanAndCovarClust_temp[0].erase(MeanAndCovarClust_temp[0].begin()+6*index_clust_ass);
+								GBIons_temp.erase(GBIons_temp.begin()+index_clust_ass);
+							}
+						}
+						delete[] covar;
+						delete[] eigval;
+						delete[] eigvec;
+					}
+				} // end nclust loop
+
+
+				// free memory
+				delete[] ClusterIndexAssociated;
+				delete[] fitting_ok_all;
 			} // end gbid loop
+			for(unsigned int gbid=0;gbid<2;gbid++) delete[] current_coords[gbid];
+			current_coords.clear();
+			vector<double*>().swap(current_coords);
 		} // end g loop
-		// Save new GBs in Previous_Variables 
-		for(unsigned int i=0;i<nbGBAnalyzed;i++){
-			GBIdOverTimestep.push_back(GBId_arr_Final[i]);
-			Previous_GBIons.push_back(vector<vector<unsigned int>>());
-			Previous_NbClust.push_back(vector<unsigned int>());
-			unsigned int index_NbClust = GetIndexNbClust(GBId_arr_Final[i],GBId_ForNbClust_Init);
-			for(unsigned int gbid=0;gbid<2;gbid++){
-				Previous_NbClust[i].push_back(NbClustAndGB_Init[index_NbClust][gbid]);
-				Previous_GBIons[i].push_back(vector<unsigned int>());
-				for(unsigned int n=0;n<GBIons_Final[i*3+gbid].size();n++) Previous_GBIons[i][gbid].push_back(GBIons_Final[i*3+gbid][n]);
-			}
-		}
+							cout << 6 << endl;
 		
 		double *MeanStrain_1 = new double[8];
 		double *MeanStrain_2 = new double[8];
@@ -1142,14 +1321,15 @@ int main(int argc, char *argv[])
 			string datafilename = fullpath+OutputFilename;
 			std::ofstream f_out_res;
 			f_out_res.open(datafilename.c_str(), std::ios_base::app);
-
-			f_out_res << timesteps[t] << " " << MeanAndCovarClust_Final[i][12] << " " << MeanAndCovarClust_Final[i][13] << " " << MeanAndCovarClust_Final[i][14] << " " << GBId_arr_Final[i] - (GBId_arr_Final[i]-floor(GBId_arr_Final[i])) << " " << (int) 10.*(GBId_arr_Final[i]-floor(GBId_arr_Final[i])) << " " << am_thick ;
+			if( f_out_res.fail() ) cout << "Issue when printing" << endl;
+			f_out_res << timesteps[t] << " " << MeanAndCovarClust_Final_prev[i][12] << " " << MeanAndCovarClust_Final_prev[i][13] << " " << MeanAndCovarClust_Final_prev[i][14] << " " << GBIdOverTimestep[IndexesInPreviousVariables[i]] - (GBIdOverTimestep[IndexesInPreviousVariables[i]]-floor(GBIdOverTimestep[IndexesInPreviousVariables[i]])) << " " << (int) 10.*(GBIdOverTimestep[IndexesInPreviousVariables[i]]-floor(GBIdOverTimestep[IndexesInPreviousVariables[i]])) << " " << am_thick ;
 			for(unsigned int ii=0;ii<8;ii++) f_out_res << " " << MeanStrain_1[ii]; 
 			for(unsigned int ii=0;ii<8;ii++) f_out_res << " " << MeanStrain_2[ii]; 
 			for(unsigned int ii=0;ii<8;ii++) f_out_res << " " << MeanStrain_am[ii]; 
 			for(unsigned int ii=0;ii<6;ii++) f_out_res << " " << MeanStress_1[ii]; 
 			for(unsigned int ii=0;ii<6;ii++) f_out_res << " " << MeanStress_2[ii]; 
 			for(unsigned int ii=0;ii<6;ii++) f_out_res << " " << MeanStress_am[ii]; 
+			f_out_res << endl;
 			f_out_res.close();
 
 			string name = "GB_";
@@ -1157,7 +1337,55 @@ int main(int argc, char *argv[])
 			string fullname = fullpath+name+timesteps[t]+ext;
 			printAtomicFile(MySystem, fullname, timesteps[t], GBIons_Final_prev, i);
 		}
-	// PRINT NEW GB	
+
+		// PRINT NEW GB	
+		cout << "Printing new GBs" << endl;
+		for(unsigned int i=0;i<nbGBAnalyzed;i++){
+
+			AverageStressAndStrain(MySystem, MeanStrain_1, MeanStrain_2, MeanStrain_am, MeanStress_1, MeanStress_2, MeanStress_am, MeanAndCovarClust_Final, GBIons_Final, AtStrain_ind, size_AtStrain, Stress_ind, size_Stress, AtVol_ind, size_AtVol, i, am_thick);
+
+			string path_1 = "./GB_";
+			string path_2 = "/";
+			string fullpath = path_1+to_string(GBIdOverTimestep.size()+i)+path_2;
+			const char *env = fullpath.c_str();
+        		DIR *dir;
+        		if( (dir = opendir(env) ) != nullptr ) cout << "Warning the directory already exist" << endl;
+			else std::filesystem::create_directory(fullpath);
+
+			string datafilename = fullpath+OutputFilename;
+			std::ofstream f_out_res;
+			f_out_res.open(datafilename.c_str());
+			if( f_out_res.fail() ) cout << "Issue when printing" << endl;
+			f_out_res << "timestep(0) nx(1) ny(2) nz(3) G1(4) G2(5) AmThick(6) Eps_xx_1(7) Eps_yy_1(8) Eps_zz_1(9) Eps_xy_1(10) Eps_xz_1(11) Eps_yz_1(12) ShearInv_1(13) SphInv_1(14) Eps_xx_2(15) Eps_yy_2(16) Eps_zz_2(17) Eps_xy_2(18) Eps_xz_2(19) Eps_yz_2(20) ShearInv_2(21) SphInv_2(22) Eps_xx_am(23) Eps_yy_am(24) Eps_zz_am(25) Eps_xy_am(26) Eps_xz_am(27) Eps_yz_am(28) ShearInv_am(29) SphInv_am(30) sigma_xx_1(31) sigma_yy_1(32) sigma_zz_1(33) sigma_xy_1(34) sigma_xz_1(35) sigma_yz_1(36) sigma_xx_2(37) sigma_yy_2(38) sigma_zz_2(39) sigma_xy_2(40) sigma_xz_2(41) sigma_yz_2(42) sigma_xx_am(43) sigma_yy_am(44) sigma_zz_am(45) sigma_xy_am(46) sigma_xz_am(47) sigma_yz_am(48)" << endl;
+			f_out_res << timesteps[0] << " " << MeanAndCovarClust_Final[i][12] << " " << MeanAndCovarClust_Final[i][13] << " " << MeanAndCovarClust_Final[i][14] << " " << GBId_arr_Final[i] - (GBId_arr_Final[i]-floor(GBId_arr_Final[i])) << " " << (int) 10.*(GBId_arr_Final[i]-floor(GBId_arr_Final[i])) << " " << am_thick ;
+			for(unsigned int ii=0;ii<8;ii++) f_out_res << " " << MeanStrain_1[ii]; 
+			for(unsigned int ii=0;ii<8;ii++) f_out_res << " " << MeanStrain_2[ii]; 
+			for(unsigned int ii=0;ii<8;ii++) f_out_res << " " << MeanStrain_am[ii]; 
+			for(unsigned int ii=0;ii<6;ii++) f_out_res << " " << MeanStress_1[ii]; 
+			for(unsigned int ii=0;ii<6;ii++) f_out_res << " " << MeanStress_2[ii]; 
+			for(unsigned int ii=0;ii<6;ii++) f_out_res << " " << MeanStress_am[ii]; 
+			f_out_res << endl;
+			f_out_res.close();
+
+			string name = "GB_";
+			string ext = ".cfg";
+			string fullname = fullpath+name+timesteps[t]+ext;
+			printAtomicFile(MySystem, fullname, timesteps[t], GBIons_Final, i);
+		}
+		cout << "Saving previous variables" << endl;
+		// Save new GBs in Previous_Variables 
+		for(unsigned int i=0;i<nbGBAnalyzed;i++){
+			GBIdOverTimestep.push_back(GBId_arr_Final[i]);
+			Previous_GBIons.push_back(vector<vector<unsigned int>>());
+			Previous_NbClust.push_back(vector<unsigned int>());
+			for(unsigned int gbid=0;gbid<2;gbid++){
+				Previous_NbClust[GBIdOverTimestep.size()-1].push_back(NbClustToSaveInPrevious[i][gbid]);
+				Previous_GBIons[GBIdOverTimestep.size()-1].push_back(vector<unsigned int>());
+				for(unsigned int n=0;n<GBIons_Final[i*3+gbid].size();n++) Previous_GBIons[GBIdOverTimestep.size()-1][gbid].push_back(GBIons_Final[i*3+gbid][n]);
+			}
+		}
+		cout << "Size of prevs : " << GBIdOverTimestep.size() << " " << Previous_GBIons.size() << endl;
+
 		delete[] MeanStrain_1;
 		delete[] MeanStrain_2;
 		delete[] MeanStrain_am;
