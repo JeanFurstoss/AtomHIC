@@ -19,6 +19,7 @@ This executable take also in argument the number of cluster minimum and maximum 
 The last argument of this executable is the name of the directory, let say MY_GMM_MODEL, in which the optimized parameters of the Gaussian Mixture Model will be stored (i.e. in /data/MachineLearningModels/GaussianMixtureModel/MY_GMM_MODEL). These parameters will then be used in the third step to make the structural analysis.
 Depending on the dimension of descriptors, number of input data and number of clusters, the fitting of the GMM can take a while. The tolerance and maximum iterations for the EM and KMeans algorithm, which are used for this fitting, can be tuned in the /data/FixedParameters/FixedParameters.dat file to save computational time but may result in poorer optimization.
 
+
 3. Structural analysis
 
 This step is can be performed using the "GMMClassification" executable.
@@ -43,3 +44,6 @@ The GMM databases used in Furstoss et al. can directly be used (step 3) to analy
 
 D. 
 All the AtomHIC executables used for the SGMA have a helped print which is displayed when running the executable without argument. This printed can help if some difficulties are encountered, if it is not enough, please feel free to contact jfurstoss@orange.fr
+
+E.
+For the two first steps described above it can be tricky to both find the right cutoff radius and spherical harmonics degree and to adjust correclty the number of cluster during the GMM fitting. In order to help, two graphical tools have been developed allowing to visualize the database and the fitted GMM. These visualization python scripts could be found in /tools/PythonTools/PlotGMMModel_Matrix.py and /tools/PythonTools/PlotGMMModel_violin.py
