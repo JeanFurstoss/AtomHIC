@@ -46,16 +46,19 @@ nsamp = 25000 # number of sampled points in the GMM
 def readQ(input_file, FilterValue, nbDim, FilterType=FilterType, DescriptorName=DescriptorName):
     startCol = 0
     PosFilter = 0
-    # TODO DescriptorName
     filter_val = []
     with open(input_file,'r') as file:
         found = False
         for line in file:
             if 'ITEM: ATOMS' in line:
                 colvals = line.split(' ')
+                DesFound = False
                 for i in range(len(colvals)):
-                    if colvals[i] == DescriptorName :
+                    s = ''.join(x for x in colvals[i] if x.isdigit())
+                    for_des = colvals[i].replace("["+s+"]",'')
+                    if for_des == DescriptorName and not DesFound:
                         startCol = i-2
+                        DesFound = True
                     if colvals[i] == FilterType :
                         PosFilter = i-2
                 found = True
@@ -73,6 +76,12 @@ print("Reading "+ath_database_name+" AtomHIC database")
 
 os.makedirs(dirModel, exist_ok=True)
 ModelName = os.path.join(ath_database_name, '')
+
+if not os.path.exists(dirModel+ModelName):
+    print("The database does not exists in /data/MachineLearningModels/GaussianMixtureModel/")
+    print("Possible databases :")
+    print(help_print)
+
 Labels = glob.glob(dirModel+ModelName+"/*.ath")
 LabelsName = []
 nbLabels = len(Labels)
@@ -170,6 +179,7 @@ for i in range(nbFilter):
 
 templist = set(ClusterLabels[0])
 categories = (list(templist))
+categories = sorted(categories)
 
 #Get corresponding array index for probabilities
 dictLab = []
@@ -273,10 +283,12 @@ for base, dirs, files in os.walk(dump_database_path):
 
 
 color_panel = ['#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c','#fdbf6f','#ff7f00','#cab2d6','#6a3d9a','#ffff99','#b15928'] # from colorbrewer2.org
-#color_panel = ['r','g','b','y']
 colors_struct = []
 for l in range(nbLabels):
-    colors_struct.append(color_panel[l])
+    index = round(len(color_panel)*l/nbLabels)
+    if( index == len(color_panel) ):
+        index -= 1
+    colors_struct.append(color_panel[index])
 
 
 legend_patch = []
@@ -329,10 +341,10 @@ for i in range(nbFilter):
         plt.gca().add_artist(l0)
         if( NbVpComp != 0 ):
             if( d == NbVp+NbVpComp-1 ):
-                plt.savefig(path_to_plot+'/'+str(FilterValues[i])+'Filter_'+str(LastLoopBeg+1)+'_'+str(LastLoopEnd)+'.png',dpi=500)
+                plt.savefig(path_to_plot+'/'+str(FilterValues[i])+'Filter_'+str(LastLoopBeg+1)+'_'+str(LastLoopEnd)+'_Violin.png',dpi=500)
             else:
-                plt.savefig(path_to_plot+'/'+str(FilterValues[i])+'Filter_'+str(int(d*NbDimEachPlot)+1)+'_'+str(int((d+1)*NbDimEachPlot))+'.png',dpi=500)
+                plt.savefig(path_to_plot+'/'+str(FilterValues[i])+'Filter_'+str(int(d*NbDimEachPlot)+1)+'_'+str(int((d+1)*NbDimEachPlot))+'_Violin.png',dpi=500)
         else:
-            plt.savefig(path_to_plot+'/'+str(FilterValues[i])+'Filter_'+str(int(d*NbDimEachPlot)+1)+'_'+str(int((d+1)*NbDimEachPlot))+'.png',dpi=500)
+            plt.savefig(path_to_plot+'/'+str(FilterValues[i])+'Filter_'+str(int(d*NbDimEachPlot)+1)+'_'+str(int((d+1)*NbDimEachPlot))+'_Violin.png',dpi=500)
         print("\t\tDone")
 
