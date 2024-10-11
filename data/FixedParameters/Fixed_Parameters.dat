@@ -17,10 +17,6 @@ TOL_POS_KNOWN_CSL_VEC 1e-2 // tolerance (in A) to know if the CSL basis gives th
 TOL_CSL_INTEGER 1e-3 // tolerance for an element of U (CSL matrix) to be an integer
 TOL_ALIGNMENT_CSL 1e-1 // tolerance to know if one of the CSL vector is aligned with the rotation axis (the scalar product should be near 1)
 
-// Parameter for neighbour research and Steinhardt parameter calulation
-RCUT_NEIGHBOURS 5 // cutoff radius for neighbour research
-L_SPH_ST 13 // spherical harmonic degree for the computation of Steinhardt parameters
-
 // Parameters for descriptors
 DESCRIPTORS_FILTERING_TYPE element // could be none, type element or one of the auxiliary properties of the atomic system read, this parameter is only used for training of ML models 
 
@@ -33,12 +29,14 @@ STEINHARDT_DESCRIPTORS_AVERAGE_STYLE Multi // could be Mono, Multi, none
 
 // Parameters for Gaussian Mixture Model
 GMM_NB_MAX_CLUSTER 50 // maximum number of cluster for Gaussian Mixture Model
-GMM_TOL_LKH_EM 1e-2 // difference between likelihoods for reaching convergence of the Expectation Maximization algorithm
-GMM_MAX_ITER_EM 500 // maximum iterations of the Expectation Maximization algorithm
+GMM_TOL_LKH_EM 1e-4 // difference between likelihoods for reaching convergence of the Expectation Maximization algorithm
+GMM_MAX_ITER_EM 750 // maximum iterations of the Expectation Maximization algorithm
+GMM_NB_BIC_INCREASE_FOR_MIN 2 // number of time the BIC has to increase after a given number of cluster to consider that it corresponds to a true minimum and then stop the computation
 GMM_ELBOW_FACTOR 0.1 // for the optimization of the number of cluster K when a BIC minimum is not found, minimum reduction factor of the BIC=f(K) slope between the two first and two last K values for considering that the curve form an elbow
+GMM_NO_BIC_MIN_NO_ELBOW_CHOICE Max // when no bic minimum has been found and the elbow method does not work, what number of cluster is consider to be the optimal (could be Max, Min or any number between n_clust_min and n_clust_max)
 
 // Parameters for KMeans 
 KMEANS_NB_MAX_CLUSTER 100 // maximum number of cluster for KMeans
 KMEANS_TOL 1e-5 // tolerance for reaching KMeans convergence
 KMEANS_MAX_ITER 1000 // maximum iteration of the KMeans algorithm
-KMEANS_NB_INIT 100 // number of random initialization of the KMeans algorithm (at the end, the one with the highest likelihood is keept) 
+KMEANS_NB_INIT 300 // number of random initialization of the KMeans algorithm (at the end, the one with the highest likelihood is keept) 

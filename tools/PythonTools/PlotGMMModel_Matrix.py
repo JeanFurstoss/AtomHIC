@@ -30,7 +30,8 @@ FilterType = sys.argv[3]
 DescriptorName = sys.argv[4]
 path_to_plot = sys.argv[5]
 
-maxNbDat = 500
+maxNbDat = 1000
+minWeightForGMMPlot = 0.1
 
 # Read the fitted GMM
 print("Reading "+ath_database_name+" AtomHIC database")
@@ -251,7 +252,7 @@ for base, dirs, files in os.walk(dump_database_path):
     for directories in range(len(dirs)):
         for f in range(nbFilter):
             dataPoints[f].append([])
-            dataPoints[f][directories] = np.empty((0, 20))
+            dataPoints[f][directories] = np.empty((0, NbDim))
     for directories in range(len(dirs)):
         index_in_cat = -1
         for ind in range(len(categories)):
@@ -292,6 +293,7 @@ for l in range(nbLabels):
         index -= 1
     colors_struct.append(color_panel[index])
 
+print("Only clusters with weight higher than "+str(minWeightForGMMPlot)+" will be plotted")
 print("Plotting figures in "+path_to_plot+" :")
 covs = np.empty((2,2))
 means = np.empty((2))
@@ -307,14 +309,15 @@ for s in range(len(dataPoints)):
                 fill_kwargs = {'color':colors_struct[key],'alpha':0.3}
                 axs[i, b].scatter(dataPoints[s][key][:,i], dataPoints[s][key][:,b], label=categories[key], c=colors_struct[key], linewidth=0.5, alpha=0.5)
                 for dic in range(len(dictLab[s][key])):
-                    for x_p in range(2):
-                        means[x_p] = GMMModels[s].means_[dictLab[s][key][dic]][-(x_p-1)*i+x_p*b]
-                        for y_p in range(2):
-                            covs[x_p][y_p] = GMMModels[s].covariances_[dictLab[s][key][dic]][-(x_p-1)*i+x_p*b][-(y_p-1)*i+y_p*b]
-                    U, s_ell, Vt = np.linalg.svd(covs)
-                    angle = np.degrees(np.arctan2(U[1, 0], U[0, 0]))
-                    width, height = 2 * np.sqrt(s_ell)
-                    plot_ellipse(semimaj=width/2.,semimin=height/2.,phi=angle*np.pi/180,x_cent=means[0],y_cent=means[1],ax=axs[i, b],plot_kwargs=plot_kwargs,fill=True,fill_kwargs=fill_kwargs)
+                    if( GMMModels[s].weights_[dictLab[s][key][dic]] > minWeightForGMMPlot ):
+                        for x_p in range(2):
+                            means[x_p] = GMMModels[s].means_[dictLab[s][key][dic]][-(x_p-1)*i+x_p*b]
+                            for y_p in range(2):
+                                covs[x_p][y_p] = GMMModels[s].covariances_[dictLab[s][key][dic]][-(x_p-1)*i+x_p*b][-(y_p-1)*i+y_p*b]
+                        U, s_ell, Vt = np.linalg.svd(covs)
+                        angle = np.degrees(np.arctan2(U[1, 0], U[0, 0]))
+                        width, height = 2 * np.sqrt(s_ell)
+                        plot_ellipse(semimaj=width/2.,semimin=height/2.,phi=angle*np.pi/180,x_cent=means[0],y_cent=means[1],ax=axs[i, b],plot_kwargs=plot_kwargs,fill=True,fill_kwargs=fill_kwargs)
             if( i == 0 and b == 0 ):
                 axs[i, b].legend()
             if( i == 0 and b == 1 ):

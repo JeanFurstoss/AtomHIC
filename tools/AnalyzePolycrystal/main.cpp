@@ -146,6 +146,24 @@ bool ComputeTransVec(double *coords, unsigned int nbAt, double *H1, double *H2, 
 	}
 }
 
+void Matrix3x3FromEigen(double *eigval, double *eigvec, double *matrix){
+	MathTools MT;
+	double *bufmat = new double[9];
+	double *inv_bufmat = new double[9];
+	double *diagmat = new double[9];
+	for(unsigned int i=0;i<9;i++) diagmat[i] = 0.;
+	for(unsigned int i=0;i<3;i++){
+		diagmat[i*3+i] = eigval[i];
+		for(unsigned int j=0;j<3;j++) bufmat[i*3+j] = eigvec[j*3+i];
+	}
+	MT.invert3x3(bufmat,inv_bufmat);
+	MT.MatDotMat(bufmat,diagmat,matrix);
+	MT.MatDotMat(matrix,inv_bufmat,matrix);
+	delete[] bufmat;
+	delete[] inv_bufmat;
+	delete[] diagmat;
+}
+
 int main(int argc, char *argv[])
 {
 	// Here we use a dump file containing (1) the structure of a given ion (either interface, amorph or crystal), (2) the GB Id, (3) the atomic volume, (4) strain and (5) stress tensor
@@ -170,6 +188,70 @@ int main(int argc, char *argv[])
 		cerr << "TODO description" << endl;
 		return EXIT_FAILURE;
 	}
+
+	MathTools MT;
+	double *mat1 = new double[9];
+	double *diagmat = new double[9];
+	double *mat2 = new double[9];
+	double *eigvec = new double[9];
+	double *inv_eigvec = new double[9];
+	double *eigval = new double[3];
+	for(unsigned int i=0;i<9;i++){
+		mat2[i] = 0.;
+		diagmat[i] = 0.;
+	}
+	// 0 1 2
+	// 3 4 5
+	// 6 7 8
+	mat1[0] = 4.;
+	mat1[4] = 4.;
+	mat1[8] = 3.;
+	mat1[1] = -2.;
+	mat1[2] = 1.;
+	mat1[5] = -2.;
+	mat1[3] = mat1[1];
+	mat1[6] = mat1[2];
+	mat1[7] = mat1[5];
+	for(unsigned int i=0;i<3;i++){
+		for(unsigned int j=0;j<3;j++) cout << mat1[i*3+j] << " ";
+		cout << endl;
+	}
+	MT.EigenDecomposition(mat1,3,eigval,eigvec);
+	cout << "EIGVAL" << endl;
+	for(unsigned int i=0;i<3;i++) cout << eigval[i] << " ";
+	eigval[2] *= 4;
+	Matrix3x3FromEigen(eigval,eigvec,mat2);
+	//for(unsigned int i=0;i<3;i++){
+	//	diagmat[i*3+i] = eigval[i];
+	//	for(unsigned int j=0;j<3;j++) mat2[i*3+j] = eigvec[j*3+i];
+	//}
+	//for(unsigned int i=0;i<9;i++) eigvec[i] = mat2[i];
+	//MT.invert3x3(eigvec,inv_eigvec);
+	//MT.MatDotMat(eigvec,diagmat,mat2);
+	//MT.MatDotMat(mat2,inv_eigvec,mat2);
+	
+	//MT.MatDotMat(diagmat,inv_eigvec,mat2);
+	//MT.MatDotMat(eigvec,mat2,mat2);
+	cout << "EIGVAL" << endl;
+	for(unsigned int i=0;i<3;i++) cout << eigval[i] << " ";
+	//cout << endl;
+	//cout << "EIGVEC" << endl;
+	//for(unsigned int i=0;i<3;i++){
+	//	for(unsigned int j=0;j<3;j++) cout << eigvec[i*3+j] << " ";
+	//       cout << endl;	
+	//}
+
+	//// a1 ( a1 a2 a3 )
+	//// a2
+	//// a3
+	//for(unsigned int i=0;i<3;i++){
+	//	for(unsigned int j=0;j<3;j++) mat2[i*3+j] += eigval[i]/(eigvec[i*3+i]*eigvec[i*3+j]);
+	//}
+	for(unsigned int i=0;i<3;i++){
+		for(unsigned int j=0;j<3;j++) cout << mat2[i*3+j] << " ";
+		cout << endl;
+	}
+
 
 	tolspangle = 5;
 	double tol_sp = cos(tolspangle*M_PI/180.);
@@ -199,23 +281,17 @@ int main(int argc, char *argv[])
 		na = sqrt(na);
 		nb = sqrt(nb);
 		nc = sqrt(nc);
-		//cout << "na = " << na << endl;
-		//cout << "nb = " << nb << endl;
-		//cout << "nc = " << nc << endl;
 		// a,b
 		for(unsigned int k=0;k<3;k++) sp += CellVectors[i*9+k]*CellVectors[i*9+3+k];
 		if( sp/(na*nb) > tol_sp ) cout << "Warning is seems that a and b are not normals in grain " << i+1 << endl;
-		//cout << "a,b angle = " << acos(sp/(na*nb))*180./M_PI << endl;
 		// a,c
 		sp = 0.;
 		for(unsigned int k=0;k<3;k++) sp += CellVectors[i*9+k]*CellVectors[i*9+6+k];
 		if( sp/(na*nc) > tol_sp ) cout << "Warning is seems that a and c are not normals in grain " << i+1 << endl;
-		//cout << "a,c angle = " << acos(sp/(na*nc))*180./M_PI << endl;
 		// b,c
 		sp = 0.;
 		for(unsigned int k=0;k<3;k++) sp += CellVectors[i*9+3+k]*CellVectors[i*9+6+k];
 		if( sp/(nb*nc) > tol_sp ) cout << "Warning is seems that b and c are not normals in grain " << i+1 << endl;
-		//cout << "b,c angle = " << acos(sp/(nb*nc))*180./M_PI << endl;
 	}
 		
 	string namef1 = "GrainCellVec_";
@@ -312,7 +388,6 @@ int main(int argc, char *argv[])
 	vector<vector<unsigned int>> GBIons_Final;
 	unsigned int nbGBAnalyzed = 0;
 	unsigned int current_nbGBAnalyzed;
-	MathTools MT;
 	for(unsigned int g=0;g<GBId_arr.size();g++){
 		cout << "Treating " << GBId_arr[g] << " GB" << endl;
 		if( GBIons[g*3].size() < nbMinIonsInGB || GBIons[g*3+1].size() < nbMinIonsInGB ){

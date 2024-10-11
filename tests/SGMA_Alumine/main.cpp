@@ -14,13 +14,13 @@ using namespace std;
 int main(int argc, char *argv[])
 {
 		GaussianMixtureModel GMM;
-		GMM.ReadModelParamFromDatabase("AluminaPhase");
+		GMM.ReadModelParamFromDatabase("AluminaPhases_Furstoss_CompPhysCom");
 		AtomicSystem MySystem("Input.cfg");
 		string DescriptorName = "Steinhardt";
 		string ftype="element";
 		Descriptors MyDescriptors(&MySystem,DescriptorName,ftype);
 		GMM.setDescriptors(&MyDescriptors);
-		GMM.Classify();
+		GMM.LabelClassification();
 		MySystem.setAux_vec(GMM.getClassificator(),2,"Struct");
 		MySystem.printSystem_aux("Output.cfg","Struct");
 }

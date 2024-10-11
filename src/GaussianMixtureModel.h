@@ -59,6 +59,8 @@ private:
 	double tol_Lkh_EM;
 	unsigned int MaxIter_EM;
 	double fac_elbow; // reduction factor for considering that its is a real elbow
+	unsigned int nb_bic_increase;
+	std::string after_elbow_choice;
 
 public:
 	// constructors
@@ -88,6 +90,7 @@ public:
 	void ReadProperties(std::vector<std::string> Properties);
 	void SetKMeansProperties(std::vector<std::string> Properties);
 	// getters
+	std::vector<std::string> getAvailableDatabases();
 	unsigned int getNbClust(unsigned int &filter_value){ return nbClust[filter_value]; }
 	double getBIC(unsigned int &filter_value){ return BIC[filter_value]; }
 	double getLogLikelihood(unsigned int &filter_value){ return LogLikelihood[filter_value]; }
