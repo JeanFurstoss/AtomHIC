@@ -575,7 +575,7 @@ void AtomicSystem::Print1dDensity(string filename, string auxname){
 void AtomicSystem::setCrystal(Crystal* MyCrystal){
 	this->_MyCrystal = MyCrystal;
 	this->IsCrystalDefined = true;
-	UpdateTypes2Crystal();
+	if( FilenameConstructed ) UpdateTypes2Crystal();
 }
 
 void AtomicSystem::setCrystal(const std::string& CrystalName){
@@ -583,7 +583,7 @@ void AtomicSystem::setCrystal(const std::string& CrystalName){
 	this->_MyCrystal = new Crystal(CrystalName);
 	this->IsCrystalDefined = true;
 	this->IsCrystalMine = true;
-	UpdateTypes2Crystal();
+	if( FilenameConstructed ) UpdateTypes2Crystal();
 }
 
 // This function modifies the ordering of type and type_uint of _MyCrystal for consistency

@@ -64,7 +64,7 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 		if( breaked ) break;
 	}
 	if( !breaked ){
-		cerr << "We don't find linear combination of facet for this GB, consider increasing tolerance or number of CL investigated, aborting calculation" << endl;
+		cerr << "We don't find linear combination of facet for this GB, consider increasing tolerance (in FixedParameters.dat) or number of CL investigated, aborting calculation" << endl;
 		exit(EXIT_FAILURE);
 	}
 	// correct the direction accounting for the small deformation applied to crystals during construction of grains
