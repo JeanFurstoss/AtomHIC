@@ -20,6 +20,12 @@ int main(int argc, char *argv[])
 		cerr << "The argument NameOfDatabse should be a directory in /data/MachineLearningModels/GaussianMixtureModel/ which could be generated using the ./FitAndSaveGMM executable" << endl;
 		cerr << "In the case of an atomic system the obtained output file contains, the computed descriptors if the descriptors are not provided, the index of the labels (Struct[1]) and the maximum likelihood classifier (Struct[2])" << endl;
 		cerr << "In the case of a simple file, the descriptors are simply printed again as well as Struct[1] and Struct[2]" << endl;
+		GaussianMixtureModel GMM;
+		vector<string> basis = GMM.getAvailableDatabases();
+		cerr << "Available GMM databases:" << endl;
+		for(unsigned int i=0;i<basis.size();i++){
+			cerr << basis[i] << endl;
+		}
 		return EXIT_FAILURE;
 	}
 	
@@ -59,7 +65,7 @@ int main(int argc, char *argv[])
 		}else{
 			Descriptors MyDescriptors(InputFilename);
 			GMM.setDescriptors(&MyDescriptors);
-			GMM.Classify();
+			GMM.LabelClassification();
 			GMM.PrintClassifiedData(OutputFilename);
 		}
 	}else{
@@ -77,7 +83,7 @@ int main(int argc, char *argv[])
 		AtomicSystem MySystem(InputFilename);
 		Descriptors MyDescriptors(&MySystem,DescriptorName,ftype);
 		GMM.setDescriptors(&MyDescriptors);
-		GMM.Classify();
+		GMM.LabelClassification();
 		MySystem.setAux_vec(GMM.getClassificator(),2,"Struct");
 		MySystem.printSystem_aux(OutputFilename,"Struct");
 	}

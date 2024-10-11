@@ -981,6 +981,16 @@ complex<double> MathTools::spherical_harmonics(const unsigned int& l, int& m, do
 	return sph_harm;
 }
 
+void MathTools::EigenDecomposition(vector<vector<double>> &Matrix, double *EigenValues, double *EigenVectors){
+	unsigned int dim = Matrix.size();
+	double *Mat_p = new double[dim*dim];
+	for(unsigned int i=0;i<dim;i++){
+		for(unsigned int j=0;j<dim;j++) Mat_p[i*dim+j] = Matrix[i][j];
+	}
+	EigenDecomposition(Mat_p,dim,EigenValues,EigenVectors);
+}
+
+	
 void MathTools::EigenDecomposition(double *Matrix, unsigned int dim, double *EigenValues, double *EigenVectors){
 	const unsigned int max_iterations = 1000;
 	const double tolerance = 1e-10;

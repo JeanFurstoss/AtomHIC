@@ -102,12 +102,21 @@ void GaussianMixtureModel::fitOptimalGMM(unsigned int &_nbClust_min, unsigned in
 			TrainModel(k,f);
 			cout << "Training done !" << endl;
 			SaveVariables(current_save_index,f);
-			if( saved_bic[current_save_index*nbFilter+f] > saved_bic[(current_save_index-1)*nbFilter+f] ){
-			       cout << "We find a minimum in BIC, we then stop the computation and consider that the optimal GMM is for a numer of cluster = " << k-1 << endl;
-			       OptModelFound = true;
-			       unsigned int opt = current_save_index-1;
-			       SetOptimalModel(opt,f);
-			       break;
+			if( current_save_index >= nb_bic_increase ){
+				OptModelFound = true;
+				for(unsigned int b=0;b<nb_bic_increase;b++){
+					if( saved_bic[(current_save_index-b)*nbFilter+f] < saved_bic[(current_save_index-nb_bic_increase)*nbFilter+f] ){
+						OptModelFound = false;
+						break;
+					}
+				}
+				if( OptModelFound ){
+				       cout << "We find a minimum in BIC, we then stop the computation and consider that the optimal GMM is for a numer of cluster = " << k-nb_bic_increase << endl;
+				       OptModelFound = true;
+				       unsigned int opt = current_save_index-nb_bic_increase;
+				       SetOptimalModel(opt,f);
+				       break;
+				}
 			}
 		}
 		if( !OptModelFound ){
@@ -118,9 +127,33 @@ void GaussianMixtureModel::fitOptimalGMM(unsigned int &_nbClust_min, unsigned in
 			unsigned int opt;
 			if( diff_end < diff_beg*fac_elbow ){
 				cout << "The BIC vs number of cluster curve does not really present an elbow" << endl;
-				cout << "We then selected N = number_of_cluster_max" << endl;
+				if( after_elbow_choice == "Max" ){
+					cout << "We then selected N = number_of_cluster_max according to /data/FixedParameters/FixedParameters.dat" << endl;
+					opt = nbRun-1;
+				}else if( after_elbow_choice == "Min" ){
+					cout << "We then selected N = number_of_cluster_min according to /data/FixedParameters/FixedParameters.dat" << endl;
+					opt = 0.;
+				}else{
+					unsigned int nbclust_to_choose;
+					istringstream iss_N(after_elbow_choice);
+					iss_N >> nbclust_to_choose;
+					if( nbclust_to_choose < _nbClust_min ){
+						cout << "The provided number of cluster by GMM_NO_BIC_MIN_NO_ELBOW_CHOICE in /data/FixedParameters/FixedParameters.dat is lower than nbClust_min, we then selected N = nbClust_max" << endl;
+						opt = nbRun-1;
+					}else if( nbclust_to_choose > _nbClust_max ){
+						cout << "The provided number of cluster by GMM_NO_BIC_MIN_NO_ELBOW_CHOICE in /data/FixedParameters/FixedParameters.dat is higher than nbClust_max, we then selected N = nbClust_max" << endl;
+						opt = nbRun-1;
+					}else{
+						cout << "We then selected N = " << nbclust_to_choose << " according to /data/FixedParameters/FixedParameters.dat" << endl;
+						for(unsigned int nsaved=0;nsaved<nbRun;nsaved++){
+							if( saved_nbClust[nsaved*nbFilter+f] == nbclust_to_choose ){
+								opt = nsaved;
+								break;
+							}
+						}
+					}
+				}
 				cout << "Consider increasing number_of_cluster_max for GMM this training" << endl;
-				opt = nbRun-1;
 			}else{
 				unsigned int opt_N = round( ( saved_bic[(nbRun-1)*nbFilter+f] - saved_bic[f] + ( (double) saved_nbClust[f] * diff_beg ) - ( (double) saved_nbClust[(nbRun-1)*nbFilter+f] * diff_end ) ) / ( diff_beg - diff_end ) );
 				if( opt_N < 1 ) opt_N = 1;
@@ -505,7 +538,6 @@ void GaussianMixtureModel::Classify(){
 	}
 	
 	for(unsigned int f=0;f<nbFilter;f++){
-		cout << "NBCLUST " << nbClust[f] << endl;
 		long double *ClusterProb = new long double[nbClust[f]];
 		for(unsigned int j=0;j<nbDat[f];j++){
 			double sum = 0.;
@@ -902,7 +934,7 @@ void GaussianMixtureModel::readFixedParams(){
 	string backslash="/";
 	string filename=fp+backslash+FixedParam_Filename;
 	ifstream file(filename, ios::in);
-	size_t pos_nbCMax, pos_tol, pos_maxIter, pos_elfac;
+	size_t pos_nbCMax, pos_tol, pos_maxIter, pos_elfac, pos_nb_bic_inc, pos_after_el;
 	string buffer_s, line;
 	unsigned int ReadOk(0);
 	if(file){
@@ -932,6 +964,16 @@ void GaussianMixtureModel::readFixedParams(){
 				text >> buffer_s >> fac_elbow;
 				ReadOk++;
 			}
+			pos_nb_bic_inc=line.find("GMM_NB_BIC_INCREASE_FOR_MIN");
+			if(pos_nb_bic_inc!=string::npos){
+				istringstream text(line);
+				text >> buffer_s >> nb_bic_increase;
+			}
+			pos_after_el=line.find("GMM_NO_BIC_MIN_NO_ELBOW_CHOICE");
+			if(pos_after_el!=string::npos){
+				istringstream text(line);
+				text >> buffer_s >> after_elbow_choice;
+			}
 		}
 	}else{
 		cerr << "Can't read /data/FixedParameters/Fixed_Parameters.dat file !" << endl;
@@ -945,7 +987,7 @@ void GaussianMixtureModel::readFixedParams(){
 }
 
 void GaussianMixtureModel::ReadProperties(vector<string> Properties){
-	size_t pos_nbCMax, pos_tol, pos_maxIter, pos_elfac;
+	size_t pos_nbCMax, pos_tol, pos_maxIter, pos_elfac, pos_nb_bic_inc, pos_after_el;
 	string buffer_s;
 	for(unsigned int i=0;i<Properties.size();i++){
 		pos_nbCMax=Properties[i].find("GMM_NB_MAX_CLUSTER");
@@ -968,12 +1010,38 @@ void GaussianMixtureModel::ReadProperties(vector<string> Properties){
 			istringstream text(Properties[i]);
 			text >> buffer_s >> fac_elbow;
 		}
+		pos_nb_bic_inc=Properties[i].find("GMM_NB_BIC_INCREASE_FOR_MIN");
+		if(pos_nb_bic_inc!=string::npos){
+			istringstream text(Properties[i]);
+			text >> buffer_s >> nb_bic_increase;
+		}
+		pos_after_el=Properties[i].find("GMM_NO_BIC_MIN_NO_ELBOW_CHOICE");
+		if(pos_after_el!=string::npos){
+			istringstream text(Properties[i]);
+			text >> buffer_s >> after_elbow_choice;
+		}
 	}
 }
 
 void GaussianMixtureModel::SetKMeansProperties(vector<string> Properties){
 	KMeansProperties = Properties;
 	IsKMeansProperties = true;
+}
+
+vector<string> GaussianMixtureModel::getAvailableDatabases(){
+	string path2base = getMLDatabasePath()+name+"/";
+	vector<string> baseAlreadySaved;
+	string buffer_s;
+	struct dirent *diread;
+	const char *env = path2base.c_str();
+	DIR *dir;
+	if( (dir = opendir(env) ) != nullptr ){
+		while( (diread = readdir(dir)) != nullptr ){
+			buffer_s = diread->d_name;
+			if( buffer_s != "." && buffer_s != ".." ) baseAlreadySaved.push_back(buffer_s);
+		}
+	}
+	return baseAlreadySaved;
 }
 
 GaussianMixtureModel::~GaussianMixtureModel(){

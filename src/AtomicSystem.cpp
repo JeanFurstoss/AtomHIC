@@ -2013,16 +2013,17 @@ void AtomicSystem::read_params_atsys(){
 	if(file){
 		while(file){
 			getline(file,line);
-			pos_rcut=line.find("RCUT_NEIGHBOURS ");
-			if(pos_rcut!=string::npos){
-				istringstream text(line);
-				text >> buffer_s >> this->r_cut_n;
-			}
-			pos_lsph=line.find("L_SPH_ST ");
-			if(pos_lsph!=string::npos){
-				istringstream text(line);
-				text >> buffer_s >> this->l_sph_st;
-			}
+			// TODO no need for the moment, maybe add other things in FixedParameters.dat
+			//pos_rcut=line.find("RCUT_NEIGHBOURS ");
+			//if(pos_rcut!=string::npos){
+			//	istringstream text(line);
+			//	text >> buffer_s >> this->r_cut_n;
+			//}
+			//pos_lsph=line.find("L_SPH_ST ");
+			//if(pos_lsph!=string::npos){
+			//	istringstream text(line);
+			//	text >> buffer_s >> this->l_sph_st;
+			//}
 		}
 	}else{
 		cerr << "Can't read /data/FixedParameters/Fixed_Parameters.dat file !" << endl;
