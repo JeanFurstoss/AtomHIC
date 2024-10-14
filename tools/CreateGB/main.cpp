@@ -39,8 +39,9 @@ int main(int argc, char *argv[])
 	iss_lp >> l_p;
 	istringstream iss_cn(argv[8]);
 	iss_cn >> crystalName;
-	istringstream iss_cn(argv[9]);
-	iss_cn >> rat;
+	istringstream iss_rat(argv[9]);
+	iss_rat >> rat;
+	bool rat_b;
 	if( rat = 0 ) rat_b = false;
 	else rat_b = true;
 	Bicrystal MyGB(crystalName,h_a,k_a,l_a,theta,h_p,k_p,l_p,rat_b);
