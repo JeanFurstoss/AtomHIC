@@ -111,6 +111,8 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
     	My1 = final_ybox / (yl1*dupY1);
     	Mx2 = final_xbox / (xl2*dupX2);
     	My2 = final_ybox / (yl2*dupY2);
+	cout << "Duplicates : " << dupX1 << " " << dupY1 << " " << dupX2 << " " << dupY2 << endl;
+	cout << "Misfits : " << Mx1 << " " << My1 << " " << Mx2 << " " << My2 << endl;
 	// search if the facets can be putted in the y length
 	double dup_fac_y = final_ybox / ( n1*Dir1_G1[1] + n2*Dir2_G1[1] );
 	if( dup_fac_y < 1. ){
@@ -177,7 +179,7 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	double fullFaceLength_2 = My2*(n1*Dir1_G2[1]+n2*Dir2_G2[1]);
 	double slope1_2 = Dir1_G2[2]/(My2*Dir1_G2[1]);
 	double slope2_2 = Dir2_G2[2]/(My2*Dir2_G2[1]);
-	cout << fullFaceLength_1 << " " << fullFaceLength_2 << " " << slope1_1 << " " << slope1_2 << " " << slope2_1 << " " << slope2_2 << endl;
+	//cout << fullFaceLength_1 << " " << fullFaceLength_2 << " " << slope1_1 << " " << slope1_2 << " " << slope2_1 << " " << slope2_2 << endl;
 	double Origin;
 	unsigned int trueNbAt1 = 0;
 	unsigned int trueNbAt2 = 0;
@@ -464,9 +466,7 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	unsigned int MaxDup = 50;
 	bool FullGrains = true; 
 	this->MT = new MathTools;
-	cout << "constructing crystals, " ;
 	setOrientedCrystals(crystalName, rationalize);
-	cout << "done" << endl;
 	// search the number of linear combination for the two system to have the same x y length
 	this->xl1 = this->_MyCrystal->getOrientedSystem()->getH1()[0];
 	this->xl2 = this->_MyCrystal2->getOrientedSystem()->getH1()[0];
@@ -1353,41 +1353,41 @@ void Bicrystal::setOrientedCrystals(const string& crystalName, bool rationalize)
 	
 	searchCSL(rot_ax,this->theta,CSL_vec,0);
 
-	cout << "constructing grains" << endl;
-	cout << "first" << endl;
+	cout << "Constructing grains" << endl;
 	this->_MyCrystal->ConstructOrthogonalCell();
-	this->_MyCrystal->getOrientedSystem()->print_lmp("Crystal1.lmp");
-	cout << "second" << endl;
+	cout << "First grain ok" << endl;
+	//this->_MyCrystal->getOrientedSystem()->print_lmp("Crystal1.lmp");
 	this->_MyCrystal2->ConstructOrthogonalCell();
+	cout << "Second grain ok" << endl;
 	double sp(0.),n1(0.),n2(0.);
 	for(unsigned int i=0;i<3;i++){
 		sp += this->_MyCrystal->getA1()[i]*this->_MyCrystal2->getA1()[i];
 		n1 += pow(this->_MyCrystal->getA1()[i],2.);
 		n2 += pow(this->_MyCrystal2->getA1()[i],2.);
 	}
-	cout << "True misorientation angle a1 : " << acos(sp/(sqrt(n1)*sqrt(n2)))*180/M_PI << endl;
-	sp = 0.;
-	n1 = 0.;
-	n2 = 0.;
-	for(unsigned int i=0;i<3;i++){
-		sp -= this->_MyCrystal->getA2()[i]*this->_MyCrystal2->getA2()[i];
-		n1 += pow(this->_MyCrystal->getA2()[i],2.);
-		n2 += pow(this->_MyCrystal2->getA2()[i],2.);
-	}
-	cout << "True misorientation angle a2 : " << acos(sp/(sqrt(n1)*sqrt(n2)))*180/M_PI << endl;
-	sp = 0.;
-	n1 = 0.;
-	n2 = 0.;
-	for(unsigned int i=0;i<3;i++){
-		sp += this->_MyCrystal->getA3()[i]*this->_MyCrystal2->getA3()[i];
-		n1 += pow(this->_MyCrystal->getA3()[i],2.);
-		n2 += pow(this->_MyCrystal2->getA3()[i],2.);
-	}
-	cout << "True misorientation angle a3 : " << acos(sp/(sqrt(n1)*sqrt(n2)))*180/M_PI << endl;
-	for(unsigned int i=0;i<3;i++) cout << this->_MyCrystal->getA2()[i] << " ";
-	cout << endl;
-	for(unsigned int i=0;i<3;i++) cout << this->_MyCrystal2->getA2()[i] << " ";
-	cout << endl;
+	//cout << "True misorientation angle a1 : " << acos(sp/(sqrt(n1)*sqrt(n2)))*180/M_PI << endl;
+	//sp = 0.;
+	//n1 = 0.;
+	//n2 = 0.;
+	//for(unsigned int i=0;i<3;i++){
+	//	sp -= this->_MyCrystal->getA2()[i]*this->_MyCrystal2->getA2()[i];
+	//	n1 += pow(this->_MyCrystal->getA2()[i],2.);
+	//	n2 += pow(this->_MyCrystal2->getA2()[i],2.);
+	//}
+	//cout << "True misorientation angle a2 : " << acos(sp/(sqrt(n1)*sqrt(n2)))*180/M_PI << endl;
+	//sp = 0.;
+	//n1 = 0.;
+	//n2 = 0.;
+	//for(unsigned int i=0;i<3;i++){
+	//	sp += this->_MyCrystal->getA3()[i]*this->_MyCrystal2->getA3()[i];
+	//	n1 += pow(this->_MyCrystal->getA3()[i],2.);
+	//	n2 += pow(this->_MyCrystal2->getA3()[i],2.);
+	//}
+	//cout << "True misorientation angle a3 : " << acos(sp/(sqrt(n1)*sqrt(n2)))*180/M_PI << endl;
+	//for(unsigned int i=0;i<3;i++) cout << this->_MyCrystal->getA2()[i] << " ";
+	//cout << endl;
+	//for(unsigned int i=0;i<3;i++) cout << this->_MyCrystal2->getA2()[i] << " ";
+	//cout << endl;
 	this->IsCrystal2 = true;
 	this->IsRotMatDefine = true;
 	delete[] rot_ax;
@@ -1467,7 +1467,6 @@ void Bicrystal::searchGBPos(){
 		unsigned int indMaxDiso = 0;
 		double MeanDiso = 0.;
 		double FracLength = 0.01;
-		cout << IsVacuum << endl;
 		for(unsigned int i=0;i<this->density_nbPts[ind_DisoDens];i++){
 			buffer = this->density_prof[ind_DisoDens][i*2+1];
 			if( this->IsVacuum && !this->IsCentered && buffer > this->VacuumHi ) buffer -= this->Ldir;

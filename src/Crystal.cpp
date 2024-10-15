@@ -119,7 +119,6 @@ string Crystal::getDatabasePath(string crystalName){
 void Crystal::RotateCrystal(const int& h_p, const int& k_p, const int& l_p){
 	int arr[3] = {abs(h_p),abs(k_p),abs(l_p)};
 	int maxhkl = MT->max(arr,3)*15;
-	cout << maxhkl << endl;
 	double tolScalarProd = 1e-2;
 	vector<double> buffer_vector_d;
 	vector<int> buffer_vector_i;
@@ -293,7 +292,6 @@ void Crystal::ConstructOrthogonalCell(){
 	vector<int> zh_list;
 	vector<double> buffer_vector_d_x, buffer_vector_d_y, buffer_vector_d_z;
 	double absX, absY, absZ;
-	cout << TolOrthoBox << " " << TolOrthoBoxZ << endl;
 	for(int i=-CLsearch;i<CLsearch+1;i++){
 		for(int j=-CLsearch;j<CLsearch+1;j++){
 			for(int k=-CLsearch;k<CLsearch+1;k++){

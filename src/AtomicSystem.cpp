@@ -104,7 +104,6 @@ AtomicSystem::AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double z
 			}
 			if( break_comp) break;
 		}
-		cout << count << endl;
 	}else{
 		// crystals for which some atoms should not be separeted
 		// create array of already stored atoms
@@ -155,9 +154,6 @@ AtomicSystem::AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double z
 								count += 1;
 								// store all its neighboring atoms which should not be separeted from him
 								for(unsigned int s=0;s<_MyCrystal->getNotSepList_size(n);s++){
-									if( count == 635 ){
-										cout << "stop" << endl;
-									}
 									id_s = _MyCrystal->getNotSepList(n,s*4);
 									xpos_n = _MyCrystal->getMotif()[id_s].pos.x + (i+_MyCrystal->getNotSepList(n,s*4+1))*_MyCrystal->getA1()[0] + (j+_MyCrystal->getNotSepList(n,s*4+2))*_MyCrystal->getA2()[0] + (k+_MyCrystal->getNotSepList(n,s*4+3))*_MyCrystal->getA3()[0];
 									ypos_n = _MyCrystal->getMotif()[id_s].pos.y + (i+_MyCrystal->getNotSepList(n,s*4+1))*_MyCrystal->getA1()[1] + (j+_MyCrystal->getNotSepList(n,s*4+2))*_MyCrystal->getA2()[1] + (k+_MyCrystal->getNotSepList(n,s*4+3))*_MyCrystal->getA3()[1];
@@ -1065,7 +1061,6 @@ unsigned int AtomicSystem::searchNeighbours_restricted(const double& rc, const v
 	} // TODO maybe issue here if we delete the var we may need to reclare them ?
 	unsigned long int SizeNeigh = ((unsigned long int) (this->nbMaxN) + 1)*((unsigned long int) nbToSearch);
 	unsigned long int SizeCLNeigh = ((unsigned long int) (this->nbMaxN))*((unsigned long int) nbToSearch)*((unsigned long int) 3);
-	cout << SizeNeigh << " " << SizeCLNeigh << endl;
 	this->Neighbours = new unsigned int[SizeNeigh];
 	this->CLNeighbours = new int[SizeCLNeigh]; // contain the periodic condition (Nclx, Ncly, Nclz) applied for atom to be a neighbour
 	// Perform neighbour research
