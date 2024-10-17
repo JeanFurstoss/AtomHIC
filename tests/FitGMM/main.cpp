@@ -13,10 +13,11 @@ int main(int argc, char *argv[])
 	Descriptors MyDescriptors("ForTest");
 	GaussianMixtureModel GMM;
 	vector<string> Properties;
-	Properties.push_back("GMM_TOL_LKH_EM 1e-5");
-	Properties.push_back("GMM_MAX_ITER_EM 1500");
+	Properties.push_back("GMM_TOL_LKH_EM 1e-3");
+	Properties.push_back("GMM_MAX_ITER_EM 100");
 	Properties.push_back("GMM_NB_MAX_CLUSTER 50");
 	Properties.push_back("GMM_ELBOW_FACTOR 0.1");
+	Properties.push_back("GMM_NB_INIT 1");
 	GMM.ReadProperties(Properties);
 	vector<string> KMProp;
 	KMProp.push_back("KMEANS_NB_MAX_CLUSTER 100");

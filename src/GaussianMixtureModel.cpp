@@ -189,31 +189,67 @@ void GaussianMixtureModel::TrainModel(unsigned int &_nbClust, unsigned int &filt
 		cerr << "The number of cluster for GMM training is higher than the maximum number of cluster (see /data/FixedParameters/FixedParameters.dat to modify), aborting" << endl;
 		exit(EXIT_FAILURE);
 	}
-	
+
+	if( !TrainSavedVariablesInitialized ){
+		train_saved_bic = new double[nbInit*nbFilter];
+		train_saved_weights = new double[nbMaxClusters*nbInit*nbFilter];
+		train_saved_mu = new double[dim*nbMaxClusters*nbInit*nbFilter];
+		train_saved_V = new long double[dim2*nbMaxClusters*nbInit*nbFilter];
+		train_saved_V_inv = new long double[dim2*nbMaxClusters*nbInit*nbFilter];
+		train_saved_det_V = new long double[nbMaxClusters*nbInit*nbFilter];
+		TrainSavedVariablesInitialized = true;
+	}
 	nbClust[filter_value] = _nbClust;
-	
-	InitFromKMeans(nbClust[filter_value],filter_value);
-	cout << "KMeans initialization done" << endl;
-	UpdateParams(filter_value);
-	ComputeLogLikelihood(filter_value);
-	
-	long double Lkh_old = LogLikelihood[filter_value];
-	double eps;
-	unsigned int iter = 0;
-	do{
-		EM(filter_value);
+	for(unsigned int i=0;i<nbInit;i++){	
+		//InitFromKMeans(nbClust[filter_value],filter_value);
+		InitFromKMeansPP(nbClust[filter_value],filter_value);
+		//RandomInit(nbClust[filter_value],filter_value);
 		UpdateParams(filter_value);
 		ComputeLogLikelihood(filter_value);
-		eps = LogLikelihood[filter_value] - Lkh_old;
-		Lkh_old = LogLikelihood[filter_value];
-		iter++;
-	}while( eps > tol_Lkh_EM && iter < MaxIter_EM );
+		long double Lkh_old = LogLikelihood[filter_value];
+		double eps;
+		unsigned int iter = 0;
+		do{
+			EM(filter_value);
+			UpdateParams(filter_value);
+			ComputeLogLikelihood(filter_value);
+			eps = LogLikelihood[filter_value] - Lkh_old;
+			Lkh_old = LogLikelihood[filter_value];
+			iter++;
+		}while( eps > tol_Lkh_EM && iter < MaxIter_EM );
+		
+		ComputeBIC(filter_value);
+		SaveTrainVariables(i,filter_value);
+		if( eps > tol_Lkh_EM ){
+			cout << "The EM algorythm does not converge until tolerance for a number of cluster = " << nbClust[filter_value] << ", final residual = " << eps << endl;
+			cout << "Maybe increase number of iteration or the tolerance for EM in /data/FixedParameters/FixedParameters.dat" << endl;
+		}
+	}
+	// at the end we keep the one with the lowest BIC
+	cout << "Saved BIC:" << endl;
+	for(unsigned int i=0;i<nbInit;i++) cout << train_saved_bic[i*nbFilter+filter_value] << " ";
+	cout << endl;
+	unsigned int index_opt = MT->min_p_ind(train_saved_bic,nbInit,nbFilter,filter_value);
+	cout << "MIN = " << train_saved_bic[index_opt*nbFilter+filter_value] << endl;
+	SetOptimalTrainModel(index_opt,filter_value);
+}
 
-	ComputeBIC(filter_value);
-
-	if( eps > tol_Lkh_EM ){
-		cout << "The EM algorythm does not converge until tolerance for a number of cluster = " << nbClust[filter_value] << ", final residual = " << eps << endl;
-		cout << "Maybe increase number of iteration or the tolerance for EM in /data/FixedParameters/FixedParameters.dat" << endl;
+void GaussianMixtureModel::SetOptimalTrainModel(unsigned int &opt_index, unsigned int &filter_value){
+	BIC[filter_value] = train_saved_bic[opt_index*nbFilter+filter_value];
+	for(unsigned int k=0;k<nbClust[filter_value];k++){
+		unsigned int ind1 = k*nbFilter+filter_value;
+		unsigned int ind2 = opt_index*nbMaxClusters*nbFilter+k*nbFilter+filter_value;
+		weights[ind1] = train_saved_weights[ind2];
+		det_V[ind1] = train_saved_det_V[ind2];
+		for(unsigned int d1=0;d1<dim;d1++){
+			mu[k*dim*nbFilter+d1*nbFilter+filter_value] = train_saved_mu[opt_index*nbMaxClusters*dim*nbFilter+k*dim*nbFilter+d1*nbFilter+filter_value];
+			for(unsigned int d2=0;d2<dim;d2++){
+				unsigned int indb1 = k*dim2*nbFilter+d1*dim*nbFilter+d2*nbFilter+filter_value;
+				unsigned int indb2 = opt_index*nbMaxClusters*dim2*nbFilter+k*dim2*nbFilter+d1*dim*nbFilter+d2*nbFilter+filter_value;
+				V[indb1] = train_saved_V[indb2];
+				V_inv[indb1] = train_saved_V_inv[indb2];
+			}
+		}
 	}
 }
 
@@ -232,6 +268,30 @@ void GaussianMixtureModel::SetOptimalModel(unsigned int &opt_index, unsigned int
 				unsigned int indb2 = opt_index*nbMaxClusters*dim2*nbFilter+k*dim2*nbFilter+d1*dim*nbFilter+d2*nbFilter+filter_value;
 				V[indb1] = saved_V[indb2];
 				V_inv[indb1] = saved_V_inv[indb2];
+			}
+		}
+	}
+}
+
+void GaussianMixtureModel::SaveTrainVariables(unsigned int &current, unsigned int &filter_value){
+	if( !TrainSavedVariablesInitialized ){
+		cerr << "Saved variables for GMM optimization have not been initialized, something went wrong, aborting" << endl;
+		exit(EXIT_FAILURE);
+	}
+	if( BIC[filter_value] == BIC[filter_value] ) train_saved_bic[current*nbFilter+filter_value] = BIC[filter_value];
+	else train_saved_bic[current*nbFilter+filter_value] = 0.;
+	for(unsigned int k=0;k<nbClust[filter_value];k++){
+		unsigned int ind1 = current*nbMaxClusters*nbFilter+k*nbFilter+filter_value;
+		unsigned int ind2 = k*nbFilter+filter_value;
+		train_saved_weights[ind1] = weights[ind2];
+		train_saved_det_V[ind1] = det_V[ind2];
+		for(unsigned int d1=0;d1<dim;d1++){
+			train_saved_mu[current*nbMaxClusters*dim*nbFilter+k*dim*nbFilter+d1*nbFilter+filter_value] = mu[k*dim*nbFilter+d1*nbFilter+filter_value];
+			for(unsigned int d2=0;d2<dim;d2++){
+				unsigned int indb1 = current*nbMaxClusters*dim2*nbFilter+k*dim2*nbFilter+d1*dim*nbFilter+d2*nbFilter+filter_value;
+				unsigned int indb2 = k*dim2*nbFilter+d1*dim*nbFilter+d2*nbFilter+filter_value;
+				train_saved_V[indb1] = V[indb2];
+				train_saved_V_inv[indb1] = V_inv[indb2];
 			}
 		}
 	}
@@ -260,6 +320,90 @@ void GaussianMixtureModel::SaveVariables(unsigned int &current, unsigned int &fi
 			}
 		}
 	}
+}
+
+void GaussianMixtureModel::RandomInit(unsigned int &_nbClust, unsigned int &filter_value){
+	// Initialize randomly by picking random points in the dataset and affecting the same variance to all cluster given by the variance of the whole dataset
+	vector<unsigned int> already_stored;
+	bool store;
+	unsigned int rand_index;
+	if( _nbClust > nbDat[filter_value] ){
+		cerr << "The number of cluster s higher than the number of data, aborting" << endl;
+		exit(EXIT_FAILURE);
+	}
+	for(unsigned int k=0;k<_nbClust;k++){
+		weights[k*nbFilter+filter_value] = 1./_nbClust;
+		store = false;
+		while( !store ){
+			srand(time(0));
+			rand_index = rand() % ( nbDat[filter_value] + 1 );
+			store = true;
+			for(unsigned int i=0;i<already_stored.size();i++){
+				if( already_stored[i] == rand_index ){
+				       store = false;
+			      		break;	       
+				}
+			}
+		}
+		already_stored.push_back(rand_index);
+		for(unsigned int d=0;d<dim;d++) mu[k*dim*nbFilter+d*nbFilter+filter_value] = _MyDescriptors->getDescriptors()[_MyDescriptors->getFilterIndex(filter_value*nbDatMax+rand_index)*dim+d];
+	}
+	double *mean = new double[dim];
+	for(unsigned int d=0;d<dim;d++) mean[d] = 0.;
+	for(unsigned int i=0;i<nbDat[filter_value];i++){	
+		for(unsigned int d=0;d<dim;d++) mean[d] += _MyDescriptors->getDescriptors()[_MyDescriptors->getFilterIndex(filter_value*nbDatMax+i)*dim+d];
+	}
+	for(unsigned int d=0;d<dim;d++) mean[d] /= nbDat[filter_value];
+	for(unsigned int d1=0;d1<dim;d1++){
+		for(unsigned int d2=d1;d2<dim;d2++){
+			unsigned int ind = 0*dim2*nbFilter+d1*dim*nbFilter+d2*nbFilter+filter_value;
+			V[ind] = 0.;
+			for(unsigned int i=0;i<nbDat[filter_value];i++) V[ind] += ( _MyDescriptors->getDescriptors()[_MyDescriptors->getFilterIndex(filter_value*nbDatMax+i)*dim+d1] - mean[d1] ) * ( _MyDescriptors->getDescriptors()[_MyDescriptors->getFilterIndex(filter_value*nbDatMax+i)*dim+d2] - mean[d2] );
+			V[ind] /= nbDat[filter_value];
+		}
+		for(unsigned int d2=d1+1;d2<dim;d2++) V[0*dim2*nbFilter+d2*dim*nbFilter+d1*nbFilter+filter_value] = V[0*dim2*nbFilter+d1*dim*nbFilter+d2*nbFilter+filter_value];
+	}
+	MT->invMat_LU(V,V_inv,dim,0,nbFilter,filter_value,det_V[filter_value]);
+	for(unsigned int k=1;k<_nbClust;k++){
+		det_V[k*nbFilter+filter_value] = det_V[filter_value];
+		for(unsigned int d1=0;d1<dim;d1++){
+			for(unsigned int d2=0;d2<dim;d2++){
+				unsigned int ind = k*dim2*nbFilter+d1*dim*nbFilter+d2*nbFilter+filter_value;
+				unsigned int ind0 = 0*dim2*nbFilter+d1*dim*nbFilter+d2*nbFilter+filter_value;
+				V[ind] = V[ind0];
+				V_inv[ind] = V_inv[ind0];
+			}
+		}
+	}
+	delete[] mean;
+}
+
+
+void GaussianMixtureModel::InitFromKMeansPP(unsigned int &_nbClust, unsigned int &filter_value){
+	if( !IsKMeans ){
+		MyKM = new KMeans();
+		if( IsKMeansProperties ) MyKM->ReadProperties(KMeansProperties);
+		MyKM->setDescriptors(_MyDescriptors);
+	}
+
+	MyKM->KMeansPPInitialization(nbClust[filter_value],filter_value);
+	MyKM->AffectData2Cluster(filter_value);
+	MyKM->ComputeFullVariances(filter_value);
+	for(unsigned int k=0;k<nbClust[filter_value];k++){
+		unsigned int ind1 = k*nbFilter+filter_value;
+		weights[ind1] = (double) MyKM->getNbDat2Cluster()[ind1] / (double) nbDat[filter_value];
+		det_V[ind1] = MyKM->getDet_V()[ind1];
+		for(unsigned int d1=0;d1<dim;d1++){
+			unsigned int ind2 = k*dim*nbFilter+d1*nbFilter+filter_value;
+			mu[ind2] = MyKM->getCentroids()[ind2];
+			for(unsigned int d2=0;d2<dim;d2++){
+				unsigned int ind3 = k*dim2*nbFilter+d1*dim*nbFilter+d2*nbFilter+filter_value;
+				V[ind3] = MyKM->getV()[ind3];
+				V_inv[ind3] = MyKM->getV_inv()[ind3];
+			}
+		}
+	}
+
 }
 
 void GaussianMixtureModel::InitFromKMeans(unsigned int &_nbClust, unsigned int &filter_value){
@@ -934,7 +1078,7 @@ void GaussianMixtureModel::readFixedParams(){
 	string backslash="/";
 	string filename=fp+backslash+FixedParam_Filename;
 	ifstream file(filename, ios::in);
-	size_t pos_nbCMax, pos_tol, pos_maxIter, pos_elfac, pos_nb_bic_inc, pos_after_el;
+	size_t pos_nbCMax, pos_tol, pos_maxIter, pos_elfac, pos_nb_bic_inc, pos_after_el, pos_nbInit;
 	string buffer_s, line;
 	unsigned int ReadOk(0);
 	if(file){
@@ -974,6 +1118,11 @@ void GaussianMixtureModel::readFixedParams(){
 				istringstream text(line);
 				text >> buffer_s >> after_elbow_choice;
 			}
+			pos_nbInit=line.find("GMM_NB_INIT");
+			if(pos_nbInit!=string::npos){
+				istringstream text(line);
+				text >> buffer_s >> nbInit;
+			}
 		}
 	}else{
 		cerr << "Can't read /data/FixedParameters/Fixed_Parameters.dat file !" << endl;
@@ -987,7 +1136,7 @@ void GaussianMixtureModel::readFixedParams(){
 }
 
 void GaussianMixtureModel::ReadProperties(vector<string> Properties){
-	size_t pos_nbCMax, pos_tol, pos_maxIter, pos_elfac, pos_nb_bic_inc, pos_after_el;
+	size_t pos_nbCMax, pos_tol, pos_maxIter, pos_elfac, pos_nb_bic_inc, pos_after_el, pos_nbInit;
 	string buffer_s;
 	for(unsigned int i=0;i<Properties.size();i++){
 		pos_nbCMax=Properties[i].find("GMM_NB_MAX_CLUSTER");
@@ -1020,6 +1169,12 @@ void GaussianMixtureModel::ReadProperties(vector<string> Properties){
 			istringstream text(Properties[i]);
 			text >> buffer_s >> after_elbow_choice;
 		}
+		pos_nbInit=Properties[i].find("GMM_NB_INIT");
+		if(pos_nbInit!=string::npos){
+			istringstream text(Properties[i]);
+			text >> buffer_s >> nbInit;
+		}
+
 	}
 }
 
@@ -1073,6 +1228,15 @@ GaussianMixtureModel::~GaussianMixtureModel(){
 		delete[] saved_V_inv;
 		delete[] saved_det_V;
 	}
+	if( TrainSavedVariablesInitialized ){
+		delete[] train_saved_bic;
+		delete[] train_saved_weights;
+		delete[] train_saved_mu;
+		delete[] train_saved_V;
+		delete[] train_saved_V_inv;
+		delete[] train_saved_det_V;
+	}
+
 	if( IsKMeans ){
 		delete MyKM;
 	}

@@ -169,6 +169,11 @@ void KMeans::TrainModel(unsigned int &_nbClust, unsigned int &filter_value){
 		}
 	}
 	ComputeBIC(filter_value);
+	cout << "AfterKMEAN" << endl;
+	for(unsigned int k1=0;k1<nbClust[filter_value];k1++){
+		for(unsigned int d=0;d<dim;d++) cout << centroids[k1*dim*nbFilter+d*nbFilter+filter_value] << " ";
+		cout << endl;
+	}
 }
 
 void KMeans::SaveVariables(unsigned int &current, unsigned int &filter_value){
@@ -188,21 +193,48 @@ void KMeans::SaveVariables(unsigned int &current, unsigned int &filter_value){
 		}
 	}
 }
-
+// TEST
 void KMeans::ComputeFullVariances(unsigned int &filter_value){
 	for(unsigned int k=0;k<nbClust[filter_value];k++){
 		for(unsigned int d1=0;d1<dim;d1++){
-			for(unsigned int d2=d1;d2<dim;d2++){
-				unsigned int ind = k*dim2*nbFilter+d1*dim*nbFilter+d2*nbFilter+filter_value;
-				V[ind] = 0.;
-				for(unsigned int i=0;i<nbDat[filter_value];i++) V[ind] += ( _MyDescriptors->getDescriptors()[_MyDescriptors->getFilterIndex(filter_value*nbDatMax+i)*dim+d1] - centroids[k*dim*nbFilter+d1*nbFilter+filter_value] ) * ( _MyDescriptors->getDescriptors()[_MyDescriptors->getFilterIndex(filter_value*nbDatMax+i)*dim+d2] - centroids[k*dim*nbFilter+d2*nbFilter+filter_value] );
-				V[ind] /= nbDat[filter_value];
+			for(unsigned int d2=d1;d2<dim;d2++) V[k*dim2*nbFilter+d1*dim*nbFilter+d2*nbFilter+filter_value] = 0.;
+		}
+	}
+	for(unsigned int d1=0;d1<dim;d1++){
+		for(unsigned int d2=d1;d2<dim;d2++){
+			for(unsigned int i=0;i<nbDat[filter_value];i++){
+				V[Data2Cluster[i*nbFilter+filter_value]*dim2*nbFilter+d1*dim*nbFilter+d2*nbFilter+filter_value] += ( _MyDescriptors->getDescriptors()[_MyDescriptors->getFilterIndex(filter_value*nbDatMax+i)*dim+d1] - centroids[Data2Cluster[i*nbFilter+filter_value]*dim*nbFilter+d1*nbFilter+filter_value] ) * ( _MyDescriptors->getDescriptors()[_MyDescriptors->getFilterIndex(filter_value*nbDatMax+i)*dim+d2] - centroids[Data2Cluster[i*nbFilter+filter_value]*dim*nbFilter+d2*nbFilter+filter_value] );
 			}
-			for(unsigned int d2=d1+1;d2<dim;d2++) V[k*dim2*nbFilter+d2*dim*nbFilter+d1*nbFilter+filter_value] = V[k*dim2*nbFilter+d1*dim*nbFilter+d2*nbFilter+filter_value];
+		}
+	}
+	for(unsigned int k=0;k<nbClust[filter_value];k++){
+		for(unsigned int d1=0;d1<dim;d1++){
+			for(unsigned int d2=d1+1;d2<dim;d2++){
+				unsigned int ind = k*dim2*nbFilter+d1*dim*nbFilter+d2*nbFilter+filter_value;
+				if( nbDat2Cluster[k*nbFilter+filter_value] != 0 ) V[ind] /= nbDat2Cluster[k*nbFilter+filter_value];
+				else V[ind] = 0.;
+				V[k*dim2*nbFilter+d2*dim*nbFilter+d1*nbFilter+filter_value] = V[ind];
+			}
 		}
 		MT->invMat_LU(V,V_inv,dim,k,nbFilter,filter_value,det_V[k*nbFilter+filter_value]);
 	}
 }
+
+//void KMeans::ComputeFullVariances(unsigned int &filter_value){
+//	for(unsigned int k=0;k<nbClust[filter_value];k++){
+//		for(unsigned int d1=0;d1<dim;d1++){
+//			for(unsigned int d2=d1;d2<dim;d2++){
+//				unsigned int ind = k*dim2*nbFilter+d1*dim*nbFilter+d2*nbFilter+filter_value;
+//				V[ind] = 0.;
+//				// TODO here use only clustered data points to compute variance
+//				for(unsigned int i=0;i<nbDat[filter_value];i++) V[ind] += ( _MyDescriptors->getDescriptors()[_MyDescriptors->getFilterIndex(filter_value*nbDatMax+i)*dim+d1] - centroids[k*dim*nbFilter+d1*nbFilter+filter_value] ) * ( _MyDescriptors->getDescriptors()[_MyDescriptors->getFilterIndex(filter_value*nbDatMax+i)*dim+d2] - centroids[k*dim*nbFilter+d2*nbFilter+filter_value] );
+//				V[ind] /= nbDat[filter_value];
+//			}
+//			for(unsigned int d2=d1+1;d2<dim;d2++) V[k*dim2*nbFilter+d2*dim*nbFilter+d1*nbFilter+filter_value] = V[k*dim2*nbFilter+d1*dim*nbFilter+d2*nbFilter+filter_value];
+//		}
+//		MT->invMat_LU(V,V_inv,dim,k,nbFilter,filter_value,det_V[k*nbFilter+filter_value]);
+//	}
+//}
 
 double KMeans::ComputeGaussianProb(unsigned int &DescriptorIndex, unsigned int &filter_value){
         double sp = 0.;

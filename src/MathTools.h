@@ -38,6 +38,7 @@ public:
 	unsigned int max_ind(const unsigned int arr[], unsigned int size);
 	unsigned int min_p_ind(const double* arr, unsigned int &size);
 	unsigned int max_p_ind(const double* arr, unsigned int &size);
+	unsigned int min_p_ind(const double* arr, unsigned int size, unsigned int dim, unsigned int col);
 	unsigned int max_p_ind(const long double* arr, unsigned int &size);
 	// those functions return the max/min of a double vector
 	double max_vec(const std::vector<double> arr);

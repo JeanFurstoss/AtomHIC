@@ -37,6 +37,15 @@ private:
 	long double *saved_det_V;
 	bool SavedVariablesInitialized = false;
 
+	// saved variables for unique training
+	double *train_saved_bic; // [i*nbFilter+f] BIC for run i and filter f
+	double *train_saved_weights; // saved_weight[c*nbMaxClusters*nbFilter+k*nbFilter+f] = weight of cluster k for run number c with filter f
+	double *train_saved_mu; // saved_mu[c*nbMaxClusters*dim*nbFilter+k*dim*nbFilter+d*nbFilter+f]
+	long double *train_saved_V; // saved_V[c*nbMaxClusters*dim2*nbFilter+k*dim2*nbFilter+d1*dim*nbFilter+d2*nbFilter+f]
+	long double *train_saved_V_inv;
+	long double *train_saved_det_V;
+	bool TrainSavedVariablesInitialized = false;
+
 	// buffers for EM	
 	double *D_i;
 	double *C_di;
@@ -61,6 +70,7 @@ private:
 	double fac_elbow; // reduction factor for considering that its is a real elbow
 	unsigned int nb_bic_increase;
 	std::string after_elbow_choice;
+	unsigned int nbInit; // number of random initialization (we keep at the end the one with the highest likelihood)
 
 public:
 	// constructors
@@ -74,9 +84,13 @@ public:
 	void readFixedParams();
 	// specific methods of GMM
 	void fitOptimalGMM(unsigned int &_nbClust_min, unsigned int &_nbClust_max);
+	void RandomInit(unsigned int &_nbClust, unsigned int &filter_value);
 	void InitFromKMeans(unsigned int &_nbClust, unsigned int &filter_value);
+	void InitFromKMeansPP(unsigned int &_nbClust, unsigned int &filter_value);
 	void SaveVariables(unsigned int &current_nbClust, unsigned int &filter_value);
+	void SaveTrainVariables(unsigned int &current_nbClust, unsigned int &filter_value);
 	void SetOptimalModel(unsigned int &opt_index, unsigned int &filter_value);
+	void SetOptimalTrainModel(unsigned int &opt_index, unsigned int &filter_value);
 	void UpdateParams(unsigned int &filter_value);
 	void ComputeLogLikelihood(unsigned int &filter_value);
 	void ComputeBIC(unsigned int &filter_value);
