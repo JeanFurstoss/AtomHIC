@@ -13,7 +13,7 @@ using namespace std;
 int main(int argc, char *argv[])
 {
 	if( argc < 14 ){
-		cerr << "Usage: CreateGB h_RotAxis k_RotAxis l_RotAxis RotAngle h_GBPlane k_GBPlane l_GBPlane h_facet1 k_facet1 l_facet1 h_facet2 k_facet2 l_facet2 Nfacet lCrystalName" << endl;
+		cerr << "Usage: CreateGB h_RotAxis k_RotAxis l_RotAxis RotAngle(in degree) h_GBPlane k_GBPlane l_GBPlane h_facet1 k_facet1 l_facet1 h_facet2 k_facet2 l_facet2 Nfacet lCrystalName" << endl;
 		cerr << "This executable creates a faceted GB with two type of facets which have to have a null x normal plane component" << endl;
 		cerr << "warning here h_facet1(2) k_facet1(2) l_facet1(2) represent directions (and not plane normals)" << endl;
 		cerr << "Nfacet is an integer used to control the length of the facets" << endl;
@@ -31,6 +31,7 @@ int main(int argc, char *argv[])
 	iss_la >> l_a;
 	istringstream iss_theta(argv[4]);
 	iss_theta >> theta;
+	theta *= M_PI/180.;
 	istringstream iss_hp(argv[5]);
 	iss_hp >> h_p;
 	istringstream iss_kp(argv[6]);

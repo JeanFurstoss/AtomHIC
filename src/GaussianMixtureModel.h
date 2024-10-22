@@ -64,13 +64,14 @@ private:
 	std::vector<std::string> KMeansProperties;
 
 	// FixedParameters
-	unsigned int nbMaxClusters;
-	double tol_Lkh_EM;
-	unsigned int MaxIter_EM;
-	double fac_elbow; // reduction factor for considering that its is a real elbow
-	unsigned int nb_bic_increase;
-	std::string after_elbow_choice;
-	unsigned int nbInit; // number of random initialization (we keep at the end the one with the highest likelihood)
+	unsigned int nbMaxClusters = 100;
+	double tol_Lkh_EM = 1e-4;
+	unsigned int MaxIter_EM = 100;
+	double fac_elbow = 0.1; // reduction factor for considering that its is a real elbow
+	unsigned int nb_bic_increase = 1;
+	std::string after_elbow_choice = "Max";
+	unsigned int nbInit = 1; // number of random initialization (we keep at the end the one with the highest likelihood)
+	std::string InitMethod = "KMEANSPP"; // number of random initialization (we keep at the end the one with the highest likelihood)
 
 public:
 	// constructors

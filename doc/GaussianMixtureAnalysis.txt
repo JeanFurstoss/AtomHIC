@@ -14,10 +14,10 @@ A database containing the different local atomic environments (called Labels in 
 
 2. Fitting and labeling the Gaussian Mixture Model
 
-This step can be achieved using the "FitAndSaveGMM" executable, which will take as argument the name of the directory containing the labels subdirectories containing the dump files (see first step)
+This step can be achieved using the "FitAndSaveGMM" executable (or with the /tools/PythonTools/FitAndSaveGMM.py python script using the sklearn implementation of GMM tools), which will take as argument the name of the directory containing the labels subdirectories containing the dump files (see first step)
 This executable take also in argument the number of cluster minimum and maximum for the estimation of the optimal number of cluster (based on BIC minimization), it is recommanded to put the minimum number of cluster equal to the number of label in the database.
 The last argument of this executable is the name of the directory, let say MY_GMM_MODEL, in which the optimized parameters of the Gaussian Mixture Model will be stored (i.e. in /data/MachineLearningModels/GaussianMixtureModel/MY_GMM_MODEL). These parameters will then be used in the third step to make the structural analysis.
-Depending on the dimension of descriptors, number of input data and number of clusters, the fitting of the GMM can take a while. The tolerance and maximum iterations for the EM and KMeans algorithm, which are used for this fitting, can be tuned in the /data/FixedParameters/FixedParameters.dat file to save computational time but may result in poorer optimization.
+Depending on the dimension of descriptors, number of input data and number of clusters, the fitting of the GMM can take a while. The tolerance and maximum iterations for the EM and KMeans algorithm, which are used for this fitting, can be tuned in the /data/FixedParameters/FixedParameters.dat file to save computational time but may result in poorer optimization (for the python version of the GMM fitting you can refer to the documentation of GMM in sklearn to tune the parameters and save computational time).
 
 
 3. Structural analysis

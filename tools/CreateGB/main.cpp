@@ -13,7 +13,7 @@ using namespace std;
 int main(int argc, char *argv[])
 {
 	if( argc < 9 ){
-		cerr << "Usage: CreateGB h_RotAxis k_RotAxis l_RotAxis RotAngle h_GBPlane k_GBPlane l_GBPlane CrystalName(has to be defined in /data/Crystal/) Rationalize" << endl;
+		cerr << "Usage: CreateGB h_RotAxis k_RotAxis l_RotAxis RotAngle(in degree) h_GBPlane k_GBPlane l_GBPlane CrystalName(has to be defined in /data/Crystal/) Rationalize" << endl;
 		cerr << "Rationalize can be either 0 or 1" << endl;
 		cerr << "1 => rationalize the GB (i.e. search the closest CSL GB to the provided parameters, in this case the parameters for CSL calculation in /data/FixedParameters/FixedParameters.dat can be important)" << endl;
 		cerr << "0 => do not rationalize the GB, in this case the parameters for constructing crystal and bicrystal in /data/FixedParameters/FixedParameters.dat can be important" << endl;
@@ -31,6 +31,7 @@ int main(int argc, char *argv[])
 	iss_la >> l_a;
 	istringstream iss_theta(argv[4]);
 	iss_theta >> theta;
+	theta *= M_PI/180.;
 	istringstream iss_hp(argv[5]);
 	iss_hp >> h_p;
 	istringstream iss_kp(argv[6]);

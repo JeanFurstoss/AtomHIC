@@ -201,9 +201,13 @@ void GaussianMixtureModel::TrainModel(unsigned int &_nbClust, unsigned int &filt
 	}
 	nbClust[filter_value] = _nbClust;
 	for(unsigned int i=0;i<nbInit;i++){	
-		//InitFromKMeans(nbClust[filter_value],filter_value);
-		InitFromKMeansPP(nbClust[filter_value],filter_value);
-		//RandomInit(nbClust[filter_value],filter_value);
+		if( InitMethod == "KMEANS" ) InitFromKMeans(nbClust[filter_value],filter_value);
+		else if( InitMethod == "KMEANSPP" ) InitFromKMeansPP(nbClust[filter_value],filter_value);
+		else if( InitMethod == "RANDOM" ) RandomInit(nbClust[filter_value],filter_value);
+		else{
+			cerr << "The initialization method provided for GMM fitting is unknown, aborting" << endl;
+			exit(EXIT_FAILURE);
+		}
 		UpdateParams(filter_value);
 		ComputeLogLikelihood(filter_value);
 		long double Lkh_old = LogLikelihood[filter_value];
@@ -1078,7 +1082,7 @@ void GaussianMixtureModel::readFixedParams(){
 	string backslash="/";
 	string filename=fp+backslash+FixedParam_Filename;
 	ifstream file(filename, ios::in);
-	size_t pos_nbCMax, pos_tol, pos_maxIter, pos_elfac, pos_nb_bic_inc, pos_after_el, pos_nbInit;
+	size_t pos_nbCMax, pos_tol, pos_maxIter, pos_elfac, pos_nb_bic_inc, pos_after_el, pos_nbInit, pos_InitMethod;
 	string buffer_s, line;
 	unsigned int ReadOk(0);
 	if(file){
@@ -1123,6 +1127,13 @@ void GaussianMixtureModel::readFixedParams(){
 				istringstream text(line);
 				text >> buffer_s >> nbInit;
 			}
+			pos_InitMethod=line.find("GMM_INIT_METHOD");
+			if(pos_InitMethod!=string::npos){
+				istringstream text(line);
+				text >> buffer_s >> InitMethod;
+			}
+
+
 		}
 	}else{
 		cerr << "Can't read /data/FixedParameters/Fixed_Parameters.dat file !" << endl;
@@ -1136,7 +1147,7 @@ void GaussianMixtureModel::readFixedParams(){
 }
 
 void GaussianMixtureModel::ReadProperties(vector<string> Properties){
-	size_t pos_nbCMax, pos_tol, pos_maxIter, pos_elfac, pos_nb_bic_inc, pos_after_el, pos_nbInit;
+	size_t pos_nbCMax, pos_tol, pos_maxIter, pos_elfac, pos_nb_bic_inc, pos_after_el, pos_nbInit, pos_InitMethod;
 	string buffer_s;
 	for(unsigned int i=0;i<Properties.size();i++){
 		pos_nbCMax=Properties[i].find("GMM_NB_MAX_CLUSTER");
@@ -1173,6 +1184,11 @@ void GaussianMixtureModel::ReadProperties(vector<string> Properties){
 		if(pos_nbInit!=string::npos){
 			istringstream text(Properties[i]);
 			text >> buffer_s >> nbInit;
+		}
+		pos_InitMethod=Properties[i].find("GMM_INIT_METHOD");
+		if(pos_InitMethod!=string::npos){
+			istringstream text(Properties[i]);
+			text >> buffer_s >> InitMethod;
 		}
 
 	}
