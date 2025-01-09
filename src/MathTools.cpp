@@ -112,6 +112,12 @@ unsigned int MathTools::min_p_ind(const double* arr, unsigned int size, unsigned
 	return ind_min;
 }
 
+unsigned int MathTools::max_p_ind(const double* arr, unsigned int size, unsigned int dim, unsigned int col){
+	unsigned int ind_max = 0;
+	for(unsigned int i=1;i<size;i++) if( arr[i*dim+col] > arr[ind_max*dim+col] ) ind_max = i;
+	return ind_max;
+}
+
 double MathTools::max_p(const double* arr, unsigned int size){
 	double max = arr[0];
 	for(unsigned int i=0;i<size;i++) if( arr[i] > max ) max = arr[i];
@@ -1049,6 +1055,25 @@ void MathTools::EigenDecomposition(double *Matrix, unsigned int dim, double *Eig
 	delete[] current_matrix;
 	delete[] vec;
 	delete[] next_vec;
+}
+
+void MathTools::GenerateCombinations(vector<int>& combination, int dim, int currentIndex, const int minValue, const int maxValue, vector<vector<int>>& results){
+    if(currentIndex == dim){
+        results.push_back(combination);
+        return;
+    }
+
+    for(int value=minValue;value<=maxValue;++value){
+        combination[currentIndex] = value;
+        GenerateCombinations(combination, dim, currentIndex+1, minValue, maxValue, results);
+    }
+}
+
+vector<vector<int>> MathTools::GenerateNDCombinations(int dim, int minValue, int maxValue) {
+    vector<vector<int>> results;
+    vector<int> combination(dim, 0); // Initialise une combinaison avec des 0
+    GenerateCombinations(combination, dim, 0, minValue, maxValue, results);
+    return results;
 }
 
 MathTools::~MathTools(){

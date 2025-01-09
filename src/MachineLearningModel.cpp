@@ -45,6 +45,8 @@ void MachineLearningModel::setDescriptors(Descriptors *D){
 		dim = _MyDescriptors->getDim();
 		dim2 = dim*dim;
 		nbFilter = _MyDescriptors->getNbFilter();
+		FilteringType = _MyDescriptors->getFilteringType();
+		for(unsigned int f=0;f<nbFilter;f++) FilterValue.push_back(_MyDescriptors->getFilterValue(f));
 	}
 
 	if( this->IsDescriptor ){

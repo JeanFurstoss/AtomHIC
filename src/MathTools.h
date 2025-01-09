@@ -39,6 +39,7 @@ public:
 	unsigned int min_p_ind(const double* arr, unsigned int &size);
 	unsigned int max_p_ind(const double* arr, unsigned int &size);
 	unsigned int min_p_ind(const double* arr, unsigned int size, unsigned int dim, unsigned int col);
+	unsigned int max_p_ind(const double* arr, unsigned int size, unsigned int dim, unsigned int col);
 	unsigned int max_p_ind(const long double* arr, unsigned int &size);
 	// those functions return the max/min of a double vector
 	double max_vec(const std::vector<double> arr);
@@ -91,6 +92,8 @@ public:
 	std::complex<double> spherical_harmonics(const unsigned int& l, int& m, double& theta, double& phi);
 	void EigenDecomposition(double *Matrix, unsigned int dim, double *EigenValues, double *EigenVectors); // find eigenvalues and eigenvectors of Matrix and return them sorted from the highest to the lowest eigenvalue (power iterative method)
 	void EigenDecomposition(std::vector<std::vector<double>> &Matrix, double *EigenValues, double *EigenVectors); // find eigenvalues and eigenvectors of Matrix and return them sorted from the highest to the lowest eigenvalue (power iterative method)
+	void GenerateCombinations(std::vector<int>& combination, int dim, int currentIndex, const int minValue, const int maxValue, std::vector<std::vector<int>>& results);
+	std::vector<std::vector<int>> GenerateNDCombinations(int dim, int minValue, int maxValue);
 	~MathTools();
 };
 

@@ -18,20 +18,25 @@ Descriptors::Descriptors(AtomicSystem *_MySystem):_MySystem(_MySystem){
 	ConstructFilterIndexArray(_MySystem);
 }
 
-Descriptors::Descriptors(AtomicSystem *_MySystem, string& DescriptorName, string& _FilteringType):_MySystem(_MySystem){
+Descriptors::Descriptors(AtomicSystem *_MySystem, string DescriptorName, string _FilteringType):_MySystem(_MySystem){
 	FilteringType = _FilteringType;
 	MT = new MathTools();
 	nbDatTot = _MySystem->getNbAtom();
 	ConstructFilterIndexArray(_MySystem);
-	unsigned int aux_size, aux_id;
-	aux_id = _MySystem->getAuxIdAndSize(DescriptorName,aux_size);
-	if( aux_size == 0 ){
-		cerr << "The provided descriptor name cannot be found in the auxiliary properties of the atomic system, aborting" << endl;
-		exit(EXIT_FAILURE);
+	if( DescriptorName == "Position" ){
+		dim = 3;
+		ConstructDescriptorFromAtomicPosition();
+	}else{
+		unsigned int aux_size, aux_id;
+		aux_id = _MySystem->getAuxIdAndSize(DescriptorName,aux_size);
+		if( aux_size == 0 ){
+			cerr << "The provided descriptor name cannot be found in the auxiliary properties of the atomic system (it could also be the keyword \"Position\"), aborting" << endl;
+			exit(EXIT_FAILURE);
+		}
+		dim = aux_size;
+		_Descriptors = _MySystem->getAux(aux_id);
+		AreDescriptorsMine = false;
 	}
-	dim = aux_size;
-	_Descriptors = _MySystem->getAux(aux_id);
-	AreDescriptorsMine = false;
 }
 
 Descriptors::Descriptors(AtomicSystem *_MySystem, vector<string> _Properties):_MySystem(_MySystem){
@@ -612,7 +617,258 @@ Descriptors::Descriptors(const string &FilenameOrDir, const string &DescriptorNa
 		exit(EXIT_FAILURE);
 	}
 }
-	
+
+void Descriptors::ConstructDescriptorFromAtomicPosition(){
+	// TODO better thing when struct Atom has changed (i.e. not a copy)
+	_Descriptors = new double[dim*nbDatTot];
+	for(unsigned int i=0;i<nbDatTot;i++){
+		_Descriptors[i*3] = _MySystem->getAtom(i).pos.x;
+		_Descriptors[i*3+1] = _MySystem->getAtom(i).pos.y;
+		_Descriptors[i*3+2] = _MySystem->getAtom(i).pos.z;
+	}
+}
+
+void Descriptors::ComputeExtremums(){
+	min_val = new double[nbFilter*dim];
+	max_val = new double[nbFilter*dim];
+	for(unsigned int f=0;f<nbFilter;f++){
+		for(unsigned int d=0;d<dim;d++){
+			unsigned int min_ind = 0;
+			unsigned int max_ind = 0;
+			for(unsigned int i=1;i<nbDat[f];i++){
+				if( _Descriptors[FilterIndex[f*nbDatMax+i]*dim+d] > _Descriptors[FilterIndex[f*nbDatMax+max_ind]*dim+d] ) max_ind = i;
+				if( _Descriptors[FilterIndex[f*nbDatMax+i]*dim+d] < _Descriptors[FilterIndex[f*nbDatMax+min_ind]*dim+d] ) min_ind = i;
+			}
+			min_val[f*dim+d] = _Descriptors[FilterIndex[f*nbDatMax+min_ind]*dim+d];
+			max_val[f*dim+d] = _Descriptors[FilterIndex[f*nbDatMax+max_ind]*dim+d];
+		}
+	}
+	AreExtremums = true;
+}
+
+unsigned int Descriptors::getNbMaxNAndFilter(string filter_name, unsigned int &f){
+	bool already = false;
+	for(unsigned int ft=0;ft<Neigh_FilterValue.size();ft++){
+		if( filter_name == Neigh_FilterValue[ft] ){
+			already = true;
+			f = ft;
+			break;
+		}
+	}
+	if( !already ){
+		cerr << "Neighbour list has not been computed for filter \"" << filter_name << "\", aborting" << endl;
+		exit(EXIT_FAILURE);
+		return 0;
+	}
+
+	return this->nbMaxN[f];
+}
+
+bool Descriptors::getIsNeighbours(string filter_name){ 
+	bool already = false;
+	unsigned int f;
+	for(unsigned int ft=0;ft<Neigh_FilterValue.size();ft++){
+		if( filter_name == Neigh_FilterValue[ft] ){
+			already = true;
+			break;
+		}
+	}
+	return already;
+}
+
+double Descriptors::get_current_rc(std::string filter_name){
+	bool already = false;
+	unsigned int f;
+	for(unsigned int ft=0;ft<Neigh_FilterValue.size();ft++){
+		if( filter_name == Neigh_FilterValue[ft] ){
+			already = true;
+			f = ft;
+			break;
+		}
+	}
+	if( !already ) return 0.;
+	else return rc_neighbours[f];
+}
+
+void Descriptors::searchNeighbours(double rc, string FilterVal, string distFunc){
+	bool already = false;
+	unsigned int current_f;
+	for(unsigned int f=0;f<FilterValue.size();f++){
+		if( FilterValue[f] == FilterVal ){
+			already = true;
+			current_f = f;
+			break;
+		}
+	}
+	if( !already ){
+		cerr << "The provided filter value (" << FilterVal << ") does not correspond to a filter value of the descriptors, aborting" << endl;
+		exit(EXIT_FAILURE);
+	}
+	already = false;
+	for(unsigned int f=0;f<Neigh_FilterValue.size();f++){
+		if( FilterVal == Neigh_FilterValue[f] ){
+			already = true;
+			break;
+		}
+	}
+	if( already ){
+		cout << "Neighbour list has already been computed for this filter" << endl;
+		return;
+	}
+	if( distFunc != "Euclidian" ){ // TODO maybe this ceil list algo also work for other type of distances (should have a look on the maths of distances)
+		cerr << "For the moment other distance function than Euclidian are not implemented, aborting" << endl;
+		exit(EXIT_FAILURE);
+	}
+	// TODO add verification on cutoff radius
+	double rc_squared = rc*rc;
+	Neigh_FilterValue.push_back(FilterVal);
+	// search extremums for computing the ceils 
+	if( !AreExtremums ) ComputeExtremums();
+	// ceil list algo
+	unsigned int *nbCells = new unsigned int[dim];
+	double *CellSizes = new double[dim];
+	unsigned int nbCellTot = 0;
+	double length = max_val[current_f*dim]-min_val[current_f*dim];
+	double CellVolume;
+	nbCells[0] = floor(length/rc);
+	if( nbCells[0] == 0 ){
+		nbCells[0] = 1;
+		CellSizes[0] = length;
+	}else CellSizes[0] = length / (double) nbCells[0];
+	nbCellTot = nbCells[0];
+	CellVolume = CellSizes[0];
+	for(unsigned int d=1;d<dim;d++){
+		double length = max_val[current_f*dim+d]-min_val[current_f*dim+d];
+		nbCells[d] = floor(length/rc);
+		if( nbCells[d] == 0 ){
+			nbCells[d] = 1;
+			CellSizes[d] = length;
+		}else CellSizes[d] = length / (double) nbCells[d];
+		nbCellTot *= nbCells[d];
+		CellVolume *= CellSizes[d];
+	}
+	// indexes for accessing cells
+	unsigned int *CellIndexes = new unsigned int[dim];
+	CellIndexes[dim-1] = 1;
+	for(int d1=dim-2;d1>=0;d1--){
+		CellIndexes[d1] = nbCells[dim-1];
+		for(int d2=dim-2;d2>=d1+1;d2--){
+			CellIndexes[d1] *= nbCells[d2];
+		}
+	}
+	// Fill cells
+	vector<vector<unsigned int>> Cells(nbCellTot); // Cells[ i1*(prod nbCell(d!=d1)) + i2*(prod nbCell(d!=d1 && d!=d2)) + .. + iN ][i] = id of ith point belonging to Cell (i1,i2,i3,..,iN)
+	#pragma omp parallel for
+	for(unsigned int i=0;i<nbDat[current_f];i++){
+		unsigned int current_cell_index = 0;
+		unsigned int current_index = FilterIndex[current_f*nbDatMax+i];
+		for(unsigned int d=0;d<dim;d++){ // apply homotethy to retrieve the cell index
+			unsigned int tmp = floor( ( _Descriptors[current_index*dim+d] - min_val[current_f*dim+d] ) / CellSizes[d]);
+			if( tmp == nbCells[d] )	tmp--;
+			current_cell_index += tmp*CellIndexes[d];
+		}
+		Cells[current_cell_index].push_back(i);
+	}
+	// compute nbMaxN
+	unsigned int maxN, nbtotverif;
+	maxN = Cells[0].size();
+	nbtotverif = maxN;
+	for(unsigned int n=1;n<nbCellTot;n++){
+		unsigned int current_size = Cells[n].size();
+		nbtotverif += current_size;
+		if( current_size > maxN ) maxN = current_size;
+	}
+	if( nbtotverif != nbDat[current_f] ){
+	        cerr << "Some descriptor points were lost during construction of ceils for neighbour research, aborting" << endl;
+		exit(EXIT_FAILURE);
+	}
+	// Compute hypersphere volume
+	double HypSphVol, tmp(1.);
+	if( dim%2 == 0 ){
+		for(unsigned int d=1;d<=dim/2;d++) tmp *= d;
+		HypSphVol = 1. / tmp;
+		HypSphVol *= pow(M_PI,(double) dim/2.);
+	}else{
+		for(unsigned int d=1;d<=dim;d+=2) tmp *= d;
+		HypSphVol = 1. / tmp;
+		HypSphVol *= pow(M_PI,((double) dim-1.)/2.);
+		HypSphVol *= pow(2.,((double) dim+1.)/2.);
+	}
+	HypSphVol *= pow(rc,dim);
+	double secFac = 1.5;
+	maxN *= (int) (secFac*HypSphVol/CellVolume); 
+	Neighbours.push_back(new unsigned int[(maxN+1)*nbDat[current_f]]);
+	unsigned int last_ind_n = Neighbours.size()-1;
+	nbMaxN.push_back(maxN);
+	// search neighbours
+	vector<vector<int>> combinations = MT->GenerateNDCombinations(dim,-1,1);
+	#pragma omp parallel for
+	for(unsigned int n=0;n<nbCellTot;n++){
+		double squared_dist;
+		// get the dimension index of the cell
+		vector<unsigned int> current_cell_indexes(dim);
+		vector<unsigned int> neigh_cell_indexes(dim);
+		current_cell_indexes[0] = floor(n/CellIndexes[0]);
+		unsigned int n_new = n - current_cell_indexes[0]*CellIndexes[0];
+	       for(unsigned int d=1;d<dim;d++){
+		       current_cell_indexes[d] = floor( n_new / CellIndexes[d]);
+		       n_new -= current_cell_indexes[d]*CellIndexes[d];
+	       }
+		// search the neighbouring cells indexes
+		vector<unsigned int> full_cell_id;
+		for(unsigned int c=0;c<combinations.size();c++){
+			bool totreat = true;
+			for(unsigned int d=0;d<dim;d++){
+				neigh_cell_indexes[d] = current_cell_indexes[d] + combinations[c][d];
+				if( neigh_cell_indexes[d] < 0 || neigh_cell_indexes[d] >= nbCells[d] ){ // cell outside of bond => do not treat
+					totreat = false;
+					break;
+				}
+			}
+			if( !totreat ) continue;
+			full_cell_id.push_back(0);
+			unsigned int lastind = full_cell_id.size()-1;
+			for(unsigned int d=0;d<dim;d++) full_cell_id[lastind] += neigh_cell_indexes[d]*CellIndexes[d];
+		}
+
+	       // search neighbours of the current cell
+	       for(unsigned int i=0;i<Cells[n].size();i++){
+	       		// initialize counter
+	       		unsigned int count_neigh = 0;
+			for(unsigned int c=0;c<full_cell_id.size();c++){
+	       			for(unsigned int j=0;j<Cells[full_cell_id[c]].size();j++){
+					SquaredDistance(Cells[n][i],Cells[full_cell_id[c]][j],current_f,squared_dist);
+		       			if( squared_dist < rc_squared ){
+						Neighbours[last_ind_n][Cells[n][i]*(maxN+1)+1+count_neigh] = Cells[full_cell_id[c]][j];
+						count_neigh++;
+						if( count_neigh > maxN ){
+							cerr << "Maximum number of neighbours allowed overpassed, aborting" << endl;
+							exit(EXIT_FAILURE);
+						}
+					}
+				}
+			}
+			Neighbours[last_ind_n][Cells[n][i]*(maxN+1)] = count_neigh;
+	       }
+	}
+	IsNeighbours = true;
+	rc_neighbours.push_back(rc);
+	delete[] nbCells;
+	delete[] CellSizes;
+	delete[] CellIndexes;
+}
+
+//double Descriptors::SquaredDistance(unsigned int id_1, unsigned int id_2, unsigned int filter){// For the moment Euclidian distance (to add other distance and rename)
+void Descriptors::SquaredDistance(unsigned int id_1, unsigned int id_2, unsigned int filter, double &squared_dist){// For the moment Euclidian distance (to add other distance and rename)
+	//double squared_dist = 0.;
+	squared_dist = 0.;
+	for(unsigned int d=0;d<dim;d++){
+		double diff = _Descriptors[FilterIndex[filter*nbDatMax+id_1]*dim+d]-_Descriptors[FilterIndex[filter*nbDatMax+id_2]*dim+d];
+		squared_dist += diff*diff;
+	}
+	//return squared_dist;
+}
+
 void Descriptors::printDescriptorsPropToDatabase(ofstream &writefile){
 	setProperties();
 	string buffer_s;
@@ -680,4 +936,11 @@ Descriptors::~Descriptors(){
 	delete[] FilterIndex;
 	if( AreDescriptorsMine ) delete[] _Descriptors;
 	delete MT;
+	if( AreExtremums ){
+		delete[] min_val;
+		delete[] max_val;
+	}
+	if( IsNeighbours ){
+		for(unsigned int i=0;i<Neighbours.size();i++) delete[] Neighbours[i];
+	}
 }

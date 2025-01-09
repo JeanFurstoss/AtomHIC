@@ -49,10 +49,13 @@ private:
 	std::vector<std::string> BondOriParamProperties;
 	// Parameters to read
 	std::string FixedParam_Filename = "Fixed_Parameters.dat";
-	double TolOrthoBox;
-	double TolOrthoBoxZ;
-	double MinBoxHeight;
-	double MinBoxAside;
+	double TolOrthoBox = 1.;
+	double TolOrthoBoxZ = 1.;
+	double MinBoxHeight = 10.;
+	double MinBoxAside = 10.;
+	double shift_x = 0.;
+	double shift_y = 0.;
+	double shift_z = 0.;
 public:
 	// constructors
 	Crystal(){};

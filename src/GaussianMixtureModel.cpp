@@ -219,6 +219,7 @@ void GaussianMixtureModel::TrainModel(unsigned int &_nbClust, unsigned int &filt
 			ComputeLogLikelihood(filter_value);
 			eps = LogLikelihood[filter_value] - Lkh_old;
 			Lkh_old = LogLikelihood[filter_value];
+			cout << "LogLkh = << " << Lkh_old << endl;
 			iter++;
 		}while( eps > tol_Lkh_EM && iter < MaxIter_EM );
 		
@@ -507,6 +508,9 @@ void GaussianMixtureModel::ComputeLogLikelihood(unsigned int &filter_value){
 		for(unsigned int d=0;d<nbClust[filter_value];d++) sum += Prob_Cluster(d,i,filter_value);
 		LogLikelihood[filter_value] += log(sum);
 	}
+	// Test normalization TODO
+	LogLikelihood[filter_value] /= nbDat[filter_value];
+
 }
 
 void GaussianMixtureModel::ComputeBIC(unsigned int &filter_value){

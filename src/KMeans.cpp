@@ -143,6 +143,7 @@ void KMeans::TrainModel(unsigned int &_nbClust, unsigned int &filter_value){
 
 		if( res > tol_KMeans ){
 			cout << "KMeans clustering did not converged after " << MaxIter_KMeans << " iterations" << endl;
+			cout << "Final residual : " << res << endl;
 		        cout << "Maybe increase number of iteration or the tolerance for KMeans in /data/FixedParameters/FixedParameters.dat" << endl;
 		}
 	}

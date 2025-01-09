@@ -119,6 +119,8 @@ string Crystal::getDatabasePath(string crystalName){
 void Crystal::RotateCrystal(const int& h_p, const int& k_p, const int& l_p){
 	int arr[3] = {abs(h_p),abs(k_p),abs(l_p)};
 	int maxhkl = MT->max(arr,3)*15;
+	int max_hkl_cryst = 100;
+	if( maxhkl > max_hkl_cryst ) maxhkl = max_hkl_cryst;
 	double tolScalarProd = 1e-2;
 	vector<double> buffer_vector_d;
 	vector<int> buffer_vector_i;
@@ -128,6 +130,7 @@ void Crystal::RotateCrystal(const int& h_p, const int& k_p, const int& l_p){
 	double *test_vec = new double[3];
 	double *orthoDir = new double[3];
 	double xbox,ybox,zbox; // box dimension
+	cout << maxhkl << endl;
 	// direction normal to the wanted plane
 	normalDir[0] = h_p*(this->a1_star[0]) + k_p*(this->a2_star[0]) + l_p*(this->a3_star[0]);	
 	normalDir[1] = h_p*(this->a1_star[1]) + k_p*(this->a2_star[1]) + l_p*(this->a3_star[1]);	
@@ -366,6 +369,12 @@ void Crystal::ConstructOrthogonalCell(){
 	// compute the total transformation matrix
 	double *TotalTrans = new double[9];
 	MT->MatDotMat(TiltTrans_xyz,this->rot_mat_total,TotalTrans);
+	// shift the motif
+	for(unsigned int i=0;i<this->nbAtom;i++){
+		Motif[i].pos.x += shift_x;
+		Motif[i].pos.y += shift_y;
+		Motif[i].pos.z += shift_z;
+	}
 	// rotate the motif
 	for(unsigned int i=0;i<this->nbAtom;i++) MT->MatDotAt(TotalTrans,Motif[i],Motif[i]);	
 	
@@ -580,7 +589,7 @@ void Crystal::read_params(){
 	string backslash="/";
 	string filename=fp+backslash+FixedParam_Filename;
 	ifstream file(filename, ios::in);
-	size_t pos_tolOrthoBox, pos_tolOrthoBoxZ, pos_minBoxHeight, pos_minBoxAside;
+	size_t pos_tolOrthoBox, pos_tolOrthoBoxZ, pos_minBoxHeight, pos_minBoxAside, pos_shift;
 	string buffer_s, line;
 	if(file){
 		while(file){
@@ -605,6 +614,12 @@ void Crystal::read_params(){
 				istringstream text(line);
 				text >> buffer_s >> this->MinBoxAside;
 			}
+			pos_shift=line.find("MOTIF_SHIFT");
+			if(pos_shift!=string::npos){
+				istringstream text(line);
+				text >> buffer_s >> shift_x >> shift_y >> shift_z;
+			}
+
 		}
 	}else{
 		cerr << "Can't read /data/FixedParameters/Fixed_Parameters.dat file !" << endl;
