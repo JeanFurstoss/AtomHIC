@@ -96,6 +96,7 @@ public:
 	void ComputeLogLikelihood(unsigned int &filter_value);
 	void ComputeBIC(unsigned int &filter_value);
 	void PrintModelParams(std::string filename);
+	void PrintModelParams(std::string filename, std::vector<std::string> label_order); // specifiy the order of the label to print
 	void EM(unsigned int &filter_value);
 	long double Prob_Cluster(unsigned int &index_cluster, unsigned int &DescriptorIndex, unsigned int &filter_value);
 	double MaximumLikelihoodClassifier(unsigned int &index_cluster, unsigned int &DescriptorIndex, unsigned int &filter_value);

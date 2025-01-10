@@ -10,7 +10,7 @@ from sklearn.mixture import GaussianMixture as GM
 import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse
 import re
-
+# TODO when filter is none
 dirModel = '../../data/MachineLearningModels/GaussianMixtureModel/'
 database_present = glob.glob(dirModel+"/*/")
 help_print = ''
@@ -31,9 +31,9 @@ FilterType = sys.argv[3]
 DescriptorName = sys.argv[4]
 path_to_plot = sys.argv[5]
 
-maxNbDat = 10000
-minWeightForGMMPlot = 0.9
-ptsize=15
+maxNbDat = 1000000
+minWeightForGMMPlot = 0.001
+ptsize=1
 
 # Read the fitted GMM
 print("Reading "+ath_database_name+" AtomHIC database")
@@ -209,6 +209,24 @@ for i in range(nbFilter):
             if ClusterLabels[i][b] == categories[j]:
                 dictLab[i][j].append(b)
 
+#def plot_MLC(means
+
+def plot_ellipse_bis(mean, cov, ax, plot_kwargs, fill_kwargs):
+    eigval, eigvec = np.linalg.eig(cov)
+    faceigval = 1.
+    #print("NEW")
+    #print(cov)
+    #print(eigval)
+    #print(eigvec)
+    theta = np.linspace(0,2*np.pi,1000)
+    if eigval[0] > 0 and eigval[1] > 0:
+        eigval *= faceigval
+        ellipsis = ( np.sqrt(eigval[None,:]) * eigvec ) @ [ np.sin(theta), np.cos(theta) ]
+        ellipsis[0] += mean[0]
+        ellipsis[1] += mean[1]
+        ax.plot(ellipsis[0,:],ellipsis[1,:],**plot_kwargs)
+        ax.fill(ellipsis[0,:],ellipsis[1,:],**fill_kwargs)
+
 def plot_ellipse(semimaj=1,semimin=1,phi=0,x_cent=0,y_cent=0,theta_num=1e3,ax=None,plot_kwargs=None,\
                     fill=False,fill_kwargs=None,data_out=False,cov=None,mass_level=0.68):
     # Get Ellipse Properties from cov matrix
@@ -269,9 +287,12 @@ def readQ(input_file, FilterValue, nbDim, FilterType=FilterType, DescriptorName=
     startCol = 0
     PosFilter = 0
     filter_val = []
+    skip_head = 0
+    count_line = 0
     with open(input_file,'r') as file:
         found = False
         for line in file:
+            count_line += 1
             if 'ITEM: ATOMS' in line:
                 colvals = line.split(' ')
                 DesFound = False
@@ -284,10 +305,11 @@ def readQ(input_file, FilterValue, nbDim, FilterType=FilterType, DescriptorName=
                     if colvals[i] == FilterType :
                         PosFilter = i-2
                 found = True
+                skip_head = count_line
             elif found:
                 filter_val.append((line.split(' ')[PosFilter]).strip())
 
-    pos_tmp=np.genfromtxt(input_file,skip_header=9)
+    pos_tmp=np.genfromtxt(input_file,skip_header=skip_head)
     Descriptors = []
     for f in range(len(FilterValue)):
         Descriptors.append([])
@@ -309,6 +331,8 @@ for base, dirs, files in os.walk(dump_database_path):
         for f in range(nbFilter):
             dataPoints[f].append([])
             dataPoints[f][directories] = np.empty((0, NbDim))
+    print("test")
+    print(dataPoints[0][0])
     for directories in range(len(dirs)):
         index_in_cat = -1
         for ind in range(len(categories)):
@@ -349,6 +373,44 @@ for l in range(nbLabels):
         index -= 1
     colors_struct.append(color_panel[index])
 
+### TEST
+#q_art = []
+#lab = []
+#q_GMM = []
+#nsamp = 1000
+#for l in range(nbFilter):
+#    q_art_temp, lab_temp = GMMModels[l].sample(nsamp)
+#    q_art.append(q_art_temp)
+#    lab.append(lab_temp)
+#    q_GMM.append([])
+#    for i in range(len(categories)):
+#        q_GMM[-1].append([])
+#
+#for i in range(nsamp):
+#    found = []
+#    cat = []
+#    for l in range(nbFilter):
+#        found.append(False)
+#        cat.append(-1)
+#    for b in range(len(categories)):
+#        for l in range(nbFilter):
+#            if not found[l]:
+#                for s in range(len(dictLab[l][b])):
+#                    if( lab[l][i] == dictLab[l][b][s] ):
+#                        cat[l] = b
+#                        found[l] = True
+#                        break
+#        all_found = True
+#        for l in range(nbFilter):
+#            all_found *= found[l]
+#        if all_found:
+#            break
+#    for l in range(nbFilter):
+#        if found[l]:
+#            q_GMM[l][cat[l]].append(q_art[l][i])
+### END TEST
+
+
 print("Only clusters with weight higher than "+str(minWeightForGMMPlot)+" will be plotted")
 print("Plotting figures in "+path_to_plot+" :")
 covs = np.empty((2,2))
@@ -364,16 +426,23 @@ for s in range(len(dataPoints)):
                 plot_kwargs = {'color':colors_struct[key]}
                 fill_kwargs = {'color':colors_struct[key],'alpha':0.3}
                 axs[i, b].scatter(dataPoints[s][key][:,i], dataPoints[s][key][:,b], label=categories[key], c=colors_struct[key], linewidth=ptsize, alpha=0.5)
+                #to_plot_i = []
+                #to_plot_b = []
+                #for samp in range(len(q_GMM[s][key])):
+                #    to_plot_i.append(q_GMM[s][key][samp][i])
+                #    to_plot_b.append(q_GMM[s][key][samp][b])
+                #axs[i, b].scatter(to_plot_i, to_plot_b, label=categories[key], c=colors_struct[key], linewidth=ptsize, alpha=0.5)
                 for dic in range(len(dictLab[s][key])):
                     if( GMMModels[s].weights_[dictLab[s][key][dic]] > minWeightForGMMPlot ):
                         for x_p in range(2):
                             means[x_p] = GMMModels[s].means_[dictLab[s][key][dic]][-(x_p-1)*i+x_p*b]
                             for y_p in range(2):
                                 covs[x_p][y_p] = GMMModels[s].covariances_[dictLab[s][key][dic]][-(x_p-1)*i+x_p*b][-(y_p-1)*i+y_p*b]
-                        U, s_ell, Vt = np.linalg.svd(covs)
-                        angle = np.degrees(np.arctan2(U[1, 0], U[0, 0]))
-                        width, height = 2 * np.sqrt(s_ell)
-                        plot_ellipse(semimaj=width/2.,semimin=height/2.,phi=angle*np.pi/180,x_cent=means[0],y_cent=means[1],ax=axs[i, b],plot_kwargs=plot_kwargs,fill=True,fill_kwargs=fill_kwargs)
+                        plot_ellipse_bis(means, covs, axs[i,b], plot_kwargs, fill_kwargs)
+                        #U, s_ell, Vt = np.linalg.svd(covs)
+                        #angle = np.degrees(np.arctan2(U[1, 0], U[0, 0]))
+                        #width, height = 2 * np.sqrt(s_ell)
+                        #plot_ellipse(semimaj=width/2.,semimin=height/2.,phi=angle*np.pi/180,x_cent=means[0],y_cent=means[1],ax=axs[i, b],plot_kwargs=plot_kwargs,fill=True,fill_kwargs=fill_kwargs)
             if( i == 0 and b == 0 ):
                 axs[i, b].legend()
             if( i == 0 and b == 1 ):
@@ -389,5 +458,5 @@ for s in range(len(dataPoints)):
                 print("case")
                 axs[i, b].set_ylabel('q'+str(b+2-11)+' mono')
     fig.tight_layout()
-    fig.savefig(path_to_plot+'/'+str(FilterValues[s])+'Filter_Matrix.png')
+    fig.savefig(path_to_plot+'/'+str(FilterValues[s])+'Filter_Matrix.pdf')
     print("\tDone")

@@ -284,7 +284,7 @@ void GaussianMixtureModel::SaveTrainVariables(unsigned int &current, unsigned in
 		exit(EXIT_FAILURE);
 	}
 	if( BIC[filter_value] == BIC[filter_value] ) train_saved_bic[current*nbFilter+filter_value] = BIC[filter_value];
-	else train_saved_bic[current*nbFilter+filter_value] = 0.;
+	else train_saved_bic[current*nbFilter+filter_value] = 1e100;
 	for(unsigned int k=0;k<nbClust[filter_value];k++){
 		unsigned int ind1 = current*nbMaxClusters*nbFilter+k*nbFilter+filter_value;
 		unsigned int ind2 = k*nbFilter+filter_value;
@@ -508,14 +508,13 @@ void GaussianMixtureModel::ComputeLogLikelihood(unsigned int &filter_value){
 		for(unsigned int d=0;d<nbClust[filter_value];d++) sum += Prob_Cluster(d,i,filter_value);
 		LogLikelihood[filter_value] += log(sum);
 	}
-	// Test normalization TODO
 	LogLikelihood[filter_value] /= nbDat[filter_value];
 
 }
 
 void GaussianMixtureModel::ComputeBIC(unsigned int &filter_value){
 	unsigned int NbIndepParams = ( ( nbClust[filter_value] * ( ( dim*( dim + 1)/2) + dim + 1. ) ) - 1. );
-	BIC[filter_value] = -( 2.*LogLikelihood[filter_value] ) + ( log((double) nbDat[filter_value]) * (double) NbIndepParams );
+	BIC[filter_value] = -( 2.*nbDat[filter_value]*LogLikelihood[filter_value] ) + ( log((double) nbDat[filter_value]) * (double) NbIndepParams );
 }
 
 // Label the GMM by affecting to each cluster the label which has the highest probability in its and return the second highest value to see if there is overlapping between labels 
@@ -796,6 +795,40 @@ void GaussianMixtureModel::PrintModelParams(string filename){
 	writefile.close();
 }
 
+void GaussianMixtureModel::PrintModelParams(string filename, vector<string> label_order){
+	ofstream writefile(filename);
+	for(unsigned int lo=0;lo<label_order.size();lo++){
+		cout << "target lab = " << label_order[lo] << endl;
+		for(unsigned int l=0;l<nbLabel;l++){
+			cout << "test lab = " << _MyDescriptors->getLabels(l) << endl;
+			if( label_order[lo] == _MyDescriptors->getLabels(l) ){
+				writefile << "For label " << _MyDescriptors->getLabels(l) << endl;
+				for(unsigned int f=0;f<nbFilter;f++){
+					if( IsRead ) writefile << "FILTER_VALUE " << FilterValue[f] << endl;
+					else writefile << "FILTER_VALUE " << _MyDescriptors->getFilterValue(f) << endl;
+					unsigned int nb = 0;
+					for(unsigned int k=0;k<nbClust[f];k++) if( ClusterLabel[k*nbFilter+f] == l ) nb++;
+					writefile << "NUMBER_OF_CLUSTER " << nb << endl;
+					for(unsigned int k=0;k<nbClust[f];k++){
+						if( ClusterLabel[k*nbFilter+f] == l ){
+							writefile << "WEIGHT " << weights[k*nbFilter+f] << endl;
+							writefile << "DETERMINANT_OF_COV_MATRIX " << det_V[k*nbFilter+f] << endl;
+							writefile << "ESPERANCE";
+							for(unsigned int d=0;d<dim;d++) writefile << " " << mu[k*dim*nbFilter+d*nbFilter+f];
+						 	writefile << endl << "COVARIANCE_MATRIX" << endl;
+							for(unsigned int d1=0;d1<dim;d1++){
+								for(unsigned int d2=0;d2<dim;d2++) writefile << V[k*dim2*nbFilter+d1*dim*nbFilter+d2*nbFilter+f] << " ";
+								writefile << endl;
+							}
+						}
+					}
+				}
+				break;
+			}
+		}
+	}
+	writefile.close();
+}
 void GaussianMixtureModel::PrintToDatabase(const string &name_of_database){
 	if( !IsLabelled && !IsRead ){
 		cerr << "The GMM is not labelled, we then cannot print it to the database, aborting" << endl;
