@@ -1,3 +1,29 @@
+//**********************************************************************************
+//*   GaussianMixtureModel.cpp                                                     *
+//**********************************************************************************
+//* This file contains the implementation of the GaussianMixtureModel class        *
+//**********************************************************************************
+//* (C) Jan 2025 - Jean Furstoss                                                   *
+//*     Université de Poitiers, Institut PPRIME                                    *
+//*     UPR CNRS 3346, 86360 Chasseuneuil-du-Poitou, France                        *
+//*     jean.furstoss@univ-poitiers.fr                                             *
+//* Last modification: J. Furstoss - 28 Janv 2025                                  *
+//**********************************************************************************
+//* This program is free software: you can redistribute it and/or modify           *
+//* it under the terms of the GNU General Public License as published by           *
+//* the Free Software Foundation, either version 3 of the License, or              *
+//* (at your option) any later version.                                            *
+//*                                                                                *
+//* This program is distributed in the hope that it will be useful,                *
+//* but WITHOUT ANY WARRANTY; without even the implied warranty of                 *
+//* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the                  *
+//* GNU General Public License for more details.                                   *
+//*                                                                                *
+//* You should have received a copy of the GNU General Public License              *
+//* along with this program.  If not, see <http://www.gnu.org/licenses/>.          *
+//**********************************************************************************
+
+
 #include "GaussianMixtureModel.h"
 #include "AtomHicConfig.h"
 #include <cmath>
@@ -798,9 +824,7 @@ void GaussianMixtureModel::PrintModelParams(string filename){
 void GaussianMixtureModel::PrintModelParams(string filename, vector<string> label_order){
 	ofstream writefile(filename);
 	for(unsigned int lo=0;lo<label_order.size();lo++){
-		cout << "target lab = " << label_order[lo] << endl;
 		for(unsigned int l=0;l<nbLabel;l++){
-			cout << "test lab = " << _MyDescriptors->getLabels(l) << endl;
 			if( label_order[lo] == _MyDescriptors->getLabels(l) ){
 				writefile << "For label " << _MyDescriptors->getLabels(l) << endl;
 				for(unsigned int f=0;f<nbFilter;f++){
@@ -809,17 +833,25 @@ void GaussianMixtureModel::PrintModelParams(string filename, vector<string> labe
 					unsigned int nb = 0;
 					for(unsigned int k=0;k<nbClust[f];k++) if( ClusterLabel[k*nbFilter+f] == l ) nb++;
 					writefile << "NUMBER_OF_CLUSTER " << nb << endl;
+					// print clusters in order with increasing weight
+					vector<double> clust_id_to_print;
 					for(unsigned int k=0;k<nbClust[f];k++){
 						if( ClusterLabel[k*nbFilter+f] == l ){
-							writefile << "WEIGHT " << weights[k*nbFilter+f] << endl;
-							writefile << "DETERMINANT_OF_COV_MATRIX " << det_V[k*nbFilter+f] << endl;
-							writefile << "ESPERANCE";
-							for(unsigned int d=0;d<dim;d++) writefile << " " << mu[k*dim*nbFilter+d*nbFilter+f];
-						 	writefile << endl << "COVARIANCE_MATRIX" << endl;
-							for(unsigned int d1=0;d1<dim;d1++){
-								for(unsigned int d2=0;d2<dim;d2++) writefile << V[k*dim2*nbFilter+d1*dim*nbFilter+d2*nbFilter+f] << " ";
-								writefile << endl;
-							}
+							clust_id_to_print.push_back(k);
+							clust_id_to_print.push_back(weights[k*nbFilter+f]);
+						}
+					}
+					MT->sort(clust_id_to_print,1,2,clust_id_to_print);
+					unsigned int current_nb_clust = clust_id_to_print.size()/2;
+					for(unsigned int k=0;k<current_nb_clust;k++){
+						writefile << "WEIGHT " << weights[((unsigned int) clust_id_to_print[k*current_nb_clust])*nbFilter+f] << endl;
+						writefile << "DETERMINANT_OF_COV_MATRIX " << det_V[((unsigned int) clust_id_to_print[k*current_nb_clust])*nbFilter+f] << endl;
+						writefile << "ESPERANCE";
+						for(unsigned int d=0;d<dim;d++) writefile << " " << mu[((unsigned int) clust_id_to_print[k*current_nb_clust])*dim*nbFilter+d*nbFilter+f];
+						writefile << endl << "COVARIANCE_MATRIX" << endl;
+						for(unsigned int d1=0;d1<dim;d1++){
+							for(unsigned int d2=0;d2<dim;d2++) writefile << V[((unsigned int) clust_id_to_print[k*current_nb_clust])*dim2*nbFilter+d1*dim*nbFilter+d2*nbFilter+f] << " ";
+							writefile << endl;
 						}
 					}
 				}

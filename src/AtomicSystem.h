@@ -1,3 +1,40 @@
+//**********************************************************************************
+//*   AtomicSystem.h                                                               *
+//**********************************************************************************
+//* This file contains the declaration of the AtomicSystem class which one of the  *
+//* basis class of AtomHIC. This class is mainly used to read/print dump files,    *
+//* computing neighbours, etc.                                                     *
+//**********************************************************************************
+//* (C) Jan 2025 - Jean Furstoss                                                   *
+//*     Université de Poitiers, Institut PPRIME                                    *
+//*     UPR CNRS 3346, 86360 Chasseuneuil-du-Poitou, France                        *
+//*     jean.furstoss@univ-poitiers.fr                                             *
+//* Last modification: J. Furstoss - 28 Janv 2025                                  *
+//**********************************************************************************
+//* This program is free software: you can redistribute it and/or modify           *
+//* it under the terms of the GNU General Public License as published by           *
+//* the Free Software Foundation, either version 3 of the License, or              *
+//* (at your option) any later version.                                            *
+//*                                                                                *
+//* This program is distributed in the hope that it will be useful,                *
+//* but WITHOUT ANY WARRANTY; without even the implied warranty of                 *
+//* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the                  *
+//* GNU General Public License for more details.                                   *
+//*                                                                                *
+//* You should have received a copy of the GNU General Public License              *
+//* along with this program.  If not, see <http://www.gnu.org/licenses/>.          *
+//**********************************************************************************
+//* What is still needed to do here:                                               *
+//* 	- change the Atom struct because we don't need it and it imply to do some  *
+//* copies in other classes							   *
+//*	- think about one common neighbour research in all code (for the moment    *
+//* there is an other one in the Descriptor class)                                 *
+//*	- add non periodic boundary conditions (could be link to the above because *
+//* the neighbour search in Descriptors does not have PBC)                         *
+//*	- put security factor for neighbour research in FixedParameters            *
+//*	-                                                                          *
+//**********************************************************************************
+
 #ifndef ATOMICSYSTEM_H
 #define ATOMICSYSTEM_H
 

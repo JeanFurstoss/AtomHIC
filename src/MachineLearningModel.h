@@ -1,3 +1,36 @@
+//**********************************************************************************
+//*   MachineLearningModel.h                                                       *
+//**********************************************************************************
+//* This file contains the declaration of the MachineLearningModel class which is  *
+//* basis class of the ML models of AtomHic 			  	           *
+//* This class has:								   *
+//*	- some descriptors (and should care about the filter of descriptors)	   *
+//*	- classificators (or estimators)					   *
+//*	- readers and writters of the model in the ML database of AtomHic	   *
+//**********************************************************************************
+//* (C) Jan 2025 - Jean Furstoss                                                   *
+//*     Université de Poitiers, Institut PPRIME                                    *
+//*     UPR CNRS 3346, 86360 Chasseuneuil-du-Poitou, France                        *
+//*     jean.furstoss@univ-poitiers.fr                                             *
+//* Last modification: J. Furstoss - 28 Janv 2025                                  *
+//**********************************************************************************
+//* This program is free software: you can redistribute it and/or modify           *
+//* it under the terms of the GNU General Public License as published by           *
+//* the Free Software Foundation, either version 3 of the License, or              *
+//* (at your option) any later version.                                            *
+//*                                                                                *
+//* This program is distributed in the hope that it will be useful,                *
+//* but WITHOUT ANY WARRANTY; without even the implied warranty of                 *
+//* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the                  *
+//* GNU General Public License for more details.                                   *
+//*                                                                                *
+//* You should have received a copy of the GNU General Public License              *
+//* along with this program.  If not, see <http://www.gnu.org/licenses/>.          *
+//**********************************************************************************
+//* What is still needed to do here:                                               *
+//*	- 						                           *
+//**********************************************************************************
+
 #ifndef MACHINELEARNINGMODEL_H
 #define MACHINELEARNINGMODEL_H
 
@@ -37,7 +70,7 @@ protected:
 	bool IsRead = false;
 
 	// Variables for classification
-	double *Classificator; // [n*2] = index of *the label with highest probability for descriptors n (index in _Descriptor array), [n*2+1] = probability
+	double *Classificator; // depend on the ML model but generally for classification, [n*2] = index of the label with highest probability for descriptors n (index in _Descriptor array), [n*2+1] = probability
 	bool IsClassified = false;	
 	
 	std::string FixedParam_Filename = "Fixed_Parameters.dat";

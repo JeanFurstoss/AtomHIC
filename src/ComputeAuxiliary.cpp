@@ -1,3 +1,29 @@
+//**********************************************************************************
+//*   ComputeAuxiliary.cpp                                                         *
+//**********************************************************************************
+//* This file contains the implementation of the ComputeAuxiliary class            *
+//**********************************************************************************
+//* (C) Jan 2025 - Jean Furstoss                                                   *
+//*     Université de Poitiers, Institut PPRIME                                    *
+//*     UPR CNRS 3346, 86360 Chasseuneuil-du-Poitou, France                        *
+//*     jean.furstoss@univ-poitiers.fr                                             *
+//* Last modification: J. Furstoss - 28 Janv 2025                                  *
+//**********************************************************************************
+//* This program is free software: you can redistribute it and/or modify           *
+//* it under the terms of the GNU General Public License as published by           *
+//* the Free Software Foundation, either version 3 of the License, or              *
+//* (at your option) any later version.                                            *
+//*                                                                                *
+//* This program is distributed in the hope that it will be useful,                *
+//* but WITHOUT ANY WARRANTY; without even the implied warranty of                 *
+//* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the                  *
+//* GNU General Public License for more details.                                   *
+//*                                                                                *
+//* You should have received a copy of the GNU General Public License              *
+//* along with this program.  If not, see <http://www.gnu.org/licenses/>.          *
+//**********************************************************************************
+
+
 #include "ComputeAuxiliary.h"
 #include "AtomHicConfig.h"
 #include "Crystal.h"
@@ -129,7 +155,10 @@ double* ComputeAuxiliary::Compute_StrainTensor(){
 
 double* ComputeAuxiliary::Compute_StrainTensor(unsigned int FromNum){
 	if( FromNum == 1 ) cout << "Computing strain tensor based on atom numerotation" << endl;
-	if( FromNum == 0 ) cout << "Computing strain tensor based on atom type" << endl;
+	if( FromNum == 0 ){
+		cout << "Computing strain tensor based on atom type" << endl;
+		return Compute_StrainTensor();
+	}
 	const unsigned int nbAt = _MySystem->getNbAtom();
 	this->StrainTensor = new double[nbAt*6]; // the xx, yy, zz, xy, xz, yz strain component for each atom
 	vector<vector<unsigned int>> RestrictedN; // neighbour list restricted to atom of same site

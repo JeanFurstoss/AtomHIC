@@ -1,4 +1,33 @@
-// AtomHic library files
+//**********************************************************************************
+//*   CreateGB/main.cpp                                                            *
+//**********************************************************************************
+//* This file contains the implementation of the CreateGB executable.              *
+//* It allows to create an atomic system with a GB with a given misorientation and *
+//* GB plane									   *
+//**********************************************************************************
+//* (C) Jan 2025 - Jean Furstoss                                                   *
+//*     Université de Poitiers, Institut PPRIME                                    *
+//*     UPR CNRS 3346, 86360 Chasseuneuil-du-Poitou, France                        *
+//*     jean.furstoss@univ-poitiers.fr                                             *
+//* Last modification: J. Furstoss - 28 Janv 2025                                  *
+//**********************************************************************************
+//* This program is free software: you can redistribute it and/or modify           *
+//* it under the terms of the GNU General Public License as published by           *
+//* the Free Software Foundation, either version 3 of the License, or              *
+//* (at your option) any later version.                                            *
+//*                                                                                *
+//* This program is distributed in the hope that it will be useful,                *
+//* but WITHOUT ANY WARRANTY; without even the implied warranty of                 *
+//* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the                  *
+//* GNU General Public License for more details.                                   *
+//*                                                                                *
+//* You should have received a copy of the GNU General Public License              *
+//* along with this program.  If not, see <http://www.gnu.org/licenses/>.          *
+//**********************************************************************************
+//* What is still needed to do here:                                               *
+//*	- work on Bicrystal class to have more clear outputs			   *
+//**********************************************************************************
+
 #include <AtomicSystem.h>
 #include <Bicrystal.h>
 #include <stdlib.h>
@@ -6,17 +35,21 @@
 #include <sstream>
 #include <string>
 #include "ComputeAuxiliary.h"
+#include <Displays.h>
 
 using namespace std;
 
 
 int main(int argc, char *argv[])
 {
+	Displays Dis;
+	Dis.Logo();
 	if( argc < 9 ){
 		cerr << "Usage: CreateGB h_RotAxis k_RotAxis l_RotAxis RotAngle(in degree) h_GBPlane k_GBPlane l_GBPlane CrystalName(has to be defined in /data/Crystal/) Rationalize" << endl;
 		cerr << "Rationalize can be either 0 or 1" << endl;
 		cerr << "1 => rationalize the GB (i.e. search the closest CSL GB to the provided parameters, in this case the parameters for CSL calculation in /data/FixedParameters/FixedParameters.dat can be important)" << endl;
 		cerr << "0 => do not rationalize the GB, in this case the parameters for constructing crystal and bicrystal in /data/FixedParameters/FixedParameters.dat can be important" << endl;
+		cerr << "The program will return 4 dump files containing the GB system, the CSL lattice and the two grains (the two latters can be used to change shift between crystals)" << endl;
 		return EXIT_FAILURE;
 	}
 	int h_a, k_a ,l_a, h_p, k_p, l_p;
@@ -49,5 +82,6 @@ int main(int argc, char *argv[])
 	MyGB.print_lmp("GB.lmp");
 	MyGB.printCSL("CSL.lmp");
 	MyGB.print_Grains();
+	Dis.ExecutionTime();	
 	return 0;
 }

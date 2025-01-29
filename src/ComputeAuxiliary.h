@@ -1,3 +1,39 @@
+//**********************************************************************************
+//*   ComputeAuxiliary.h                                                           *
+//**********************************************************************************
+//* This file contains the declaration of the ComputeAuxiliary class which is used *
+//* to compute some auxiliary properties of an AtomicSystem. For the moment, the   *
+//* possible auxiliary properties are:						   *
+//*	- a bond orientational parameter (Furstoss et al., 2024, Comp. Mat. Sc.)   *
+//*	- the crystallographic site index (based on the BondOriParam)		   *
+//*	- the affine transformation matrix, D2Min and atomic strain (based on the  *
+//* work of (Shimizu et al., 2007, Mater. Trans.))				   *
+//*	- the strain tensor based either or atom numerotation of crystallographic  *
+//* site
+//**********************************************************************************
+//* (C) Jan 2025 - Jean Furstoss                                                   *
+//*     Université de Poitiers, Institut PPRIME                                    *
+//*     UPR CNRS 3346, 86360 Chasseuneuil-du-Poitou, France                        *
+//*     jean.furstoss@univ-poitiers.fr                                             *
+//* Last modification: J. Furstoss - 28 Janv 2025                                  *
+//**********************************************************************************
+//* This program is free software: you can redistribute it and/or modify           *
+//* it under the terms of the GNU General Public License as published by           *
+//* the Free Software Foundation, either version 3 of the License, or              *
+//* (at your option) any later version.                                            *
+//*                                                                                *
+//* This program is distributed in the hope that it will be useful,                *
+//* but WITHOUT ANY WARRANTY; without even the implied warranty of                 *
+//* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the                  *
+//* GNU General Public License for more details.                                   *
+//*                                                                                *
+//* You should have received a copy of the GNU General Public License              *
+//* along with this program.  If not, see <http://www.gnu.org/licenses/>.          *
+//**********************************************************************************
+//* What is still needed to do here:                                               *
+//*	-                                                                          *
+//**********************************************************************************
+
 #ifndef COMPUTEAUXILIARY_H
 #define COMPUTEAUXILIARY_H
 

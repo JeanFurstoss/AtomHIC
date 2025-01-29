@@ -1,4 +1,35 @@
-// AtomHic library files
+//**********************************************************************************
+//*   SaveNonCSCrystalBondOriParam/main.cpp                                        *
+//**********************************************************************************
+//* This file contains the implementation of the SaveNonCSCrystalBondOriParam	   *
+//* executable.          							   *
+//* It allows to save in the crystal database of AtomHIC the values needed for the *
+//* the computation of the bond orientational parameter defined in Furstoss et al. *
+//* 2024									   *
+//**********************************************************************************
+//* (C) Jan 2025 - Jean Furstoss                                                   *
+//*     Université de Poitiers, Institut PPRIME                                    *
+//*     UPR CNRS 3346, 86360 Chasseuneuil-du-Poitou, France                        *
+//*     jean.furstoss@univ-poitiers.fr                                             *
+//* Last modification: J. Furstoss - 28 Janv 2025                                  *
+//**********************************************************************************
+//* This program is free software: you can redistribute it and/or modify           *
+//* it under the terms of the GNU General Public License as published by           *
+//* the Free Software Foundation, either version 3 of the License, or              *
+//* (at your option) any later version.                                            *
+//*                                                                                *
+//* This program is distributed in the hope that it will be useful,                *
+//* but WITHOUT ANY WARRANTY; without even the implied warranty of                 *
+//* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the                  *
+//* GNU General Public License for more details.                                   *
+//*                                                                                *
+//* You should have received a copy of the GNU General Public License              *
+//* along with this program.  If not, see <http://www.gnu.org/licenses/>.          *
+//**********************************************************************************
+//* What is still needed to do here:                                               *
+//*	- 									   *
+//**********************************************************************************
+
 #include "AtomicSystem.h"
 #include "SteinhardtDescriptors.h"
 #include "Crystal.h"
@@ -7,11 +38,9 @@
 #include <sstream>
 #include <string>
 #include "MathTools.h"
-#include <chrono>
-#include <omp.h>
+#include <Displays.h>
 
 using namespace std;
-using namespace std::chrono;
 
 void print2database_knownsites(string path, unsigned int *AtomSite, vector<vector<double>> UniqueBondOri, int l_sph, double rc){
 	vector<string> file_content;
@@ -121,6 +150,8 @@ void print2database_unknownsites(string path, unsigned int *AtomSite, vector<vec
 
 int main(int argc, char *argv[])
 {
+	Displays Dis;
+	Dis.Logo();
 	if( argc < 2 ){
 		cerr << "Usage: ./SaveNonCSCrystalBondOriParam CrystalName (lo_L hi_L lo_rc hi_rc min_diff min_val)" << endl;
 		cerr << "This executable will store reference bond orientational parameters for the different site of a non centrosymmetric crystal in the Crystal database of AtomHIC" << endl;
@@ -133,12 +164,7 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 	
-	cout << "Calculation running using " << omp_get_max_threads() << " threads" << endl;
-	
-	auto start = high_resolution_clock::now();
-	
 	MathTools MT;
-
 	string CrystalType = argv[1];
 	bool AutoFitOptiParam;
 	unsigned int lo_L, hi_L;
@@ -355,9 +381,6 @@ int main(int argc, char *argv[])
 	
 	delete[] AtomSite;
 
-	auto end = high_resolution_clock::now();	
-	auto duration = duration_cast<microseconds>(end - start);
-	cout << "Resolution time = " << duration.count() << endl;
-	
+	Dis.ExecutionTime();	
 	return 0;
 }

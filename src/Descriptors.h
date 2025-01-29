@@ -1,3 +1,48 @@
+//**********************************************************************************
+//*   Descriptors.h                                                                *
+//**********************************************************************************
+//* This file contains the declaration of the Descriptors class                    *
+//* This class is not an abstract class because it could be constructed by reading *
+//* the descriptor values from files (for dump files it uses the AtomicSystem      *
+//* methods, and for other files it has its own readers)			   *
+//* The descriptors are filtered (based on given properties) which can make the    *
+//* access to the different arrays (e.g. descriptor values, neighbours) a bit      *
+//* tricky (particularly true for MachineLearningModels). The FilterIndex array    *
+//* should be used for this point.						   *
+//* This class mainly contains:							   *
+//*	- the properties of the descriptor (e.g. number of dimension, filtering    *
+//* type) and the way of printing them 						   *
+//*	- the readers and the methods for filtering the data			   *
+//*	- distance function(s)							   *
+//*	- a N dimensional neighbour research without periodic BC		   *
+//**********************************************************************************
+//* (C) Jan 2025 - Jean Furstoss                                                   *
+//*     Université de Poitiers, Institut PPRIME                                    *
+//*     UPR CNRS 3346, 86360 Chasseuneuil-du-Poitou, France                        *
+//*     jean.furstoss@univ-poitiers.fr                                             *
+//* Last modification: J. Furstoss - 28 Janv 2025                                  *
+//**********************************************************************************
+//* This program is free software: you can redistribute it and/or modify           *
+//* it under the terms of the GNU General Public License as published by           *
+//* the Free Software Foundation, either version 3 of the License, or              *
+//* (at your option) any later version.                                            *
+//*                                                                                *
+//* This program is distributed in the hope that it will be useful,                *
+//* but WITHOUT ANY WARRANTY; without even the implied warranty of                 *
+//* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the                  *
+//* GNU General Public License for more details.                                   *
+//*                                                                                *
+//* You should have received a copy of the GNU General Public License              *
+//* along with this program.  If not, see <http://www.gnu.org/licenses/>.          *
+//**********************************************************************************
+//* What is still needed to do here:                                               *
+//*	- implement other type of distance functions (e.g. Mahalanobis)            *
+//*	- test the neighbour research at high dimensions                           *
+//*	- implement other types of descriptors (for the moment we only have        *
+//* Steinhardt) such as SOAP, ACE..                                                *
+//*	-                                                                          *
+//**********************************************************************************
+
 #ifndef DESCRIPTORS_H
 #define DESCRIPTORS_H
 

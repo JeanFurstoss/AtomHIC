@@ -1,11 +1,27 @@
-### CMakeLists.txt --- 
-##
-######################################################################
-## 
-### Commentary: Main CMake file
-##              Creation of library, tool, tests
-## 
-######################################################################
+#**********************************************************************************
+#*   CMakeLists.txt                                                               *
+#**********************************************************************************
+#* This file contains the building instructions of the AtomHic library            *
+#**********************************************************************************
+#* (C) Jan 2025 - Jean Furstoss                                                   *
+#*     Université de Poitiers, Institut PPRIME                                    *
+#*     UPR CNRS 3346, 86360 Chasseuneuil-du-Poitou, France                        *
+#*     jean.furstoss@univ-poitiers.fr                                             *
+#* Last modification: J. Furstoss - 28 Janv 2025                                  *
+#**********************************************************************************
+#* This program is free software: you can redistribute it and/or modify           *
+#* it under the terms of the GNU General Public License as published by           *
+#* the Free Software Foundation, either version 3 of the License, or              *
+#* (at your option) any later version.                                            *
+#*                                                                                *
+#* This program is distributed in the hope that it will be useful,                *
+#* but WITHOUT ANY WARRANTY; without even the implied warranty of                 *
+#* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the                  *
+#* GNU General Public License for more details.                                   *
+#*                                                                                *
+#* You should have received a copy of the GNU General Public License              *
+#* along with this program.  If not, see <http://www.gnu.org/licenses/>.          *
+#**********************************************************************************
 
 #Required version
 cmake_minimum_required(VERSION 3.0)
@@ -18,13 +34,13 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 project(AtomHic)
 
 #Choose generation of static or shared library
-option(BUILD_SHARED_LIBRARY true)
+option(BUILD_SHARED_LIBRARY "Build as shared library" ON)
 
 #Enable or disable generation of tools
-option(BUILD_TOOLS true)
+option(BUILD_TOOLS "Enable or disable generation of tools" ON)
 
 #Enable or disable testing
-option(BUILD_TESTS true)
+option(BUILD_TESTS "Enable or disable testing" ON)
 
 # build type : Release or Debug
 #set(CMAKE_BUILD_TYPE "Debug")
@@ -34,11 +50,6 @@ set(CMAKE_BUILD_TYPE "Release")
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake")
 include(AtomHicBuild)
 include(AtomHicDependencies)
-
-#find_package(MPI)
-#include_directories(${MPI_INCLUDE_PATH})
-#set(CMAKE_CXX_COMPILE_FLAGS ${CMAKE_CXX_COMPILE_FLAGS} ${MPI_COMPILE_FLAGS})
-#set(CMAKE_CXX_LINK_FLAGS ${CMAKE_CXX_LINK_FLAGS} ${MPI_LINK_FLAGS})
 
 find_package(OpenMP)
 if(OpenMP_CXX_FOUND)
@@ -59,14 +70,16 @@ add_subdirectory(src)
 
 #Tools
 if(BUILD_TOOLS)
-  add_subdirectory(tools)
+    message(STATUS "Tools generation is enabled.")
+    add_subdirectory(tools)
+else()
+    message(WARNING "Tools generation is disabled. Use -DBUILD_TOOLS=ON to enable it.")
 endif()
 
 #Tests  
 if(BUILD_TESTS)
-  # Activate testing
-  enable_testing()
-  add_subdirectory(tests)
+    # Activate testing
+    enable_testing()
+    add_subdirectory(tests)
 endif()
-
 ####################################################################

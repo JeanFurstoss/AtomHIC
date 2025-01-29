@@ -1,3 +1,42 @@
+//**********************************************************************************
+//*   GaussianMixtureModel.h                                                       *
+//**********************************************************************************
+//* This file contains the declaration of the GaussianMixtureModel class (herited  *
+//* from MachineLearningModel) which employ the Expectation Maximization algorythm *
+//* to fit a mixture of gaussian distribution on descriptors.			   *
+//* This class mainly contains:							   *
+//*	- initialization methods (can be set from FixedParameters) 		   *
+//* 	- a method for labeling the fitted GMM if the descriptors are labelled     *
+//* (used for the Steinhardt Gaussian Mixture Analysis (SGMA) presented in         *
+//* (Furstoss et al., 2025, Comp. Phys. Comm.)					   *
+//* 	- readers and printers of labeled GMM in the Machine Learning database     *
+//*	- methods for determining the optimal number of clusters		   *
+//*	- classification of unknown descriptors based on Maximum Likelihood 	   *
+//* Classifier			   						   *
+//**********************************************************************************
+//* (C) Jan 2025 - Jean Furstoss                                                   *
+//*     Université de Poitiers, Institut PPRIME                                    *
+//*     UPR CNRS 3346, 86360 Chasseuneuil-du-Poitou, France                        *
+//*     jean.furstoss@univ-poitiers.fr                                             *
+//* Last modification: J. Furstoss - 28 Janv 2025                                  *
+//**********************************************************************************
+//* This program is free software: you can redistribute it and/or modify           *
+//* it under the terms of the GNU General Public License as published by           *
+//* the Free Software Foundation, either version 3 of the License, or              *
+//* (at your option) any later version.                                            *
+//*                                                                                *
+//* This program is distributed in the hope that it will be useful,                *
+//* but WITHOUT ANY WARRANTY; without even the implied warranty of                 *
+//* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the                  *
+//* GNU General Public License for more details.                                   *
+//*                                                                                *
+//* You should have received a copy of the GNU General Public License              *
+//* along with this program.  If not, see <http://www.gnu.org/licenses/>.          *
+//**********************************************************************************
+//* What is still needed to do here:                                               *
+//*	-                                                                          *
+//**********************************************************************************
+
 #ifndef GAUSSIANMIXTUREMODEL_H
 #define GAUSSIANMIXTUREMODEL_H
 

@@ -1,3 +1,28 @@
+//**********************************************************************************
+//*   AtomicSystem.cpp                                                             *
+//**********************************************************************************
+//* This file contains the implementation of the AtomicSystem class                *
+//**********************************************************************************
+//* (C) Jan 2025 - Jean Furstoss                                                   *
+//*     Université de Poitiers, Institut PPRIME                                    *
+//*     UPR CNRS 3346, 86360 Chasseuneuil-du-Poitou, France                        *
+//*     jean.furstoss@univ-poitiers.fr                                             *
+//* Last modification: J. Furstoss - 28 Janv 2025                                  *
+//**********************************************************************************
+//* This program is free software: you can redistribute it and/or modify           *
+//* it under the terms of the GNU General Public License as published by           *
+//* the Free Software Foundation, either version 3 of the License, or              *
+//* (at your option) any later version.                                            *
+//*                                                                                *
+//* This program is distributed in the hope that it will be useful,                *
+//* but WITHOUT ANY WARRANTY; without even the implied warranty of                 *
+//* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the                  *
+//* GNU General Public License for more details.                                   *
+//*                                                                                *
+//* You should have received a copy of the GNU General Public License              *
+//* along with this program.  If not, see <http://www.gnu.org/licenses/>.          *
+//**********************************************************************************
+
 #include "AtomicSystem.h"
 #include "AtomHicConfig.h"
 #include "Crystal.h"
@@ -1806,45 +1831,45 @@ bool AtomicSystem::read_cfg_file(const string& filename){
 		}
 		nbAtomType = AtTypeDif.size();
 
-		// read MASSES database to get the masses of ions
-		//vector<string> element;
-		//vector<double> masses;
-		//char *database_env = getenv("MASSES_DATABASE");
-		//string database;
-		//if (database_env) {
-		//	database = database_env;
-		//} else {
-		//	#ifdef MASSES_DATABASE
-		//	database = MASSES_DATABASE;
-		//	#endif
-		//}
-		//if( database.empty() ) cout << "Warning database environment for masses is empty" << endl;
-		//else{
-		//	string dataname = database + "/Masses.txt";
-		//	ifstream filedata(dataname, ios::in);
-		//	if( filedata ){
-		//		while( filedata ){
-		//			filedata >> buffer_s >> buffer_1;
-		//			if( !filedata ) break;
-		//			element.push_back(buffer_s);
-		//			masses.push_back(buffer_1);
-		//		}
-		//		filedata.close();
-		//	}
-		//}
+                // read MASSES database to get the masses of ions
+                //vector<string> element;
+                //vector<double> masses;
+                //char *database_env = getenv("MASSES_DATABASE");
+                //string database;
+                //if (database_env) {
+                //      database = database_env;
+                //} else {
+                //      #ifdef MASSES_DATABASE
+                //      database = MASSES_DATABASE;
+                //      #endif
+                //}
+                //if( database.empty() ) cout << "Warning database environment for masses is empty" << endl;
+                //else{
+                //      string dataname = database + "/Masses.txt";
+                //      ifstream filedata(dataname, ios::in);
+                //      if( filedata ){
+                //              while( filedata ){
+                //                      filedata >> buffer_s >> buffer_1;
+                //                      if( !filedata ) break;
+                //                      element.push_back(buffer_s);
+                //                      masses.push_back(buffer_1);
+                //              }
+                //              filedata.close();
+                //      }
+                //}
 
-		//bool element_find;
-		//for(unsigned int j=0;j<this->nbAtomType;j++){
-		//	element_find= false;
-		//	for(unsigned int i=0;i<element.size();i++){
-		//		if( this->AtomType[j] == element[i] ){
-		//			this->AtomMass[j] = masses[i];
-		//			element_find = true;
-		//			break;
-		//		}
-		//	}
-		//	if( !element_find ) cout << "The mass for element " << this->AtomType[j] << " has not been found in the masses databse" << endl;
-		//}
+                //bool element_find;
+                //for(unsigned int j=0;j<this->nbAtomType;j++){
+                //      element_find= false;
+                //      for(unsigned int i=0;i<element.size();i++){
+                //              if( this->AtomType[j] == element[i] ){
+                //                      this->AtomMass[j] = masses[i];
+                //                      element_find = true;
+                //                      break;
+                //              }
+                //      }
+                //      if( !element_find ) cout << "The mass for element " << this->AtomType[j] << " has not been found in the masses databse" << endl;
+                //}
 
 	// end read cfg (xsf) file
 	}else{

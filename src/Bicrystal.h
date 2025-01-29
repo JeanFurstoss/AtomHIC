@@ -1,3 +1,42 @@
+//**********************************************************************************
+//*   Bicrystal.h                                                                  *
+//**********************************************************************************
+//* This file contains the declaration of the Bicrystal class which is mainly used *
+//* for constructing (given the five macroscopic degrees of freedom) and analyzing *
+//* (search GB position, width, excess volume) bycristalline systems.              *
+//* This class has numerous bicrystallophic tools such as an iterative algorythm   *
+//* allowing to find (near) CSL and DSC lattices even for non cubic crystals, this *
+//* part is based on the work of Bonnet and Rolland 1975 and allow also for        *
+//* rationalize a general GB							   *
+//**********************************************************************************
+//* (C) Jan 2025 - Jean Furstoss                                                   *
+//*     Université de Poitiers, Institut PPRIME                                    *
+//*     UPR CNRS 3346, 86360 Chasseuneuil-du-Poitou, France                        *
+//*     jean.furstoss@univ-poitiers.fr                                             *
+//* Last modification: J. Furstoss - 28 Janv 2025                                  *
+//**********************************************************************************
+//* This program is free software: you can redistribute it and/or modify           *
+//* it under the terms of the GNU General Public License as published by           *
+//* the Free Software Foundation, either version 3 of the License, or              *
+//* (at your option) any later version.                                            *
+//*                                                                                *
+//* This program is distributed in the hope that it will be useful,                *
+//* but WITHOUT ANY WARRANTY; without even the implied warranty of                 *
+//* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the                  *
+//* GNU General Public License for more details.                                   *
+//*                                                                                *
+//* You should have received a copy of the GNU General Public License              *
+//* along with this program.  If not, see <http://www.gnu.org/licenses/>.          *
+//**********************************************************************************
+//* What is still needed to do here:                                               *
+//*	- more generic definition of the number of mesh points and gaussian width  *
+//* used for searching GB position and width                                       *
+//*	- refine algorythm for rationalizing GB                                    *
+//*	- implement non iterative method for searching CSL of cubic crystals       *
+//*	- better outputs                                                           *
+//*	-                                                                          *
+//**********************************************************************************
+
 #ifndef BICRYSTAL_H
 #define BICRYSTAL_H
 

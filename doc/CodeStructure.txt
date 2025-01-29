@@ -1,0 +1,61 @@
+AtomHIC is a c++ library for generating or analyzing atomic systems
+
+For any question/suggestion/needed developments please contact: jfurstoss@orange.fr
+
+### EXISTING TOOLS ###
+
+# PROGRAMS EXECUTION #
+When AtomHIC is compiled (enabling tools using ccmake or in CMakeLists.txt) the executables corresponding to the different tools are created in /build/bin/
+They can be executed without any argument and will print the different arguments needed by the program (help prints)
+
+# FORMAT #
+Only .lmp, .xsf or .cfg can be read and write by AtomHIC, if your format does not correspond, the best solution is to use atomsk (https://atomsk.univ-lille.fr/fr/index.php) first to convert your file into a file format readable by AtomHIC.
+
+# FIXED PARAMETERS #
+In most cases (if nothing is specified in the help print) the programs use some fixed parameters (such as cutoff radius for neighbour research) which are read in /data/FixedParameters/FixedParameters.dat
+The values inside this file are read by the program at the begining of the execution which means that there is no need to recompile AtomHIC when changing their values
+
+# CRYSTAL DATABASE #
+Some executables need to define the working crystal, in this case, the program can read some informations about this crystal in the crystal database of AtomHIC
+If the crystal you want to use is not defined in the database you can add it easily by creating a /data/Crystal/YourCrystal.dat file using Example.dat to help you
+
+# MASSES DATABASE #
+For some format printing, the mass of the elements present in the system should be informed. AtomHIC read these informations in the /data/Masses/Masses.txt file in which every element can be added.
+
+# STEINHARDT DATABASE #
+AtomHIC, can perform some data-driven structural analysis based on Steinhardt's parameters which need a special database.
+For example, for multisite crystals the computation of a bond orientational parameter need reference Steinhardt parameters for the perfect crystal. These reference parameters are stored in /data/Steinhardt/YourCrystal/ directory. Different executables permits to generate and store the files in these directories in an AtomHIC readable format (for instance the SaveSteinhardtToDatabase_PerfectCrystal executable)
+
+# GAUSSIAN MIXTURE MODEL #
+Some data-driven structural analysis using Gaussian Mixture Model (GMM) and Steinhardt parameters can be performed using AtomHIC. The corresponding database for the analyzed structures is in the /data/Steinhardt/YourCrystal/GaussianMixtureModel/ directory
+More documentation is coming...
+
+
+
+### DEVELOPING YOUR OWN EXECUTABLES ###
+
+# TOOL #
+To create your own executable you need to create a directory in /tools/ and add the directory in /tools/CMakeLists.txt
+Then you can copy the CMakeLists.txt of an other tool and replace the name of the project with the name of your tool
+Finally, you can write a main.cpp program which will generate the corresponding executable in /build/bin/
+
+# MAIN OBJECTS AND METHODS #
+The sources of the different objects used by AtomHIC are in /src/
+For each object a .h declares the different variables and prototypes the different methods, in most cases some comments explain the signification of the variables and the way to access some arrays. The .cpp contains the implementation of the different methods with some explanations.
+The main objects are:
+
+	- AtomicSystem:
+		- this object has the atomic positions, types, charges and the eventual auxiliary properties related to the atoms
+		- this object also has the simulation cell informations
+		- these latter can be readed from a file using the AtomicSystem(const std::string& filename) constructor
+		- an AtomicSystem can have a Crystal object (see later)
+		- this object has the main following methods : the neighbour research, the reading and writting of files, the computation of 1d density of a particular auxiliary property, the computation of wrapped coordinates, the selection of atoms in a given box
+
+	- Bicrystal:
+		- this object herits from AtomicSystem and can be used either to generate a system containing a grain boundary or to analyze a system containing a grain boundary
+		- for analyzing GB, it uses a ComputeAuxiliary object (see later) computing an order parameter from which it deduces the GB position, width and compute the excess volume (Bicrystal::Bicrystal(const string& filename, const string NormalDir, const string CrystalName) constructor)
+		- for creating GBs, the main engines are in the different contructors and some cleaning still need to be done, but some bicrystallography tools are available such as the computation of CSL or DSC serving to rationalize the wanted GB (sensitive to the numerical parameters defined for CSL in /data/FixedParameters/FixedParameters.dat specially for low symmetry crystals)
+		- obviously, the generation of grain boundary need the Crystal to be defined
+	- Crystal:
+		- this object
+TO CONTINUE

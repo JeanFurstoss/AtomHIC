@@ -1,3 +1,34 @@
+//**********************************************************************************
+//*   GMMClassification/main.cpp                                                   *
+//**********************************************************************************
+//* This file contains the implementation of the GMMClassification executable.     *
+//* It allows to classify unknown descriptor using a GMM saved in the AtomHIC	   *
+//* machine-learning database (used for SGMA method)				   *
+//**********************************************************************************
+//* (C) Jan 2025 - Jean Furstoss                                                   *
+//*     Université de Poitiers, Institut PPRIME                                    *
+//*     UPR CNRS 3346, 86360 Chasseuneuil-du-Poitou, France                        *
+//*     jean.furstoss@univ-poitiers.fr                                             *
+//* Last modification: J. Furstoss - 28 Janv 2025                                  *
+//**********************************************************************************
+//* This program is free software: you can redistribute it and/or modify           *
+//* it under the terms of the GNU General Public License as published by           *
+//* the Free Software Foundation, either version 3 of the License, or              *
+//* (at your option) any later version.                                            *
+//*                                                                                *
+//* This program is distributed in the hope that it will be useful,                *
+//* but WITHOUT ANY WARRANTY; without even the implied warranty of                 *
+//* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the                  *
+//* GNU General Public License for more details.                                   *
+//*                                                                                *
+//* You should have received a copy of the GNU General Public License              *
+//* along with this program.  If not, see <http://www.gnu.org/licenses/>.          *
+//**********************************************************************************
+//* What is still needed to do here:                                               *
+//*	- modify the code when other descriptors are implemented         	   *
+//*	- 									   *
+//**********************************************************************************
+
 #include <stdlib.h>
 #include <iostream>
 #include <sstream>
@@ -6,14 +37,14 @@
 #include "SteinhardtDescriptors.h"
 #include "GaussianMixtureModel.h"
 #include "AtomicSystem.h"
-#include <chrono>
-#include <omp.h>
+#include <Displays.h>
 
 using namespace std;
-using namespace std::chrono;
 
 int main(int argc, char *argv[])
 {
+	Displays Dis;
+	Dis.Logo();
 	if( argc < 4 ){
 		cerr << "Usage: ./GMMClassification InputFilename (NameOfDescriptor) NameOfDatabase OutputFilename" << endl;
 		cerr << "InputFilename could be an atomic system or a file directly containing the descriptor values, in the latter case NameOfDescriptor argument should not be used" << endl;
@@ -29,10 +60,6 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 	
-	cout << "Calculation running using " << omp_get_max_threads() << " threads" << endl;
-	
-	auto start = high_resolution_clock::now();
-
 	if( argc == 4 ){	
 		string InputFilename = argv[1];
 		string DatabaseFilename = argv[2];
@@ -87,8 +114,6 @@ int main(int argc, char *argv[])
 		MySystem.setAux_vec(GMM.getClassificator(),2,"Struct");
 		MySystem.printSystem_aux(OutputFilename,"Struct");
 	}
-
-	auto end = high_resolution_clock::now();	
-	auto duration = duration_cast<microseconds>(end - start);
-	cout << "Resolution time = " << duration.count() << endl;
+	Dis.ExecutionTime();	
+	return 0;
 }

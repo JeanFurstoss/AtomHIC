@@ -1,19 +1,27 @@
-### CMakeLists.txt --- 
-##
-######################################################################
-## 
-### Commentary: Build of AtomHic library
-## 
-######################################################################
-### GMM
-#include(FetchContent)
-#FetchContent_Declare(
-#  gmm
-#  GIT_REPOSITORY https://github.com/andreacasalino/Gaussian-Mixture-Model.git
-#  #  GIT_TAG        58b3f207cf6df73a0b7cdc8bde933b06d20ab502
-#)
-#FetchContent_MakeAvailable(gmm)
-
+#**********************************************************************************
+#*   CMakeLists.txt                                                               *
+#**********************************************************************************
+#* This file contains the building instructions of the AtomHic library            *
+#**********************************************************************************
+#* (C) Jan 2025 - Jean Furstoss                                                   *
+#*     Université de Poitiers, Institut PPRIME                                    *
+#*     UPR CNRS 3346, 86360 Chasseuneuil-du-Poitou, France                        *
+#*     jean.furstoss@univ-poitiers.fr                                             *
+#* Last modification: J. Furstoss - 28 Janv 2025                                  *
+#**********************************************************************************
+#* This program is free software: you can redistribute it and/or modify           *
+#* it under the terms of the GNU General Public License as published by           *
+#* the Free Software Foundation, either version 3 of the License, or              *
+#* (at your option) any later version.                                            *
+#*                                                                                *
+#* This program is distributed in the hope that it will be useful,                *
+#* but WITHOUT ANY WARRANTY; without even the implied warranty of                 *
+#* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the                  *
+#* GNU General Public License for more details.                                   *
+#*                                                                                *
+#* You should have received a copy of the GNU General Public License              *
+#* along with this program.  If not, see <http://www.gnu.org/licenses/>.          *
+#**********************************************************************************
 
 #Project name
 project(AtomHic)
@@ -35,11 +43,6 @@ endif()
 
 #Generate the shared or static library from the sources
 add_library(${PROJECT_NAME} ${LIBRARY_TYPE} ${SOURCES} ${HEADERS})
-
-### GMM
-#target_link_libraries(${PROJECT_NAME} PUBLIC
-#GaussianMixtureModels
-#)
 
 ## #################################################################
 ## Export header file
