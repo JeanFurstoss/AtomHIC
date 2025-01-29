@@ -13,17 +13,17 @@
 AtomHIC is a C++ library which can be used to generate or post-treat atomic systems for atomistic simulations (e.g. molecular dynamics, ab-initio)
 
 Its compilation generates several executables which can directly used. The principal executables allows for instance to:  
-	- create bicrystalline orthogonal simulation cell containing a given grain boundary (by giving the five macroscopic degree of freedom)  
-	- compute bond orientational parameters even for complex crystals allowing to highlight defective atomic environments  
-	- employ machine-learning techniques to classify local atomic environments  
+	* create bicrystalline orthogonal simulation cell containing a given grain boundary (by giving the five macroscopic degree of freedom)  
+	* compute bond orientational parameters even for complex crystals allowing to highlight defective atomic environments  
+	* employ machine-learning techniques to classify local atomic environments  
 
 Executables tailored to specific needs can also be created using the different features of the library such as:  
-	- readers and printers of atomic systems  
-	- crystallographic and bicrystallographic tools adapted to non-cubic and multi-element crystals  
-	- managing of crystal and machine-learning database  
-	- efficient N-dimensional neighbor research  
-	- computation of atomic descriptors  
-	- machine-learning models  
+	* readers and printers of atomic systems  
+	* crystallographic and bicrystallographic tools adapted to non-cubic and multi-element crystals  
+	* managing of crystal and machine-learning database  
+	* efficient N-dimensional neighbor research  
+	* computation of atomic descriptors  
+	* machine-learning models  
 
 This library is intended to be further developed in the future by, among others, adding new descriptors and machine-learning models. Contributors are then welcomed and could contact jean.furstoss@univ-poitiers.fr for helping in any development needs.
 
@@ -107,37 +107,37 @@ Briefly, this technique lies with the labeling of a gaussian mixture model fitte
 
 The library is structure following:
 
-/src  
-	% implementation of the different classes of the library  
-/tests  
-	% the different tests of the library (run using ctest)  
-/cmake  
-	% cmake files for the compilation of the library  
-/doc  
-	% some documentation  
-/data  
-	/ExampleFiles  
-		% Contains example files  
-	/Crystals  
-		% The crystal database  
-	/Masses  
-		% Masses database  
-	/FixedParameters  
-		% The parameters used by the different executables (no need to recompile when changing the values)  
-	/MachineLearningModels  
-		% Machine-learning databases  
-		/GaussianMixtureModel  
-			% Existing database for SGMA method  
-/tools  
-	% directories containing sources of improved executables (CreateGB, BondOriParam, ..)  
-	/PythonToolsGMM  
-		% some python tools related to gaussian mixture models  
-	/MyTools  
-		% directory used to develop specific executables  
-	/compare  
-		% tools for ctest  
-	/scripts  
-		% tools for ctest  
+* /src  
+	* % implementation of the different classes of the library  
+* /tests  
+	* % the different tests of the library (run using ctest)  
+* /cmake  
+	* % cmake files for the compilation of the library  
+* /doc  
+	* % some documentation  
+* /data  
+	* /ExampleFiles  
+		* % Contains example files  
+	* /Crystals  
+		* % The crystal database  
+	* /Masses  
+		* % Masses database  
+	* /FixedParameters  
+		* % The parameters used by the different executables (no need to recompile when changing the values)  
+	* /MachineLearningModels  
+		* % Machine-learning databases  
+		* /GaussianMixtureModel  
+			* % Existing database for SGMA method  
+* /tools  
+	* % directories containing sources of improved executables (CreateGB, BondOriParam, ..)  
+	* /PythonToolsGMM  
+		* % some python tools related to gaussian mixture models  
+	* /MyTools  
+		* % directory used to develop specific executables  
+	* /compare  
+		* % tools for ctest  
+	* /scripts  
+		* % tools for ctest  
 
 The file /doc/CodeStructure.txt gives an overview of the different classes used in the library.  
 To develop tailored executables, one can use the /data/ExampleFiles/Tool.cpp to see the main functions that can be used from the library or refer to the comments in the source code.  
