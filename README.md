@@ -66,7 +66,7 @@ ctest
 in the build directory and verify that 100% of tests pass
 
 All executables are build in the /build/bin/ directory  
-To use them just type path_to_bin/NameOfExecutable (a short description of the each executable and the required arguments will then be printed)  
+To use them just type path_to_bin/NameOfExecutable (a short description of each executable and required arguments will then be printed)  
 Some part of the code are parallelized using openmp, to benefit for this, use: 
 ```bash
 export OMP_NUM_THREADS="number of thread you want to use"
