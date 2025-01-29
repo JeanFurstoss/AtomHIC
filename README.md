@@ -101,7 +101,7 @@ Identifying specific local atomic environments in atomic systems is a major chal
 More details on this technique can be found [here](https://www.sciencedirect.com/science/article/pii/S001046552400403X) and an extensive documentation for applying this technique using AtomHIC can be found in /doc/GaussianMixtureAnalysis.txt  
 Briefly, this technique lies with the labeling of a gaussian mixture model fitted on the Steinhardt parameters atomic descriptors such as schematized by:  
 
-![figureGB](/doc/GB_And_BondOriParam/figure_order.png)
+![figure_GMM](/doc/FitGMM/FigureFitGMM.png)
 
 ## Code structure
 
