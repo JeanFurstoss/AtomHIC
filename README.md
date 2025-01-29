@@ -13,17 +13,17 @@
 AtomHIC is a C++ library which can be used to generate or post-treat atomic systems for atomistic simulations (e.g. molecular dynamics, ab-initio)
 
 Its compilation generates several executables which can directly used. The principal executables allows for instance to:  
-	* create bicrystalline orthogonal simulation cell containing a given grain boundary (by giving the five macroscopic degree of freedom)  
-	* compute bond orientational parameters even for complex crystals allowing to highlight defective atomic environments  
-	* employ machine-learning techniques to classify local atomic environments  
+- create bicrystalline orthogonal simulation cell containing a given grain boundary (by giving the five macroscopic degree of freedom)  
+- compute bond orientational parameters even for complex crystals allowing to highlight defective atomic environments  
+- employ machine-learning techniques to classify local atomic environments  
 
 Executables tailored to specific needs can also be created using the different features of the library such as:  
-	* readers and printers of atomic systems  
-	* crystallographic and bicrystallographic tools adapted to non-cubic and multi-element crystals  
-	* managing of crystal and machine-learning database  
-	* efficient N-dimensional neighbor research  
-	* computation of atomic descriptors  
-	* machine-learning models  
+- readers and printers of atomic systems  
+- crystallographic and bicrystallographic tools adapted to non-cubic and multi-element crystals  
+- managing of crystal and machine-learning database  
+- efficient N-dimensional neighbor research  
+- computation of atomic descriptors  
+- machine-learning models  
 
 This library is intended to be further developed in the future by, among others, adding new descriptors and machine-learning models. Contributors are then welcomed and could contact jean.furstoss@univ-poitiers.fr for helping in any development needs.
 
