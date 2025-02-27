@@ -604,7 +604,7 @@ void AtomicSystem::setCrystal(const std::string& CrystalName){
 	this->_MyCrystal = new Crystal(CrystalName);
 	this->IsCrystalDefined = true;
 	this->IsCrystalMine = true;
-	if( FilenameConstructed ) UpdateTypes2Crystal();
+	if( FilenameConstructed && nbAtomType > 1 ) UpdateTypes2Crystal();
 }
 
 // This function modifies the ordering of type and type_uint of _MyCrystal for consistency
