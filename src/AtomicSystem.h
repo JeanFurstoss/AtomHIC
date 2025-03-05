@@ -3,7 +3,8 @@
 //**********************************************************************************
 //* This file contains the declaration of the AtomicSystem class which one of the  *
 //* basis class of AtomHIC. This class is mainly used to read/print dump files,    *
-//* computing neighbours, etc.                                                     *
+//* computing neighbours (warning the variable for accessing neighbours should 	   *
+//* really be an unsigned long int variable), etc.                                                     *
 //**********************************************************************************
 //* (C) Jan 2025 - Jean Furstoss                                                   *
 //*     Université de Poitiers, Institut PPRIME                                    *
@@ -114,10 +115,10 @@ public:
 	double get_current_rc(){ return this->current_rc_neigh; }
 	Position getWrappedPos(const unsigned int AuxId){ if( !IsWrappedPos ) computeWrap(); return this->WrappedPos[AuxId]; }
 	unsigned int* getNeighbours(){ return this->Neighbours; }
-	unsigned int getNeighbours(const unsigned long int Id){ return this->Neighbours[Id]; }
+	unsigned int getNeighbours(const unsigned long int Id){ return this->Neighbours[Id]; } // Warning Id should really be a long variable !!!
 	int* getCLNeighbours(){ return this->CLNeighbours; }
 	std::vector<int>* getNotSepTag(){ return this->NotSepTag; }
-	int getCLNeighbours(const unsigned long int Id){ return this->CLNeighbours[Id]; }
+	int getCLNeighbours(const unsigned long int Id){ return this->CLNeighbours[Id]; } // Warning Id should really be a long variable !!!
 	unsigned int getNbMaxN(){ return this->nbMaxN; }
 	bool getIsNeighbours(){ return this->IsNeighbours; }
 	bool getIsCrystalDefined(){ return this->IsCrystalDefined; }

@@ -596,7 +596,7 @@ void AtomicSystem::Print1dDensity(string filename, string auxname){
 void AtomicSystem::setCrystal(Crystal* MyCrystal){
 	this->_MyCrystal = MyCrystal;
 	this->IsCrystalDefined = true;
-	if( FilenameConstructed ) UpdateTypes2Crystal();
+	if( FilenameConstructed && nbAtomType > 1 ) UpdateTypes2Crystal();
 }
 
 void AtomicSystem::setCrystal(const std::string& CrystalName){

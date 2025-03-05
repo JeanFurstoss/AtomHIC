@@ -38,6 +38,7 @@ DBScan::DBScan(){
 void DBScan::setDescriptors(Descriptors *D){
 	MachineLearningModel::setDescriptors(D);
 	this->IsDescriptor = true;
+	nbClust = new unsigned int[nbFilter];
 }
 
 void DBScan::TrainModel(string filter_name){
@@ -119,6 +120,128 @@ void DBScan::TrainModel(string filter_name){
 	delete[] temp_arr_neigh;	
 	cout << "Done !" << endl;
         cout << "Number of cluster found : " << clust_count-1 << endl;
+	nbClust[current_filter] = clust_count-1;
+}
+
+unsigned int DBScan::getNbClust(string filter_name){
+	if( !IsDescriptor ){
+		cerr << "The ML model does not have descriptors, we cannot return the number of cluster" << endl;
+		exit(EXIT_FAILURE);
+	}
+
+	unsigned int current_filter;
+	bool found = false;
+	for(unsigned int f=0;f<nbFilter;f++){
+		if( FilterValue[f] == filter_name ){
+			current_filter = f;
+			found = true;
+			break;
+		}
+	}
+	if( !found ){
+		cerr << "The provided filter value (" << filter_name << ") does not correspond to a filter value of the ML model, aborting" << endl;
+		exit(EXIT_FAILURE);
+	}
+	return nbClust[current_filter];
+}
+
+unsigned int DBScan::getFilterValue(string filter_name){
+	if( !IsDescriptor ){
+		cerr << "The ML model does not have descriptors, we cannot return the filter value" << endl;
+		exit(EXIT_FAILURE);
+	}
+
+	unsigned int current_filter;
+	bool found = false;
+	for(unsigned int f=0;f<nbFilter;f++){
+		if( FilterValue[f] == filter_name ){
+			current_filter = f;
+			found = true;
+			break;
+		}
+	}
+	if( !found ){
+		cerr << "The provided filter name (" << filter_name << ") does not correspond to a filter name of the ML model, aborting" << endl;
+		exit(EXIT_FAILURE);
+	}
+	return current_filter;
+}
+void DBScan::ComputeMuAndV(string filter_name){
+	if( !IsDescriptor ){
+		cerr << "The ML model does not have descriptors, we cannot compute means and variances of clusters" << endl;
+		exit(EXIT_FAILURE);
+	}
+
+	unsigned int current_filter;
+	bool found = false;
+	for(unsigned int f=0;f<nbFilter;f++){
+		if( FilterValue[f] == filter_name ){
+			current_filter = f;
+			found = true;
+			break;
+		}
+	}
+	
+	if( !found ){
+		cerr << "The provided filter value (" << filter_name << ") does not correspond to a filter value of the ML model, aborting" << endl;
+		exit(EXIT_FAILURE);
+	}
+	
+	if( !IsMuAndV ){
+		centroids = new double[nbClustMax*dim*nbFilter];
+		V = new long double[nbClustMax*dim*dim*nbFilter];
+		IsMuAndV = true;
+	}
+
+	// iniitalize variances and centroids to zero
+	unsigned int nbDes = nbDat[current_filter];
+	unsigned int *nbDat2Clust = new unsigned int[nbClust[current_filter]]; // WARNING!
+	for(unsigned int k=0;k<nbClust[current_filter];k++){
+		nbDat2Clust[k] = 0;
+		for(unsigned int d1=0;d1<dim;d1++){
+			centroids[k*dim*nbFilter+d1*nbFilter+current_filter] = 0.;
+			for(unsigned int d2=d1;d2<dim;d2++) V[k*dim2*nbFilter+d1*dim*nbFilter+d2*nbFilter+current_filter] = 0.;
+		}
+	}
+
+	// compute centroids
+	for(unsigned int i=0;i<nbDes;i++){
+		unsigned int ind = _MyDescriptors->getFilterIndex(current_filter*nbDatMax+i);
+		unsigned int current_clust_index;
+		if( Classificator[ind*2] > 0 ) current_clust_index = ((unsigned int) Classificator[ind*2]) - 1;
+		else continue;
+		nbDat2Clust[current_clust_index] += 1;
+		for(unsigned int d=0;d<dim;d++) centroids[current_clust_index*dim*nbFilter+d*nbFilter+current_filter] += _MyDescriptors->getDescriptors()[ind*dim+d];
+	}	
+	for(unsigned int k=0;k<nbClust[current_filter];k++){
+		for(unsigned int d=0;d<dim;d++) centroids[k*dim*nbFilter+d*nbFilter+current_filter] /= nbDat2Clust[k];
+	}
+
+	// compute variances
+	for(unsigned int i=0;i<nbDes;i++){
+		unsigned int ind = _MyDescriptors->getFilterIndex(current_filter*nbDatMax+i);
+		unsigned int current_clust_index;
+		if( Classificator[ind*2] > 0 ) current_clust_index = ((unsigned int) Classificator[ind*2]) - 1;
+		else continue;
+		for(unsigned int d1=0;d1<dim;d1++){
+			for(unsigned int d2=0;d2<dim;d2++){
+				V[current_clust_index*dim2*nbFilter+d1*dim*nbFilter+d2*nbFilter+current_filter] += ( _MyDescriptors->getDescriptors()[ind*dim+d1] - centroids[current_clust_index*dim*nbFilter+d1*nbFilter+current_filter] ) * ( _MyDescriptors->getDescriptors()[ind*dim+d2] - centroids[current_clust_index*dim*nbFilter+d2*nbFilter+current_filter] );
+			}
+		}
+	}
+	for(unsigned int k=0;k<nbClust[current_filter];k++){
+		for(unsigned int d1=0;d1<dim;d1++){
+			for(unsigned int d2=d1;d2<dim;d2++){
+				unsigned int ind = k*dim2*nbFilter+d1*dim*nbFilter+d2*nbFilter+current_filter;
+				if( nbDat2Clust[k] != 0 ) V[ind] /= nbDat2Clust[k];
+				else V[ind] = 0.;
+				V[k*dim2*nbFilter+d2*dim*nbFilter+d1*nbFilter+current_filter] = V[ind];
+			}
+		}
+	}
+
+	delete[] nbDat2Clust;
+
 }
 
 void DBScan::readFixedParams(){
@@ -129,12 +252,18 @@ void DBScan::readFixedParams(){
 	string backslash="/";
 	string filename=fp+backslash+FixedParam_Filename;
 	ifstream file(filename, ios::in);
-	size_t pos_eps, pos_minPts;
+	size_t pos_eps, pos_minPts, pos_nbClustMax;
 	string buffer_s, line;
 	unsigned int ReadOk(0);
 	if(file){
 		while(file){
 			getline(file,line);
+			pos_nbClustMax=line.find("DBSCAN_NB_MAX_CLUSTER");
+			if(pos_nbClustMax!=string::npos){
+				istringstream text(line);
+				text >> buffer_s >> nbClustMax;
+				ReadOk++;
+			}
 			pos_eps=line.find("DBSCAN_EPS");
 			if(pos_eps!=string::npos){
 				istringstream text(line);
@@ -153,7 +282,7 @@ void DBScan::readFixedParams(){
 		exit(EXIT_FAILURE);
 	}
 	file.close();
-	if( ReadOk != 2 ){
+	if( ReadOk != 3 ){
 		cerr << "Error during reading of FixedParameters.dat for DBScan, aborting" << endl;
 		exit(EXIT_FAILURE);
 	}
@@ -178,6 +307,10 @@ void DBScan::ReadProperties(vector<string> Properties){
 
 DBScan::~DBScan(){
 	if( this->IsDescriptor ){
-
+		delete[] nbClust;
+	}
+	if( IsMuAndV ){
+		delete[] centroids;
+		delete[] V;
 	}
 }

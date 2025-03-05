@@ -31,6 +31,7 @@
 //*	- implement a way for minPts automatic calculation or using the read value *
 //* from FixedParameters                                                           *
 //*	- think about how to classify unknown descriptors                          *
+//*	- think about parallelization			                           *
 //*	- 						                           *
 //**********************************************************************************
 
@@ -47,10 +48,13 @@ class ATOMHIC_EXPORT DBScan : public MachineLearningModel {
 private:
 	bool IsDescriptor = false;
 	unsigned int *nbClust; // [f]
-	double *centroids; // centroids[k*dim*nbFilter+d*nbFilter+f] d component of the centroid of cluster k with filter f
+	double *centroids; // centroids[k*dim*nbFilter+d*nbFilter+f] d component of the centroid of cluster k (value of Classificator[i*2]-1) with filter f
+	long double *V; // V[k*dim2*nbFilter+d1*dim*nbFilter+d2*nbFilter+f] d1,d2 component of variance of cluster k+1 (value of Classificator[i*2]-1) with filter f
+	bool IsMuAndV = false;
 	AtomicSystem *_MySystem;
 
 	// Fixed parameters
+	unsigned int nbClustMax = 200;
 	double eps = 3.;
 	unsigned int minPts = 5;
 
@@ -63,6 +67,11 @@ public:
 	void TrainModel(std::string filter_name);
 	void Classify(){};
 	void ReadProperties(std::vector<std::string> Properties);
+	unsigned int getNbClust(std::string filter_name);
+	void ComputeMuAndV(std::string filter_name);
+	unsigned int getFilterValue(std::string filter_name);
+	double *getMu(){ return centroids; }
+	long double *getV(){ return V; }
 	//void ReadModelParamFromDatabase();
 	// destructor
 	~DBScan();
