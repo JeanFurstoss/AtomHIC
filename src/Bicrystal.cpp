@@ -254,7 +254,7 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 						AtomList_temp[at_count] = this->_MyCrystal2->getOrientedSystem()->getAtom(n);
 						AtomList_temp[at_count].pos.x = Mx2*(AtomList_temp[at_count].pos.x + i*xl2);
 						AtomList_temp[at_count].pos.y = ypos;
-						AtomList_temp[at_count].pos.z += (this->_MyCrystal->getOrientedSystem()->getH3()[2]+GBspace-DeltaZ);
+						AtomList_temp[at_count].pos.z += (this->_MyCrystal->getOrientedSystem()->getH3()[2]+(GBspace/2.)-DeltaZ);
 						TagGrain[at_count] = 2;
 						at_count += 1;
 					}
@@ -438,7 +438,7 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 			}
 			if( store ){
 				this->AtomList[at_count2] = AtomList_temp[i];
-				if( TagGrain[i] == 2 ) this->AtomList[at_count2].pos.z += GBspace;
+				if( TagGrain[i] == 2 ) this->AtomList[at_count2].pos.z += (GBspace/2.);
 				at_count2 += 1;
 			}
 		}
@@ -449,7 +449,7 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 		this->AtomList = new Atom[this->nbAtom];
 		for(unsigned int i=0;i<this->nbAtom;i++){
 			this->AtomList[i] = AtomList_temp[i];
-			if( TagGrain[i] == 2 ) this->AtomList[i].pos.z += GBspace;
+			if( TagGrain[i] == 2 ) this->AtomList[i].pos.z += (GBspace/2.);
 		}
 	}
 	string h_a_str = to_string(h_a);
@@ -484,13 +484,21 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	delete[] Dir2_G2;
 	delete[] TagGrain;
 }
-	
+
+//string center(const string& text, int width) {
+//    int padding = width - text.length(); // Espace total à remplir
+//    int leftPadding = padding / 2;       // Moitié à gauche
+//    int rightPadding = padding - leftPadding; // Reste à droite
+//    return string(leftPadding, ' ') + text + string(rightPadding, ' ');
+//}
+
 // Constructor for bicrystal with plane GB with given misorientation and GB plane
 Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, double theta, int h_p, int k_p, int l_p, bool rationalize):h_a(h_a), k_a(k_a), l_a(l_a), theta(theta), h_p(h_p), k_p(k_p), l_p(l_p){
 	read_params();
 	unsigned int MaxDup = 50;
 	bool FullGrains = true; 
 	this->MT = new MathTools;
+	cout << "Constructing a GB misoriented by " << theta*180./M_PI << "° around [" << h_a << "_" << k_a << "_" << l_a << "] axis and one GB plane (" << h_p << "_" << k_p << "_" << l_p << ")" << endl;
 	setOrientedCrystals(crystalName, rationalize);
 	// search the number of linear combination for the two system to have the same x y length
 	this->xl1 = this->_MyCrystal->getOrientedSystem()->getH1()[0];
@@ -527,8 +535,23 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
     	My1 = final_ybox / (yl1*dupY1);
     	Mx2 = final_xbox / (xl2*dupX2);
     	My2 = final_ybox / (yl2*dupY2);
-	cout << "Duplicates : " << dupX1 << " " << dupY1 << " " << dupX2 << " " << dupY2 << endl;
-	cout << "Misfits : " << Mx1 << " " << My1 << " " << Mx2 << " " << My2 << endl;
+	cout << "Pasting the two grains over each others leads to:" << endl;
+    	vector<vector<string>> arr_elements = {
+		{"", "Grain 1", "Grain 2"}, 
+		{"Direction", "X", "Y", "X", "Y"},
+		{"Duplicates", to_string(dupX1), to_string(dupY1), to_string(dupX2), to_string(dupY2)},
+		{"Misfits", to_string((Mx1-1.)*100.)+" %", to_string((My1-1.)*100.)+" %", to_string((Mx2-1.)*100.)+" %", to_string((My2-1.)*100.)+" %"}
+	};
+	vector<vector<unsigned int>> arr_fusion = {
+		{1,  2, 2},
+		{1, 1, 1, 1, 1},
+		{1, 1, 1, 1, 1},
+		{1, 1, 1, 1, 1}
+    	};
+	Dis.DisplayArray(arr_elements, arr_fusion);
+	cout << "Misfit values could be reduced by decreasing MAX_MISFIT in data/FixedParameters/FixedParameters.dat" << endl;
+	cout << endl;
+
 	generateCSL();
 	// initialize the variables and pointers
 	unsigned int nbAtom1 = this->_MyCrystal->getOrientedSystem()->getNbAtom();
@@ -603,6 +626,7 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 				//this->AtomList[i*dupY1*nbAtom1+j*nbAtom1+n].pos.y = (this->AtomList[i*dupY1*nbAtom1+j*nbAtom1+n].pos.y + j*yl1);
 				if( !FullGrains && i == 0 && j == 0 ) this->AtomList_G1[n] = this->AtomList[n];
 				else this->AtomList_G1[i*dupY1*nbAtom1+j*nbAtom1+n] = this->AtomList[i*dupY1*nbAtom1+j*nbAtom1+n];
+				this->AtomList[i*dupY1*nbAtom1+j*nbAtom1+n].pos.z += this->H3_G2[2]+(GBspace/2.);
 			}
 		}
 	}
@@ -616,7 +640,7 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 				//this->AtomList[nbAtom1*dupX1*dupY1+i*dupY2*nbAtom2+j*nbAtom2+n].pos.y = (this->AtomList[nbAtom1*dupX1*dupY1+i*dupY2*nbAtom2+j*nbAtom2+n].pos.y + j*yl2);
 				if( !FullGrains && i == 0 && j == 0 ) this->AtomList_G2[n] = this->AtomList[nbAtom1*dupX1*dupY1+n];
 				else this->AtomList_G2[i*dupY2*nbAtom2+j*nbAtom2+n] = this->AtomList[nbAtom1*dupX1*dupY1+i*dupY2*nbAtom2+j*nbAtom2+n];
-				this->AtomList[nbAtom1*dupX1*dupY1+i*dupY2*nbAtom2+j*nbAtom2+n].pos.z -= this->H3_G2[2];
+				//this->AtomList[nbAtom1*dupX1*dupY1+i*dupY2*nbAtom2+j*nbAtom2+n].pos.z -= this->H3_G2[2]+(GBspace/2.);
 				//this->AtomList[nbAtom1*dupX1*dupY1+i*dupY2*nbAtom2+j*nbAtom2+n].pos.z += (this->_MyCrystal->getOrientedSystem()->getH3()[2]+GBspace);
 			}
 		}
@@ -632,9 +656,49 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	string h_p_str = to_string(this->h_p);
 	string k_p_str = to_string(this->k_p);
 	string l_p_str = to_string(this->l_p);
-	this->File_Heading = " # ["+h_a_str+k_a_str+l_a_str+"]"+theta_str+"°("+h_p_str+k_p_str+l_p_str+") "+crystalName+" grain boundary\n";
-	this->Grain1->set_File_Heading(" # Lower grain of the ["+h_a_str+k_a_str+l_a_str+"]"+theta_str+"°("+h_p_str+k_p_str+l_p_str+") "+crystalName+" grain boundary\n");
-	this->Grain2->set_File_Heading(" # Upper grain of the ["+h_a_str+k_a_str+l_a_str+"]"+theta_str+"°("+h_p_str+k_p_str+l_p_str+") "+crystalName+" grain boundary\n");
+	_MyCrystal->ComputeOrthogonalPlanesAndDirections();
+	_MyCrystal2->ComputeOrthogonalPlanesAndDirections();
+	string h_p_1_z_str = to_string(_MyCrystal->getOrthogonalPlanes()[6]);
+	string k_p_1_z_str = to_string(_MyCrystal->getOrthogonalPlanes()[7]);
+	string l_p_1_z_str = to_string(_MyCrystal->getOrthogonalPlanes()[8]);
+	string h_p_2_z_str = to_string(_MyCrystal2->getOrthogonalPlanes()[6]);
+	string k_p_2_z_str = to_string(_MyCrystal2->getOrthogonalPlanes()[7]);
+	string l_p_2_z_str = to_string(_MyCrystal2->getOrthogonalPlanes()[8]);
+	string h_p_1_x_str = to_string(_MyCrystal->getOrthogonalPlanes()[0]);
+	string k_p_1_x_str = to_string(_MyCrystal->getOrthogonalPlanes()[1]);
+	string l_p_1_x_str = to_string(_MyCrystal->getOrthogonalPlanes()[2]);
+	string h_p_2_x_str = to_string(_MyCrystal2->getOrthogonalPlanes()[0]);
+	string k_p_2_x_str = to_string(_MyCrystal2->getOrthogonalPlanes()[1]);
+	string l_p_2_x_str = to_string(_MyCrystal2->getOrthogonalPlanes()[2]);
+	string h_p_1_y_str = to_string(_MyCrystal->getOrthogonalPlanes()[3]);
+	string k_p_1_y_str = to_string(_MyCrystal->getOrthogonalPlanes()[4]);
+	string l_p_1_y_str = to_string(_MyCrystal->getOrthogonalPlanes()[5]);
+	string h_p_2_y_str = to_string(_MyCrystal2->getOrthogonalPlanes()[3]);
+	string k_p_2_y_str = to_string(_MyCrystal2->getOrthogonalPlanes()[4]);
+	string l_p_2_y_str = to_string(_MyCrystal2->getOrthogonalPlanes()[5]);
+	string h_d_1_z_str = to_string(_MyCrystal->getOrthogonalDirs()[6]);
+	string k_d_1_z_str = to_string(_MyCrystal->getOrthogonalDirs()[7]);
+	string l_d_1_z_str = to_string(_MyCrystal->getOrthogonalDirs()[8]);
+	string h_d_2_z_str = to_string(_MyCrystal2->getOrthogonalDirs()[6]);
+	string k_d_2_z_str = to_string(_MyCrystal2->getOrthogonalDirs()[7]);
+	string l_d_2_z_str = to_string(_MyCrystal2->getOrthogonalDirs()[8]);
+	string h_d_1_x_str = to_string(_MyCrystal->getOrthogonalDirs()[0]);
+	string k_d_1_x_str = to_string(_MyCrystal->getOrthogonalDirs()[1]);
+	string l_d_1_x_str = to_string(_MyCrystal->getOrthogonalDirs()[2]);
+	string h_d_2_x_str = to_string(_MyCrystal2->getOrthogonalDirs()[0]);
+	string k_d_2_x_str = to_string(_MyCrystal2->getOrthogonalDirs()[1]);
+	string l_d_2_x_str = to_string(_MyCrystal2->getOrthogonalDirs()[2]);
+	string h_d_1_y_str = to_string(_MyCrystal->getOrthogonalDirs()[3]);
+	string k_d_1_y_str = to_string(_MyCrystal->getOrthogonalDirs()[4]);
+	string l_d_1_y_str = to_string(_MyCrystal->getOrthogonalDirs()[5]);
+	string h_d_2_y_str = to_string(_MyCrystal2->getOrthogonalDirs()[3]);
+	string k_d_2_y_str = to_string(_MyCrystal2->getOrthogonalDirs()[4]);
+	string l_d_2_y_str = to_string(_MyCrystal2->getOrthogonalDirs()[5]);
+	Dis.DisplayGB(_MyCrystal,_MyCrystal2);
+	cout << endl;
+	this->File_Heading = " # ["+h_a_str+"_"+k_a_str+"_"+l_a_str+"]"+theta_str+"°("+h_p_str+"_"+k_p_str+"_"+l_p_str+") "+crystalName+" grain boundary\n # The present GB have plane ("+h_p_1_z_str+"_"+k_p_1_z_str+"_"+l_p_1_z_str+") for lower grain and ("+h_p_2_z_str+"_"+k_p_2_z_str+"_"+l_p_2_z_str+") for upper grain\n";
+	this->Grain1->set_File_Heading(" # Lower grain of the ["+h_a_str+"_"+k_a_str+"_"+l_a_str+"]"+theta_str+"°("+h_p_str+"_"+k_p_str+"_"+l_p_str+") "+crystalName+" grain boundary\n # This system has x <=> ["+h_d_1_x_str+"_"+k_d_1_x_str+"_"+l_d_1_x_str+"], y <=> ["+h_d_1_y_str+"_"+k_d_1_y_str+"_"+l_d_1_y_str+"], z <=> ["+h_d_1_z_str+"_"+k_d_1_z_str+"_"+l_d_1_z_str+"] and x <=> ("+h_p_1_x_str+"_"+k_p_1_x_str+"_"+l_p_1_x_str+"), y <=> ("+h_p_1_y_str+"_"+k_p_1_y_str+"_"+l_p_1_y_str+"), z <=> ("+h_p_1_z_str+"_"+k_p_1_z_str+"_"+l_p_1_z_str+")\n");
+	this->Grain2->set_File_Heading(" # Upper grain of the ["+h_a_str+"_"+k_a_str+"_"+l_a_str+"]"+theta_str+"°("+h_p_str+"_"+k_p_str+"_"+l_p_str+") "+crystalName+" grain boundary\n # This system has x <=> ["+h_d_2_x_str+"_"+k_d_2_x_str+"_"+l_d_2_x_str+"], y <=> ["+h_d_2_y_str+"_"+k_d_2_y_str+"_"+l_d_2_y_str+"], z <=> ["+h_d_2_z_str+"_"+k_d_2_z_str+"_"+l_d_2_z_str+"] and x <=> ("+h_p_2_x_str+"_"+k_p_2_x_str+"_"+l_p_2_x_str+"), y <=> ("+h_p_2_y_str+"_"+k_p_2_y_str+"_"+l_p_2_y_str+"), z <=> ("+h_p_2_z_str+"_"+k_p_2_z_str+"_"+l_p_2_z_str+")\n");
 	this->xl1 *= Mx1; 
 	this->xl2 *= Mx2; 
 	this->yl1 *= My1; 
@@ -671,7 +735,7 @@ Bicrystal::Bicrystal(const string& filename):AtomicSystem(filename){
 // search CSL primitive lattice based on the work of Xie et al. 2020 and Bonnet and Rolland 1975
 //void Bicrystal::searchCSL(int h_a_func, int k_a_func, int l_a_func, double theta_func, int *CSL_vec, unsigned int verbose){
 bool Bicrystal::searchCSL(double *rot_ax_func, double theta_func, int *CSL_vec, unsigned int verbose){
-	cout << "Searching CSL lattice" << endl;
+	//cout << "Searching CSL lattice" << endl;
 	this->CSL_Basis = new double[9];
 	this->IsCSL_Basis = true;
 	double *a1 = new double[9]; // basis vector of lattice 1 
@@ -877,7 +941,8 @@ bool Bicrystal::searchCSL(double *rot_ax_func, double theta_func, int *CSL_vec, 
 		//	CSL_Basis[i] += CSL_Basis2[i];
 		//	CSL_Basis[i] /= 2.;
 		//}
-		cout << "Success ! We find a CSL corresponding to sigma =" << this->sigma << ", using a tolerance of " << tol_IntVec << endl;
+		//cout << "Success ! We find a CSL corresponding to sigma =" << this->sigma << ", using a tolerance of " << tol_IntVec << endl;
+		cout << "This misorientation corresponds to a GB with sigma = " << this->sigma << endl;
 		success=true;
 	}else if( !FirstBase ){
 		MT->MatDotMat(a1,Backup_U1,CSL_Basis);
@@ -889,8 +954,16 @@ bool Bicrystal::searchCSL(double *rot_ax_func, double theta_func, int *CSL_vec, 
 		cout << "Fail to find CSL basis" << endl;
 		success=false;
 	}
-	cout << "CSL" << endl;
-	MT->printMat(CSL_Basis);
+	cout << "CSL basis:" << endl;
+	vector<vector<string>> arr_element = {
+		{"Basis vector","X","Y","Z"},
+		{"a1",to_string(CSL_Basis[0]),to_string(CSL_Basis[3]),to_string(CSL_Basis[6])},
+		{"a2",to_string(CSL_Basis[1]),to_string(CSL_Basis[4]),to_string(CSL_Basis[7])},
+		{"a3",to_string(CSL_Basis[2]),to_string(CSL_Basis[5]),to_string(CSL_Basis[8])}
+	};
+	vector<vector<unsigned int>> arr_fusion = {{1,1,1,1},{1,1,1,1},{1,1,1,1},{1,1,1,1}};
+	Dis.DisplayArray(arr_element,arr_fusion);
+	cout << endl;
 	delete[] a1;
 	delete[] a1_inv;
 	delete[] a2;
@@ -969,9 +1042,19 @@ void Bicrystal::generateCSL(){
 		for(int j=-CLMax;j<CLMax;j++){
 			for(int k=-CLMax;k<CLMax;k++){
 				for(unsigned int ii=0;ii<3;ii++) pos[ii] = i*CSL_Basis[ii*3] + j*CSL_Basis[ii*3+1] + k*CSL_Basis[ii*3+2];
-				if( pos[0] < xhi+tolpos && pos[0] > -tolpos && pos[1] < yhi+tolpos && pos[1] > -tolpos && pos[2] > -zhi-tolpos && pos[2] < zhi+tolpos ){
+				if( pos[0] < xhi+tolpos && pos[0] > -tolpos && pos[1] < yhi+tolpos && pos[1] > -tolpos && pos[2] > -tolpos && pos[2] < zhi+tolpos ){
 					CSL.push_back(new double[3]);
-					for(unsigned int ii=0;ii<3;ii++) CSL[CSL.size()-1][ii] = i*CSL_Basis[ii*3] + j*CSL_Basis[ii*3+1] + k*CSL_Basis[ii*3+2];
+					for(unsigned int ii=0;ii<3;ii++) CSL[CSL.size()-1][ii] = pos[ii];
+				}
+				for(unsigned int ii=0;ii<3;ii++) pos[ii] = i*_MyCrystal->getA1()[ii] + j*_MyCrystal->getA2()[ii] + k*_MyCrystal->getA3()[ii];
+				if( pos[0] < xhi+tolpos && pos[0] > -tolpos && pos[1] < yhi+tolpos && pos[1] > -tolpos && pos[2] > -tolpos && pos[2] < zhi+tolpos ){
+					NodesG1.push_back(new double[3]);
+					for(unsigned int ii=0;ii<3;ii++) NodesG1[NodesG1.size()-1][ii] = pos[ii];
+				}
+				for(unsigned int ii=0;ii<3;ii++) pos[ii] = i*_MyCrystal2->getA1()[ii] + j*_MyCrystal2->getA2()[ii] + k*_MyCrystal2->getA3()[ii];
+				if( pos[0] < xhi+tolpos && pos[0] > -tolpos && pos[1] < yhi+tolpos && pos[1] > -tolpos && pos[2] > -tolpos && pos[2] < zhi+tolpos ){
+					NodesG2.push_back(new double[3]);
+					for(unsigned int ii=0;ii<3;ii++) NodesG2[NodesG2.size()-1][ii] = pos[ii];
 				}
 			}
 		}
@@ -983,23 +1066,19 @@ void Bicrystal::printCSL(const std::string filename){
 	ofstream writefile(filename);
 	writefile << " # File generated using AtomHic\n";
 	writefile << this->File_Heading;
-        writefile << "\n\t" << this->nbAtom+CSL.size() << "\tatoms\n\t" << this->nbAtomType+1 << "\tatom types\n\n\t0.000000000000\t" << this->H1[0] << "\txlo xhi\n\t0.000000000000\t" << H2[1] << "\tylo yhi\n\t0.000000000000\t" << H3[2] << "\tzlo zhi\n";
+        writefile << "\n\t" << NodesG1.size()+NodesG2.size()+CSL.size() << "\tatoms\n\t" << 3 << "\tatom types\n\n\t0.000000000000\t" << this->H1[0] << "\txlo xhi\n\t0.000000000000\t" << H2[1] << "\tylo yhi\n\t0.000000000000\t" << H3[2] << "\tzlo zhi\n";
 	if( this->IsTilted ) writefile << "\t" << H2[0] << "\t" << H3[0] << "\t" << H3[1] << "\txy xz yz\n";
 	writefile << "\nMasses\n\n";
-	for(unsigned int i=0;i<this->nbAtomType;i++) writefile << "\t" << i+1 << "\t" << this->AtomMass[i] << "\t# " << this->AtomType[i] << "\n";
-	writefile << "\t" << this->nbAtomType+1 << "\t0\t# CSL\n";
+	writefile << "\t" << 1 << "\t0\t# Lattice1\n";
+	writefile << "\t" << 2 << "\t0\t# Lattice2\n";
+	writefile << "\t" << 3 << "\t0\t# CSL\n";
+	writefile << "\nAtoms # atomic\n\n";
 
-	if( IsCharge ){
-		writefile << "\nAtoms # charge\n\n";
-		for(unsigned int i=0;i<this->nbAtom;i++) writefile << i+1 << "\t" << this->AtomList[i].type_uint << "\t" << this->AtomCharge[this->AtomList[i].type_uint-1] << "\t" << this->AtomList[i].pos.x << "\t" << this->AtomList[i].pos.y << "\t" << this->AtomList[i].pos.z << "\n"; 
-		for(unsigned int i=0;i<CSL.size();i++) writefile << i+1+this->nbAtom << "\t" << this->nbAtomType+1 << "\t0\t" << CSL[i][0] << "\t" << CSL[i][1] << "\t" << CSL[i][2] << "\n";
-	}else{
-		writefile << "\nAtoms # atomic\n\n";
-		for(unsigned int i=0;i<this->nbAtom;i++) writefile << i+1 << "\t" << this->AtomList[i].type_uint << "\t" << this->AtomList[i].pos.x << "\t" << this->AtomList[i].pos.y << "\t" << this->AtomList[i].pos.z << "\n"; 
-		for(unsigned int i=0;i<CSL.size();i++) writefile << i+1+this->nbAtom << "\t" << this->nbAtomType+1 << "\t" << CSL[i][0] << "\t" << CSL[i][1] << "\t" << CSL[i][2] << "\n";
-	}
+	for(unsigned int i=0;i<NodesG1.size();i++) writefile << i << "\t" << 1 << "\t" << NodesG1[i][0] << "\t" << NodesG1[i][1] << "\t" << NodesG1[i][2] << "\n";
+	for(unsigned int i=0;i<NodesG2.size();i++) writefile << NodesG1.size()+1+i << "\t" << 2 << "\t" << NodesG2[i][0] << "\t" << NodesG2[i][1] << "\t" << NodesG2[i][2] << "\n";
+	for(unsigned int i=0;i<CSL.size();i++) writefile << NodesG1.size()+NodesG2.size()+1+i << "\t" << 3 << "\t" << CSL[i][0] << "\t" << CSL[i][1] << "\t" << CSL[i][2] << "\n";
 	writefile.close();
-
+	cout << "File " << filename << " successfully writted !" << endl;
 }
 
 // search the rotation axis and angle corresponding to the closest rational GB
@@ -1378,12 +1457,24 @@ void Bicrystal::setOrientedCrystals(const string& crystalName, bool rationalize)
 	
 	searchCSL(rot_ax,this->theta,CSL_vec,0);
 
-	cout << "Constructing grains" << endl;
 	this->_MyCrystal->ConstructOrthogonalCell();
-	cout << "First grain ok" << endl;
+	cout << "First grain constructed (" << this->_MyCrystal->getOrientedSystem()->getNbAtom() << " atoms)" << endl;
 	//this->_MyCrystal->getOrientedSystem()->print_lmp("Crystal1.lmp");
 	this->_MyCrystal2->ConstructOrthogonalCell();
-	cout << "Second grain ok" << endl;
+	cout << "Second grain constructed (" << this->_MyCrystal2->getOrientedSystem()->getNbAtom() << " atoms)" << endl;
+
+	cout << "Building orthogonal cells required deforming the crystals such that:" << endl;
+	vector<vector<string>> arr_element = {
+		{"","X","Y","Z","Shear"},
+		{"Grain 1",to_string(_MyCrystal->GetCrystalDef()[0])+" %",to_string(_MyCrystal->GetCrystalDef()[1])+" %",to_string(_MyCrystal->GetCrystalDef()[2])+" %",to_string(_MyCrystal->GetCrystalDef()[3])+" %"},
+		{"Grain 2",to_string(_MyCrystal2->GetCrystalDef()[0])+" %",to_string(_MyCrystal2->GetCrystalDef()[1])+" %",to_string(_MyCrystal2->GetCrystalDef()[2])+" %",to_string(_MyCrystal2->GetCrystalDef()[3])+" %"}
+	};
+	vector<vector<unsigned int>> arr_fusion = {{1,1,1,1,1},{1,1,1,1,1},{1,1,1,1,1}};
+	Dis.DisplayArray(arr_element,arr_fusion);
+	cout << "If these values are too large it may cause issues during the relaxation of the GB" << endl;
+	cout << "These values can be reduced by decreasing TOL_ORTHO_BOX and TOL_ORTHO_BOX_Z in data/FixedParameters/FixedParameters.dat" << endl;
+	cout << endl;
+	
 	double sp(0.),n1(0.),n2(0.);
 	for(unsigned int i=0;i<3;i++){
 		sp += this->_MyCrystal->getA1()[i]*this->_MyCrystal2->getA1()[i];
@@ -1678,7 +1769,6 @@ void Bicrystal::print_Grains(){
 	if( this->AreGrainsDefined ){
 		this->Grain1->print_lmp("Grain1.lmp");
 		this->Grain2->print_lmp("Grain2.lmp");
-		cout << "The two grains have been printed (\"Grain1.lmp\" and \"Grain2.lmp\")" << endl;
 	}else{
 		cout << "The two grains are not defined, we cannot print them" << endl;
 	}
@@ -1770,6 +1860,10 @@ Bicrystal::~Bicrystal(){
 		delete[] RotGrain1ToGrain2;
 		delete[] RotCartToGrain2;
 	}
-	if( IsCSL ) for(unsigned int i=0;i<CSL.size();i++) delete[] CSL[i];
+	if( IsCSL ){
+		for(unsigned int i=0;i<CSL.size();i++) delete[] CSL[i];
+		for(unsigned int i=0;i<NodesG1.size();i++) delete[] NodesG1[i];
+		for(unsigned int i=0;i<NodesG2.size();i++) delete[] NodesG2[i];
+	}
 	if( IsCSL_Basis ) delete[] CSL_Basis;
 }

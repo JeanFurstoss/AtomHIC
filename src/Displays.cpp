@@ -60,3 +60,121 @@ void Displays::ExecutionTime(){
 	auto duration = duration_cast<milliseconds>(end - time_beg);
 	cout << "Execution time : " << duration.count()/1.e3 << " s" << endl;
 }
+
+string Displays::center(const string& text, int width) {
+	int padding = width - text.length();
+	int leftPadding = padding / 2;
+	int rightPadding = padding - leftPadding;
+	return string(leftPadding, ' ') + text + string(rightPadding, ' ');
+}
+
+void Displays::DisplayArray(const vector<vector<string>>& elements, const vector<vector<unsigned int>>& fusion) {
+	unsigned int nbRow = fusion.size();
+	unsigned int nbCols = 0;
+	for(unsigned int i=0;i<fusion[0].size();i++) nbCols += fusion[0][i];
+	for(unsigned int i=1;i<nbRow;i++){
+	        unsigned int buf = 0;
+		for(unsigned int ii=0;ii<fusion[i].size();ii++) buf += fusion[i][ii];
+	    	if( buf != nbCols ){
+	    		cerr << "The number of columns is not consistent for printing array, aborting" << endl;
+	    		exit(EXIT_FAILURE);
+	    	}
+	}
+	
+	// compute column width
+	unsigned int width = 0;
+	for(unsigned int i=0;i<elements.size();i++){
+		for(unsigned int j=0;j<elements[i].size();j++){
+	    		if( elements[i][j].length() > width ) width = elements[i][j].length();
+	    }
+	}
+	width += 4;
+	
+	string line = "+";
+	for(unsigned int i=0;i<nbCols;i++) line += string(width, '-') + "+";
+	
+	cout << line << endl;
+	for (unsigned int i = 0; i < nbRow; i++) {
+		cout << "|";
+		for(unsigned int j=0;j<fusion[i].size();j++){
+			unsigned int colspan = fusion[i][j];
+			unsigned int mergedWidth = width*colspan+(colspan-1);
+			cout << center(elements[i][j], mergedWidth) << "|";
+		}
+		cout << endl << line << endl;
+	}
+}
+
+void Displays::DisplayGB(Crystal *Crystal1, Crystal *Crystal2){
+	string *Dirs1 = new string[3];
+	string *Dirs2 = new string[3];
+	string *Planes1 = new string[3];
+	string *Planes2 = new string[3];
+	unsigned int width = 0;
+	for(unsigned int i=0;i<3;i++){
+		Dirs1[i] = "["+to_string(Crystal1->getOrthogonalDirs()[i*3]);
+		Planes1[i] = "("+to_string(Crystal1->getOrthogonalPlanes()[i*3]);
+		Dirs2[i] = "["+to_string(Crystal2->getOrthogonalDirs()[i*3]);
+		Planes2[i] = "("+to_string(Crystal2->getOrthogonalPlanes()[i*3]);
+		for(unsigned int j=1;j<3;j++){
+			Dirs1[i] += "_"+to_string(Crystal1->getOrthogonalDirs()[i*3+j]);
+			Planes1[i] += "_"+to_string(Crystal1->getOrthogonalPlanes()[i*3+j]);
+			Dirs2[i] += "_"+to_string(Crystal2->getOrthogonalDirs()[i*3+j]);
+			Planes2[i] += "_"+to_string(Crystal2->getOrthogonalPlanes()[i*3+j]);
+		}
+		Dirs1[i] += "]";
+		Planes1[i] += ")";
+		Dirs2[i] += "]";
+		Planes2[i] += ")";
+		if( Dirs1[i].length() > width ) width = Dirs1[i].length();
+		if( Dirs2[i].length() > width ) width = Dirs2[i].length();
+		if( Planes1[i].length() > width ) width = Planes1[i].length();
+		if( Planes2[i].length() > width ) width = Planes2[i].length();
+	}
+
+	width += 12;
+	string line = string(width+2, '-');
+	string side = "|";
+	side += string(width, ' ')+'|';
+	cout << "The GB is constructed following :" << endl << endl;
+	// Display grain 1
+	cout << "        " << "   /" << string(width, ' ') << "/" << endl;
+	cout << "        " << "  /" << string(width, ' ') << "/" << endl;
+	cout << "        " << " /" << center(Planes1[2], width) << "/ " << Planes1[0] << endl;
+	cout << "        " << line << endl;
+	cout << "        " << "|" << center(Planes1[1], width) << "|" << endl;
+	cout << "        " << side << endl;
+	cout << "        " << side << endl;
+	cout << "        " << "|" << center("Grain 1", width) << "|        ^ z   " << endl;
+	cout << "        " << side << "        |     " << endl;
+	cout << "        " << side << "        ---> x" << endl;
+	cout << "        " << "|     ^ " << Dirs1[2] << string(width-7-Dirs1[2].length(), ' ') << "|     y /   " << endl;
+	cout << "        " << "|     |" << string(width-6,' ') << "|      v      " << endl;
+	cout << "        " << "|     ---> " << Dirs1[0] << string(width-10-Dirs1[0].length(), ' ') << "|" << endl;
+	cout << "        " << "|    /" << string(width-5,' ') << "|" << endl;
+	cout << "        " << "|   v " << Dirs1[1] << string(width-5-Dirs1[1].length(), ' ') << "|  /" << endl;
+	cout << "        " << side << " /" << endl;
+	cout << "        " << side << "/" << endl;
+	cout << "        " << line << endl;
+
+	// Display grain 2
+	cout << "        " << "   /" << string(width, ' ') << "/" << endl;
+	cout << "        " << "  /" << string(width, ' ') << "/" << endl;
+	cout << "        " << " /" << center(Planes2[2], width) << "/ " << Planes2[0] << endl;
+	cout << "        " << line << endl;
+	cout << "        " << "|" << center(Planes2[1], width) << "|" << endl;
+	cout << "        " << side << endl;
+	cout << "        " << side << endl;
+	cout << "        " << "|" << center("Grain 2", width) << "|" << endl;
+	cout << "        " << side << endl;
+	cout << "        " << side << endl;
+	cout << "        " << "|     ^ " << Dirs2[2] << string(width-7-Dirs2[2].length(), ' ') << "|" << endl;
+	cout << "        " << "|     |" << string(width-6,' ') << "|" << endl;
+	cout << "        " << "|     ---> " << Dirs2[0] << string(width-10-Dirs2[0].length(), ' ') << "|" << endl;
+	cout << "        " << "|    /" << string(width-5,' ') << "|" << endl;
+	cout << "        " << "|   v " << Dirs2[1] << string(width-5-Dirs2[1].length(), ' ') << "|  /" << endl;
+	cout << "        " << side << " /" << endl;
+	cout << "        " << side << "/" << endl;
+	cout << "        " << line << endl;
+
+}

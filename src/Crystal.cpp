@@ -39,12 +39,15 @@ using namespace std;
 
 Crystal::Crystal(const string& crystalName){
 	read_params();
+	crystal_def = new double[4];
 	this->a1 = new double[3];
 	this->a2 = new double[3];
 	this->a3 = new double[3];
 	this->a1_star = new double[3];
 	this->a2_star = new double[3];
 	this->a3_star = new double[3];
+	this->OrthogonalPlanes = new int[9];
+	this->OrthogonalDirs = new int[9];
 	this->MT = new MathTools;
 	this->IsCharge = false;
 	// initialize these matrix as identity
@@ -156,7 +159,6 @@ void Crystal::RotateCrystal(const int& h_p, const int& k_p, const int& l_p){
 	double *test_vec = new double[3];
 	double *orthoDir = new double[3];
 	double xbox,ybox,zbox; // box dimension
-	cout << maxhkl << endl;
 	// direction normal to the wanted plane
 	normalDir[0] = h_p*(this->a1_star[0]) + k_p*(this->a2_star[0]) + l_p*(this->a3_star[0]);	
 	normalDir[1] = h_p*(this->a1_star[1]) + k_p*(this->a2_star[1]) + l_p*(this->a3_star[1]);	
@@ -216,7 +218,7 @@ void Crystal::RotateCrystal(const int& h_p, const int& k_p, const int& l_p){
 	if( fabs(normalDir[0]) > tolScalarProd || fabs(normalDir[1]) > tolScalarProd || fabs(orthoDir[1]) > tolScalarProd || fabs(orthoDir[2]) > tolScalarProd ){
 		cout << "The crystal basis cannot be aligned with the cartesian one, aborting calculation" << endl;
 		return;
-	}else cout << "We are constructing a system with the (" << h_p << k_p << l_p << ") plane parallel with (xy) plane and the [" << buffer_vector_i[minhkl*3] << buffer_vector_i[minhkl*3+1] << buffer_vector_i[minhkl*3+2] << "] direction aligned with the x axis" << endl;
+	}//else cout << "We are constructing a system with the (" << h_p << k_p << l_p << ") plane parallel with (xy) plane and the [" << buffer_vector_i[minhkl*3] << buffer_vector_i[minhkl*3+1] << buffer_vector_i[minhkl*3+2] << "] direction aligned with the x axis" << endl;
 
 	// rotate lattice vectors
 	MT->MatDotRawVec(this->rot_mat_total,this->a1,this->a1);
@@ -349,7 +351,7 @@ void Crystal::ConstructOrthogonalCell(){
 		}
 	}
 	if( xh_list.size() == 0 || yh_list.size() == 0 || zh_list.size() == 0 ){
-		cerr << "There is no linear combination of crystal vectors giving an orthogonal cell, consider increase the tolerance or the number of CL used for the research, aborting computation" << endl;
+		cerr << "There is no linear combination of crystal vectors giving an orthogonal cell, consider increase the tolerance or the number of CL in data/FixedParameters/FixedParameters.dat used for the research, aborting computation" << endl;
 		exit(EXIT_FAILURE);
 	}
 
@@ -414,13 +416,22 @@ void Crystal::ConstructOrthogonalCell(){
 	//MT->MatDotRawVec(invTrans,this->a3,this->a3);
 	// recompute reciproqual space as cell parameters may have changed
 	computeReciproqual();
-
+	ComputeCrystalDef();
 	this->IsOrientedSystem = true;
 	delete[] invTrans;
 	delete[] TotalTrans;
 	delete[] xh;
 	delete[] yh;
 	delete[] zh;
+}
+
+void Crystal::ComputeCrystalDef(){
+	crystal_def[0] = (TiltTrans_xyz[0]-1.)*100.;
+	crystal_def[1] = (TiltTrans_xyz[4]-1.)*100.;
+	crystal_def[2] = (TiltTrans_xyz[8]-1.)*100.;
+	crystal_def[3] = pow(TiltTrans_xyz[1],2.)+pow(TiltTrans_xyz[2],2.)+pow(TiltTrans_xyz[5],2.);
+	crystal_def[3] += (pow(TiltTrans_xyz[4]-TiltTrans_xyz[8],2.)+pow(TiltTrans_xyz[0]-TiltTrans_xyz[8],2.)+pow(TiltTrans_xyz[0]-TiltTrans_xyz[4],2.))/8.;
+	crystal_def[3] = sqrt(crystal_def[3])*100.;
 }
 
 void Crystal::computeReciproqual(){
@@ -438,6 +449,112 @@ void Crystal::computeReciproqual(){
 		this->a3_star[i] /= this->V;
 	}
 	delete[] mixedProd;
+}
+
+void Crystal::ComputeOrthogonalPlanesAndDirections(){
+	// search which crystallographic planes are aligned with the x, y, and z planes and which crystallographic directions are aligned with the x, y and z directions
+	computeReciproqual();
+	int CLsearch = 50; // TODO add in FixedParameters
+	// search the smallest orthogonal box for this orientation by testing linear combination of a1 a2 a3 giving cell vectors aligned with cartesian axis
+	// expect for the x axis which is already aligned with a crystallographic direction
+	vector<int> xh_list;
+	vector<int> yh_list;
+	vector<int> zh_list;
+	vector<int> xh_list_p;
+	vector<int> yh_list_p;
+	vector<int> zh_list_p;
+	vector<double> buffer_vector_d_x, buffer_vector_d_y, buffer_vector_d_z, buffer_vector_d_x_p, buffer_vector_d_y_p, buffer_vector_d_z_p;
+	double absX, absY, absZ;
+	for(int i=-CLsearch;i<CLsearch+1;i++){
+		for(int j=-CLsearch;j<CLsearch+1;j++){
+			for(int k=-CLsearch;k<CLsearch+1;k++){
+				if( i != 0 || j !=0 || k != 0 ){
+					// directions
+					absX = fabs(i*this->a1[0]+j*this->a2[0]+k*this->a3[0]);
+					absY = fabs(i*this->a1[1]+j*this->a2[1]+k*this->a3[1]);
+					absZ = fabs(i*this->a1[2]+j*this->a2[2]+k*this->a3[2]);
+					if( absY < TolOrthoBox && absZ < TolOrthoBox ){
+						buffer_vector_d_x.push_back(absY+absZ);
+						xh_list.push_back(i);
+						xh_list.push_back(j);
+						xh_list.push_back(k);
+					}
+					if( absX < TolOrthoBoxZ && absY < TolOrthoBoxZ ){
+						buffer_vector_d_z.push_back(absX+absY);
+						zh_list.push_back(i);
+						zh_list.push_back(j);
+						zh_list.push_back(k);
+					}
+					if( absX < TolOrthoBox && absZ < TolOrthoBox ){
+						buffer_vector_d_y.push_back(absX+absZ);
+						yh_list.push_back(i);
+						yh_list.push_back(j);
+						yh_list.push_back(k);
+					}
+					// planes
+					absX = fabs(i*this->a1_star[0]+j*this->a2_star[0]+k*this->a3_star[0]);
+					absY = fabs(i*this->a1_star[1]+j*this->a2_star[1]+k*this->a3_star[1]);
+					absZ = fabs(i*this->a1_star[2]+j*this->a2_star[2]+k*this->a3_star[2]);
+					if( absY < TolOrthoBox && absZ < TolOrthoBox ){
+						buffer_vector_d_x_p.push_back(absY+absZ);
+						xh_list_p.push_back(i);
+						xh_list_p.push_back(j);
+						xh_list_p.push_back(k);
+					}
+					if( absX < TolOrthoBoxZ && absY < TolOrthoBoxZ ){
+						buffer_vector_d_z_p.push_back(absX+absY);
+						zh_list_p.push_back(i);
+						zh_list_p.push_back(j);
+						zh_list_p.push_back(k);
+					}
+					if( absX < TolOrthoBox && absZ < TolOrthoBox ){
+						buffer_vector_d_y_p.push_back(absX+absZ);
+						yh_list_p.push_back(i);
+						yh_list_p.push_back(j);
+						yh_list_p.push_back(k);
+					}
+				}
+			}
+		}
+	}
+	if( xh_list.size() == 0 || yh_list.size() == 0 || zh_list.size() == 0 ){
+		cerr << "We cannot find crystallographic directions aligned with cartesian axis" << endl;
+		return;
+	}
+	if( xh_list_p.size() == 0 || yh_list_p.size() == 0 || zh_list_p.size() == 0 ){
+		cerr << "We cannot find crystallographic directions aligned with cartesian axis" << endl;
+		return;
+	}
+
+	unsigned int ind_x, ind_y, ind_z;
+	int *buffer_vec = new int[3];
+	// directions
+	ind_x = MT->min(buffer_vector_d_x);
+	ind_y = MT->min(buffer_vector_d_y);
+	ind_z = MT->min(buffer_vector_d_z);
+	for(unsigned int j=0;j<3;j++) buffer_vec[j] = xh_list[ind_x*3+j];
+	MT->reduce_vec(buffer_vec,buffer_vec);
+	for(unsigned int j=0;j<3;j++) OrthogonalDirs[j] = buffer_vec[j];
+	for(unsigned int j=0;j<3;j++) buffer_vec[j] = yh_list[ind_y*3+j];
+	MT->reduce_vec(buffer_vec,buffer_vec);
+	for(unsigned int j=0;j<3;j++) OrthogonalDirs[j+3] = buffer_vec[j];
+	for(unsigned int j=0;j<3;j++) buffer_vec[j] = zh_list[ind_z*3+j];
+	MT->reduce_vec(buffer_vec,buffer_vec);
+	for(unsigned int j=0;j<3;j++) OrthogonalDirs[j+6] = buffer_vec[j];
+	// planes
+	ind_x = MT->min(buffer_vector_d_x_p);
+	ind_y = MT->min(buffer_vector_d_y_p);
+	ind_z = MT->min(buffer_vector_d_z_p);
+	for(unsigned int j=0;j<3;j++) buffer_vec[j] = xh_list_p[ind_x*3+j];
+	MT->reduce_vec(buffer_vec,buffer_vec);
+	for(unsigned int j=0;j<3;j++) OrthogonalPlanes[j] = buffer_vec[j];
+	for(unsigned int j=0;j<3;j++) buffer_vec[j] = yh_list_p[ind_y*3+j];
+	MT->reduce_vec(buffer_vec,buffer_vec);
+	for(unsigned int j=0;j<3;j++) OrthogonalPlanes[j+3] = buffer_vec[j];
+	for(unsigned int j=0;j<3;j++) buffer_vec[j] = zh_list_p[ind_z*3+j];
+	MT->reduce_vec(buffer_vec,buffer_vec);
+	for(unsigned int j=0;j<3;j++) OrthogonalPlanes[j+6] = buffer_vec[j];
+	delete[] buffer_vec;
 }
 
 void Crystal::read_database(){
@@ -720,6 +837,8 @@ Crystal::~Crystal(){
 	delete[] a1_star;
 	delete[] a2_star;
 	delete[] a3_star;
+	delete[] OrthogonalPlanes;
+	delete[] OrthogonalDirs;
 	delete MT;
 	delete[] AtomType;
 	delete[] AtomType_uint;
@@ -732,6 +851,7 @@ Crystal::~Crystal(){
 	delete[] Stoichiometry;
 	delete[] AtomSite;
 	delete[] AtomCharge;
+	delete[] crystal_def;
 	if( IsOrientedSystem ) delete OrientedSystem;
 	if( IsReferenceBondOriParam ){
 		for(unsigned int t=0;t<MaxAtomType;t++) ReferenceBondOriParam[t].clear();

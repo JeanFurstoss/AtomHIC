@@ -69,6 +69,8 @@ private:
 	double *a2_star;
 	double *a3_star;
 	double V; // elementary volum
+	int *OrthogonalPlanes;
+	int *OrthogonalDirs;
 	Atom *Motif;
 	bool IsOrientedSystem = false;
 	bool IsMultisite = false;
@@ -89,6 +91,7 @@ private:
 	double TolOrthoBoxZ = 1.;
 	double MinBoxHeight = 10.;
 	double MinBoxAside = 10.;
+	double *crystal_def; // contains the deformation applied to the crystal for creating orthogonal box (crystal_def[0,1,2] = compression/dilatation in x,y,z direction, crystal_def[3] = shear invariant)
 	double shift_x = 0.;
 	double shift_y = 0.;
 	double shift_z = 0.;
@@ -107,6 +110,8 @@ public:
 	const double* getA2_star(){ return this->a2_star; };
 	const double* getA3_star(){ return this->a3_star; };
 	const double* getALength(){ return this->alength; };
+	const int* getOrthogonalPlanes(){ return this->OrthogonalPlanes; };
+	const int* getOrthogonalDirs(){ return this->OrthogonalDirs; };
 	const double getVol(){ return this->V; };
 	unsigned int getNbAtom(){ return this->nbAtom; }
 	unsigned int getNbAtomType(){ return this->nbAtomType; }
@@ -133,10 +138,13 @@ public:
 	std::vector<std::string> getBondOriParamProperties(){ return BondOriParamProperties; }
 	std::vector<double> *getReferenceBondOriParam(){ return ReferenceBondOriParam; }
 	bool getIsReferenceBondOriParam(){ return IsReferenceBondOriParam; }
+	double *GetCrystalDef(){ return crystal_def; }
 	// methods
 	void read_params();
 	void read_database();
+	void ComputeCrystalDef();
 	void computeReciproqual();
+	void ComputeOrthogonalPlanesAndDirections();
 	void RotateCrystal(const int& h_p, const int& k_p, const int& l_p);
 	void RotateCrystal(const double *RotMat);
 	void ConstructNotSepList();

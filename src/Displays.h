@@ -33,6 +33,9 @@
 
 #include "AtomHicExport.h"
 #include <chrono>
+#include <vector>
+#include <string>
+#include "Crystal.h"
 
 class ATOMHIC_EXPORT Displays {
 private:
@@ -42,7 +45,10 @@ public:
 	Displays();
 	// methods
 	void Logo();
-	void ExecutionTime();	
+	void ExecutionTime();
+	void DisplayArray(const std::vector<std::vector<std::string>>& elements, const std::vector<std::vector<unsigned int>>& fusion);
+	std::string center(const std::string& text, int width);
+	void DisplayGB(Crystal *Crystal1, Crystal *Crystal2);
 	// destructor
 	~Displays(){};
 	

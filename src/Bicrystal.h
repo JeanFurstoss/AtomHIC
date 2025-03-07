@@ -45,10 +45,13 @@
 #include "AtomicSystem.h"
 #include "ComputeAuxiliary.h"
 #include <string>
+#include <iomanip>
+#include <Displays.h>
 
 class ATOMHIC_EXPORT Bicrystal : public AtomicSystem {
 protected:
 	std::string NormalDir;
+	Displays Dis;
 	double Ldir; // box length in the GB normal direction
 	double ExcessVol;
 	bool IsVacuum;
@@ -83,6 +86,8 @@ protected:
 	bool IsCrystal2 = false;
 	double xl1, xl2, yl1, yl2;
 	std::vector<double*> CSL;
+	std::vector<double*> NodesG1;
+	std::vector<double*> NodesG2;
 	double *CSL_Basis;
 	double sigma; // double to have an information of how good is the basis (normally unsigned int but if double, the computation of CSL is not very precise)
 	bool IsCSL = false;
