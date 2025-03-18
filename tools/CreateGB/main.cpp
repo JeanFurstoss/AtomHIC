@@ -44,8 +44,9 @@ int main(int argc, char *argv[])
 {
 	Displays Dis;
 	Dis.Logo();
-	if( argc < 9 ){
-		cerr << "Usage: CreateGB h_RotAxis k_RotAxis l_RotAxis RotAngle(in degree) h_GBPlane k_GBPlane l_GBPlane CrystalName(has to be defined in /data/Crystal/) Rationalize" << endl;
+	if( argc != 10 && argc != 12 ){
+		cerr << "Usage: CreateGB h_RotAxis k_RotAxis (i_RotAxis) l_RotAxis RotAngle(in degree) h_GBPlane k_GBPlane (i_GBPlane) l_GBPlane CrystalName(has to be defined in /data/Crystal/) Rationalize" << endl;
+		cerr << "The i Miller indexes (for rotation axis and GB plane) should only be used if the crystal is hexagonal" << endl;
 		cerr << "Rationalize can be either 0 or 1" << endl;
 		cerr << "1 => rationalize the GB (i.e. search the closest CSL GB to the provided parameters, in this case the parameters for CSL calculation in /data/FixedParameters/FixedParameters.dat can be important)" << endl;
 		cerr << "0 => do not rationalize the GB, in this case the parameters for constructing crystal and bicrystal in /data/FixedParameters/FixedParameters.dat can be important" << endl;
@@ -55,30 +56,61 @@ int main(int argc, char *argv[])
 	int h_a, k_a ,l_a, h_p, k_p, l_p;
 	double theta;
 	unsigned int rat;
-	string crystalName;
-	istringstream iss_ha(argv[1]);
-	iss_ha >> h_a;
-	istringstream iss_ka(argv[2]);
-	iss_ka >> k_a;
-	istringstream iss_la(argv[3]);
-	iss_la >> l_a;
-	istringstream iss_theta(argv[4]);
-	iss_theta >> theta;
-	theta *= M_PI/180.;
-	istringstream iss_hp(argv[5]);
-	iss_hp >> h_p;
-	istringstream iss_kp(argv[6]);
-	iss_kp >> k_p;
-	istringstream iss_lp(argv[7]);
-	iss_lp >> l_p;
-	istringstream iss_cn(argv[8]);
-	iss_cn >> crystalName;
-	istringstream iss_rat(argv[9]);
-	iss_rat >> rat;
 	bool rat_b;
-	if( rat == 0 ) rat_b = false;
-	else rat_b = true;
+	string crystalName;
+	if( argc == 10 ){
+		istringstream iss_ha(argv[1]);
+		iss_ha >> h_a;
+		istringstream iss_ka(argv[2]);
+		iss_ka >> k_a;
+		istringstream iss_la(argv[3]);
+		iss_la >> l_a;
+		istringstream iss_theta(argv[4]);
+		iss_theta >> theta;
+		theta *= M_PI/180.;
+		istringstream iss_hp(argv[5]);
+		iss_hp >> h_p;
+		istringstream iss_kp(argv[6]);
+		iss_kp >> k_p;
+		istringstream iss_lp(argv[7]);
+		iss_lp >> l_p;
+		istringstream iss_cn(argv[8]);
+		iss_cn >> crystalName;
+		istringstream iss_rat(argv[9]);
+		iss_rat >> rat;
+		if( rat == 0 ) rat_b = false;
+		else rat_b = true;
+	}else{
+		int i_a, i_p;
+		istringstream iss_ha(argv[1]);
+		iss_ha >> h_a;
+		istringstream iss_ka(argv[2]);
+		iss_ka >> k_a;
+		istringstream iss_ia(argv[3]);
+		iss_ia >> i_a;
+		istringstream iss_la(argv[4]);
+		iss_la >> l_a;
+		istringstream iss_theta(argv[5]);
+		iss_theta >> theta;
+		theta *= M_PI/180.;
+		istringstream iss_hp(argv[6]);
+		iss_hp >> h_p;
+		istringstream iss_kp(argv[7]);
+		iss_kp >> k_p;
+		istringstream iss_ip(argv[8]);
+		iss_ip >> i_p;
+		istringstream iss_lp(argv[9]);
+		iss_lp >> l_p;
+		istringstream iss_cn(argv[10]);
+		iss_cn >> crystalName;
+		istringstream iss_rat(argv[11]);
+		iss_rat >> rat;
+		if( rat == 0 ) rat_b = false;
+		else rat_b = true;
+	}
 	Bicrystal MyGB(crystalName,h_a,k_a,l_a,theta,h_p,k_p,l_p,rat_b);
+
+
 	MyGB.print_lmp("GB.lmp");
 	MyGB.printCSL("CSL.lmp");
 	MyGB.print_Grains();

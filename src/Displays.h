@@ -49,6 +49,7 @@ public:
 	void DisplayArray(const std::vector<std::vector<std::string>>& elements, const std::vector<std::vector<unsigned int>>& fusion);
 	std::string center(const std::string& text, int width);
 	void DisplayGB(Crystal *Crystal1, Crystal *Crystal2);
+	void DisplayOrthogonalCell(Crystal *Crystal);
 	// destructor
 	~Displays(){};
 	

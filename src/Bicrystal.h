@@ -104,6 +104,7 @@ protected:
 	double tol_CSL_integer;
 	double tolAlignment_CSL;
 	double MaxMisfit, GBspace;
+	unsigned int MaxDup;
 public:
 	// constructors
 	Bicrystal(){};

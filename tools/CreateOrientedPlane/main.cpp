@@ -43,24 +43,57 @@ int main(int argc, char *argv[])
 {
 	Displays Dis;
 	Dis.Logo();
-	if( argc < 5 ){
-		cerr << "Usage: CreateOrientedPlane h k l CrystalName(has to be defined in /data/Crystal/) OutputFilename" << endl;
+	if( argc != 6 && argc != 7 ){
+		cerr << "Usage: CreateOrientedPlane h k (i) l CrystalName(has to be defined in /data/Crystal/) OutputFilename" << endl;
 		cerr << "This executable will create an orthogonal cell with a z-oriented (hkl) plane" << endl;
+		cerr << "Index i should be only used for hexagonal crystals" << endl;
 		cerr << "The numerical parameters used for this construction can be tuned in the /data/FixedParameters/FixedParameters.dat file" << endl;
 		return EXIT_FAILURE;
 	}
-	int h, k ,l;
-	istringstream iss_h(argv[1]);
-	iss_h >> h;
-	istringstream iss_k(argv[2]);
-	iss_k >> k;
-	istringstream iss_l(argv[3]);
-	iss_l >> l;
-	string crystalType=argv[4];
-	string filename=argv[5];
+	int h, k ,l, i;
+	string crystalType, filename;
+	if( argc == 6 ){
+		istringstream iss_h(argv[1]);
+		iss_h >> h;
+		istringstream iss_k(argv[2]);
+		iss_k >> k;
+		istringstream iss_l(argv[3]);
+		iss_l >> l;
+		crystalType=argv[4];
+		filename=argv[5];
+	}else{
+		istringstream iss_h(argv[1]);
+		iss_h >> h;
+		istringstream iss_k(argv[2]);
+		iss_k >> k;
+		istringstream iss_i(argv[3]);
+		iss_i >> i;
+		if( i != (-h-k) ) cout << "Warning, i index is different than -h-k, i will be considered as equal to " << -h-k << endl;
+		istringstream iss_l(argv[4]);
+		iss_l >> l;
+		crystalType=argv[5];
+		filename=argv[6];
+	}
+	string i_str = "";
+	if( argc == 7 ) i_str = to_string(-h-k)+"_";
+	cout << "Creating orthogonal cell of " << crystalType << " crystal, with (" << h << "_" << k << "_" << i_str << l << ") plane normal aligned with z direction" << endl;
+	cout << endl;
 	Crystal MyCrystal(crystalType);
 	MyCrystal.RotateCrystal(h,k,l);
 	MyCrystal.ConstructOrthogonalCell();
+	cout << "Building orthogonal cell required deforming the crystal such that:" << endl;
+	vector<vector<string>> arr_element = {
+		{"X","Y","Z","Shear"},
+		{to_string(MyCrystal.GetCrystalDef()[0])+" %",to_string(MyCrystal.GetCrystalDef()[1])+" %",to_string(MyCrystal.GetCrystalDef()[2])+" %",to_string(MyCrystal.GetCrystalDef()[3])+" %"}
+	};
+	vector<vector<unsigned int>> arr_fusion = {{1,1,1,1},{1,1,1,1}};
+	Dis.DisplayArray(arr_element,arr_fusion);
+	cout << "If these values are too large it may cause issues during the relaxation of the cell" << endl;
+	cout << "These values can be reduced by decreasing TOL_ORTHO_BOX and TOL_ORTHO_BOX_Z in data/FixedParameters/FixedParameters.dat" << endl;
+	cout << endl;
+
+	MyCrystal.ComputeOrthogonalPlanesAndDirections();
+	Dis.DisplayOrthogonalCell(&MyCrystal);
 	MyCrystal.getOrientedSystem()->print_lmp(filename);
 	Dis.ExecutionTime();	
 	return 0;

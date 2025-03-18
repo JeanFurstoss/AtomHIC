@@ -105,23 +105,125 @@ void Displays::DisplayArray(const vector<vector<string>>& elements, const vector
 	}
 }
 
+void Displays::DisplayOrthogonalCell(Crystal *Crystal){
+	string *Dirs1 = new string[3];
+	string *Planes1 = new string[3];
+	unsigned int width = 0;
+	string *i_1_d = new string[3];
+	string *i_1_p = new string[3];
+	for(unsigned int i=0;i<3;i++){
+		i_1_d[i] = "";
+		i_1_p[i] = "";
+	}
+	if( Crystal->getCrystallo() == "Hexagonal" ){
+		for(unsigned int i=0;i<3;i++){
+			i_1_d[i] = "_"+to_string(-Crystal->getOrthogonalDirs()[i*3]-Crystal->getOrthogonalDirs()[i*3+1]);
+			i_1_p[i] = "_"+to_string(-Crystal->getOrthogonalPlanes()[i*3]-Crystal->getOrthogonalPlanes()[i*3+1]);
+		}
+	}
+
+	for(unsigned int i=0;i<3;i++){
+		Dirs1[i] = "["+to_string(Crystal->getOrthogonalDirs()[i*3]);
+		Planes1[i] = "("+to_string(Crystal->getOrthogonalPlanes()[i*3]);
+		
+		Dirs1[i] += "_"+to_string(Crystal->getOrthogonalDirs()[i*3+1]);
+		Planes1[i] += "_"+to_string(Crystal->getOrthogonalPlanes()[i*3+1]);
+		
+		Dirs1[i] += i_1_d[i];
+		Planes1[i] += i_1_p[i];
+		
+		Dirs1[i] += "_"+to_string(Crystal->getOrthogonalDirs()[i*3+2]);
+		Planes1[i] += "_"+to_string(Crystal->getOrthogonalPlanes()[i*3+2]);
+		
+		Dirs1[i] += "]";
+		Planes1[i] += ")";
+		if( Dirs1[i].length() > width ) width = Dirs1[i].length();
+		if( Planes1[i].length() > width ) width = Planes1[i].length();
+	}
+
+	width += 12;
+	string line = string(width+2, '-');
+	string side = "|";
+	side += string(width, ' ')+'|';
+	cout << "The system is constructed following :" << endl << endl;
+	// Display grain 1
+	cout << "        " << "   /" << string(width, ' ') << "/" << endl;
+	cout << "        " << "  /" << string(width, ' ') << "/" << endl;
+	cout << "        " << " /" << center(Planes1[2], width) << "/ " << Planes1[0] << endl;
+	cout << "        " << line << endl;
+	cout << "        " << "|" << center(Planes1[1], width) << "|" << endl;
+	cout << "        " << side << endl;
+	cout << "        " << side << endl;
+	cout << "        " << "|" << center("", width) << "|        ^ z   " << endl;
+	cout << "        " << side << "        |     " << endl;
+	cout << "        " << side << "        ---> x" << endl;
+	cout << "        " << "|     ^ " << Dirs1[2] << string(width-7-Dirs1[2].length(), ' ') << "|     y /   " << endl;
+	cout << "        " << "|     |" << string(width-6,' ') << "|      v      " << endl;
+	cout << "        " << "|     ---> " << Dirs1[0] << string(width-10-Dirs1[0].length(), ' ') << "|" << endl;
+	cout << "        " << "|    /" << string(width-5,' ') << "|" << endl;
+	cout << "        " << "|   v " << Dirs1[1] << string(width-5-Dirs1[1].length(), ' ') << "|  /" << endl;
+	cout << "        " << side << " /" << endl;
+	cout << "        " << side << "/" << endl;
+	cout << "        " << line << endl;
+
+
+	delete[] Dirs1;
+	delete[] Planes1;
+	delete[] i_1_d;
+	delete[] i_1_p;
+
+}
+
 void Displays::DisplayGB(Crystal *Crystal1, Crystal *Crystal2){
 	string *Dirs1 = new string[3];
 	string *Dirs2 = new string[3];
 	string *Planes1 = new string[3];
 	string *Planes2 = new string[3];
 	unsigned int width = 0;
+	string *i_1_d = new string[3];
+	string *i_2_d = new string[3];
+	string *i_1_p = new string[3];
+	string *i_2_p = new string[3];
+	for(unsigned int i=0;i<3;i++){
+		i_1_d[i] = "";
+		i_2_d[i] = "";
+		i_1_p[i] = "";
+		i_2_p[i] = "";
+	}
+	if( Crystal1->getCrystallo() == "Hexagonal" ){
+		for(unsigned int i=0;i<3;i++){
+			i_1_d[i] = "_"+to_string(-Crystal1->getOrthogonalDirs()[i*3]-Crystal1->getOrthogonalDirs()[i*3+1]);
+			i_1_p[i] = "_"+to_string(-Crystal1->getOrthogonalPlanes()[i*3]-Crystal1->getOrthogonalPlanes()[i*3+1]);
+		}
+	}
+	if( Crystal2->getCrystallo() == "Hexagonal" ){
+		for(unsigned int i=0;i<3;i++){
+			i_2_d[i] = "_"+to_string(-Crystal2->getOrthogonalDirs()[i*3]-Crystal2->getOrthogonalDirs()[i*3+1]);
+			i_2_p[i] = "_"+to_string(-Crystal2->getOrthogonalPlanes()[i*3]-Crystal2->getOrthogonalPlanes()[i*3+1]);
+		}
+	}
+	
 	for(unsigned int i=0;i<3;i++){
 		Dirs1[i] = "["+to_string(Crystal1->getOrthogonalDirs()[i*3]);
 		Planes1[i] = "("+to_string(Crystal1->getOrthogonalPlanes()[i*3]);
 		Dirs2[i] = "["+to_string(Crystal2->getOrthogonalDirs()[i*3]);
 		Planes2[i] = "("+to_string(Crystal2->getOrthogonalPlanes()[i*3]);
-		for(unsigned int j=1;j<3;j++){
-			Dirs1[i] += "_"+to_string(Crystal1->getOrthogonalDirs()[i*3+j]);
-			Planes1[i] += "_"+to_string(Crystal1->getOrthogonalPlanes()[i*3+j]);
-			Dirs2[i] += "_"+to_string(Crystal2->getOrthogonalDirs()[i*3+j]);
-			Planes2[i] += "_"+to_string(Crystal2->getOrthogonalPlanes()[i*3+j]);
-		}
+		
+		Dirs1[i] += "_"+to_string(Crystal1->getOrthogonalDirs()[i*3+1]);
+		Planes1[i] += "_"+to_string(Crystal1->getOrthogonalPlanes()[i*3+1]);
+		Dirs2[i] += "_"+to_string(Crystal2->getOrthogonalDirs()[i*3+1]);
+		Planes2[i] += "_"+to_string(Crystal2->getOrthogonalPlanes()[i*3+1]);
+		
+		Dirs1[i] += i_1_d[i];
+		Planes1[i] += i_1_p[i];
+		Dirs2[i] += i_2_d[i];
+		Planes2[i] += i_2_p[i];
+		
+		Dirs1[i] += "_"+to_string(Crystal1->getOrthogonalDirs()[i*3+2]);
+		Planes1[i] += "_"+to_string(Crystal1->getOrthogonalPlanes()[i*3+2]);
+		Dirs2[i] += "_"+to_string(Crystal2->getOrthogonalDirs()[i*3+2]);
+		Planes2[i] += "_"+to_string(Crystal2->getOrthogonalPlanes()[i*3+2]);
+		
 		Dirs1[i] += "]";
 		Planes1[i] += ")";
 		Dirs2[i] += "]";
@@ -177,4 +279,12 @@ void Displays::DisplayGB(Crystal *Crystal1, Crystal *Crystal2){
 	cout << "        " << side << "/" << endl;
 	cout << "        " << line << endl;
 
+	delete[] Dirs1;
+	delete[] Dirs2;
+	delete[] Planes1;
+	delete[] Planes2;
+	delete[] i_1_d;
+	delete[] i_2_d;
+	delete[] i_1_p;
+	delete[] i_2_p;
 }

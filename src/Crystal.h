@@ -47,7 +47,7 @@ class AtomicSystem;
 class ATOMHIC_EXPORT Crystal {
 private:
 	std::string name;
-	std::string crystallo; // cubic, orthorhombic, etc.
+	std::string crystallo; // Cubic, Hexagonal, Tetragonal, Orthorhombic, Monoclinic or Triclinic
 	std::string path2database;
 	unsigned int nbAtom;
 	unsigned int nbAtomType;

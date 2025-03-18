@@ -39,9 +39,10 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 }
 	
 // Constructor for bicrystal with facetted GB with given misorientation and GB plane and facet type (for the moment this is implemented for 2D facets and for a GB composed 2 different facet types, i.e. with one facet direction parallel to x direction)
-Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, double theta, int h_p, int k_p, int l_p, vector<int> FacetsType, unsigned int N_facet):h_a(h_a), k_a(k_a), l_a(l_a), theta(theta), h_p(h_p), k_p(k_p), l_p(l_p){ //TODO warning use this-> for the variable in the initialization list
+Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, double theta, int h_p, int k_p, int l_p, vector<int> FacetsType, unsigned int N_facet):h_a(h_a), k_a(k_a), l_a(l_a), theta(theta), h_p(h_p), k_p(k_p), l_p(l_p){ 
 	this->MT = new MathTools;
 	read_params();
+	setCrystal(crystalName);
 	setOrientedCrystals(crystalName, false);
 	double *Dir1_G1 = new double[3];
 	double *Dir2_G1 = new double[3];
@@ -101,7 +102,6 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	n2 *= N_facet;
 	double DeltaZ = fabs(n1*Dir1_G1[2]);
 	// search the number of linear combination for the two system to have the same x y length
-	unsigned int MaxDup = 50;
 	this->xl1 = this->_MyCrystal->getOrientedSystem()->getH1()[0];
 	this->xl2 = this->_MyCrystal2->getOrientedSystem()->getH1()[0];
 	this->yl1 = this->_MyCrystal->getOrientedSystem()->getH2()[1];
@@ -485,20 +485,18 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	delete[] TagGrain;
 }
 
-//string center(const string& text, int width) {
-//    int padding = width - text.length(); // Espace total à remplir
-//    int leftPadding = padding / 2;       // Moitié à gauche
-//    int rightPadding = padding - leftPadding; // Reste à droite
-//    return string(leftPadding, ' ') + text + string(rightPadding, ' ');
-//}
-
 // Constructor for bicrystal with plane GB with given misorientation and GB plane
 Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, double theta, int h_p, int k_p, int l_p, bool rationalize):h_a(h_a), k_a(k_a), l_a(l_a), theta(theta), h_p(h_p), k_p(k_p), l_p(l_p){
 	read_params();
-	unsigned int MaxDup = 50;
 	bool FullGrains = true; 
 	this->MT = new MathTools;
-	cout << "Constructing a GB misoriented by " << theta*180./M_PI << "° around [" << h_a << "_" << k_a << "_" << l_a << "] axis and one GB plane (" << h_p << "_" << k_p << "_" << l_p << ")" << endl;
+	setCrystal(crystalName);
+	string i_a_str(""), i_p_str("");
+	if( _MyCrystal->getCrystallo() == "Hexagonal" ){
+		i_a_str = "_"+to_string(-(this->h_a)-(this->k_a));
+		i_p_str = "_"+to_string(-(this->h_p)-(this->k_p));
+	}
+	cout << "Constructing a GB misoriented by " << theta*180./M_PI << "° around [" << h_a << "_" << k_a << i_a_str << "_" << l_a << "] axis and one GB plane (" << h_p << "_" << k_p << i_p_str << "_" << l_p << ")" << endl;
 	setOrientedCrystals(crystalName, rationalize);
 	// search the number of linear combination for the two system to have the same x y length
 	this->xl1 = this->_MyCrystal->getOrientedSystem()->getH1()[0];
@@ -517,6 +515,11 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 		}
 		if( find ) break;
 	}
+	if( !find ){
+		cerr << "We do not find any combination of the two grains in X direction to have a misfit lower than provided in FixedParameters" << endl;
+		cerr << "Increase MAX_MISFIT or MAX_DUP parameters in FixedParameters" << endl;
+		exit(EXIT_FAILURE);
+	}
 	find = false;
 	for(unsigned int i=0;i<MaxDup;i++){
 		for(unsigned int j=0;j<MaxDup;j++){
@@ -529,6 +532,12 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 		}
 		if( find ) break;
 	}
+	if( !find ){
+		cerr << "We do not find any combination of the two grains in Y direction to have a misfit lower than provided in FixedParameters" << endl;
+		cerr << "Increase MAX_MISFIT or MAX_DUP parameters in FixedParameters" << endl;
+		exit(EXIT_FAILURE);
+	}
+
 	double final_xbox = (xl1*dupX1 + xl2*dupX2)/2;
     	double final_ybox = (yl1*dupY1 + yl2*dupY2)/2;
     	Mx1 = final_xbox / (xl1*dupX1);
@@ -694,11 +703,29 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	string h_d_2_y_str = to_string(_MyCrystal2->getOrthogonalDirs()[3]);
 	string k_d_2_y_str = to_string(_MyCrystal2->getOrthogonalDirs()[4]);
 	string l_d_2_y_str = to_string(_MyCrystal2->getOrthogonalDirs()[5]);
+	string i_d_1_x_str(""), i_d_1_y_str(""), i_d_1_z_str(""), i_d_2_x_str(""), i_d_2_y_str(""), i_d_2_z_str("");
+	string i_p_1_x_str(""), i_p_1_y_str(""), i_p_1_z_str(""), i_p_2_x_str(""), i_p_2_y_str(""), i_p_2_z_str("");
+	if( _MyCrystal->getCrystallo() == "Hexagonal" ){
+		i_d_1_x_str = "_"+to_string(-_MyCrystal->getOrthogonalDirs()[0]-_MyCrystal->getOrthogonalDirs()[1]);
+		i_d_1_y_str = "_"+to_string(-_MyCrystal->getOrthogonalDirs()[3]-_MyCrystal->getOrthogonalDirs()[4]);
+		i_d_1_z_str = "_"+to_string(-_MyCrystal->getOrthogonalDirs()[6]-_MyCrystal->getOrthogonalDirs()[7]);
+		i_p_1_x_str = "_"+to_string(-_MyCrystal->getOrthogonalPlanes()[0]-_MyCrystal->getOrthogonalPlanes()[1]);
+		i_p_1_y_str = "_"+to_string(-_MyCrystal->getOrthogonalPlanes()[3]-_MyCrystal->getOrthogonalPlanes()[4]);
+		i_p_1_z_str = "_"+to_string(-_MyCrystal->getOrthogonalPlanes()[6]-_MyCrystal->getOrthogonalPlanes()[7]);
+	}
+	if( _MyCrystal2->getCrystallo() == "Hexagonal" ){
+		i_d_2_x_str = "_"+to_string(-_MyCrystal2->getOrthogonalDirs()[0]-_MyCrystal2->getOrthogonalDirs()[1]);
+		i_d_2_y_str = "_"+to_string(-_MyCrystal2->getOrthogonalDirs()[3]-_MyCrystal2->getOrthogonalDirs()[4]);
+		i_d_2_z_str = "_"+to_string(-_MyCrystal2->getOrthogonalDirs()[6]-_MyCrystal2->getOrthogonalDirs()[7]);
+		i_p_2_x_str = "_"+to_string(-_MyCrystal2->getOrthogonalPlanes()[0]-_MyCrystal2->getOrthogonalPlanes()[1]);
+		i_p_2_y_str = "_"+to_string(-_MyCrystal2->getOrthogonalPlanes()[3]-_MyCrystal2->getOrthogonalPlanes()[4]);
+		i_p_2_z_str = "_"+to_string(-_MyCrystal2->getOrthogonalPlanes()[6]-_MyCrystal2->getOrthogonalPlanes()[7]);
+	}
 	Dis.DisplayGB(_MyCrystal,_MyCrystal2);
 	cout << endl;
-	this->File_Heading = " # ["+h_a_str+"_"+k_a_str+"_"+l_a_str+"]"+theta_str+"°("+h_p_str+"_"+k_p_str+"_"+l_p_str+") "+crystalName+" grain boundary\n # The present GB have plane ("+h_p_1_z_str+"_"+k_p_1_z_str+"_"+l_p_1_z_str+") for lower grain and ("+h_p_2_z_str+"_"+k_p_2_z_str+"_"+l_p_2_z_str+") for upper grain\n";
-	this->Grain1->set_File_Heading(" # Lower grain of the ["+h_a_str+"_"+k_a_str+"_"+l_a_str+"]"+theta_str+"°("+h_p_str+"_"+k_p_str+"_"+l_p_str+") "+crystalName+" grain boundary\n # This system has x <=> ["+h_d_1_x_str+"_"+k_d_1_x_str+"_"+l_d_1_x_str+"], y <=> ["+h_d_1_y_str+"_"+k_d_1_y_str+"_"+l_d_1_y_str+"], z <=> ["+h_d_1_z_str+"_"+k_d_1_z_str+"_"+l_d_1_z_str+"] and x <=> ("+h_p_1_x_str+"_"+k_p_1_x_str+"_"+l_p_1_x_str+"), y <=> ("+h_p_1_y_str+"_"+k_p_1_y_str+"_"+l_p_1_y_str+"), z <=> ("+h_p_1_z_str+"_"+k_p_1_z_str+"_"+l_p_1_z_str+")\n");
-	this->Grain2->set_File_Heading(" # Upper grain of the ["+h_a_str+"_"+k_a_str+"_"+l_a_str+"]"+theta_str+"°("+h_p_str+"_"+k_p_str+"_"+l_p_str+") "+crystalName+" grain boundary\n # This system has x <=> ["+h_d_2_x_str+"_"+k_d_2_x_str+"_"+l_d_2_x_str+"], y <=> ["+h_d_2_y_str+"_"+k_d_2_y_str+"_"+l_d_2_y_str+"], z <=> ["+h_d_2_z_str+"_"+k_d_2_z_str+"_"+l_d_2_z_str+"] and x <=> ("+h_p_2_x_str+"_"+k_p_2_x_str+"_"+l_p_2_x_str+"), y <=> ("+h_p_2_y_str+"_"+k_p_2_y_str+"_"+l_p_2_y_str+"), z <=> ("+h_p_2_z_str+"_"+k_p_2_z_str+"_"+l_p_2_z_str+")\n");
+	this->File_Heading = " # ["+h_a_str+"_"+k_a_str+i_a_str+"_"+l_a_str+"]"+theta_str+"°("+h_p_str+"_"+k_p_str+i_p_str+"_"+l_p_str+") "+crystalName+" grain boundary\n # The present GB have plane ("+h_p_1_z_str+"_"+k_p_1_z_str+i_p_1_z_str+"_"+l_p_1_z_str+") for lower grain and ("+h_p_2_z_str+"_"+k_p_2_z_str+i_p_2_z_str+"_"+l_p_2_z_str+") for upper grain\n";
+	this->Grain1->set_File_Heading(" # Lower grain of the ["+h_a_str+"_"+k_a_str+i_a_str+"_"+l_a_str+"]"+theta_str+"°("+h_p_str+"_"+k_p_str+i_p_str+"_"+l_p_str+") "+crystalName+" grain boundary\n # This system has x <=> ["+h_d_1_x_str+"_"+k_d_1_x_str+i_d_1_x_str+"_"+l_d_1_x_str+"], y <=> ["+h_d_1_y_str+"_"+k_d_1_y_str+i_d_1_y_str+"_"+l_d_1_y_str+"], z <=> ["+h_d_1_z_str+"_"+k_d_1_z_str+i_d_1_z_str+"_"+l_d_1_z_str+"] and x <=> ("+h_p_1_x_str+"_"+k_p_1_x_str+i_p_1_x_str+"_"+l_p_1_x_str+"), y <=> ("+h_p_1_y_str+"_"+k_p_1_y_str+i_p_1_y_str+"_"+l_p_1_y_str+"), z <=> ("+h_p_1_z_str+"_"+k_p_1_z_str+i_p_1_z_str+"_"+l_p_1_z_str+")\n");
+	this->Grain2->set_File_Heading(" # Upper grain of the ["+h_a_str+"_"+k_a_str+i_a_str+"_"+l_a_str+"]"+theta_str+"°("+h_p_str+"_"+k_p_str+i_p_str+"_"+l_p_str+") "+crystalName+" grain boundary\n # This system has x <=> ["+h_d_2_x_str+"_"+k_d_2_x_str+i_d_2_x_str+"_"+l_d_2_x_str+"], y <=> ["+h_d_2_y_str+"_"+k_d_2_y_str+i_d_2_y_str+"_"+l_d_2_y_str+"], z <=> ["+h_d_2_z_str+"_"+k_d_2_z_str+i_d_2_z_str+"_"+l_d_2_z_str+"] and x <=> ("+h_p_2_x_str+"_"+k_p_2_x_str+i_p_2_x_str+"_"+l_p_2_x_str+"), y <=> ("+h_p_2_y_str+"_"+k_p_2_y_str+i_p_2_y_str+"_"+l_p_2_y_str+"), z <=> ("+h_p_2_z_str+"_"+k_p_2_z_str+i_p_2_z_str+"_"+l_p_2_z_str+")\n");
 	this->xl1 *= Mx1; 
 	this->xl2 *= Mx2; 
 	this->yl1 *= My1; 
@@ -947,8 +974,12 @@ bool Bicrystal::searchCSL(double *rot_ax_func, double theta_func, int *CSL_vec, 
 	}else if( !FirstBase ){
 		MT->MatDotMat(a1,Backup_U1,CSL_Basis);
 		this->sigma = fabs(MT->det(Backup_U1));
-		MT->printMat(Backup_U1);
-		cout << "We find a CSL corresponding to sigma =" << this->sigma << endl;
+		double dev_CSL = 0.;
+		for(unsigned int i=0;i<9;i++) dev_CSL += fabs(round(Backup_U1[i]/1.)-(Backup_U1[i]/1.));
+		//MT->printMat(Backup_U1);
+		cout << "We find a CSL basis corresponding to sigma = " << this->sigma << endl;
+		cout << "Nevertheless the deviation from a perfect CSL lattice is : " << dev_CSL << endl;
+		cout << "If too high and leads to issue in creating the system, think about rationalizing the GB or increase the tolerances (TOL_ORTHO_BOX or TOL_ORTHO_BOX_Z)" << endl;
 		success=true;
 	}else{
 		cout << "Fail to find CSL basis" << endl;
@@ -1099,7 +1130,7 @@ double Bicrystal::RationalizeOri(int h_a_func, int k_a_func, int l_a_func, doubl
 	double *vec4 = new double[3];
 	double *vec5 = new double[3];
 	bool DoNotRatAxis = false;
-	
+	int TrueMaxCL = 150; // TODO parameters	
 	// rationalize the rotation axis by searching the closest (with quasi the same orientation) normal to a crystal plane (with relatively low integer Miller indices)
 	int arr[3] = {abs(h_a_func),abs(k_a_func),abs(l_a_func)};
 	int MaxHKL_Norm;
@@ -1107,6 +1138,7 @@ double Bicrystal::RationalizeOri(int h_a_func, int k_a_func, int l_a_func, doubl
 	else if( MT->max(arr,3) < 3 ) MaxHKL_Norm = MT->max(arr,3)*100;
 	else if( MT->max(arr,3) < 10 ) MaxHKL_Norm = MT->max(arr,3)*50;
 	else MaxHKL_Norm = MT->max(arr,3)*10;
+	cout << MaxHKL_Norm << endl;
 	if( ( h_a_func == 0 && k_a_func == 0 ) || ( h_a_func == 0 && l_a_func == 0 ) || ( k_a_func == 0 && l_a_func == 0 ) ) DoNotRatAxis = true;
 	if( DoNotRatAxis || this->_MyCrystal->getCrystallo() == "Cubic" ){// for cubic crystals or simple rot axis, the scalar product between plane and direction vector is expressed simply
 		hp_near = h_a_func;
@@ -1427,7 +1459,6 @@ void Bicrystal::searchGBSize(const int h_p_func, const int k_p_func, const int l
 }
 
 void Bicrystal::setOrientedCrystals(const string& crystalName, bool rationalize){
-	setCrystal(crystalName);
 	this->RotCartToGrain2 = new double[9];
 	this->RotGrain1ToGrain2 = new double[9];
 	int *CSL_vec = new int[3];
@@ -1782,7 +1813,7 @@ void Bicrystal::read_params(){
 	string backslash="/";
 	string filename=fp+backslash+FixedParam_Filename;
 	ifstream file(filename, ios::in);
-	size_t pos_thetamax, pos_MaxHKL, pos_toldist, pos_sigmaMax, pos_tolpos_kC, pos_tolCSLint, pos_tolAlign, pos_rcut, pos_lsph, pos_MaxMisfit, pos_GBSpace;
+	size_t pos_thetamax, pos_MaxHKL, pos_toldist, pos_sigmaMax, pos_tolpos_kC, pos_tolCSLint, pos_tolAlign, pos_rcut, pos_lsph, pos_MaxMisfit, pos_GBSpace, pos_MaxDup;
 	string buffer_s, line;
 	if(file){
 		while(file){
@@ -1832,6 +1863,12 @@ void Bicrystal::read_params(){
 				istringstream text(line);
 				text >> buffer_s >> this->MaxMisfit;
 			}
+			pos_MaxDup=line.find("MAX_DUP ");
+			if(pos_MaxDup!=string::npos){
+				istringstream text(line);
+				text >> buffer_s >> this->MaxDup;
+			}
+
 		}
 	}else{
 		cerr << "Can't read /data/FixedParameters/Fixed_Parameters.dat file !" << endl;
