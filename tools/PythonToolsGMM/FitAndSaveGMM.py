@@ -28,7 +28,7 @@ n_clust_max = int(sys.argv[4])
 ath_database_name = sys.argv[5]
 
 # Create the atomhic database directory
-PathOfThisScript = os.path.dirname(__file__)
+PathOfThisScript = os.path.dirname(__file__)+"/"
 database_present = glob.glob(PathOfThisScript+dirModelToPrint+"/*/")
 for i in range(len(database_present)):
     database_present[i] = database_present[i].replace(PathOfThisScript+dirModelToPrint,'')
