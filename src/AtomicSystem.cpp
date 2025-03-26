@@ -1306,6 +1306,7 @@ bool AtomicSystem::read_lmp_file(const string& filename){
 	string buffer_s, buffer_s_1, buffer_s_2, line;
 	bool IsVel = false;
 	unsigned int ReadOk(0), NbAtRead(0), NbVelRead(0);
+        unsigned int count_at = 0;
 	if(file){
 		while(getline(file,line)){
 			//getline(file,line);
@@ -1391,18 +1392,18 @@ bool AtomicSystem::read_lmp_file(const string& filename){
 				istringstream text(line);
 				if( this->IsCharge ){
 					text >> buffer_uint >> buffer_uint_1 >> buffer_1 >> buffer_2 >> buffer_3 >> buffer_4;
-					this->AtomList[buffer_uint-1].pos.x = buffer_2;
-					this->AtomList[buffer_uint-1].pos.y = buffer_3;
-					this->AtomList[buffer_uint-1].pos.z = buffer_4;
-					this->AtomList[buffer_uint-1].type_uint = buffer_uint_1;
+					this->AtomList[NbAtRead].pos.x = buffer_2;
+					this->AtomList[NbAtRead].pos.y = buffer_3;
+					this->AtomList[NbAtRead].pos.z = buffer_4;
+					this->AtomList[NbAtRead].type_uint = buffer_uint_1;
 					this->AtomCharge[buffer_uint_1-1] = buffer_1;
 					NbAtRead++;
 				}else{
 					text >> buffer_uint >> buffer_uint_1 >> buffer_2 >> buffer_3 >> buffer_4;
-					this->AtomList[buffer_uint-1].pos.x = buffer_2;
-					this->AtomList[buffer_uint-1].pos.y = buffer_3;
-					this->AtomList[buffer_uint-1].pos.z = buffer_4;
-					this->AtomList[buffer_uint-1].type_uint = buffer_uint_1;
+					this->AtomList[NbAtRead].pos.x = buffer_2;
+					this->AtomList[NbAtRead].pos.y = buffer_3;
+					this->AtomList[NbAtRead].pos.z = buffer_4;
+					this->AtomList[NbAtRead].type_uint = buffer_uint_1;
 					this->AtomCharge[buffer_uint_1-1] = 0.;
 					NbAtRead++;
 				}
@@ -1433,9 +1434,9 @@ bool AtomicSystem::read_lmp_file(const string& filename){
 				if( IsVel && count > line_vel+1 && count < line_vel+2+this->nbAtom ){
 					istringstream text2(line);
 					text2 >> buffer_uint_1 >> buffer_1 >> buffer_2 >> buffer_3;	
-					this->Aux[0][(buffer_uint_1-1)*3] = buffer_1;
-					this->Aux[0][(buffer_uint_1-1)*3+1] = buffer_2;
-					this->Aux[0][(buffer_uint_1-1)*3+2] = buffer_3;
+					this->Aux[0][(NbVelRead)*3] = buffer_1;
+					this->Aux[0][(NbVelRead)*3+1] = buffer_2;
+					this->Aux[0][(NbVelRead)*3+2] = buffer_3;
 					NbVelRead++;
 				}
 				count++;
@@ -1591,22 +1592,23 @@ bool AtomicSystem::read_other_cfg(const string& filename){
 						if( IsId ){
 							if( i == indId ) text2 >> current_ind;
 							else{
-								text2 >> Aux[count_aux][current_ind-1];
+								//text2 >> Aux[count_aux][current_ind-1];
+								text2 >> Aux[count_aux][count_at];
 								count_aux += 1;
 							}
 						}else text2 >> Aux[i][count_at];
 					}
-					if( IsId ){
-						this->AtomList[current_ind-1].pos.x = buffer_1*H1[0]+buffer_2*H2[0]+buffer_3*H3[0];
-						this->AtomList[current_ind-1].pos.y = buffer_1*H1[1]+buffer_2*H2[1]+buffer_3*H3[1];
-						this->AtomList[current_ind-1].pos.z = buffer_1*H1[2]+buffer_2*H2[2]+buffer_3*H3[2];
-						this->AtomList[current_ind-1].type_uint = current_type_uint;
-					}else{
+					//if( IsId ){
+					//	this->AtomList[current_ind-1].pos.x = buffer_1*H1[0]+buffer_2*H2[0]+buffer_3*H3[0];
+					//	this->AtomList[current_ind-1].pos.y = buffer_1*H1[1]+buffer_2*H2[1]+buffer_3*H3[1];
+					//	this->AtomList[current_ind-1].pos.z = buffer_1*H1[2]+buffer_2*H2[2]+buffer_3*H3[2];
+					//	this->AtomList[current_ind-1].type_uint = current_type_uint;
+					//}else{
 						this->AtomList[count_at].pos.x = buffer_1*H1[0]+buffer_2*H2[0]+buffer_3*H3[0];
 						this->AtomList[count_at].pos.y = buffer_1*H1[1]+buffer_2*H2[1]+buffer_3*H3[1];
 						this->AtomList[count_at].pos.z = buffer_1*H1[2]+buffer_2*H2[2]+buffer_3*H3[2];
 						this->AtomList[count_at].type_uint = current_type_uint;
-					}
+					//}
 					count_at += 1;
 				} else {
 					istringstream text(line);
@@ -1653,7 +1655,8 @@ bool AtomicSystem::read_other_cfg(const string& filename){
 
 bool AtomicSystem::read_cfg_file(const string& filename){
 	ifstream file(filename, ios::in);
-	unsigned int ReadOk(0), NbAtRead(0);
+	unsigned int ReadOk(0);
+	unsigned int NbAtRead = 0;
 	if(file){
 		unsigned int line_dt(1000), line_At(1000), line_H(1000), line_at(1000), buffer_uint, buffer_uint_1, count_H(0), count(0), nbAux(0), aux_count;
 		size_t pos_dt, pos_At, pos_H, pos_charge, pos_at, pos_aux_vec, pos_elem;
@@ -1811,7 +1814,7 @@ bool AtomicSystem::read_cfg_file(const string& filename){
 				line_at = count;
 				nbAux -= nbAux_norm;
 			}
-			if( count > line_at ){
+			if( count > line_at  && count < line_at+1+this->nbAtom ){
 				istringstream text(line);
 				for(unsigned int bs=0;bs<befAuxNames.size();bs++){
 					if( befAuxNames[bs] == "id" ) text >> buffer_uint;
@@ -1823,20 +1826,20 @@ bool AtomicSystem::read_cfg_file(const string& filename){
 					else if( befAuxNames[bs] == "q" ) text >> buffer_4;
 				}
 				if( IsReducedCoords ){
-					this->AtomList[buffer_uint-1].pos.x = buffer_1*H1[0]+buffer_2*H2[0]+buffer_3*H3[0];
-					this->AtomList[buffer_uint-1].pos.y = buffer_1*H1[1]+buffer_2*H2[1]+buffer_3*H3[1];
-					this->AtomList[buffer_uint-1].pos.z = buffer_1*H1[2]+buffer_2*H2[2]+buffer_3*H3[2];
+					this->AtomList[NbAtRead].pos.x = buffer_1*H1[0]+buffer_2*H2[0]+buffer_3*H3[0];
+					this->AtomList[NbAtRead].pos.y = buffer_1*H1[1]+buffer_2*H2[1]+buffer_3*H3[1];
+					this->AtomList[NbAtRead].pos.z = buffer_1*H1[2]+buffer_2*H2[2]+buffer_3*H3[2];
 				}else{
-					this->AtomList[buffer_uint-1].pos.x = buffer_1;
-					this->AtomList[buffer_uint-1].pos.y = buffer_2;
-					this->AtomList[buffer_uint-1].pos.z = buffer_3;
+					this->AtomList[NbAtRead].pos.x = buffer_1;
+					this->AtomList[NbAtRead].pos.y = buffer_2;
+					this->AtomList[NbAtRead].pos.z = buffer_3;
 				}
-				this->AtomList[buffer_uint-1].type_uint = buffer_uint_1;
+				this->AtomList[NbAtRead].type_uint = buffer_uint_1;
 				if( IsElem ) this->AtomType[buffer_uint_1-1] = buffer_s;
 				if( IsCharge ) this->AtomCharge[buffer_uint_1-1] = buffer_4;
 				if(nbAux>0){
 					for(unsigned int au=0;au<Aux_name.size();au++){
-						for(unsigned int au_v=0;au_v<Aux_size[au];au_v++) text >> Aux[au][(buffer_uint-1)*Aux_size[au]+au_v];
+						for(unsigned int au_v=0;au_v<Aux_size[au];au_v++) text >> Aux[au][NbAtRead*Aux_size[au]+au_v];
 					}
 				}
 				++NbAtRead;
@@ -1905,7 +1908,7 @@ bool AtomicSystem::read_cfg_file(const string& filename){
 		exit(EXIT_FAILURE);
 	}
 	if( ReadOk == 3 ){
-		if( (NbAtRead-1) == nbAtom ){
+		if( (NbAtRead) == nbAtom ){
 			return true;
 		}else{
 			cout << "the number of atom provided does not correspond to the true number of atom" << endl;
