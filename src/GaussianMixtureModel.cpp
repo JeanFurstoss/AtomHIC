@@ -405,10 +405,12 @@ void GaussianMixtureModel::Classify(string filter_value){
 	MyGMMTools[current_f]->ComputeMLC(MLC);
 	
 	unsigned int nbDatTot = 0;
-	for(unsigned int f=0;f<nbFilter;f++) nbDatTot += nbDat[f];
+	for(unsigned int f=0;f<nbFilter_descriptors;f++) nbDatTot += nbDat[f];
 	if( !IsClassified ){
 		IsClassified = true;
-		Classificator = new double[2*nbDatTot];
+		unsigned int nbclass = 2*nbDatTot;
+		Classificator = new double[nbclass];
+		for(unsigned int i=0;i<nbclass;i++) Classificator[i] = -1.;
 	}
 
 	// Label classification	

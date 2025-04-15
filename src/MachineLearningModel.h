@@ -61,7 +61,8 @@ protected:
 	unsigned int nbDatMax;
 	unsigned int current_nbDat;
 	unsigned int *nbDat; // [f] number of data with filter f
-	unsigned int nbFilter; // number of filter (e.g. if filtered by element, the number of element)
+	unsigned int nbFilter; // number of filter (e.g. if filtered by element, the number of element) in the ML model
+	unsigned int nbFilter_descriptors; // number of filter (e.g. if filtered by element, the number of element) of the descriptors
 	// Variables for labelling the model
 	bool IsLabelled = false;
 	unsigned int nbLabel;

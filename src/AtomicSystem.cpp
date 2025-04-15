@@ -1315,10 +1315,12 @@ bool AtomicSystem::read_lmp_file(const string& filename){
 			pos_at=line.find("atoms");
 			if(pos_at!=string::npos){
 				istringstream text(line);
-				text >> buffer_uint;
-				this->nbAtom = buffer_uint;
-				AtomList = new Atom[this->nbAtom];
-				ReadOk++;
+				text >> buffer_uint >> buffer_s;
+				if( buffer_s == "atoms" ){
+					this->nbAtom = buffer_uint;
+					AtomList = new Atom[this->nbAtom];
+					ReadOk++;
+				}
 			}
 
 			// find H1 vector
@@ -1367,12 +1369,16 @@ bool AtomicSystem::read_lmp_file(const string& filename){
 			if(pos_attype!=string::npos){
 				istringstream text(line);
 				text >> buffer_1 >> buffer_s >> buffer_s_1;
-				this->nbAtomType = buffer_1;
+				if( buffer_s == "atom" && buffer_s_1 == "types" ) this->nbAtomType = buffer_1;
 			}
 
 			// get lines where are the keywords Masses and Atoms to get atom type masses and positions
 			pos_Mass=line.find("Masses");
-			if(pos_Mass!=string::npos) line_Mass = count;
+			if(pos_Mass!=string::npos){
+				istringstream text(line);
+				text >> buffer_s;
+				if( buffer_s == "Masses" ) line_Mass = count;
+			}
 			if( count > line_Mass+1 && count < line_Mass+2+this->nbAtomType ){
 				istringstream text(line);
 				text >> buffer_uint >> buffer_1 >> buffer_s_1 >> buffer_s;
@@ -1380,13 +1386,15 @@ bool AtomicSystem::read_lmp_file(const string& filename){
 				this->AtomType[buffer_uint-1] = buffer_s;
 				this->IsElem = true;
 			}
-			pos_At=line.find("Atoms #");
+			pos_At=line.find("Atoms");
 			if(pos_At!=string::npos){
 				istringstream text(line);
 				text >> buffer_s_1 >> buffer_s_2 >> buffer_s;
-				if( buffer_s == "charge" ) this->IsCharge = true;
-			       	line_At = count;
-				ReadOk++;
+				if( buffer_s_1 == "Atoms" ){
+					if( buffer_s == "charge" ) this->IsCharge = true;
+			       		line_At = count;
+					ReadOk++;
+				}
 			}
 			if( count > line_At+1 && count < line_At+2+this->nbAtom ){
 				istringstream text(line);
@@ -1561,7 +1569,7 @@ bool AtomicSystem::read_other_cfg(const string& filename){
 				if( nbAux > 0 ) this->IsSetAux = true;
 				ReadOk++;
 			}
-			if( count > line_aux && count <= line_aux+nbAux ){
+			if( ReadOk == 11 && count > line_aux && count <= line_aux+nbAux ){
 				istringstream text(line);
 				text >> buffer_s >> buffer_s_1 >> buffer_s_2;
 				if( buffer_s_2 == "id" ){ // TODO : same with charge
@@ -1574,7 +1582,7 @@ bool AtomicSystem::read_other_cfg(const string& filename){
 					this->Aux_size.push_back(1); //TODO for vector aux
 				}
 			}
-			if( count > line_aux+nbAux ){
+			if( ReadOk == 11 && count > line_aux+nbAux ){
 				istringstream text2(line);
 				int nbCol = 0;
 				do{
@@ -1847,6 +1855,7 @@ bool AtomicSystem::read_cfg_file(const string& filename){
 			count += 1;
 		}
 		file.close();
+		if( ReadOk != 3 ) return false;
 		// search the number of atom type
 		vector<unsigned int> AtTypeDif;
 		bool already;

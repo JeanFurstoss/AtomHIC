@@ -42,10 +42,11 @@ void MachineLearningModel::setDescriptors(Descriptors *D){
 			cerr << "The filtering type is different between the descriptors and the read ML database, aborting" << endl;
 			exit(EXIT_FAILURE);
 		}
-		if( nbFilter != _MyDescriptors->getNbFilter() ){
-			cerr << "The number of filter is different between the descriptors and the read ML database, aborting" << endl;
-			exit(EXIT_FAILURE);
-		}
+		//if( nbFilter != _MyDescriptors->getNbFilter() ){
+		//	cerr << "The number of filter is different between the descriptors and the read ML database, aborting" << endl;
+		//	exit(EXIT_FAILURE);
+		//}
+		nbFilter_descriptors = _MyDescriptors->getNbFilter();
 		if( dim != _MyDescriptors->getDim() ){
 			cerr << "The number of dimension is different between the descriptors and the read ML database, aborting" << endl;
 			exit(EXIT_FAILURE);
@@ -54,7 +55,7 @@ void MachineLearningModel::setDescriptors(Descriptors *D){
 		FilterIndexToModify = new unsigned int[nbFilter];
 		for(unsigned int f1=0;f1<nbFilter;f1++){
 			bool found = false;
-			for(unsigned int f2=0;f2<nbFilter;f2++){
+			for(unsigned int f2=0;f2<nbFilter_descriptors;f2++){
 				if( FilterValue[f1] == _MyDescriptors->getFilterValue(f2) ){
 					found = true;       
 					if( f1 != f2 ) IsFilterIndexModified = true;
@@ -71,6 +72,7 @@ void MachineLearningModel::setDescriptors(Descriptors *D){
 		dim = _MyDescriptors->getDim();
 		dim2 = dim*dim;
 		nbFilter = _MyDescriptors->getNbFilter();
+		nbFilter_descriptors = _MyDescriptors->getNbFilter();
 		FilteringType = _MyDescriptors->getFilteringType();
 		for(unsigned int f=0;f<nbFilter;f++) FilterValue.push_back(_MyDescriptors->getFilterValue(f));
 	}
@@ -80,8 +82,8 @@ void MachineLearningModel::setDescriptors(Descriptors *D){
 		delete[] buffer_vec_1_dim;
 		delete[] buffer_vec_2_dim;
 	}
-	nbDat = new unsigned int[nbFilter];
-	for(unsigned int f=0;f<nbFilter;f++) nbDat[f] = _MyDescriptors->getNbDat(f);
+	nbDat = new unsigned int[nbFilter_descriptors];
+	for(unsigned int f=0;f<nbFilter_descriptors;f++) nbDat[f] = _MyDescriptors->getNbDat(f);
 	
 	nbDatMax = _MyDescriptors->getNbDatMax();
 	buffer_vec_1_dim = new double[dim];
@@ -176,7 +178,7 @@ void MachineLearningModel::PrintClassifiedData(string filename){
 	}
 	ofstream writefile(filename);
 	unsigned int nbDatTot = 0;
-	for(unsigned int f=0;f<nbFilter;f++){
+	for(unsigned int f=0;f<nbFilter_descriptors;f++){
 		for(unsigned int j=0;j<nbDat[f];j++){
 			for(unsigned int d=0;d<dim;d++) writefile << _MyDescriptors->getDescriptors()[_MyDescriptors->getFilterIndex(f*nbDatMax+j)*dim+d] << " ";
 			writefile << Classificator[_MyDescriptors->getFilterIndex(f*nbDatMax+j)*2] << " " << Classificator[_MyDescriptors->getFilterIndex(f*nbDatMax+j)*2+1] << endl;
