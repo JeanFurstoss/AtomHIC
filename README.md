@@ -107,6 +107,18 @@ Briefly, this technique lies with the labeling of a gaussian mixture model fitte
 
 ![figure_GMM](/doc/FitGMM/FigureFitGMM.png)
 
+For the moment, the AtomHIC library provides the following SGMA databases:
+- AluminaPhases_Furstoss_CompPhysCom : this base allows to discriminate between α, γ phases, liquid and free surface of Al2O3 alumina
+- ForsteriteDefects_Furstoss_CompPhysCom : this base contains [100], [001] dislocations, grain boundary and bulk phase of Mg2SiO4 forsterite
+- Gold2Surfaces : this base allows to discriminate between (100), (111) free surfaces and bulk material in FCC gold
+- Gold4Surfaces : this base allows to discriminate between (100), (110), (111) and (112) free surfaces and bulk material in FCC gold
+
+To make the structural analysis with SGMA of a given dump file, just use:
+
+```bash
+./GMMClassification DumpFilename NameOfDatabase OutputFilename 
+```
+
 ## Code structure
 
 The library is structure following:
