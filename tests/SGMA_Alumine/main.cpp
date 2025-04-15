@@ -45,7 +45,7 @@ int main(int argc, char *argv[])
 		string ftype="element";
 		Descriptors MyDescriptors(&MySystem,DescriptorName,ftype);
 		GMM.setDescriptors(&MyDescriptors);
-		GMM.LabelClassification();
+		GMM.Classify();
 		MySystem.setAux_vec(GMM.getClassificator(),2,"Struct");
 		MySystem.printSystem_aux("Output.cfg","Struct");
 }

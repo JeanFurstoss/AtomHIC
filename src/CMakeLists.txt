@@ -44,6 +44,8 @@ endif()
 #Generate the shared or static library from the sources
 add_library(${PROJECT_NAME} ${LIBRARY_TYPE} ${SOURCES} ${HEADERS})
 
+LINK_EIGEN(${PROJECT_NAME} PUBLIC)
+
 ## #################################################################
 ## Export header file
 ## #################################################################

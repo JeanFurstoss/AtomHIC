@@ -124,7 +124,7 @@ int main(int argc, char *argv[])
 	GMM.setDescriptors(&MyDes);
 	cout << "3" << endl;
 	unsigned int zero = 0;
-	GMM.TrainModel(nb_grains,zero);
+	GMM.TrainModel(nb_grains); //TODO test with the new version (particularly the cluster classification)
 	GMM.Classify();
 
 	for(unsigned int i=0;i<nbAt_PC;i++){

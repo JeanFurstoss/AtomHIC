@@ -46,6 +46,8 @@ int main(int argc, char *argv[])
 		cerr << "Usage: ./ComputeDescriptors AtomicInputFilename NameOfDescriptor OutputFilename" << endl;
 		cerr << "The descriptor properties will be read from /data/FixedParameters/FixedParameters.dat" << endl;
 		cerr << "In addition to the output atomic file, this executable will generate a DescriptorProperties.ath file containing the descriptors properties and which can be used for fitting a ML for instance" << endl;
+		cerr << "Available descriptors : " << endl;
+		cerr << "\t - Steinhardt" << endl;
 		return EXIT_FAILURE;
 	}
 	

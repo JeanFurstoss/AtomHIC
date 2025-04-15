@@ -105,6 +105,43 @@ void Displays::DisplayArray(const vector<vector<string>>& elements, const vector
 	}
 }
 
+void Displays::DisplayArray(const vector<vector<string>>& elements, const vector<vector<unsigned int>>& fusion, ofstream& filetoprint) {
+	unsigned int nbRow = fusion.size();
+	unsigned int nbCols = 0;
+	for(unsigned int i=0;i<fusion[0].size();i++) nbCols += fusion[0][i];
+	for(unsigned int i=1;i<nbRow;i++){
+	        unsigned int buf = 0;
+		for(unsigned int ii=0;ii<fusion[i].size();ii++) buf += fusion[i][ii];
+	    	if( buf != nbCols ){
+	    		cerr << "The number of columns is not consistent for printing array, aborting" << endl;
+	    		exit(EXIT_FAILURE);
+	    	}
+	}
+	
+	// compute column width
+	unsigned int width = 0;
+	for(unsigned int i=0;i<elements.size();i++){
+		for(unsigned int j=0;j<elements[i].size();j++){
+	    		if( elements[i][j].length() > width ) width = elements[i][j].length();
+	    }
+	}
+	width += 4;
+	
+	string line = "+";
+	for(unsigned int i=0;i<nbCols;i++) line += string(width, '-') + "+";
+	
+	filetoprint << line << endl;
+	for (unsigned int i = 0; i < nbRow; i++) {
+		filetoprint << "|";
+		for(unsigned int j=0;j<fusion[i].size();j++){
+			unsigned int colspan = fusion[i][j];
+			unsigned int mergedWidth = width*colspan+(colspan-1);
+			filetoprint << center(elements[i][j], mergedWidth) << "|";
+		}
+		filetoprint << endl << line << endl;
+	}
+}
+
 void Displays::DisplayOrthogonalCell(Crystal *Crystal){
 	string *Dirs1 = new string[3];
 	string *Planes1 = new string[3];

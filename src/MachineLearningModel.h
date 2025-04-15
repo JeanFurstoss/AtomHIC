@@ -37,8 +37,12 @@
 #include "AtomHicExport.h"
 #include "AtomicSystem.h"
 #include "MathTools.h"
+#include "Displays.h"
 #include <string>
 #include "Descriptors.h"
+#include <Eigen/Dense>
+
+using namespace Eigen;
 
 class ATOMHIC_EXPORT MachineLearningModel {
 protected:
@@ -47,34 +51,41 @@ protected:
 	bool IsDescriptor = false;
 	MathTools *MT;
 
+	MatrixXd *_dataMat;
+
 	double *buffer_vec_1_dim;
 	double *buffer_vec_2_dim;
 	
 	unsigned int dim;
 	unsigned int dim2;
 	unsigned int nbDatMax;
+	unsigned int current_nbDat;
 	unsigned int *nbDat; // [f] number of data with filter f
 	unsigned int nbFilter; // number of filter (e.g. if filtered by element, the number of element)
 	// Variables for labelling the model
 	bool IsLabelled = false;
 	unsigned int nbLabel;
-	
+
+	unsigned int DescriptorSubarraySize = 1;
+	unsigned int *CorresIndexDescriptors;
+
 	// Variables for reading the database parameters
 	std::vector<std::string> Labels; // Labels[l] = name of the label l
 	std::string FilteringType;
 	std::vector<std::string> FilterValue; // FilterValue[f] = name of the filter f
 	std::string DescriptorName; // to be used for initializing descriptors
 	std::vector<std::string> DescriptorProperties; // to be used for initializing descriptors
-	unsigned int *FilterIndexToModify;
+	std::vector<std::string> current_Properties; // the properties (i.e. ones in FixedParameters but which can be read using the ReadProperties method 
+	unsigned int *FilterIndexToModify = nullptr;
 	bool IsFilterIndexModified = false;
 	bool IsRead = false;
-
+	Displays Dis;
 	// Variables for classification
 	double *Classificator; // depend on the ML model but generally for classification, [n*2] = index of the label with highest probability for descriptors n (index in _Descriptor array), [n*2+1] = probability
 	bool IsClassified = false;	
 	
 	std::string FixedParam_Filename = "Fixed_Parameters.dat";
-
+	double RatioTestTrain = 0.1; // TODO fixedParams
 public:
 	// constructors
 	MachineLearningModel();
@@ -88,6 +99,7 @@ public:
 	void Classify();
 	void PrintClassifiedData(std::string filename);
 	void readFixedParams();
+	void ReadProperties(std::vector<std::string> &Properties);
 	// getters
 	double *getClassificator(){ return Classificator; }
 	std::string getFilteringType(){ return FilteringType; }

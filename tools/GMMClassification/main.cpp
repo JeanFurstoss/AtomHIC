@@ -80,7 +80,7 @@ int main(int argc, char *argv[])
 			if( DescriptorName == "Steinhardt" ){
 				SteinhardtDescriptors MyDescriptors(&MySystem,GMM.getDescriptorProperties());
 				GMM.setDescriptors(&MyDescriptors);
-				GMM.LabelClassification();
+				GMM.Classify();
 				MySystem.setAux_vec(MyDescriptors.getDescriptors(),MyDescriptors.getDim(),"Steinhardt");
 				MySystem.setAux_vec(GMM.getClassificator(),2,"Struct");
 				MySystem.printSystem_aux(OutputFilename,"Steinhardt Struct");
@@ -92,7 +92,7 @@ int main(int argc, char *argv[])
 		}else{
 			Descriptors MyDescriptors(InputFilename);
 			GMM.setDescriptors(&MyDescriptors);
-			GMM.LabelClassification();
+			GMM.Classify();
 			GMM.PrintClassifiedData(OutputFilename);
 		}
 	}else{
@@ -110,7 +110,7 @@ int main(int argc, char *argv[])
 		AtomicSystem MySystem(InputFilename);
 		Descriptors MyDescriptors(&MySystem,DescriptorName,ftype);
 		GMM.setDescriptors(&MyDescriptors);
-		GMM.LabelClassification();
+		GMM.Classify();
 		MySystem.setAux_vec(GMM.getClassificator(),2,"Struct");
 		MySystem.printSystem_aux(OutputFilename,"Struct");
 	}

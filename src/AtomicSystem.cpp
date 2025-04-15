@@ -1380,7 +1380,7 @@ bool AtomicSystem::read_lmp_file(const string& filename){
 				this->AtomType[buffer_uint-1] = buffer_s;
 				this->IsElem = true;
 			}
-			pos_At=line.find("Atoms");
+			pos_At=line.find("Atoms #");
 			if(pos_At!=string::npos){
 				istringstream text(line);
 				text >> buffer_s_1 >> buffer_s_2 >> buffer_s;

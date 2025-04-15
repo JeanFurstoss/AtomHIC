@@ -524,6 +524,29 @@ void MathTools::MatDotMatVec(const vector<vector<double>> mat1, const vector<vec
 
 }
 
+void MathTools::MatDotMatVec(const long double *mat1, const long double *mat2, long double *prod, unsigned int &dim1_1, unsigned int &dim1_2, unsigned int &dim2_1, unsigned int &dim2_2){
+	if( dim1_2 != dim2_1 ){
+		cerr << "Warning the dimensions of the matrix to multiply are not consistent (matrix 1: " << dim1_1 << "x" << dim1_2 << ", matrix 2: " << dim2_1 << "x" << dim2_2 << ")" << endl;
+	}else{
+		vector<vector<long double>> buffer_vec_vec_1_long;
+		vector<vector<long double>> buffer_vec_vec_2_long;
+		for(unsigned int i=0;i<dim1_1;i++){
+			buffer_vec_vec_1_long.push_back(vector<long double>());
+			for(unsigned int j=0;j<dim1_2;j++) buffer_vec_vec_1_long[i].push_back(mat1[i*dim1_2+j]);
+		}
+		for(unsigned int i=0;i<dim2_1;i++){
+			buffer_vec_vec_2_long.push_back(vector<long double>());
+			for(unsigned int j=0;j<dim2_2;j++) buffer_vec_vec_2_long[i].push_back(mat2[i*dim2_2+j]);
+		}
+		for(unsigned int i=0;i<dim1_1;i++){
+			for(unsigned int j=0;j<dim2_2;j++){
+				prod[i*dim2_2+j] = 0.;
+				for(unsigned int j_m=0;j_m<dim1_2;j_m++) prod[i*dim2_2+j] += buffer_vec_vec_1_long[i][j_m]*buffer_vec_vec_2_long[j_m][j];
+			}
+		}
+	}
+
+}
 void MathTools::printMatVec(const vector<vector<double>> mat){
 	for(unsigned int i=0;i<mat.size();i++){
 		for(unsigned int j=0;j<mat.size();j++) cout << mat[i][j] << " ";
@@ -934,6 +957,71 @@ double MathTools::ExpectationMaximization_GMM(const vector<vector<vector<double>
 	return L;
 }
 	
+void MathTools::invMat_LU(const long double *mat, long double *inv, long double &det, unsigned int &dim){
+	unsigned int dim2 = dim*dim;
+	
+	// Initialisation of L and Lt
+	long double *L = new long double[dim2]; //Triangular lower matrix
+	long double *U = new long double[dim2]; //Triangular upper matrix => L*U=mat
+	long double *L_inv = new long double[dim2]; //Inverse of Triangular lower matrix
+	long double *U_inv = new long double[dim2]; //Inverse of Triangular upper matrix => L*U=mat
+
+	for(unsigned int i=0;i<dim;i++){
+		for(unsigned int j=0;j<dim;j++){
+			L[i*dim+j] = 0.;
+			U[i*dim+j] = 0.;
+			L_inv[i*dim+j] = 0.;
+			U_inv[i*dim+j] = 0.;
+		}
+	}
+
+	double sum;
+	for(unsigned int j=0;j<dim;j++){
+		L[j*dim+j] = 1.;
+		for(unsigned int i=0;i<j+1;i++){
+			sum = 0.;
+			for(unsigned int k=0;k<i;k++) sum += U[k*dim+j]*L[i*dim+k];
+			U[i*dim+j] = mat[i*dim+j] - sum;
+		}
+		for(unsigned int i=j;i<dim;i++){
+			sum = 0.;
+			for(unsigned int k=0;k<j;k++) sum += U[k*dim+j]*L[i*dim+k];
+			L[i*dim+j] = ( mat[i*dim+j] - sum ) / U[j*dim+j];
+		}
+	}
+	// Compute the determinant (product of diagonal element of U)
+	det = U[0];
+	for(unsigned int i=1;i<dim;i++) det *= U[i*dim+i];
+	//cout << "deter " << det << endl;
+	//printMatVec(U);
+	// Compute L_inv
+	for(unsigned int i=0;i<dim;i++){
+		L_inv[i*dim+i] = 1./L[i*dim+i];
+		for(unsigned int j=0;j<i;j++){
+			for(unsigned int k=j;k<=i-1;k++) L_inv[i*dim+j] -= L[i*dim+k]*L_inv[k*dim+j];
+			L_inv[i*dim+j] /= L[i*dim+i];
+		}
+	}
+	// Compute U_inv
+	unsigned int i_uint;
+	for(int i=dim-1;i>=0;i--){
+		i_uint = (unsigned int) i;
+		U_inv[i_uint*dim+i_uint] = 1./U[i_uint*dim+i_uint];
+		for(unsigned int j=dim-1;j>i_uint;j--){
+			for(unsigned int k=i_uint+1;k<=j;k++) U_inv[i_uint*dim+j] -= U[i_uint*dim+k]*U_inv[k*dim+j];
+			U_inv[i_uint*dim+j] /= U[i_uint*dim+i_uint];
+		}
+	}
+	// mat-1 = L-1 * U-1
+	MatDotMatVec(U_inv,L_inv,inv,dim,dim,dim,dim);
+	
+	delete[] L;
+	delete[] U;
+	delete[] L_inv;
+	delete[] U_inv;
+
+}
+
 void MathTools::invMat_LU(const vector<vector<double>> mat, vector<vector<double>> &inv, long double &det){
 	unsigned int dim = mat.size();
 	if( dim != mat[0].size() ){

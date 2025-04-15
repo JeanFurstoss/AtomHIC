@@ -33,6 +33,7 @@
 #include <sstream>
 #include <cmath>
 #include <filesystem>
+#include <random>
 
 using namespace std;
 
@@ -85,6 +86,29 @@ Descriptors::Descriptors(double *Descriptors, unsigned int nbdat, unsigned int d
 	for(unsigned int i=0;i<nbDat[0];i++) FilterIndex[i] = i;
 	this->dim = dim;
 	AreDescriptorsMine = false;
+
+}
+
+void Descriptors::ConstructLabelIndexArray(){
+	if( nbLabels == 0 ){
+		cerr << "The descriptors are not labelled, cannot construct LabelIndex array" << endl;
+		exit(EXIT_FAILURE);
+	}
+	nbDatMaxLabel = MT->max_p(LabelsSize,nbLabels*nbFilter);
+	LabelIndex = new unsigned int[nbDatMaxLabel*nbLabels*nbFilter];
+	DescriptorLabel = new unsigned int[nbDatTot];
+	unsigned int *count_dat = new unsigned int[nbLabels*nbFilter];
+	for(unsigned int i=0;i<nbLabels;i++){
+		for(unsigned int j=0;j<nbFilter;j++) count_dat[i*nbFilter+j] = 0;
+	}
+	for(unsigned int f=0;f<nbFilter;f++){
+		for(unsigned int i=0;i<nbDat[f];i++){
+			unsigned int current_label = Labels_uint[f*nbDatMax+i];
+			DescriptorLabel[FilterIndex[f*nbDatMax+i]] = current_label;
+			LabelIndex[f*nbLabels*nbDatMaxLabel+current_label*nbDatMaxLabel+count_dat[current_label*nbFilter+f]] = FilterIndex[f*nbDatMax+i];
+			count_dat[current_label*nbFilter+f] += 1;
+		}
+	}
 }
 
 void Descriptors::ConstructFilterIndexArray(AtomicSystem *_MySystem){
@@ -96,7 +120,11 @@ void Descriptors::ConstructFilterIndexArray(AtomicSystem *_MySystem){
 		nbDatMax = nbDat[0];
 		nbDatTot = nbDat[0];
 		FilterIndex = new unsigned int[nbDat[0]];
-		for(unsigned int i=0;i<nbDat[0];i++) FilterIndex[i] = i;
+		DescriptorFilter = new unsigned int[nbDat[0]];
+		for(unsigned int i=0;i<nbDat[0];i++){
+			FilterIndex[i] = i;
+			DescriptorFilter[i] = 0;
+		}
 	}else if( FilteringType == "element" || FilteringType == "type" ){
 		nbFilter = _MySystem->getNbAtomType();
 		for(unsigned int f=0;f<nbFilter;f++) FilterValue.push_back("");
@@ -136,11 +164,13 @@ void Descriptors::ConstructFilterIndexArray(AtomicSystem *_MySystem){
 		for(unsigned int i=0;i<nbDatTot;i++) nbDat[_MySystem->getAtom(i).type_uint-1]++;
 		nbDatMax = MT->max_vec(nbDat);
 		FilterIndex = new unsigned int[nbDatMax*nbFilter];
+		DescriptorFilter = new unsigned int[nbDatTot];
 		for(unsigned int f=0;f<nbFilter;f++) nbDat[f] = 0;
 		unsigned int current_f;
 		for(unsigned int i=0;i<nbDatTot;i++){
 			current_f = _MySystem->getAtom(i).type_uint-1; // TODO modify here when changing the thing with type_uint
 			FilterIndex[current_f*nbDatMax+nbDat[current_f]] = i;
+			DescriptorFilter[i] = current_f;
 			nbDat[current_f]++;
 		}
 	}else{
@@ -171,12 +201,14 @@ void Descriptors::ConstructFilterIndexArray(AtomicSystem *_MySystem){
 		if( nbFilter > nbMaxFilter ) cout << "Warning there is " << nbFilter << " different filters, which is a lot" << endl;
 		nbDatMax = MT->max_vec(nbDat);
 		FilterIndex = new unsigned int[nbDatMax*nbFilter];
+		DescriptorFilter = new unsigned int[nbDatTot];
 		for(unsigned int f=0;f<nbFilter;f++) nbDat[f] = 0;
 		unsigned int current_f;
 		for(unsigned int i=0;i<nbDatTot;i++){
 			for(unsigned int f=0;f<FilterValue.size();f++){
 				if( to_string(_MySystem->getAux(aux_id_filter)[i]) == FilterValue[f] ){
 					FilterIndex[f*nbDatMax+nbDat[f]] = i;
+					DescriptorFilter[i] = f;
 					nbDat[f]++;
 					break;
 				}
@@ -198,6 +230,7 @@ Descriptors::Descriptors(const string &FilenameOrDir){ // This constructor read 
 	struct dirent *diread;
 	const char *env = full_path.c_str();
 	DIR *dir;
+	this->MT = new MathTools();
 	if( (dir = opendir(env) ) != nullptr ){
 		cout << "Reading labelled descriptors from directory " << FilenameOrDir << endl;
 		ifstream prop_file(full_path+"/DescriptorProperties.ath");
@@ -283,9 +316,11 @@ Descriptors::Descriptors(const string &FilenameOrDir){ // This constructor read 
 		dim = count_dim;
 		nbDat.push_back(count_dat);
 		nbDatMax = nbDat[0];
+		nbDatTot = nbDat[0];
 		_Descriptors = new double[dim*nbDat[0]];
 		Labels_uint = new unsigned int[nbDat[0]];
 		LabelsSize = new unsigned int[Labels.size()];
+		nbLabels = Labels.size();
 		nbFilter = 1;
 		FilterIndex = new unsigned int[nbDatMax];
 		for(unsigned int i=0;i<nbDatMax;i++) FilterIndex[i] = i;
@@ -315,6 +350,7 @@ Descriptors::Descriptors(const string &FilenameOrDir){ // This constructor read 
 			}
 		}
 		cout << nbDat[0] << " descriptors of dimension " << dim << ", successfully read from directory " << FilenameOrDir << endl;
+		ConstructLabelIndexArray();
 	}else{
 		cout << "Reading descriptors from file : " << FilenameOrDir << endl;
 		ifstream file(FilenameOrDir, ios::in);
@@ -341,6 +377,7 @@ Descriptors::Descriptors(const string &FilenameOrDir){ // This constructor read 
 		dim = count_dim;
 		nbDat.push_back(count_line);
 		nbDatMax = nbDat[0];
+		nbDatTot = nbDat[0];
 		_Descriptors = new double[dim*nbDat[0]];
 		FilterIndex = new unsigned int[nbDatMax];
 		for(unsigned int i=0;i<nbDatMax;i++) FilterIndex[i] = i;
@@ -363,7 +400,6 @@ Descriptors::Descriptors(const string &FilenameOrDir){ // This constructor read 
 		}
 		cout << nbDat[0] << " descriptors of dimension " << dim << ", successfully read from file " << FilenameOrDir << endl;
 	}
-	this->MT = new MathTools();
 }
 
 Descriptors::Descriptors(const string &FilenameOrDir, const string &DescriptorName){ // This constructor read labelled descriptors from atomic file or labelled descriptors from a directory containing subdirectories having the name of the label and containing files with the descriptors
@@ -404,6 +440,7 @@ Descriptors::Descriptors(const string &FilenameOrDir, const string &DescriptorNa
 			if( pos==string::npos ) Labels.push_back(buffer_s);
 		}
 		cout << Labels.size() << " different labels : ";
+		nbLabels = Labels.size();
 		for(unsigned int l=0;l<Labels.size();l++) cout << Labels[l] << " ";
 		cout << endl;
 		closedir(dir);
@@ -635,6 +672,7 @@ Descriptors::Descriptors(const string &FilenameOrDir, const string &DescriptorNa
 		}
 		delete[] count_fil;
 		delete[] temp_des;	
+		ConstructLabelIndexArray();
 	}else{ 
 		cerr << "Reading a single labelled atomic file is not currently implemented" << endl;
 		cerr << "The best is to use the AtomicSystem constructor to build the descriptors" << endl;
@@ -931,6 +969,585 @@ void Descriptors::readProperties(vector<string> _Properties){
 	}
 }
 
+// TEST subarrays
+void Descriptors::constructSubarrays(bool filter, bool label){
+	// TODO delete if already allocated
+	if( !filter && !label ){
+		if( !subarray_defined ){
+			DescriptorsSubarray.push_back(new MatrixXd(nbDatTot,dim)); 
+			SubarraySize.push_back(nbDatTot);
+			CorresIndexSubarray.push_back(new unsigned int[nbDatTot]);
+			for(unsigned int i=0;i<nbDatTot;i++){
+				CorresIndexSubarray[0][i] = i;
+				for(unsigned int d=0;d<dim;d++) (*(DescriptorsSubarray[0]))(i,d) = _Descriptors[i*dim+d];
+			}
+			subarray_defined = true;
+		}else if( subarray_filter || subarray_label ){
+			for(unsigned int i=0;i<DescriptorsSubarray.size();i++){
+				delete DescriptorsSubarray[0];// TODO test this
+				DescriptorsSubarray.erase(DescriptorsSubarray.begin());
+				SubarraySize.erase(SubarraySize.begin());
+				delete[] CorresIndexSubarray[0];
+				CorresIndexSubarray.erase(CorresIndexSubarray.begin());
+			}
+			DescriptorsSubarray.push_back(new MatrixXd(nbDatTot,dim));
+			SubarraySize.push_back(nbDatTot);
+			CorresIndexSubarray.push_back(new unsigned int[nbDatTot]);
+			for(unsigned int i=0;i<nbDatTot;i++){
+				CorresIndexSubarray[0][i] = i;
+				for(unsigned int d=0;d<dim;d++) (*(DescriptorsSubarray[0]))(i,d) = _Descriptors[i*dim+d];
+			}
+		}
+		subarray_filter = false;
+		subarray_label = false;
+	}else if( filter && !label ){
+		if( !subarray_defined ){
+			//cout << "Constructing descriptor subarrays using fitler" << endl;
+			for(unsigned int f=0;f<nbFilter;f++){
+				DescriptorsSubarray.push_back(new MatrixXd(nbDat[f],dim));
+				CorresIndexSubarray.push_back(new unsigned int[nbDat[f]]);
+				for(unsigned int i=0;i<nbDat[f];i++){
+					CorresIndexSubarray[f][i] = FilterIndex[f*nbDatMax+i];
+					for(unsigned int d=0;d<dim;d++) (*(DescriptorsSubarray[f]))(i,d) = _Descriptors[FilterIndex[f*nbDatMax+i]*dim+d];
+				}
+				SubarraySize.push_back(nbDat[f]);
+			}
+			subarray_defined = true;
+		}else if( !subarray_filter && !subarray_label ){
+			//cout << "Constructing descriptor subarrays using fitler" << endl;
+			delete DescriptorsSubarray[0];
+			DescriptorsSubarray.erase(DescriptorsSubarray.begin());
+			SubarraySize.erase(SubarraySize.begin());
+			delete[] CorresIndexSubarray[0];
+			CorresIndexSubarray.erase(CorresIndexSubarray.begin());
+			for(unsigned int f=0;f<nbFilter;f++){
+				DescriptorsSubarray.push_back(new MatrixXd(nbDat[f],dim));
+				CorresIndexSubarray.push_back(new unsigned int[nbDat[f]]);
+				for(unsigned int i=0;i<nbDat[f];i++){
+					CorresIndexSubarray[f][i] = FilterIndex[f*nbDatMax+i];
+					for(unsigned int d=0;d<dim;d++) (*(DescriptorsSubarray[f]))(i,d) = _Descriptors[FilterIndex[f*nbDatMax+i]*dim+d];
+				}
+				SubarraySize.push_back(nbDat[f]);
+			}
+		}else if( ( !subarray_filter && subarray_label ) || ( !subarray_filter && !subarray_label ) ){	
+			//cout << "Constructing descriptor subarrays using fitler" << endl;
+			for(unsigned int i=0;i<DescriptorsSubarray.size();i++){
+				delete DescriptorsSubarray[0];
+				DescriptorsSubarray.erase(DescriptorsSubarray.begin());
+				SubarraySize.erase(SubarraySize.begin());
+				delete[] CorresIndexSubarray[0];
+				CorresIndexSubarray.erase(CorresIndexSubarray.begin());
+			}
+			for(unsigned int f=0;f<nbFilter;f++){
+				DescriptorsSubarray.push_back(new MatrixXd(nbDat[f],dim));
+				CorresIndexSubarray.push_back(new unsigned int[nbDat[f]]);
+				for(unsigned int i=0;i<nbDat[f];i++){
+					CorresIndexSubarray[f][i] = FilterIndex[f*nbDatMax+i];
+					for(unsigned int d=0;d<dim;d++) (*(DescriptorsSubarray[f]))(i,d) = _Descriptors[FilterIndex[f*nbDatMax+i]*dim+d];
+				}
+				SubarraySize.push_back(nbDat[f]);
+			}
+		}
+		subarray_filter = true;
+		subarray_label = false;
+	}else if( !filter && label ){
+		if( !subarray_defined ){
+			//cout << "Constructing descriptor subarrays using labels" << endl;
+			for(unsigned int l=0;l<nbLabels;l++){
+				unsigned int nbdatlab = 0;
+				for(unsigned int f=0;f<nbFilter;f++) nbdatlab += LabelsSize[f*nbLabels+l];
+				DescriptorsSubarray.push_back(new MatrixXd(nbdatlab,dim));
+				CorresIndexSubarray.push_back(new unsigned int[nbdatlab]);
+				SubarraySize.push_back(nbdatlab);
+				nbdatlab = 0;
+				for(unsigned int f=0;f<nbFilter;f++){
+					for(unsigned int i=0;i<LabelsSize[f*nbLabels+l];i++){
+						CorresIndexSubarray[l][nbdatlab] = LabelIndex[f*nbDatMaxLabel*nbLabels+l*nbDatMaxLabel+i];
+						for(unsigned int d=0;d<dim;d++) (*(DescriptorsSubarray[l]))(nbdatlab,d) = _Descriptors[LabelIndex[f*nbDatMaxLabel*nbLabels+l*nbDatMaxLabel+i]*dim+d];
+						nbdatlab++;
+					}
+				}
+			}
+			subarray_defined = true;
+		}else if( !subarray_filter && !subarray_label ){
+			//cout << "Constructing descriptor subarrays using labels" << endl;
+			delete DescriptorsSubarray[0];
+			DescriptorsSubarray.erase(DescriptorsSubarray.begin());
+			SubarraySize.erase(SubarraySize.begin());
+			delete[] CorresIndexSubarray[0];
+			CorresIndexSubarray.erase(CorresIndexSubarray.begin());
+			for(unsigned int l=0;l<nbLabels;l++){
+				unsigned int nbdatlab = 0;
+				for(unsigned int f=0;f<nbFilter;f++) nbdatlab += LabelsSize[f*nbLabels+l];
+				DescriptorsSubarray.push_back(new MatrixXd(nbdatlab,dim));
+				CorresIndexSubarray.push_back(new unsigned int[nbdatlab]);
+				SubarraySize.push_back(nbdatlab);
+				nbdatlab = 0;
+				for(unsigned int f=0;f<nbFilter;f++){
+					for(unsigned int i=0;i<LabelsSize[f*nbLabels+l];i++){
+						CorresIndexSubarray[l][nbdatlab] = LabelIndex[f*nbDatMaxLabel*nbLabels+l*nbDatMaxLabel+i];
+						for(unsigned int d=0;d<dim;d++) (*(DescriptorsSubarray[l]))(nbdatlab,d) = _Descriptors[LabelIndex[f*nbDatMaxLabel*nbLabels+l*nbDatMaxLabel+i]*dim+d];
+						nbdatlab++;
+					}
+				}
+			}
+		}else if( ( subarray_filter && !subarray_label ) || ( !subarray_filter && !subarray_label ) ){	
+			//cout << "Constructing descriptor subarrays using labels" << endl;
+			for(unsigned int i=0;i<DescriptorsSubarray.size();i++){
+				delete DescriptorsSubarray[0];
+				DescriptorsSubarray.erase(DescriptorsSubarray.begin());
+				SubarraySize.erase(SubarraySize.begin());
+				delete[] CorresIndexSubarray[0];
+				CorresIndexSubarray.erase(CorresIndexSubarray.begin());
+			}
+			for(unsigned int l=0;l<nbLabels;l++){
+				unsigned int nbdatlab = 0;
+				for(unsigned int f=0;f<nbFilter;f++) nbdatlab += LabelsSize[f*nbLabels+l];
+				DescriptorsSubarray.push_back(new MatrixXd(nbdatlab,dim));
+				CorresIndexSubarray.push_back(new unsigned int[nbdatlab]);
+				SubarraySize.push_back(nbdatlab);
+				nbdatlab = 0;
+				for(unsigned int f=0;f<nbFilter;f++){
+					for(unsigned int i=0;i<LabelsSize[f*nbLabels+l];i++){
+						CorresIndexSubarray[l][nbdatlab] = LabelIndex[f*nbDatMaxLabel*nbLabels+l*nbDatMaxLabel+i];
+						for(unsigned int d=0;d<dim;d++) (*(DescriptorsSubarray[l]))(nbdatlab,d) = _Descriptors[LabelIndex[f*nbDatMaxLabel*nbLabels+l*nbDatMaxLabel+i]*dim+d];
+						nbdatlab++;
+					}
+				}
+			}
+		}
+		subarray_filter = false;
+		subarray_label = true;
+	}else{
+		if( !subarray_defined ){
+			//cout << "Constructing descriptor subarrays using filter and labels" << endl;
+			for(unsigned int f=0;f<nbFilter;f++){
+				for(unsigned int l=0;l<nbLabels;l++){
+					CorresIndexSubarray.push_back(new unsigned int[LabelsSize[f*nbLabels+l]]);
+					DescriptorsSubarray.push_back(new MatrixXd(LabelsSize[f*nbLabels+l],dim));
+					SubarraySize.push_back(LabelsSize[f*nbLabels+l]);
+					for(unsigned int i=0;i<LabelsSize[f*nbLabels+l];i++){
+						CorresIndexSubarray[f*nbLabels+l][i] = LabelIndex[f*nbDatMaxLabel*nbLabels+l*nbDatMaxLabel+i];
+						for(unsigned int d=0;d<dim;d++) (*(DescriptorsSubarray[f*nbLabels+l]))(i,d) = _Descriptors[LabelIndex[f*nbDatMaxLabel*nbLabels+l*nbDatMaxLabel+i]*dim+d];
+					}
+				}
+			}
+			subarray_defined = true;
+		}else if( !subarray_filter && !subarray_label ){
+			//cout << "Constructing descriptor subarrays using filter and labels" << endl;
+			delete DescriptorsSubarray[0];
+			DescriptorsSubarray.erase(DescriptorsSubarray.begin());
+			SubarraySize.erase(SubarraySize.begin());
+			delete[] CorresIndexSubarray[0];
+			CorresIndexSubarray.erase(CorresIndexSubarray.begin());
+			for(unsigned int f=0;f<nbFilter;f++){
+				for(unsigned int l=0;l<nbLabels;l++){
+					DescriptorsSubarray.push_back(new MatrixXd(LabelsSize[f*nbLabels+l],dim));
+					CorresIndexSubarray.push_back(new unsigned int[LabelsSize[f*nbLabels+l]]);
+					SubarraySize.push_back(LabelsSize[f*nbLabels+l]);
+					for(unsigned int i=0;i<LabelsSize[f*nbLabels+l];i++){
+						CorresIndexSubarray[f*nbLabels+l][i] = LabelIndex[f*nbDatMaxLabel*nbLabels+l*nbDatMaxLabel+i];
+						for(unsigned int d=0;d<dim;d++) (*(DescriptorsSubarray[f*nbLabels+l]))(i,d) = _Descriptors[LabelIndex[f*nbDatMaxLabel*nbLabels+l*nbDatMaxLabel+i]*dim+d];
+					}
+				}
+			}
+		}else if( ( subarray_filter && !subarray_label ) || ( !subarray_filter && subarray_label ) ){	
+			//cout << "Constructing descriptor subarrays using filter and labels" << endl;
+			for(unsigned int i=0;i<DescriptorsSubarray.size();i++){
+				delete[] DescriptorsSubarray[0];
+				DescriptorsSubarray.erase(DescriptorsSubarray.begin());
+				SubarraySize.erase(SubarraySize.begin());
+				delete[] CorresIndexSubarray[0];
+				CorresIndexSubarray.erase(CorresIndexSubarray.begin());
+			}
+			for(unsigned int f=0;f<nbFilter;f++){
+				for(unsigned int l=0;l<nbLabels;l++){
+					DescriptorsSubarray.push_back(new MatrixXd(LabelsSize[f*nbLabels+l],dim));
+					CorresIndexSubarray.push_back(new unsigned int[LabelsSize[f*nbLabels+l]]);
+					SubarraySize.push_back(LabelsSize[f*nbLabels+l]);
+					for(unsigned int i=0;i<LabelsSize[f*nbLabels+l];i++){
+						CorresIndexSubarray[f*nbLabels+l][i] = LabelIndex[f*nbDatMaxLabel*nbLabels+l*nbDatMaxLabel+i];
+						for(unsigned int d=0;d<dim;d++) (*(DescriptorsSubarray[f*nbLabels+l]))(i,d) = _Descriptors[LabelIndex[f*nbDatMaxLabel*nbLabels+l*nbDatMaxLabel+i]*dim+d];
+					}
+				}
+			}
+		}
+		subarray_filter = true;
+		subarray_label = true;
+	}
+} // TODO corres index here also
+
+void Descriptors::constructSubarrays(double &RatioTestDataset, bool filter, bool label){
+	bool diffratiotest = false;
+	if( _RatioTestDataset != RatioTestDataset ){
+		diffratiotest = true;
+		_RatioTestDataset = RatioTestDataset;
+	}
+	if( label && Labels.size() == 0 ){
+		cerr << "The descriptors are not labelled, we cannot construct a test dataset, aborting" << endl;
+		exit(EXIT_FAILURE);
+	}
+	if( RatioTestDataset > 1. ){
+		cerr << "The ratio between the size of testing and training dataset is higher than one, aborting" << endl;
+		exit(EXIT_FAILURE);
+	}
+
+	random_device rd;
+	if( filter && !label ){
+		if( !subarray_defined ){
+			//cout << "Constructing descriptor subarrays using fitler" << endl;
+			for(unsigned int f=0;f<nbFilter;f++){
+				unsigned int nbdat_test = round(nbDat[f]*RatioTestDataset);
+				unsigned int nbdat_train = nbDat[f]-nbdat_test;
+				DescriptorsSubarray.push_back(new MatrixXd(nbdat_train,dim));
+				TestDataset.push_back(new MatrixXd(nbdat_test,dim));
+				CorresIndexSubarray.push_back(new unsigned int[nbdat_train]);
+				CorresIndexTestDataset.push_back(new unsigned int[nbdat_test]);
+				SubarraySize.push_back(nbdat_train);
+				TestDatasetSize.push_back(nbdat_test);
+				vector<unsigned int> test_or_train;
+				test_or_train.insert(test_or_train.end(),nbdat_test,0);
+				test_or_train.insert(test_or_train.end(),nbdat_train,1);
+				shuffle(test_or_train.begin(), test_or_train.end(), default_random_engine(rd()));
+				unsigned int nbdatlab = 0;
+				nbdat_test = 0;
+				nbdat_train = 0;
+				for(unsigned int i=0;i<nbDat[f];i++){
+					if( test_or_train[i] == 0 ){
+						for(unsigned int d=0;d<dim;d++) (*(TestDataset[f]))(nbdat_test,d) = _Descriptors[FilterIndex[f*nbDatMax+i]*dim+d];
+						CorresIndexTestDataset[f][nbdat_test] = FilterIndex[f*nbDatMax+i];
+						nbdat_test++;
+					}else{
+						for(unsigned int d=0;d<dim;d++) (*(DescriptorsSubarray[f]))(nbdat_train,d) = _Descriptors[FilterIndex[f*nbDatMax+i]*dim+d];
+						CorresIndexSubarray[f][nbdat_train] = FilterIndex[f*nbDatMax+i];
+						nbdat_train++;
+					}
+				}
+			}
+			subarray_defined = true;
+		}else if( ( !subarray_filter && subarray_label ) || ( !subarray_filter && !subarray_label ) || diffratiotest ){	
+			//cout << "Constructing descriptor subarrays using fitler" << endl;
+			unsigned int init_size = DescriptorsSubarray.size();
+			for(unsigned int i=0;i<init_size;i++){
+				delete DescriptorsSubarray[0];
+				DescriptorsSubarray.erase(DescriptorsSubarray.begin());
+				SubarraySize.erase(SubarraySize.begin());
+				delete TestDataset[0];
+				TestDataset.erase(TestDataset.begin());
+				TestDatasetSize.erase(TestDatasetSize.begin());
+				delete[] CorresIndexSubarray[0];
+				CorresIndexSubarray.erase(CorresIndexSubarray.begin());
+				delete[] CorresIndexTestDataset[0];
+				CorresIndexTestDataset.erase(CorresIndexTestDataset.begin());
+			}
+			for(unsigned int f=0;f<nbFilter;f++){
+				unsigned int nbdat_test = round(nbDat[f]*RatioTestDataset);
+				unsigned int nbdat_train = nbDat[f]-nbdat_test;
+				DescriptorsSubarray.push_back(new MatrixXd(nbdat_train,dim));
+				TestDataset.push_back(new MatrixXd(nbdat_test,dim));
+				CorresIndexSubarray.push_back(new unsigned int[nbdat_train]);
+				CorresIndexTestDataset.push_back(new unsigned int[nbdat_test]);
+				SubarraySize.push_back(nbdat_train);
+				TestDatasetSize.push_back(nbdat_test);
+				vector<unsigned int> test_or_train;
+				test_or_train.insert(test_or_train.end(),nbdat_test,0);
+				test_or_train.insert(test_or_train.end(),nbdat_train,1);
+				shuffle(test_or_train.begin(), test_or_train.end(), default_random_engine(rd()));
+				unsigned int nbdatlab = 0;
+				nbdat_test = 0;
+				nbdat_train = 0;
+				for(unsigned int i=0;i<nbDat[f];i++){
+					if( test_or_train[i] == 0 ){
+						for(unsigned int d=0;d<dim;d++) (*(TestDataset[f]))(nbdat_test,d) = _Descriptors[FilterIndex[f*nbDatMax+i]*dim+d];
+						CorresIndexTestDataset[f][nbdat_test] = FilterIndex[f*nbDatMax+i];
+						nbdat_test++;
+					}else{
+						for(unsigned int d=0;d<dim;d++) (*(DescriptorsSubarray[f]))(nbdat_train,d) = _Descriptors[FilterIndex[f*nbDatMax+i]*dim+d];
+						CorresIndexSubarray[f][nbdat_train] = FilterIndex[f*nbDatMax+i];
+						nbdat_train++;
+					}
+				}
+			}
+		}
+		subarray_filter = true;
+		subarray_label = false;
+		IsTestDataset = true;
+	}else if( !filter && label ){
+		if( !subarray_defined ){
+			//cout << "Constructing descriptor subarrays using labels" << endl;
+			for(unsigned int l=0;l<nbLabels;l++){
+				unsigned int nbdatlab = 0;
+				for(unsigned int f=0;f<nbFilter;f++) nbdatlab += LabelsSize[f*nbLabels+l];
+				unsigned int nbdat_test = round(nbdatlab*RatioTestDataset);
+				unsigned int nbdat_train = nbdatlab-nbdat_test;
+				DescriptorsSubarray.push_back(new MatrixXd(nbdat_train,dim));
+				TestDataset.push_back(new MatrixXd(nbdat_test,dim));
+				CorresIndexSubarray.push_back(new unsigned int[nbdat_train]);
+				CorresIndexTestDataset.push_back(new unsigned int[nbdat_test]);
+				SubarraySize.push_back(nbdat_train);
+				TestDatasetSize.push_back(nbdat_test);
+				vector<unsigned int> test_or_train;
+				test_or_train.insert(test_or_train.end(),nbdat_test,0);
+				test_or_train.insert(test_or_train.end(),nbdat_train,1);
+				shuffle(test_or_train.begin(), test_or_train.end(), default_random_engine(rd()));
+				nbdatlab = 0;
+				nbdat_test = 0;
+				nbdat_train = 0;
+				for(unsigned int f=0;f<nbFilter;f++){
+					for(unsigned int i=0;i<LabelsSize[f*nbLabels+l];i++){
+						if( test_or_train[nbdatlab] == 0 ){
+							for(unsigned int d=0;d<dim;d++) (*(TestDataset[l]))(nbdat_test,d) = _Descriptors[LabelIndex[f*nbDatMaxLabel*nbLabels+l*nbDatMaxLabel+i]*dim+d];
+							CorresIndexTestDataset[l][nbdat_test] = LabelIndex[f*nbDatMaxLabel*nbLabels+l*nbDatMaxLabel+i];
+							nbdat_test++;
+						}else{
+							for(unsigned int d=0;d<dim;d++) (*(DescriptorsSubarray[l]))(nbdat_train,d) = _Descriptors[LabelIndex[f*nbDatMaxLabel*nbLabels+l*nbDatMaxLabel+i]*dim+d];
+							CorresIndexSubarray[l][nbdat_train] = LabelIndex[f*nbDatMaxLabel*nbLabels+l*nbDatMaxLabel+i];
+							nbdat_train++;
+						}
+						nbdatlab++;
+					}
+				}
+			}
+			subarray_defined = true;
+		}else if( ( subarray_filter && !subarray_label ) || diffratiotest ){	
+			//cout << "Constructing descriptor subarrays using labels" << endl;
+			for(unsigned int i=0;i<DescriptorsSubarray.size();i++){
+				delete DescriptorsSubarray[0];
+				DescriptorsSubarray.erase(DescriptorsSubarray.begin());
+				SubarraySize.erase(SubarraySize.begin());
+				delete TestDataset[0];
+				TestDataset.erase(TestDataset.begin());
+				TestDatasetSize.erase(TestDatasetSize.begin());
+				delete[] CorresIndexSubarray[0];
+				CorresIndexSubarray.erase(CorresIndexSubarray.begin());
+				delete[] CorresIndexTestDataset[0];
+				CorresIndexTestDataset.erase(CorresIndexTestDataset.begin());
+			}
+			for(unsigned int l=0;l<nbLabels;l++){
+				unsigned int nbdatlab = 0;
+				for(unsigned int f=0;f<nbFilter;f++) nbdatlab += LabelsSize[f*nbLabels+l];
+				unsigned int nbdat_test = round(nbdatlab*RatioTestDataset);
+				unsigned int nbdat_train = nbdatlab-nbdat_test;
+				DescriptorsSubarray.push_back(new MatrixXd(nbdat_train,dim));
+				TestDataset.push_back(new MatrixXd(nbdat_test,dim));
+				CorresIndexSubarray.push_back(new unsigned int[nbdat_train]);
+				CorresIndexTestDataset.push_back(new unsigned int[nbdat_test]);
+				SubarraySize.push_back(nbdat_train);
+				TestDatasetSize.push_back(nbdat_test);
+				vector<unsigned int> test_or_train;
+				test_or_train.insert(test_or_train.end(),nbdat_test,0);
+				test_or_train.insert(test_or_train.end(),nbdat_train,1);
+				shuffle(test_or_train.begin(), test_or_train.end(), default_random_engine(rd()));
+				nbdatlab = 0;
+				nbdat_test = 0;
+				nbdat_train = 0;
+				for(unsigned int f=0;f<nbFilter;f++){
+					for(unsigned int i=0;i<LabelsSize[f*nbLabels+l];i++){
+						if( test_or_train[nbdatlab] == 0 ){
+							for(unsigned int d=0;d<dim;d++) (*(TestDataset[l]))(nbdat_test,d) = _Descriptors[LabelIndex[f*nbDatMaxLabel*nbLabels+l*nbDatMaxLabel+i]*dim+d];
+							CorresIndexTestDataset[l][nbdat_test] = LabelIndex[f*nbDatMaxLabel*nbLabels+l*nbDatMaxLabel+i];
+							nbdat_test++;
+						}else{
+							for(unsigned int d=0;d<dim;d++) (*(DescriptorsSubarray[l]))(nbdat_train,d) = _Descriptors[LabelIndex[f*nbDatMaxLabel*nbLabels+l*nbDatMaxLabel+i]*dim+d];
+							CorresIndexSubarray[l][nbdat_train] = LabelIndex[f*nbDatMaxLabel*nbLabels+l*nbDatMaxLabel+i];
+							nbdat_train++;
+						}
+						nbdatlab++;
+					}
+				}
+			}
+		}
+		subarray_filter = false;
+		subarray_label = true;
+		IsTestDataset = true;
+	}else if( filter && label ){
+		if( !subarray_defined ){
+			//cout << "Constructing descriptor subarrays using filter and labels" << endl;
+			for(unsigned int f=0;f<nbFilter;f++){
+				for(unsigned int l=0;l<nbLabels;l++){
+					unsigned int nbdat_test = round(LabelsSize[f*nbLabels+l]*RatioTestDataset);
+					unsigned int nbdat_train = LabelsSize[f*nbLabels+l]-nbdat_test;
+					DescriptorsSubarray.push_back(new MatrixXd(nbdat_train,dim));
+					TestDataset.push_back(new MatrixXd(nbdat_test,dim));
+					CorresIndexSubarray.push_back(new unsigned int[nbdat_train]);
+					CorresIndexTestDataset.push_back(new unsigned int[nbdat_test]);
+					SubarraySize.push_back(nbdat_train);
+					TestDatasetSize.push_back(nbdat_test);
+					vector<unsigned int> test_or_train;
+					test_or_train.insert(test_or_train.end(),nbdat_test,0);
+					test_or_train.insert(test_or_train.end(),nbdat_train,1);
+					shuffle(test_or_train.begin(), test_or_train.end(), default_random_engine(rd()));
+					nbdat_test = 0;
+					nbdat_train = 0;
+					for(unsigned int i=0;i<LabelsSize[f*nbLabels+l];i++){
+						if( test_or_train[i] == 0 ){
+							for(unsigned int d=0;d<dim;d++) (*(TestDataset[f*nbLabels+l]))(nbdat_test,d) = _Descriptors[LabelIndex[f*nbDatMaxLabel*nbLabels+l*nbDatMaxLabel+i]*dim+d];
+							CorresIndexTestDataset[f*nbLabels+l][nbdat_test] = LabelIndex[f*nbDatMaxLabel*nbLabels+l*nbDatMaxLabel+i];
+							nbdat_test++;
+						}else{
+							for(unsigned int d=0;d<dim;d++) (*(DescriptorsSubarray[f*nbLabels+l]))(nbdat_train,d) = _Descriptors[LabelIndex[f*nbDatMaxLabel*nbLabels+l*nbDatMaxLabel+i]*dim+d];
+							CorresIndexSubarray[f*nbLabels+l][nbdat_train] = LabelIndex[f*nbDatMaxLabel*nbLabels+l*nbDatMaxLabel+i];
+							nbdat_train++;
+						}
+					}
+				}
+			}
+			subarray_defined = true;
+		}else if( ( !subarray_filter && subarray_label ) || diffratiotest ){	
+			//cout << "Constructing descriptor subarrays using filter and labels" << endl;
+			for(unsigned int i=0;i<DescriptorsSubarray.size();i++){
+				delete[] DescriptorsSubarray[0];
+				DescriptorsSubarray.erase(DescriptorsSubarray.begin());
+				SubarraySize.erase(SubarraySize.begin());
+				delete TestDataset[0];
+				TestDataset.erase(TestDataset.begin());
+				TestDatasetSize.erase(TestDatasetSize.begin());
+				delete[] CorresIndexSubarray[0];
+				CorresIndexSubarray.erase(CorresIndexSubarray.begin());
+				delete[] CorresIndexTestDataset[0];
+				CorresIndexTestDataset.erase(CorresIndexTestDataset.begin());
+			}
+			for(unsigned int f=0;f<nbFilter;f++){
+				for(unsigned int l=0;l<nbLabels;l++){
+					unsigned int nbdat_test = round(LabelsSize[f*nbLabels+l]*RatioTestDataset);
+					unsigned int nbdat_train = LabelsSize[f*nbLabels+l]-nbdat_test;
+					DescriptorsSubarray.push_back(new MatrixXd(nbdat_train,dim));
+					TestDataset.push_back(new MatrixXd(nbdat_test,dim));
+					CorresIndexSubarray.push_back(new unsigned int[nbdat_train]);
+					CorresIndexTestDataset.push_back(new unsigned int[nbdat_test]);
+					SubarraySize.push_back(nbdat_train);
+					TestDatasetSize.push_back(nbdat_test);
+					vector<unsigned int> test_or_train;
+					test_or_train.insert(test_or_train.end(),nbdat_test,0);
+					test_or_train.insert(test_or_train.end(),nbdat_train,1);
+					shuffle(test_or_train.begin(), test_or_train.end(), default_random_engine(rd()));
+					nbdat_test = 0;
+					nbdat_train = 0;
+					for(unsigned int i=0;i<LabelsSize[f*nbLabels+l];i++){
+						if( test_or_train[i] == 0 ){
+							for(unsigned int d=0;d<dim;d++) (*(TestDataset[f*nbLabels+l]))(nbdat_test,d) = _Descriptors[LabelIndex[f*nbDatMaxLabel*nbLabels+l*nbDatMaxLabel+i]*dim+d];
+							CorresIndexTestDataset[f*nbLabels+l][nbdat_test] = LabelIndex[f*nbDatMaxLabel*nbLabels+l*nbDatMaxLabel+i];
+							nbdat_test++;
+						}else{
+							for(unsigned int d=0;d<dim;d++) (*(DescriptorsSubarray[f*nbLabels+l]))(nbdat_train,d) = _Descriptors[LabelIndex[f*nbDatMaxLabel*nbLabels+l*nbDatMaxLabel+i]*dim+d];
+							CorresIndexSubarray[f*nbLabels+l][nbdat_train] = LabelIndex[f*nbDatMaxLabel*nbLabels+l*nbDatMaxLabel+i];
+							nbdat_train++;
+						}
+					}
+				}
+			}
+		}
+		subarray_filter = true;
+		subarray_label = true;
+		IsTestDataset = true;
+	}
+}
+MatrixXd* Descriptors::getSubarray(unsigned int &subarray_nbdat, std::string filter_name, std::string label_name){
+	bool already = false;
+	unsigned int f = 0;
+	if( filter_name != "none" ){
+		for(unsigned int ft=0;ft<FilterValue.size();ft++){
+			if( filter_name == FilterValue[ft] ){
+				already = true;
+				f = ft;
+				break;
+			}
+		}
+		if( !already ){
+			cerr << "Filter value not found" << endl;
+			exit(EXIT_FAILURE);
+		}
+	}
+	already = false;
+	unsigned int l = 0;
+	if( label_name != "none" ){
+		for(unsigned int lt=0;lt<Labels.size();lt++){
+			if( label_name == Labels[lt] ){
+				already = true;
+				l = lt;
+				break;
+			}
+		}
+		if( !already ){
+			cerr << "Label value not found" << endl;
+			exit(EXIT_FAILURE);
+		}
+	}
+	subarray_nbdat = SubarraySize[f*nbLabels+l];
+	return DescriptorsSubarray[f*nbLabels+l];
+}
+
+unsigned int* Descriptors::getCorresIndexSubarray(unsigned int &subarray_nbdat, std::string filter_name, std::string label_name){
+	bool already = false; //TODO make a function for having f and l
+	unsigned int f = 0;
+	if( filter_name != "none" ){
+		for(unsigned int ft=0;ft<FilterValue.size();ft++){
+			if( filter_name == FilterValue[ft] ){
+				already = true;
+				f = ft;
+				break;
+			}
+		}
+		if( !already ){
+			cerr << "Filter value not found" << endl;
+			exit(EXIT_FAILURE);
+		}
+	}
+	already = false;
+	unsigned int l = 0;
+	if( label_name != "none" ){
+		for(unsigned int lt=0;lt<Labels.size();lt++){
+			if( label_name == Labels[lt] ){
+				already = true;
+				l = lt;
+				break;
+			}
+		}
+		if( !already ){
+			cerr << "Label value not found" << endl;
+			exit(EXIT_FAILURE);
+		}
+	}
+	subarray_nbdat = SubarraySize[f*nbLabels+l];
+	return CorresIndexSubarray[f*nbLabels+l];
+}
+
+unsigned int* Descriptors::getCorresIndexTestDataset(unsigned int &subarray_nbdat, std::string filter_name, std::string label_name){
+	bool already = false; //TODO make a function for having f and l
+	unsigned int f = 0;
+	if( filter_name != "none" ){
+		for(unsigned int ft=0;ft<FilterValue.size();ft++){
+			if( filter_name == FilterValue[ft] ){
+				already = true;
+				f = ft;
+				break;
+			}
+		}
+		if( !already ){
+			cerr << "Filter value not found" << endl;
+			exit(EXIT_FAILURE);
+		}
+	}
+	already = false;
+	unsigned int l = 0;
+	if( label_name != "none" ){
+		for(unsigned int lt=0;lt<Labels.size();lt++){
+			if( label_name == Labels[lt] ){
+				already = true;
+				l = lt;
+				break;
+			}
+		}
+		if( !already ){
+			cerr << "Label value not found" << endl;
+			exit(EXIT_FAILURE);
+		}
+	}
+	subarray_nbdat = SubarraySize[f*nbLabels+l];
+	return CorresIndexTestDataset[f*nbLabels+l];
+}
+// END TEST subarray
+
 void Descriptors::readFixedParams(){
 	string fp;
 	#ifdef FIXEDPARAMETERS
@@ -959,7 +1576,18 @@ void Descriptors::readFixedParams(){
 }
 
 Descriptors::~Descriptors(){
-	delete[] FilterIndex;
+	if( FilterIndex ) delete[] FilterIndex;
+	if( DescriptorLabel) delete[] DescriptorLabel;
+	if( DescriptorFilter ) delete[] DescriptorFilter;
+	if( Labels_uint ) delete[] Labels_uint;
+	if( LabelsSize ) delete[] LabelsSize;
+	if( LabelIndex ) delete[] LabelIndex;
+	// TEST subarray
+	for(unsigned int s=0;s<DescriptorsSubarray.size();s++) if( DescriptorsSubarray[s] ) delete DescriptorsSubarray[s];
+	for(unsigned int s=0;s<TestDataset.size();s++) if( TestDataset[s] ) delete TestDataset[s];
+	for(unsigned int s=0;s<CorresIndexSubarray.size();s++) if( CorresIndexSubarray[s] ) delete CorresIndexSubarray[s];
+	for(unsigned int s=0;s<CorresIndexTestDataset.size();s++) if( CorresIndexTestDataset[s] ) delete CorresIndexTestDataset[s];
+	// END TEST subarray
 	if( AreDescriptorsMine ) delete[] _Descriptors;
 	delete MT;
 	if( AreExtremums ){

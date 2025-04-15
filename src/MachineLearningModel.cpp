@@ -186,6 +186,20 @@ void MachineLearningModel::PrintClassifiedData(string filename){
 	cout << "Classified data successfully printed in \"" << filename << "\" under format : DescriptorValues LabelIndex MaximumLikelihoodClassifier" << endl;
 }
 
+void MachineLearningModel::ReadProperties(vector<string> &Properties){
+	size_t pos_rattrain;
+	string buffer_s;
+	for(unsigned int i=0;i<Properties.size();i++){
+		current_Properties.push_back(Properties[i]);
+		pos_rattrain=Properties[i].find("ML_RATIO_TEST_TRAIN");
+		if(pos_rattrain!=string::npos){
+			istringstream text(Properties[i]);
+			text >> buffer_s >> RatioTestTrain;
+		}
+	}
+}
+
+
 MachineLearningModel::~MachineLearningModel(){
 	delete MT;
 	if( this->IsDescriptor ){
@@ -193,4 +207,5 @@ MachineLearningModel::~MachineLearningModel(){
 		delete[] buffer_vec_1_dim;
 		delete[] buffer_vec_2_dim;
 	}
+	if( FilterIndexToModify ) delete[] FilterIndexToModify;
 }

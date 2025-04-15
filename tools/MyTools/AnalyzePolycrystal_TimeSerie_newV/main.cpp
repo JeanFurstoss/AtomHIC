@@ -41,7 +41,6 @@
 #include "MathTools.h"
 #include "MyStructs.h"
 #include "Descriptors.h"
-#include "GaussianMixtureModel.h"
 #include <filesystem>
 #include <dirent.h>
 #include <Displays.h>

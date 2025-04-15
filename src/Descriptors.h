@@ -40,7 +40,9 @@
 //*	- test the neighbour research at high dimensions                           *
 //*	- implement other types of descriptors (for the moment we only have        *
 //* Steinhardt) such as SOAP, ACE..                                                *
-//*	-                                                                          *
+//*	- construct subset of descriptors (i.e. classed by filter and/or label) to *
+//* give them more efficiently (or more transparently) to ML models                *
+//*	- add possibility to label descriptors from auxiliary property of dump file*
 //**********************************************************************************
 
 #ifndef DESCRIPTORS_H
@@ -50,6 +52,9 @@
 #include "AtomicSystem.h"
 #include "MathTools.h"
 #include <string>
+#include <Eigen/Dense>
+
+using namespace Eigen;
 
 class ATOMHIC_EXPORT Descriptors {
 protected:
@@ -61,17 +66,38 @@ protected:
 	std::vector<unsigned int> nbDat; // nbDat[f] number of data with filter f
 	unsigned int nbDatMax; // maximum number of data in all filter
 	unsigned int nbDatTot;
-	unsigned int *FilterIndex; // FilterIndex[f*nbDatMax+j] = i index in _Descriptor array of jth descriptor having filter f
+	unsigned int *FilterIndex = nullptr; // FilterIndex[f*nbDatMax+j] = i index in _Descriptor array of jth descriptor having filter f
 	double *_Descriptors; // [i*dim+d] component d of descriptor i
-	double *min_val; // [f*dim+d] component d of the minimum value of descriptors with filter f
-	double *max_val; // [f*dim+d] component d of the maximum value of descriptors with filter f
+	// TEST subarrays
+	std::vector<MatrixXd*> DescriptorsSubarray; // [s](i,d) component d of descriptor i in descriptor subarray s
+	std::vector<unsigned int> SubarraySize; // [s] number of descriptors in subarray s
+	std::vector<std::string> SubarrayDescription; // [s] number of descriptors in subarray s
+	std::vector<MatrixXd*> TestDataset; // [s](i,d) component d of descriptor i in descriptor test dataset s
+	std::vector<unsigned int> TestDatasetSize; // [s] number of descriptors in subarray s
+	std::vector<std::string> TestDatasetDescription; // [s] number of descriptors in subarray s
+	std::vector<unsigned int*> CorresIndexSubarray; // [s][j] = i index in _Descriptors of jth descriptors in subarray s
+	std::vector<unsigned int*> CorresIndexTestDataset; // [s][j] = i index in _Descriptors of jth descriptors in TestDataset s
+	double _RatioTestDataset = 0.;
+	bool subarray_defined = false;
+	bool IsTestDataset = false;
+	bool subarray_filter;
+	bool subarray_label;
+	unsigned int *DescriptorLabel = nullptr; // [i] = Label (and Filter, respectively) of ith descriptor in _Descriptor array
+	unsigned int *DescriptorFilter = nullptr;
+
+	// END TEST subarrays
+	double *min_val = nullptr; // [f*dim+d] component d of the minimum value of descriptors with filter f
+	double *max_val = nullptr; // [f*dim+d] component d of the maximum value of descriptors with filter f
 	bool AreExtremums = false;
 
 	bool AreDescriptorsMine = true;
 	// label associated to each data, used for supervised learning (e.g. labeling of a GMM for structural analysis)
-	unsigned int *Labels_uint; // [f*nbDatMax+i] = l with l the unsigned int label of descriptor i with filter f
+	unsigned int *Labels_uint = nullptr; // [f*nbDatMax+i] = l with l the unsigned int label of descriptor i with filter f
 	std::vector<std::string> Labels; // Labels[l] = name of the label l
-	unsigned int *LabelsSize; // [f*Labels.size()+l] = number of descriptor having label l in filter f
+	unsigned int *LabelsSize = nullptr; // [f*Labels.size()+l] = number of descriptor having label l in filter f
+	unsigned int *LabelIndex = nullptr; // [f*Labels.size()*nbDatMaxLabel+l*nbDatMaxLabel+j] = i index in _Descriptor array of j_th descriptor having label l in filter f
+	unsigned int nbLabels = 1; // number of labels
+	unsigned int nbDatMaxLabel; // maximum number of data in all labels (used to acces LabelIndex array)
 	// Neighbours of descriptors
 	std::vector<unsigned int*> Neighbours; // List of neigbors, structured as 2D array for each filter f such that Neighbours[f][i*(nbMaxN[f]+1)] = nb of neighbour of descriptor i, Neighbours[f][i*(nbMaxN[f]+1)+j+1] = id of the jth neighbour of descriptor i
 	std::vector<unsigned int> nbMaxN;
@@ -101,17 +127,29 @@ public:
 	void ComputeDescriptors(){};
 	void readFixedParams();
 	void ConstructFilterIndexArray(AtomicSystem *_MySystem);
+	void ConstructLabelIndexArray();
 	void ConstructDescriptorFromAtomicPosition();
 	void searchNeighbours(double rc, std::string filter_val, std::string distFunc="Euclidian");
 	void ComputeExtremums();
 	void SquaredDistance(unsigned int id_1, unsigned int id_2, unsigned int filter, double &squared_dist);// For the moment Euclidian distance (to add other distance and rename)
 	void readProperties(std::vector<std::string> _Properties);
+	// TEST subarrays
+	void constructSubarrays(bool filter=false, bool label=false);
+	void constructSubarrays(double &RatioTestDataset, bool filter=false, bool label=true);
+	MatrixXd *getSubarray(unsigned int &subarray_nbdat, std::string filter_name="none", std::string label_name="none");
+	MatrixXd *getTestDataset(unsigned int &subarray_nbdat, std::string filter_name="none", std::string label_name="none");
+	unsigned int *getCorresIndexSubarray(unsigned int &subarray_nbdat, std::string filter_name="none", std::string label_name="none");
+	unsigned int *getCorresIndexTestDataset(unsigned int &subarray_nbdat, std::string filter_name="none", std::string label_name="none");
+	unsigned int getLabels_uint(unsigned int &i){ return DescriptorLabel[i]; }
+	// END TEST subarrays
 	// getters
 	double *getDescriptors(){ return _Descriptors; }
 	unsigned int *getLabels_uint(){ return Labels_uint; }
 	unsigned int getLabelsSize(const unsigned int &f, unsigned int &l){ return LabelsSize[f*Labels.size()+l]; }
 	unsigned int getNbLabels(){ return Labels.size(); }
 	std::string getLabels(const unsigned int &l){ return Labels[l]; }
+	unsigned int getNbDatMaxLabel(){ return nbDatMaxLabel; }
+	unsigned int getLabelIndex(const unsigned int &f){ return LabelIndex[f]; }
 	unsigned int getDim(){ return dim; }
 	unsigned int getNbDat(const unsigned int &f){ return nbDat[f]; }
 	unsigned int getNbDatMax(){ return nbDatMax; }
