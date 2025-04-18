@@ -43,15 +43,61 @@ KMeansTools::KMeansTools(unsigned int &nbClust, MatrixXd *dataMat, unsigned int 
 	
 	readFixedParams();
 	
+	InitializeKMeansVariables();
+	InitializeDataVariables();
+
+}
+
+KMeansTools::KMeansTools(unsigned int &nbClust, unsigned int &dim, vector<vector<double>> &centroids):_nbClust(nbClust), _dim(dim){
+	readFixedParams();
+	InitializeKMeansVariables();
+	setKMeansVariables(centroids);
+}
+
+KMeansTools::KMeansTools(unsigned int &nbClust, MatrixXd *dataMat, unsigned int &nbDat, unsigned int &dim, vector<vector<double>> &centroids):_nbClust(nbClust), _dataMat(dataMat), _nbDat(nbDat), _dim(dim){
+	readFixedParams();
+	InitializeKMeansVariables();
+	InitializeDataVariables();
+	setKMeansVariables(centroids);
+}
+
+void KMeansTools::InitializeDataVariables(){
+	_Data2Cluster = new unsigned int[_nbDat];
+}
+
+void KMeansTools::InitializeKMeansVariables(){
 	_centroids = MatrixXd(_nbClust,_dim);
 	_centroids_old = MatrixXd(_nbClust,_dim);
 	_optimal_centroids = MatrixXd(_nbClust,_dim);
-	_V = MatrixXd(_nbClust * _dim, dim);
-
-	_Data2Cluster = new unsigned int[_nbDat];
+	_V = MatrixXd(_nbClust * _dim, _dim);
 	_nbDat2Cluster = new unsigned int[_nbClust];
+}
 
-	MT = new MathTools();
+void KMeansTools::setDataMat(MatrixXd *dataMat, unsigned int &nbDat){
+	_dataMat = dataMat;
+	_nbDat = nbDat;
+	if( _Data2Cluster ) delete[] _Data2Cluster;
+	_Data2Cluster = new unsigned int[_nbDat];
+}
+
+void KMeansTools::setKMeansVariables(vector<vector<double>> &centroids){
+	unsigned int nbClust = centroids.size();
+	if( nbClust != _nbClust ){
+		cerr << "The number of cluster of the KMeansTools is not consistent with the provided variables, aborting.." << endl;
+		exit(EXIT_FAILURE);
+	}
+	unsigned int dim = centroids[0].size();
+	if( dim != _dim ){
+		cerr << "The number of dimension of the KMeansTools is not consistent with the provided variables, aborting.." << endl;
+		exit(EXIT_FAILURE);
+	}
+	for(unsigned int k=0;k<_nbClust;k++)
+		for(unsigned int d1=0;d1<_dim;d1++)
+			_centroids(k,d1) = centroids[k][d1];
+}
+
+double KMeansTools::ComputeSilhouette(){ //TODO
+	return 0.;
 }
 
 void KMeansTools::AffectData2Cluster(){
@@ -231,5 +277,4 @@ void KMeansTools::ReadProperties(vector<string> Properties){
 KMeansTools::~KMeansTools(){
 	delete[] _Data2Cluster;
 	delete[] _nbDat2Cluster;
-	delete MT;
 }

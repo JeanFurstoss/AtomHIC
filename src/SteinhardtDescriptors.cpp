@@ -30,6 +30,7 @@
 #include <complex>
 #include <omp.h>
 #include <iomanip>
+#include <sh/spherical_harmonics.h>
 
 using namespace std; 
 
@@ -111,6 +112,11 @@ void SteinhardtDescriptors::ComputeDescriptors(){
 }
 
 void SteinhardtDescriptors::ComputeBondOriParam(){
+	MatrixXcd Qlm_e(nbDatTot,lsph1);
+	MatrixXd Qlm_e_real(nbDatTot,lsph1);
+	MatrixXd Qlm_e_imag(nbDatTot,lsph1);
+	Qlm_e.setZero();
+	VectorXd Calpha_e(nbDatTot);
 	#pragma omp parallel for
 	for(unsigned int i=0;i<nbDatTot;i++){
 		double xpos = _MySystem->getWrappedPos(i).x;
@@ -137,7 +143,7 @@ void SteinhardtDescriptors::ComputeBondOriParam(){
 	                else if( ( fabs(xp) < zeronum ) and ( yp < 0 ) ) longit = -M_PI/2.;
 	                else if( ( fabs(xp) < zeronum ) and ( fabs(yp) < zeronum ) ) longit = 0.;
 			// compute spherical harmonics
-			for(int l_loop=-l_sph;l_loop<l_sph+1;l_loop++) Qlm[i*(l_sph*2+1)+l_loop+l_sph] += MT->spherical_harmonics((unsigned int) l_sph, l_loop, colat, longit);
+			for(int l_loop=-l_sph;l_loop<l_sph+1;l_loop++) Qlm[i*(l_sph*2+1)+l_loop+l_sph] += sh::EvalSH(l_sph, l_loop, longit, colat);
 			// Store the neighbour index into Malpha if it is of the same specy
 			if( _MySystem->getAtom(i).type_uint == _MySystem->getAtom(id).type_uint ){
 				Malpha[i*(nbNMax+1)] += 1;
@@ -145,15 +151,20 @@ void SteinhardtDescriptors::ComputeBondOriParam(){
 			}
 		}
 		// compute normalization factors
-		for(int l_loop_2=-l_sph;l_loop_2<l_sph+1;l_loop_2++) Calpha[i] += (pow(Qlm[i*(l_sph*2+1)+l_loop_2+l_sph].real(), 2.) + pow(Qlm[i*(l_sph*2+1)+l_loop_2+l_sph].imag(), 2.));
+		for(int l_loop_2=-l_sph;l_loop_2<l_sph+1;l_loop_2++) Calpha[i] += (pow(Qlm[i*(l_sph*2+1)+l_loop_2+l_sph].real(), 2) + pow(Qlm[i*(l_sph*2+1)+l_loop_2+l_sph].imag(), 2));
+		Calpha[i] = sqrt(Calpha[i]);
 	}
-
+	//cout << "compute sum" << endl;
+	//Calpha_e = Qlm_e.rowwise().norm();
+	//cout << "done" << endl;
 	#pragma omp parallel for
 	for(unsigned int i=0;i<nbDatTot;i++){
 		_Descriptors[i] = 0;
 		unsigned int nbN = Malpha[i*(nbNMax+1)];
 		for(unsigned int j=0;j<nbN;j++){
 			unsigned int NId = Malpha[i*(nbNMax+1)+j+1];
+			//_Descriptors[i] += ( Qlm_e_real.row(i).dot(Qlm_e_real.row(NId)) + Qlm_e_imag.row(i).dot(Qlm_e_imag.row(NId)) ) / ( Calpha_e[i]*Calpha_e[NId] );
+			//_Descriptors[i] += ( (Qlm_e.row(i).real().array() * Qlm_e.row(NId).real().array()).sum() + (Qlm_e.row(i).imag().array() * Qlm_e.row(NId).imag().array()).sum() ) / ( Calpha_e[i]*Calpha_e[NId] );
 			for(unsigned int l=0;l<(l_sph*2+1);l++){
 				_Descriptors[i] += ((Qlm[i*(l_sph*2+1)+l].real()*Qlm[NId*(l_sph*2+1)+l].real())+Qlm[i*(l_sph*2+1)+l].imag()*Qlm[NId*(l_sph*2+1)+l].imag())/(pow(Calpha[i],.5)*pow(Calpha[NId],.5)); 
 			}
@@ -203,7 +214,8 @@ void SteinhardtDescriptors::ComputeSteinhardtParameters_Mono(){
 				// compute spherical harmonics
 				for(unsigned int l_loop_st=0;l_loop_st<l_sph+1;l_loop_st++){
 					for(int m_loop_st=-l_loop_st;m_loop_st<(int) l_loop_st+1;m_loop_st++){
-						Qlm[i*lsph2 + l_loop_st*lsph1 + (unsigned int) (m_loop_st + (int) l_sph)] += MT->spherical_harmonics(l_loop_st, m_loop_st, colat, longit);
+						Qlm[i*lsph2 + l_loop_st*lsph1 + (unsigned int) (m_loop_st + (int) l_sph)] += sh::EvalSH(l_loop_st, m_loop_st, longit, colat);
+						//Qlm[i*lsph2 + l_loop_st*lsph1 + (unsigned int) (m_loop_st + (int) l_sph)] += MT->spherical_harmonics(l_loop_st, m_loop_st, colat, longit);
 					}
 				}
 				Malpha[i*(nbNMax+1)] += 1;
@@ -266,7 +278,8 @@ void SteinhardtDescriptors::ComputeSteinhardtParameters_Multi(){
 			// compute spherical harmonics
 			for(unsigned int l_loop_st=0;l_loop_st<l_sph+1;l_loop_st++){
 				for(int m_loop_st=-l_loop_st;m_loop_st<(int) l_loop_st+1;m_loop_st++){
-					Qlm[i*lsph2 + l_loop_st*lsph1 + (unsigned int) (m_loop_st + (int) l_sph)] += MT->spherical_harmonics(l_loop_st, m_loop_st, colat, longit);
+					//Qlm[i*lsph2 + l_loop_st*lsph1 + (unsigned int) (m_loop_st + (int) l_sph)] += MT->spherical_harmonics(l_loop_st, m_loop_st, colat, longit);
+					Qlm[i*lsph2 + l_loop_st*lsph1 + (unsigned int) (m_loop_st + (int) l_sph)] += sh::EvalSH(l_loop_st, m_loop_st, longit, colat);
 				}
 			}
 			// Store the neighbour index into Malpha if it is of the same specy
@@ -298,6 +311,7 @@ void SteinhardtDescriptors::AverageSteinhardtParameters_Mono(){
 	vector<complex<double>> buffer_complex(lsph2);
 	#pragma omp parallel for firstprivate(buffer_complex)
 	for(unsigned int i=0;i<nbDatTot;i++){
+		double fac2 = 4.*M_PI/pow(1+Malpha[i*(nbNMax+1)],2);
 		for(unsigned int l_loop_st2=1;l_loop_st2<l_sph+1;l_loop_st2++){
 			_Descriptors[i*l_sph+l_loop_st2-1] = 0.; 
 			for(int m_loop_st0=-l_loop_st2;m_loop_st0<(int) l_loop_st2+1;m_loop_st0++){
@@ -311,8 +325,8 @@ void SteinhardtDescriptors::AverageSteinhardtParameters_Mono(){
 			for(int m_loop_st2=-l_loop_st2;m_loop_st2<(int) l_loop_st2+1;m_loop_st2++){
 				_Descriptors[i*l_sph+l_loop_st2-1] += norm(buffer_complex[l_loop_st2*lsph1 + (unsigned int) (m_loop_st2 + (int) l_sph)]);
 			}
-			_Descriptors[i*l_sph+l_loop_st2-1] *= 4.*M_PI/(2.*l_loop_st2+1.); 
-			_Descriptors[i*l_sph+l_loop_st2-1] /= pow(1+Malpha[i*(nbNMax+1)],2.);
+			_Descriptors[i*l_sph+l_loop_st2-1] *= fac2; 
+			_Descriptors[i*l_sph+l_loop_st2-1] /= (2.*l_loop_st2+1.);
 			_Descriptors[i*l_sph+l_loop_st2-1] = sqrt(_Descriptors[i*l_sph+l_loop_st2-1]);
 		}
 	}

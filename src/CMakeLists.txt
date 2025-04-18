@@ -30,6 +30,12 @@ project(AtomHic)
 file(GLOB HEADERS "*.h")
 file(GLOB SOURCES "*.cpp")
 
+file(GLOB SH_HEADERS "sh/*.h")
+file(GLOB SH_SOURCES "sh/*.cpp")
+
+list(APPEND HEADERS ${SH_HEADERS})
+list(APPEND SOURCES ${SH_SOURCES})
+
 ## #################################################################
 ## Build rules
 ## #################################################################
@@ -61,3 +67,5 @@ generate_export_header(
 configure_file (
   "${PROJECT_SOURCE_DIR}/${PROJECT_NAME}Config.h.in"
   "${CMAKE_BINARY_DIR}/include/${PROJECT_NAME}Config.h")
+
+#add_subdirectory(sh)

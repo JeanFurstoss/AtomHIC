@@ -60,8 +60,8 @@ private:
 	MatrixXd _optimal_centroids;
 	MatrixXd _V;
 
-	unsigned int *_Data2Cluster; // [i] = k cluster id of datapoint i
-	unsigned int *_nbDat2Cluster; // nbDat2Cluster[k] = number of points belonging to cluster k
+	unsigned int *_Data2Cluster = nullptr; // [i] = k cluster id of datapoint i
+	unsigned int *_nbDat2Cluster = nullptr; // nbDat2Cluster[k] = number of points belonging to cluster k
 	MathTools *MT;
 
 	MatrixXd *_dataMat;
@@ -75,24 +75,32 @@ private:
 	unsigned int MaxIter_KMeans;
 	unsigned int nbInit; // number of random initialization (we keep at the end the one with the highest likelihood)
 
+private:
+	void InitializeKMeansVariables();
+	void InitializeDataVariables();
 
 public:
 	// constructors
 	KMeansTools(unsigned int &nbClust, MatrixXd *dataMat, unsigned int &nbDat, unsigned int &dim);
+	KMeansTools(unsigned int &nbClust, MatrixXd *dataMat, unsigned int &nbDat, unsigned int &dim, std::vector<std::vector<double>> &centroids);
+	KMeansTools(unsigned int &nbClust, unsigned int &dim, std::vector<std::vector<double>> &centroids);
+
 	// methods
-	//double SquareEuclidianDistance2Centroid(const unsigned int &i, const unsigned int &ClusterIndex);
 	void AffectData2Cluster();
 	void KMeansPPInitialization();
 	void ComputeFullVariances();
 	void fit();
+	double ComputeSilhouette();
 
 	// getters
 	unsigned int getNbDat2Cluster(unsigned int &k){ return _nbDat2Cluster[k]; }
-	//double *getCentroids(unsigned int &k){ return _optimal_centroids[k]; }
 	MatrixXd getCentroids(){ return _optimal_centroids; }
 	MatrixXd getV(){ return _V; }
-	//long double *getV(unsigned int &k){ return _V[k]; }
 	unsigned int *getData2Cluster(){ return _Data2Cluster; }
+
+	// setters
+	void setDataMat(MatrixXd *dataMat, unsigned int &nbDat);
+	void setKMeansVariables(std::vector<std::vector<double>> &centroids);
 
 	// read of fixed parameters
 	void readFixedParams();

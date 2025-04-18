@@ -188,6 +188,23 @@ void MachineLearningModel::PrintClassifiedData(string filename){
 	cout << "Classified data successfully printed in \"" << filename << "\" under format : DescriptorValues LabelIndex MaximumLikelihoodClassifier" << endl;
 }
 
+unsigned int MachineLearningModel::getCurrentFIndex(string filter_value){
+	unsigned int current_f;
+	bool found = false;
+	for(unsigned int f=0;f<nbFilter;f++){
+		if( FilterValue[f] == filter_value ){
+			current_f = f;
+			found = true;
+			break;
+		}
+	}
+	if( !found ){
+		cerr << "The provided filter value does not correspond to a filter of the ML model, aborting" << endl;
+		exit(EXIT_FAILURE);
+	}
+	return current_f;
+}
+
 void MachineLearningModel::ReadProperties(vector<string> &Properties){
 	size_t pos_rattrain;
 	string buffer_s;
