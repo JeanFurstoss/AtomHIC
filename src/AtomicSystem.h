@@ -157,6 +157,16 @@ public:
 	void computeWrap();
 	unsigned int Compute1dDensity(std::string auxname, std::string dir, double sigma, unsigned int nbPts); // compute and store the 1D density profile of a given auxiliary property, the metho return the index of the given density
 	void Print1dDensity(std::string filename, std::string auxname);
+	//applyshift
+	void ApplyShift(const double &shift_x, const double &shift_y, const double &shift_z);
+	Position getWrappedPosition(unsigned int &i) const { return this->WrappedPos[i]; }
+	Atom& getAtomRef(unsigned int &i) { return this->AtomList[i]; }
+	//
+	//void ApplyShift(const double &shift_x, const double &shift_y, const double &shift_z);
+	//Position getWrappedPosition(unsigned int i) const { return this->WrappedPos[i];}
+	//Atom& getAtomRef(unsigned int i) { return this->AtomList[i];}
+	
+	//
 	void deleteNeighList(){
 		if( this->IsNeighbours ){
 			delete[] this->Neighbours;

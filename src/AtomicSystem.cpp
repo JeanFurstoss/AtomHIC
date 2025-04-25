@@ -693,8 +693,12 @@ void AtomicSystem::UpdateTypes2Crystal(){
 }
 
 void AtomicSystem::computeWrap(){
-	WrappedPos = new Position[this->nbAtom];
+	//
+	// 
+    if (!this->IsWrappedPos){
+	WrappedPos = new Position[this->nbAtom]; 
 	IsWrappedPos = true;
+    }
 	double x,y,z;
 	for(unsigned int i=0;i<this->nbAtom;i++){
 		// compute reduced coordinates
@@ -2119,6 +2123,16 @@ unsigned int AtomicSystem::getAuxIdAndSize(std::string auxname, unsigned int &si
 	return ind; 
 }
 
+// Applyshift
+void AtomicSystem::ApplyShift(const double& shift_x, const double& shift_y, const double& shift_z){
+	if (this->AtomList == nullptr || this->nbAtom == 0) return;
+	for(unsigned int i = 0; i < this->nbAtom; i++){
+		this->AtomList[i].pos.x += shift_x;
+		this->AtomList[i].pos.y += shift_y;
+		this->AtomList[i].pos.z += shift_z;
+	}
+}
+
 AtomicSystem::~AtomicSystem(){
 	if( this->IsAtomListMine ){
 		delete[] AtomList;
@@ -2150,3 +2164,5 @@ AtomicSystem::~AtomicSystem(){
 	}
 	if( this->IsNotSepTag ) delete[] NotSepTag;
 }
+
+
