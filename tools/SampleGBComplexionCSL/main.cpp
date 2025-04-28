@@ -55,7 +55,7 @@ int main(int argc, char *argv[])
 		cerr << "nx ny nz specify the number of sampling points along each of the three CSL lattice vectors" << endl;
 		cerr << "  The program will generate nx × ny × nz configurations with different relative shifts between grains." << endl;
 		//err << "  These shifts are applied using the DSC lattice basis vectors and wrap the atoms after each shift." << endl;
-		cerr << "  Each configuration is saved as a separate dump file (e.g., GB_Shift_0_0_0.lmp, etc)." << endl;
+		cerr << "  Each configuration is saved as a separate dump file (e.g., GB_CSL_Shift_0_0_0.lmp, etc)." << endl;
 		//
 		cerr << "In addition the program will also return 3 dump files containing the CSL lattice and the two grains (the two latters can be used to change shift between crystals)" << endl;
 		return EXIT_FAILURE;
