@@ -80,6 +80,7 @@ void KMeans::TrainModel(unsigned int &nbClust_min, unsigned int &nbClust_max, co
 				for(unsigned int n=0;n<optimal_nbClust;n++) ClusterLabel[current_f].push_back(l);
 			}
 			setKMeansTools(filter_value);
+			ComputeAveLabelProb(filter_value);
 			PrintLabelling(filter_value);
 			IsLabelled[current_f] = true;
 		}else{

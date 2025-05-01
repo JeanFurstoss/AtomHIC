@@ -101,7 +101,6 @@ public:
 	void ReadModelParamFromDatabase(const std::string &name_of_database);
 	void ReadProperties(std::vector<std::string> Properties);
 	// getters
-	std::vector<std::string> getAvailableDatabases();
 	unsigned int getNbClust(unsigned int &filter_value){ return nbClust[filter_value]; }
 	// destructor
 	~KMeans();

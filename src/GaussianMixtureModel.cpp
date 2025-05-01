@@ -999,22 +999,6 @@ void GaussianMixtureModel::ReadProperties(vector<string> Properties){
 	}
 }
 
-vector<string> GaussianMixtureModel::getAvailableDatabases(){
-	string path2base = getMLDatabasePath()+name+"/";
-	vector<string> baseAlreadySaved;
-	string buffer_s;
-	struct dirent *diread;
-	const char *env = path2base.c_str();
-	DIR *dir;
-	if( (dir = opendir(env) ) != nullptr ){
-		while( (diread = readdir(dir)) != nullptr ){
-			buffer_s = diread->d_name;
-			if( buffer_s != "." && buffer_s != ".." ) baseAlreadySaved.push_back(buffer_s);
-		}
-	}
-	return baseAlreadySaved;
-}
-
 GaussianMixtureModel::~GaussianMixtureModel(){
 	for(unsigned int n=0;n<MyGMMTools.size();n++)
 		if( MyGMMTools[n] ) delete MyGMMTools[n];
