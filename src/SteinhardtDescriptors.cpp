@@ -166,13 +166,15 @@ void SteinhardtDescriptors::ComputeBondOriParam(){
 			//_Descriptors[i] += ( Qlm_e_real.row(i).dot(Qlm_e_real.row(NId)) + Qlm_e_imag.row(i).dot(Qlm_e_imag.row(NId)) ) / ( Calpha_e[i]*Calpha_e[NId] );
 			//_Descriptors[i] += ( (Qlm_e.row(i).real().array() * Qlm_e.row(NId).real().array()).sum() + (Qlm_e.row(i).imag().array() * Qlm_e.row(NId).imag().array()).sum() ) / ( Calpha_e[i]*Calpha_e[NId] );
 			for(unsigned int l=0;l<(l_sph*2+1);l++){
-				_Descriptors[i] += ((Qlm[i*(l_sph*2+1)+l].real()*Qlm[NId*(l_sph*2+1)+l].real())+Qlm[i*(l_sph*2+1)+l].imag()*Qlm[NId*(l_sph*2+1)+l].imag())/(pow(Calpha[i],.5)*pow(Calpha[NId],.5)); 
+				_Descriptors[i] += ((Qlm[i*(l_sph*2+1)+l].real()*Qlm[NId*(l_sph*2+1)+l].real())+Qlm[i*(l_sph*2+1)+l].imag()*Qlm[NId*(l_sph*2+1)+l].imag())/(Calpha[i]*Calpha[NId]); 
+				//_Descriptors[i] += ((Qlm[i*(l_sph*2+1)+l].real()*Qlm[NId*(l_sph*2+1)+l].real())+Qlm[i*(l_sph*2+1)+l].imag()*Qlm[NId*(l_sph*2+1)+l].imag())/(pow(Calpha[i],.5)*pow(Calpha[NId],.5)); 
 			}
 		}
 		if( nbN == 0 ) _Descriptors[i] = 0;
 		else _Descriptors[i] /= nbN;
 		if( _Descriptors[i] > 1. || _Descriptors[i] < -1. ) _Descriptors[i] = 1.;
 		if( _Descriptors[i] < 0. ) _Descriptors[i] = -_Descriptors[i];
+		_Descriptors[i] = 1. - _Descriptors[i];
 	}
 }
 	

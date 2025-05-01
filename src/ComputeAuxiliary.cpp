@@ -60,14 +60,28 @@ double* ComputeAuxiliary::BondOrientationalParameter(){
 			}
 			return StDes->getDescriptors();
 		}
+		double rcut = 0.;
+		for(unsigned int i=0;i<3;i++) rcut += _MySystem->getCrystal()->getALength()[i];
+		rcut /= 3.;
+		rcut *= 1.25;
+		vector<string> DesProp;
+		DesProp.push_back("STEINHARDT_MODE OneL");
+		DesProp.push_back("NUMBER_OF_DIMENSION 10"); // set default value at 10
+		DesProp.push_back("STEINHARDT_STYLE Mono"); // set default value to mono
+		DesProp.push_back("CUTOFF_RADIUS "+to_string(rcut));
+		if( !IsSteinhardtDescriptor ){
+			StDes = new SteinhardtDescriptors(_MySystem,DesProp);
+			IsSteinhardtDescriptor = true;
+		}else{
+			StDes->readProperties(DesProp);
+			StDes->InitializeArrays();
+			StDes->ComputeDescriptors();
+		}
+		return StDes->getDescriptors();
+	}else{
+		cerr << "The bond orientational parameter cannot be computed is the crystal is not defined (to be implemented)" << endl;
+		exit(EXIT_FAILURE);
 	}
-	vector<string> DesProp;
-	DesProp.push_back("STEINHARDT_MODE OneL");
-	if( !IsSteinhardtDescriptor ){
-		StDes = new SteinhardtDescriptors(_MySystem,DesProp);
-		IsSteinhardtDescriptor = true;
-	}
-	return StDes->getDescriptors();
 }
 void ComputeAuxiliary::ComputeAtomSiteIndex(){
 	if( _MySystem->getCrystal()->getIsMultisite() ){
