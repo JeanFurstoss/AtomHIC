@@ -96,8 +96,43 @@ void KMeansTools::setKMeansVariables(vector<vector<double>> &centroids){
 			_centroids(k,d1) = centroids[k][d1];
 }
 
-double KMeansTools::ComputeSilhouette(){ //TODO
-	return 0.;
+double KMeansTools::ComputeSilhouette(){
+	vector<vector<unsigned int>> cluster_members(_nbClust);
+	
+	for(unsigned int i=0;i<_nbDat;i++) cluster_members[_Data2Cluster[i]].push_back(i);
+	
+	double silhouette_sum = 0.;
+
+	#pragma omp parallel for	
+	for(unsigned int i=0;i<_nbDat;i++){
+		unsigned int cluster_i = _Data2Cluster[i];
+		
+		// Compute a(i)
+		double a = 0.;
+		if(cluster_members[cluster_i].size() > 1){
+			for(unsigned int j : cluster_members[cluster_i])
+		    		if (i != j) a += (_dataMat->row(i) - _dataMat->row(j)).norm();
+		    	a /= (cluster_members[cluster_i].size() - 1);
+		}else a = 0.; // singleton cluster
+		
+		// Compute b(i)
+		double b = std::numeric_limits<double>::max();
+		for(unsigned int k=0;k<_nbClust;k++){
+			if(k == cluster_i || cluster_members[k].empty()) continue;
+			double dist = 0.;
+			for(unsigned int j : cluster_members[k]) dist += (_dataMat->row(i) - _dataMat->row(j)).norm();
+			dist /= cluster_members[k].size();
+			if (dist < b) b = dist;
+		}
+		
+		double s = 0.;
+		if(max(a, b) > 0.0){
+		    s = (b - a) / max(a, b);
+		}
+		silhouette_sum += s;
+	}
+	
+	return silhouette_sum / _nbDat;
 }
 
 void KMeansTools::AffectData2Cluster(){
@@ -144,6 +179,7 @@ void KMeansTools::KMeansPPInitialization(){
 void KMeansTools::fit(){
 	_optimal_inertia = numeric_limits<double>::max();
 	for(unsigned int nb=0;nb<nbInit;nb++){
+		if( nbInit > 1 ) cout << "\r" << nb+1 << "/" << nbInit << " KMeans initializations " << flush;
 		KMeansPPInitialization();
 		double res;
 		unsigned int iter = 0;
@@ -183,10 +219,11 @@ void KMeansTools::fit(){
 			_optimal_centroids = _centroids;
 		}
 	}
+	if( nbInit > 1 ) cout << endl;
 	ComputeFullVariances();
 }
 
-void KMeansTools::ComputeFullVariances(){// TODO better thing
+void KMeansTools::ComputeFullVariances(){
 
 	for(unsigned int k=0;k<_nbClust;k++){
 		if(_nbDat2Cluster[k] == 0) continue;

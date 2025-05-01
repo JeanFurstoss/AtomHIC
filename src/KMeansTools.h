@@ -55,7 +55,7 @@ private:
 	// variables
 	double _inertia;
 	double _optimal_inertia;
-	MatrixXd _centroids;
+	MatrixXd _centroids; // _centroids(k,d) = d component of the kth cluster of the kmeans model
 	MatrixXd _centroids_old;
 	MatrixXd _optimal_centroids;
 	MatrixXd _V;
@@ -64,7 +64,7 @@ private:
 	unsigned int *_nbDat2Cluster = nullptr; // nbDat2Cluster[k] = number of points belonging to cluster k
 	MathTools *MT;
 
-	MatrixXd *_dataMat;
+	MatrixXd *_dataMat; // _dataMat(i,d) = d component of the ith descriptor
 	unsigned int _nbDat;
 	unsigned int _dim;
 	unsigned int _dim2;
