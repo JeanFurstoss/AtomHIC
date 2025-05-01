@@ -74,12 +74,12 @@ def main():
         # Read properties of GMM
         numClusters = np.zeros(nbFilter)
         means = []
-        invcovars = []
+        covars = []
         weights = []
         ClusterLabels = []
         for i in range(nbFilter):
             means.append([])
-            invcovars.append([])
+            covars.append([])
             weights.append([])
             ClusterLabels.append([])
         
@@ -108,19 +108,19 @@ def main():
                     countNbClust = count
                     for c in range(currentNbClust):
                         means[currentFilter].append([])
-                        invcovars[currentFilter].append([])
+                        covars[currentFilter].append([])
                     clust_count = 0
-                if count == (countNbClust+1)+clust_count*(4+NbDim):
+                if count == (countNbClust+1)+clust_count*(3+NbDim):
                     weights[currentFilter].append(float((line.split(' ')[1]).strip()))
                     ClusterLabels[currentFilter].append(LabelsName[i])
-                if count == (countNbClust+3)+clust_count*(4+NbDim):
+                if count == (countNbClust+2)+clust_count*(3+NbDim):
                     for dim in range(NbDim):
                         means[currentFilter][clust_count_fil[currentFilter]].append(float((line.split(' ')[1+dim]).strip()))
-                if count >= (countNbClust+5)+clust_count*(4+NbDim) and count <= (countNbClust+5)+clust_count*(4+NbDim)+NbDim-1 :
-                    invcovars[currentFilter][clust_count_fil[currentFilter]].append([])
+                if count >= (countNbClust+4)+clust_count*(3+NbDim) and count <= (countNbClust+4)+clust_count*(3+NbDim)+NbDim-1 :
+                    covars[currentFilter][clust_count_fil[currentFilter]].append([])
                     for dim in range(NbDim):
-                        invcovars[currentFilter][clust_count_fil[currentFilter]][-1].append(float((line.split(' ')[dim]).strip()))
-                    if( count == (countNbClust+5)+clust_count*(4+NbDim)+NbDim-1 ):
+                        covars[currentFilter][clust_count_fil[currentFilter]][-1].append(float((line.split(' ')[dim]).strip()))
+                    if( count == (countNbClust+4)+clust_count*(3+NbDim)+NbDim-1 ):
                         clust_count_fil[currentFilter] += 1
                         clust_count += 1
                 count += 1
@@ -143,14 +143,14 @@ def main():
         #Creating and load the GM model
         GMMModels = []
         for i in range(nbFilter):
-            for k in range(len(invcovars[i])):
-                temp = nearestPD(np.array(invcovars[i][k]))
-                invcovars[i][k] = temp
+            for k in range(len(covars[i])):
+                temp = nearestPD(np.array(covars[i][k]))
+                covars[i][k] = temp
             GMMModels.append(GM(len(weights[i])))
             GMMModels[-1].weights_ = np.array(weights[i])
             GMMModels[-1].means_ = np.array(means[i])
-            GMMModels[-1].precisions_cholesky_ = np.linalg.cholesky(np.array(invcovars[i]))
-            GMMModels[-1].covariances_ = np.linalg.inv(np.array(invcovars[i]))
+            GMMModels[-1].precisions_cholesky_ = np.linalg.cholesky(np.linalg.inv(np.array(covars[i])))
+            GMMModels[-1].covariances_ = np.array(covars[i])
         
         
         templist = set(ClusterLabels[0])
