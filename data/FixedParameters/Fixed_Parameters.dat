@@ -1,8 +1,8 @@
 // This file contains the different global variables used by the programm
 
 // Parameters for constructing crystals and bicrystals
-TOL_ORTHO_BOX 0.1 // tolerance (in A) for searching orthogonal box with inclined crystal cell vectors
-TOL_ORTHO_BOX_Z 0.1 // tolerance (in A) for searching orthogonal box with inclined crystal cell vectors in Z direction
+TOL_ORTHO_BOX 1 // tolerance (in A) for searching orthogonal box with inclined crystal cell vectors
+TOL_ORTHO_BOX_Z 1 // tolerance (in A) for searching orthogonal box with inclined crystal cell vectors in Z direction
 MIN_BOX_HEIGHT 75. // minimum box heigh (in A)
 MIN_BOX_ASIDE 3. // minimum box aside (in A)
 MOTIF_SHIFT 0 0 0 // shift (in A) applied to the crystal motif before constructing orthogonal cells along [100], [010] and [001] crystallographic directions respectively (default values 0. 0. 0.)
@@ -26,22 +26,29 @@ DESCRIPTORS_FILTERING_TYPE element // could be none, type element or one of the 
 STEINHARDT_DESCRIPTORS_MODE Full // OneL (compute only one parameter, in this case the descriptor is a bond orientational parameter) or Full (compute all parameters between 1 and L_SPH)
 STEINHARDT_DESCRIPTORS_RCUT 5. // cutoff radius for neighbour research
 STEINHARDT_DESCRIPTORS_L_SPH 10 // spherical harmonic degree
-STEINHARDT_DESCRIPTORS_STYLE Multi // could be Mono, Multi
+STEINHARDT_DESCRIPTORS_STYLE Mono // could be Mono, Multi
 STEINHARDT_DESCRIPTORS_AVERAGE_STYLE Multi // could be Mono, Multi, none
 
 // Parameters for Gaussian Mixture Model
+// Parameters related to expectation maximization algorythm
 GMM_TOL_LKH_EM 1e-4 // difference between likelihoods for reaching convergence of the Expectation Maximization algorithm (default 1e-4)
 GMM_MAX_ITER_EM 100 // maximum iterations of the Expectation Maximization algorithm (default 100)
+GMM_NB_INIT 10 // number initialization of the EM algorithm (at the end, the one with the highest likelihood is keept) (default 1)
+GMM_INIT_METHOD KMEANS // possible choice KMEANSPP, KMEANS, RANDOM (default KMEANSPP)
+// Parameters for chossing optimal number of cluster
 GMM_NB_BIC_INCREASE_FOR_MIN 1 // number of time the BIC has to increase after a given number of cluster to consider that it corresponds to a true minimum and then stop the computation (default 1)
-GMM_NB_INIT 10 // number of random initialization of the KMeans algorithm (at the end, the one with the highest likelihood is keept) (default 1)
 GMM_ELBOW_FACTOR 0.01 // for the optimization of the number of cluster K when a BIC minimum is not found, minimum reduction factor of the BIC=f(K) slope between the two first and two last K values for considering that the curve form an elbow (default 0.1)
 GMM_NO_BIC_MIN_NO_ELBOW_CHOICE Max // when no bic minimum has been found and the elbow method does not work, what number of cluster is consider to be the optimal (could be Max, Min or any number between n_clust_min and n_clust_max) (default Max)
-GMM_INIT_METHOD KMEANS // possible choice KMEANSPP, KMEANS, RANDOM (default KMEANSPP)
 
 // Parameters for KMeans 
-KMEANS_TOL 1e-5 // tolerance for reaching KMeans convergence
+// Parameters related to KMeans algorythm
+KMEANS_TOL 1e-5 // tolerance for reaching KMeans convergence (change in inertia between two iterations)
 KMEANS_MAX_ITER 500 // maximum iteration of the KMeans algorithm
 KMEANS_NB_INIT 10 // number of random initialization of the KMeans algorithm (at the end, the one with the highest likelihood is keept)
+// Parameters for chossing optimal number of cluster
+KMEANS_NB_SIL_INCREASE_FOR_MIN 1 // number of time the Silhouette coefficient has to increase after a given number of cluster to consider that it corresponds to a true minimum and then stop the computation (default 1)
+KMEANS_ELBOW_FACTOR 0.01 // for the optimization of the number of cluster K when a Silhouette coeff minimum is not found, minimum reduction factor of the BIC=f(K) slope between the two first and two last K values for considering that the curve form an elbow (default 0.1)
+KMEANS_NO_SIL_MIN_NO_ELBOW_CHOICE Max // when no Silhouette minimum has been found and the elbow method does not work, what number of cluster is consider to be the optimal (could be Max, Min or any number between n_clust_min and n_clust_max) (default Max)
 
 // Parameters for DBScan
 DBSCAN_EPS 6. // cutoff radius for neighbour research (euclidian distance) default value 3

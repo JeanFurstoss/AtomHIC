@@ -20,11 +20,12 @@ import random
 import math
 import argparse
 
+PathOfThisScript = os.path.dirname(__file__)+"/"
 dirModel = '../../data/MachineLearningModels/GaussianMixtureModel/'
-database_present = glob.glob(dirModel+"/*/")
+database_present = glob.glob(PathOfThisScript+dirModel+"/*/")
 help_print = ''
 for i in range(len(database_present)):
-    help_print += database_present[i].replace(dirModel,'')+'\n'
+    help_print += database_present[i].replace(PathOfThisScript+dirModel,'')+'\n'
 
 parser = argparse.ArgumentParser()
 parser.add_argument("AtomHICDatabaseName", help="Name of the database (already stored in AtomHIC /data/), available basis :\n"+help_print)
@@ -75,19 +76,19 @@ def readQ(input_file, FilterValue, nbDim, FilterType=FilterType, DescriptorName=
 
 print("Reading "+ath_database_name+" AtomHIC database")
 
-os.makedirs(dirModel, exist_ok=True)
+os.makedirs(PathOfThisScript+dirModel, exist_ok=True)
 ModelName = os.path.join(ath_database_name, '')
 
-if not os.path.exists(dirModel+ModelName):
+if not os.path.exists(PathOfThisScript+dirModel+ModelName):
     print("The database does not exists in /data/MachineLearningModels/GaussianMixtureModel/")
     print("Possible databases :")
     print(help_print)
 
-Labels = glob.glob(dirModel+ModelName+"/*.ath")
+Labels = glob.glob(PathOfThisScript+dirModel+ModelName+"/*.ath")
 LabelsName = []
 nbLabels = len(Labels)
 for i in range(nbLabels):
-    tmp = Labels[i].replace(dirModel+ModelName,'')
+    tmp = Labels[i].replace(PathOfThisScript+dirModel+ModelName,'')
     LabelsName.append(tmp.replace('.ath',''))
 
 # Open the first one to count how many filter there are
@@ -104,12 +105,12 @@ nbFilter = len(FilterValues)
 # Read properties of GMM
 numClusters = np.zeros(nbFilter)
 means = []
-invcovars = []
+covars = []
 weights = []
 ClusterLabels = []
 for i in range(nbFilter):
     means.append([])
-    invcovars.append([])
+    covars.append([])
     weights.append([])
     ClusterLabels.append([])
 
@@ -138,19 +139,19 @@ for i in range(len(Labels)):
             countNbClust = count
             for c in range(currentNbClust):
                 means[currentFilter].append([])
-                invcovars[currentFilter].append([])
+                covars[currentFilter].append([])
             clust_count = 0
-        if count == (countNbClust+1)+clust_count*(4+NbDim):
+        if count == (countNbClust+1)+clust_count*(3+NbDim):
             weights[currentFilter].append(float((line.split(' ')[1]).strip()))
             ClusterLabels[currentFilter].append(LabelsName[i])
-        if count == (countNbClust+3)+clust_count*(4+NbDim):
+        if count == (countNbClust+2)+clust_count*(3+NbDim):
             for dim in range(NbDim):
                 means[currentFilter][clust_count_fil[currentFilter]].append(float((line.split(' ')[1+dim]).strip()))
-        if count >= (countNbClust+5)+clust_count*(4+NbDim) and count <= (countNbClust+5)+clust_count*(4+NbDim)+NbDim-1 :
-            invcovars[currentFilter][clust_count_fil[currentFilter]].append([])
+        if count >= (countNbClust+4)+clust_count*(3+NbDim) and count <= (countNbClust+4)+clust_count*(3+NbDim)+NbDim-1 :
+            covars[currentFilter][clust_count_fil[currentFilter]].append([])
             for dim in range(NbDim):
-                invcovars[currentFilter][clust_count_fil[currentFilter]][-1].append(float((line.split(' ')[dim]).strip()))
-            if( count == (countNbClust+5)+clust_count*(4+NbDim)+NbDim-1 ):
+                covars[currentFilter][clust_count_fil[currentFilter]][-1].append(float((line.split(' ')[dim]).strip()))
+            if( count == (countNbClust+4)+clust_count*(3+NbDim)+NbDim-1 ):
                 clust_count_fil[currentFilter] += 1
                 clust_count += 1
         count += 1
@@ -223,15 +224,14 @@ def isPD(B):
 #Creating and load the GM model
 GMMModels = []
 for i in range(nbFilter):
-    for k in range(len(invcovars[i])):
-        temp = nearestPD(np.array(invcovars[i][k]))
-        invcovars[i][k] = temp
+    for k in range(len(covars[i])):
+        temp = nearestPD(np.array(covars[i][k]))
+        covars[i][k] = temp
     GMMModels.append(GM(len(weights[i])))
     GMMModels[-1].weights_ = np.array(weights[i])
     GMMModels[-1].means_ = np.array(means[i])
-    GMMModels[-1].precisions_cholesky_ = np.linalg.cholesky(np.array(invcovars[i]))
-    GMMModels[-1].covariances_ = np.linalg.inv(np.array(invcovars[i]))
-
+    GMMModels[-1].precisions_cholesky_ = np.linalg.cholesky(np.linalg.inv(np.array(covars[i])))
+    GMMModels[-1].covariances_ = np.array(covars[i])
 
 templist = set(ClusterLabels[0])
 categories = (list(templist))

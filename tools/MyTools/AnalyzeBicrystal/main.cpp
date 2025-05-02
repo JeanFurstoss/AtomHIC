@@ -44,7 +44,13 @@ int main(int argc, char *argv[])
 
 	// check the number of argument
 	if( argc < 8 ){
-		cerr << "Usage: AnalyzeBicrystal_ARGS AtomicInputFilename GBNormalDirection CrystalType AtomicOutputFilename OrderParameterDensityFilename GaussianOrderParameterDensityFilename StatdataFilename" << endl;
+		cerr << "Usage: AnalyzeBicrystal AtomicInputFilename GBNormalDirection CrystalType AtomicOutputFilename OrderParameterDensityFilename GaussianOrderParameterDensityFilename StatdataFilename" << endl;
+		cerr << "This executable allows to analyze a bicrystalline system using the bond orientational parameters" << endl;
+		cerr << "It first computes the order parameters and print it in the AtomicOutputFilename dump file" << endl;
+		cerr << "Then it computes the 1D density profile of the order parameter along the direction normal to the GB (this profile is printed in the OrderParamererDensityFilename)" << endl;
+		cerr << "Then it fits this profile with a single Gaussian (this Gaussian is given in the GaussianOrderParameterDensityFilename file) allowing to retrive the GB position" << endl;
+		cerr << "Finally it computes the GB position and width (mu and sigma of the Gaussian) and the GB excess volume using the expression of Furstoss et al. 2022 Am. Min." << endl;
+	        cerr << "The StatDataFilename finally contains the GB position width and excess volume" << endl;	
 		return EXIT_FAILURE;
 	}
 	string InputFilename = argv[1];

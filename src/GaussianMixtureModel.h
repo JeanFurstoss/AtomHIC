@@ -41,12 +41,11 @@
 #define GAUSSIANMIXTUREMODEL_H
 
 #include "AtomHicExport.h"
-#include "AtomicSystem.h"
-#include "MathTools.h"
 #include <string>
 #include "MachineLearningModel.h"
 #include "KMeans.h"
 #include "GMMTools.h"
+#include <Eigen/Dense>
 
 class ATOMHIC_EXPORT GaussianMixtureModel : public MachineLearningModel {
 private:
@@ -97,7 +96,6 @@ private:
 	void ChangeFilterIndex();
 	void readFixedParams();
 	void appendOptimalGMM(const std::string &filter_value="none");
-	unsigned int getCurrentFIndex(std::string filter_value);
 	void NormalizeWeights(std::string filter_value);
 	void setGMMTools(std::string filter_value);
 	void ComputeAveLabelProb(std::string filter_value);
@@ -110,7 +108,6 @@ public:
 	void ReadModelParamFromDatabase(const std::string &name_of_database);
 	void ReadProperties(std::vector<std::string> Properties);
 	// getters
-	std::vector<std::string> getAvailableDatabases();
 	unsigned int getNbClust(unsigned int &filter_value){ return nbClust[filter_value]; }
 	//long double *getCov(){ return V; }
 	//double *getMu(){ return mu; }

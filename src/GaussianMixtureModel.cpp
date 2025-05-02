@@ -29,9 +29,7 @@
 #include <cmath>
 #include <filesystem>
 #include <dirent.h>
-#include <Eigen/Dense>
 
-using namespace Eigen;
 using namespace std; 
 
 GaussianMixtureModel::GaussianMixtureModel(){
@@ -230,23 +228,6 @@ void GaussianMixtureModel::fitOptimalGMM(unsigned int &nbClust_min, unsigned int
 	}
 }
 
-unsigned int GaussianMixtureModel::getCurrentFIndex(string filter_value){
-	unsigned int current_f;
-	bool found = false;
-	for(unsigned int f=0;f<nbFilter;f++){
-		if( FilterValue[f] == filter_value ){
-			current_f = f;
-			found = true;
-			break;
-		}
-	}
-	if( !found ){
-		cerr << "The provided filter value does not correspond to a filter of the ML model, aborting" << endl;
-		exit(EXIT_FAILURE);
-	}
-	return current_f;
-}
-
 void GaussianMixtureModel::NormalizeWeights(string filter_value="none"){
 	double sum_weights = 0.;
 	unsigned int current_f = getCurrentFIndex(filter_value);
@@ -433,7 +414,7 @@ void GaussianMixtureModel::Classify(string filter_value){
 
 		delete[] LabelProb;
 		cout << "Done" << endl;
-	}else{ // Cluster classification
+	}else{ // Cluster classification TODO test
 		cout << "not good" << endl;
 		long double *ClusterProb = new long double[nbLabel];
 		for(unsigned int j=0;j<current_nbDat;j++){
@@ -498,7 +479,6 @@ void GaussianMixtureModel::ChangeFilterIndex(){
 			}
 		}
 	}
-
 }
 
 // Readers and printers
@@ -1017,22 +997,6 @@ void GaussianMixtureModel::ReadProperties(vector<string> Properties){
 			current_Properties.push_back(Properties[i]);
 		}
 	}
-}
-
-vector<string> GaussianMixtureModel::getAvailableDatabases(){
-	string path2base = getMLDatabasePath()+name+"/";
-	vector<string> baseAlreadySaved;
-	string buffer_s;
-	struct dirent *diread;
-	const char *env = path2base.c_str();
-	DIR *dir;
-	if( (dir = opendir(env) ) != nullptr ){
-		while( (diread = readdir(dir)) != nullptr ){
-			buffer_s = diread->d_name;
-			if( buffer_s != "." && buffer_s != ".." ) baseAlreadySaved.push_back(buffer_s);
-		}
-	}
-	return baseAlreadySaved;
 }
 
 GaussianMixtureModel::~GaussianMixtureModel(){

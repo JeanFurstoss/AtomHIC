@@ -102,9 +102,12 @@ public:
 	void readFixedParams();
 	void ReadProperties(std::vector<std::string> &Properties);
 	// getters
+	std::vector<std::string> getAvailableDatabases();
 	double *getClassificator(){ return Classificator; }
 	std::string getFilteringType(){ return FilteringType; }
 	std::vector<std::string> getDescriptorProperties(){ return DescriptorProperties; }
+protected:
+	unsigned int getCurrentFIndex(std::string filter_value);
 	// destructor
 	~MachineLearningModel();
 	

@@ -188,6 +188,23 @@ void MachineLearningModel::PrintClassifiedData(string filename){
 	cout << "Classified data successfully printed in \"" << filename << "\" under format : DescriptorValues LabelIndex MaximumLikelihoodClassifier" << endl;
 }
 
+unsigned int MachineLearningModel::getCurrentFIndex(string filter_value){
+	unsigned int current_f;
+	bool found = false;
+	for(unsigned int f=0;f<nbFilter;f++){
+		if( FilterValue[f] == filter_value ){
+			current_f = f;
+			found = true;
+			break;
+		}
+	}
+	if( !found ){
+		cerr << "The provided filter value does not correspond to a filter of the ML model, aborting" << endl;
+		exit(EXIT_FAILURE);
+	}
+	return current_f;
+}
+
 void MachineLearningModel::ReadProperties(vector<string> &Properties){
 	size_t pos_rattrain;
 	string buffer_s;
@@ -201,6 +218,21 @@ void MachineLearningModel::ReadProperties(vector<string> &Properties){
 	}
 }
 
+vector<string> MachineLearningModel::getAvailableDatabases(){
+	string path2base = getMLDatabasePath()+name+"/";
+	vector<string> baseAlreadySaved;
+	string buffer_s;
+	struct dirent *diread;
+	const char *env = path2base.c_str();
+	DIR *dir;
+	if( (dir = opendir(env) ) != nullptr ){
+		while( (diread = readdir(dir)) != nullptr ){
+			buffer_s = diread->d_name;
+			if( buffer_s != "." && buffer_s != ".." ) baseAlreadySaved.push_back(buffer_s);
+		}
+	}
+	return baseAlreadySaved;
+}
 
 MachineLearningModel::~MachineLearningModel(){
 	delete MT;
