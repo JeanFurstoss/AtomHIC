@@ -657,6 +657,7 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	// construct the two grains
 	this->Grain1 = new AtomicSystem(this->AtomList_G1,nbAtom1_G,this->_MyCrystal,this->H1_G1,this->H2_G1,this->H3_G1);
 	this->Grain2 = new AtomicSystem(this->AtomList_G2,nbAtom2_G,this->_MyCrystal2,this->H1_G2,this->H2_G2,this->H3_G2);
+
 	this->AreGrainsDefined = true;
 	string h_a_str = to_string(this->h_a);
 	string k_a_str = to_string(this->k_a);
@@ -731,6 +732,119 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	this->yl1 *= My1; 
 	this->yl2 *= My2; 
 }
+//
+void Bicrystal::PasteGrains(AtomicSystem* Grain1, AtomicSystem* Grain2) {
+    unsigned int nbAtom1 = Grain1->getNbAtom();
+    unsigned int nbAtom2 = Grain2->getNbAtom();
+
+    this->nbAtom = nbAtom1 + nbAtom2;
+    this->AtomList = new Atom[this->nbAtom];
+
+    // Copy atoms from Grain1 (already wrapped), + Z translation
+    for (unsigned int i = 0; i < nbAtom1; ++i) {
+        Atom A = Grain1->getAtom(i);
+        A.pos.z += this->H3_G2[2] + (GBspace / 2.0);
+        this->AtomList[i] = A;
+    }
+
+    // Copy atoms from Grain2 as they are
+    for (unsigned int i = 0; i < nbAtom2; ++i) {
+        this->AtomList[nbAtom1 + i] = Grain2->getAtom(i);
+    }
+}
+
+void Bicrystal::ShiftGrainsAlongDSC(unsigned int n1, unsigned int n2, unsigned int n3) {
+    if (!this->IsDSC_Basis || this->DSC_Basis == nullptr) {
+        std::cerr << "DSC basis is not defined. Aborting shift." << std::endl;
+        return;
+    }
+
+    double shift_x, shift_y, shift_z;
+    char filename[128];
+	////STRING HEADING SAVED+ FGFGFSG
+	//this->File_Heading =
+	std::string File_Heading_save = this->File_Heading; 
+    for (unsigned int i = 0; i < n1; ++i) {
+        for (unsigned int j = 0; j < n2; ++j) {
+            for (unsigned int k = 0; k < n3; ++k) {
+                // Compute the components of the shift vector by dividing i, j, and k by their respective n values
+                shift_x = ((double) (i)/n1) * this->DSC_Basis[0] + ((double) (j)/n2) * this->DSC_Basis[3] + ((double) (k)/n3)* this->DSC_Basis[6];
+                shift_y = ((double) (i)/n1) * this->DSC_Basis[1] + ((double) (j)/n2)  * this->DSC_Basis[4] +  ((double) (k)/n3)* this->DSC_Basis[7];
+                shift_z = ((double) (i)/n1)* this->DSC_Basis[2] + ((double) (j)/n2) * this->DSC_Basis[5] +  ((double) (k)/n3) * this->DSC_Basis[8];
+
+                 // Apply the shift
+                this->Grain1->ApplyShift(shift_x, shift_y, shift_z);
+
+                // Compute the wrapped coordinates
+                this->Grain1->computeWrap();
+
+                // Replace positions with the wrapped positions
+                unsigned int nbAtom = this->Grain1->getNbAtom();
+                for (unsigned int n = 0; n < nbAtom; ++n) {
+                    Position P = this->Grain1->getWrappedPosition(n);
+                    this->Grain1->getAtomRef(n).pos = P;
+                }
+				// Paste the two grains together (Z translation only)
+                this->PasteGrains(this->Grain1, this->Grain2);
+
+				auto sci_str = [](double value) {
+					std::ostringstream oss;
+					oss << std::scientific << std::setprecision(6) << value;
+					return oss.str();
+				};
+                // Output file
+                snprintf(filename, sizeof(filename), "GB_DSC_Shift_%u_%u_%u.lmp", i, j, k);
+				this->File_Heading = File_Heading_save+"# Applied DSC shift: [" + sci_str(shift_x) + ", " + sci_str(shift_y) + ", " + sci_str(shift_z) + "]\n";
+                this->print_lmp(filename);
+            }
+        }
+    }
+}
+
+void Bicrystal::ShiftGrainsAlongCSL(unsigned int n1, unsigned int n2, unsigned int n3) {
+    if (!this->IsCSL_Basis || this->CSL_Basis == nullptr) {
+        std::cerr << "CSL basis is not defined. Aborting shift." << std::endl;
+        return;
+    }
+
+    double shift_x, shift_y, shift_z;
+    char filename[128];
+	std::string File_Heading_save = this->File_Heading;
+    for (unsigned int i = 0; i < n1; ++i) {
+        for (unsigned int j = 0; j < n2; ++j) {
+            for (unsigned int k = 0; k < n3; ++k) {
+                // Compute the translation vector based on the CSL basis
+                shift_x = ((double) (i) / n1) * CSL_Basis[0] + ((double) (j) / n2) * CSL_Basis[3] + ((double) (k) / n3) * CSL_Basis[6];
+                shift_y = ((double) (i) / n1) * CSL_Basis[1] + ((double) (j) / n2) * CSL_Basis[4] + ((double) (k) / n3) * CSL_Basis[7];
+                shift_z = ((double) (i) / n1) * CSL_Basis[2] + ((double) (j) / n2) * CSL_Basis[5] + ((double) (k) / n3) * CSL_Basis[8];
+
+                // Apply the shift
+                this->Grain1->ApplyShift(shift_x, shift_y, shift_z);
+
+                // Compute the wrapped positions
+                this->Grain1->computeWrap();
+                unsigned int nbAtom = this->Grain1->getNbAtom();
+                for (unsigned int n = 0; n < nbAtom; ++n) {
+                    Position P = this->Grain1->getWrappedPosition(n);
+                    this->Grain1->getAtomRef(n).pos = P;
+                }
+
+                // Paste the two grains together (Z translation only)
+                this->PasteGrains(this->Grain1, this->Grain2);
+				auto sci_str = [](double value) {
+					std::ostringstream oss;
+					oss << std::scientific << std::setprecision(6) << value;
+					return oss.str();
+				};
+                // Save the output file
+                snprintf(filename, sizeof(filename), "GB_CSL_Shift_%u_%u_%u.lmp", i, j, k);
+				this->File_Heading = File_Heading_save+"# Applied CSL shift: [" + sci_str(shift_x) + ", " + sci_str(shift_y) + ", " + sci_str(shift_z) + "]\n";
+                this->print_lmp(filename);
+            }
+        }
+    }
+}
+
 
 Bicrystal::Bicrystal(const string& filename, const string NormalDir, const string CrystalName):AtomicSystem(filename){
 	read_params();
@@ -780,7 +894,11 @@ bool Bicrystal::searchCSL(double *rot_ax_func, double theta_func, int *CSL_vec, 
 	double *Ei_inv = new double[9]; 
 	double *Fi = new double[9]; 
 	double *Fi_inv = new double[9]; 
-	double *DSC_Basis = new double[9]; 
+	//
+	this->DSC_Basis = new double[9];
+	this->IsDSC_Basis = true;
+	//
+	//double *DSC_Basis = new double[9]; 
 	double *DSC_inv = new double[9]; 
 	double *U_a = new double[9];
 	double *searchVec = new double[3];
@@ -839,6 +957,7 @@ bool Bicrystal::searchCSL(double *rot_ax_func, double theta_func, int *CSL_vec, 
 			else exp -= .1;
 			continue;
 		}
+		//
 		solve_DSC(k,L,a1,Ei,tol_DSC);
 		// search if this basis is also good for a2_a_2
 		for(unsigned int i=0;i<3;i++) searchVec[i] = a2_a[i*3+1];
@@ -1007,8 +1126,12 @@ bool Bicrystal::searchCSL(double *rot_ax_func, double theta_func, int *CSL_vec, 
 	delete[] Ei_inv;
 	delete[] Fi;
 	delete[] Fi_inv;
-	delete[] DSC_Basis;
+	//
+
+	//delete[] DSC_Basis;
+	//
 	delete[] DSC_inv;
+	//
 	delete[] U_a;
 	delete[] searchVec;
 	delete[] k;
@@ -1092,7 +1215,31 @@ void Bicrystal::generateCSL(){
 	}
 	delete[] pos;
 }
+//
+//print results DSC
+void Bicrystal::printDSC() {
+    if (!this->IsDSC_Basis) {
+        std::cout << "DSC lattice has not been computed." << std::endl;
+        return;
+    }
 
+    std::cout << "\nDSC Basis Vectors:" << std::endl;
+    auto sci_str = [](double value) {
+        std::ostringstream oss;
+        oss << std::scientific << std::setprecision(6) << value;
+        return oss.str();
+    };
+
+    std::vector<std::vector<std::string>> arr_element = {
+        {"Basis vector", "X", "Y", "Z"},
+        {"DSC[1]", sci_str(this->DSC_Basis[0]), sci_str(this->DSC_Basis[3]), sci_str(this->DSC_Basis[6])},
+        {"DSC[2]", sci_str(this->DSC_Basis[1]), sci_str(this->DSC_Basis[4]), sci_str(this->DSC_Basis[7])},
+        {"DSC[3]", sci_str(this->DSC_Basis[2]), sci_str(this->DSC_Basis[5]), sci_str(this->DSC_Basis[8])}
+    };
+    std::vector<std::vector<unsigned int>> arr_fusion = {{1, 1, 1, 1}, {1, 1, 1, 1}, {1, 1, 1, 1}, {1, 1, 1, 1}};
+    Dis.DisplayArray(arr_element, arr_fusion);
+    std::cout << std::endl;
+}
 void Bicrystal::printCSL(const std::string filename){
 	ofstream writefile(filename);
 	writefile << " # File generated using AtomHic\n";
@@ -1903,4 +2050,7 @@ Bicrystal::~Bicrystal(){
 		for(unsigned int i=0;i<NodesG2.size();i++) delete[] NodesG2[i];
 	}
 	if( IsCSL_Basis ) delete[] CSL_Basis;
+	//
+	if (this->DSC_Basis) delete[] this->DSC_Basis;
+	//
 }

@@ -38,6 +38,8 @@ add_subdirectory(FitAndSaveKMeans)
 add_subdirectory(GMMClassification)
 add_subdirectory(KMeansClassification)
 add_subdirectory(DBScanClustering)
+add_subdirectory(SampleGBComplexionCSL)
+add_subdirectory(SampleGBComplexionDSC)
 # add other subdirectories of new generic tool here
 
 # other tools

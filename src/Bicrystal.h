@@ -94,6 +94,10 @@ protected:
 	bool IsCSL_Basis = false;
 	unsigned int dupX1, dupX2, dupY1, dupY2; // number of duplicate in X and Y dir for crystal 1 and 2 for constructing the bicrystal
 	double Mx1, Mx2, My1, My2; // misfit applied to crystal 1 and 2 in dir X and Y for constructing the bicrystal
+	//
+	double* DSC_Basis = nullptr; //does not point to anything at creation
+    bool IsDSC_Basis = false; //whether DSC_Basis is valid or properly initialized
+	//
 	// Parameters read from Fixed_Parameter.dat file
 	std::string FixedParam_Filename = "Fixed_Parameters.dat";
 	double theta_max_rot_ax_rat;
@@ -127,6 +131,11 @@ public:
 	double getyl2(){ return this->yl2; }
 	double getSigma(){ return this->sigma; }
 	double* getCSL_Basis(){ return this->CSL_Basis; }
+	//
+	double* getDSC_Basis() { return this->DSC_Basis; }
+    bool getIsDSC_Basis() { return this->IsDSC_Basis; }
+    void printDSC();
+	// Accesses the DSC_Basis data structure and checks its validity, with a method to display its contents.
 	// methods
 	void read_params();
 	void print_Grains();
@@ -140,6 +149,11 @@ public:
 	double RationalizeOri(int h_a, int k_a, int l_a, double theta, double *rot_ax, int *CSL_vec);// return the rotation angle corresponding to the closest rational GB and a known CSL vector due to this rationalization
 	void searchGBSize(const int h_p_func, const int k_p_func, const int l_p_func);
 	void printCSL(const std::string filename);
+	//
+	void ShiftGrainsAlongDSC(unsigned int n1, unsigned int n2, unsigned int n3);
+	void ShiftGrainsAlongCSL(unsigned int n1, unsigned int n2, unsigned int n3);
+	void PasteGrains(AtomicSystem* grain1, AtomicSystem* grain2);
+	//changed name SampleGBComplexionDSC
 	// destructor
 	~Bicrystal();
 };
