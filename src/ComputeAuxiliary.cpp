@@ -57,10 +57,11 @@ double* ComputeAuxiliary::BondOrientationalParameter(){
 				unsigned int current_type = _MySystem->getAtom(i).type_uint;
 				StDes->getDescriptors()[i] /= _MySystem->getCrystal()->getReferenceBondOriParam()[current_type-1][Atom_SiteIndex[i]];
 				if( StDes->getDescriptors()[i] > 1. ) StDes->getDescriptors()[i] = 1.;
+				StDes->getDescriptors()[i] = 1. - StDes->getDescriptors()[i];
 			}
 			return StDes->getDescriptors();
 		}
-		double rcut = 0.;
+		double rcut = 0.; // set rcut to be the average of cell parameters length times security factor
 		for(unsigned int i=0;i<3;i++) rcut += _MySystem->getCrystal()->getALength()[i];
 		rcut /= 3.;
 		rcut *= 1.25;
@@ -77,6 +78,8 @@ double* ComputeAuxiliary::BondOrientationalParameter(){
 			StDes->InitializeArrays();
 			StDes->ComputeDescriptors();
 		}
+		for(unsigned int i=0;i<_MySystem->getNbAtom();i++)
+			StDes->getDescriptors()[i] = 1. - StDes->getDescriptors()[i];
 		return StDes->getDescriptors();
 	}else{
 		cerr << "The bond orientational parameter cannot be computed is the crystal is not defined (to be implemented)" << endl;

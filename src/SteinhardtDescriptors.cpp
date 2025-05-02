@@ -154,9 +154,6 @@ void SteinhardtDescriptors::ComputeBondOriParam(){
 		for(int l_loop_2=-l_sph;l_loop_2<l_sph+1;l_loop_2++) Calpha[i] += (pow(Qlm[i*(l_sph*2+1)+l_loop_2+l_sph].real(), 2) + pow(Qlm[i*(l_sph*2+1)+l_loop_2+l_sph].imag(), 2));
 		Calpha[i] = sqrt(Calpha[i]);
 	}
-	//cout << "compute sum" << endl;
-	//Calpha_e = Qlm_e.rowwise().norm();
-	//cout << "done" << endl;
 	#pragma omp parallel for
 	for(unsigned int i=0;i<nbDatTot;i++){
 		_Descriptors[i] = 0;
@@ -167,14 +164,12 @@ void SteinhardtDescriptors::ComputeBondOriParam(){
 			//_Descriptors[i] += ( (Qlm_e.row(i).real().array() * Qlm_e.row(NId).real().array()).sum() + (Qlm_e.row(i).imag().array() * Qlm_e.row(NId).imag().array()).sum() ) / ( Calpha_e[i]*Calpha_e[NId] );
 			for(unsigned int l=0;l<(l_sph*2+1);l++){
 				_Descriptors[i] += ((Qlm[i*(l_sph*2+1)+l].real()*Qlm[NId*(l_sph*2+1)+l].real())+Qlm[i*(l_sph*2+1)+l].imag()*Qlm[NId*(l_sph*2+1)+l].imag())/(Calpha[i]*Calpha[NId]); 
-				//_Descriptors[i] += ((Qlm[i*(l_sph*2+1)+l].real()*Qlm[NId*(l_sph*2+1)+l].real())+Qlm[i*(l_sph*2+1)+l].imag()*Qlm[NId*(l_sph*2+1)+l].imag())/(pow(Calpha[i],.5)*pow(Calpha[NId],.5)); 
 			}
 		}
 		if( nbN == 0 ) _Descriptors[i] = 0;
 		else _Descriptors[i] /= nbN;
 		if( _Descriptors[i] > 1. || _Descriptors[i] < -1. ) _Descriptors[i] = 1.;
 		if( _Descriptors[i] < 0. ) _Descriptors[i] = -_Descriptors[i];
-		_Descriptors[i] = 1. - _Descriptors[i];
 	}
 }
 	
