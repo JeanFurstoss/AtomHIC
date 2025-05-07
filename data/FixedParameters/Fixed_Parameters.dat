@@ -25,7 +25,7 @@ DESCRIPTORS_FILTERING_TYPE element // could be none, type element or one of the 
 // Parameters for Steinhardt descriptors
 STEINHARDT_DESCRIPTORS_MODE Full // OneL (compute only one parameter, in this case the descriptor is a bond orientational parameter) or Full (compute all parameters between 1 and L_SPH)
 STEINHARDT_DESCRIPTORS_RCUT 5. // cutoff radius for neighbour research
-STEINHARDT_DESCRIPTORS_L_SPH 30 // spherical harmonic degree
+STEINHARDT_DESCRIPTORS_L_SPH 10 // spherical harmonic degree
 STEINHARDT_DESCRIPTORS_STYLE Multi // could be Mono, Multi
 STEINHARDT_DESCRIPTORS_AVERAGE_STYLE Multi // could be Mono, Multi, none
 

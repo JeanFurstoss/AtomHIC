@@ -768,9 +768,9 @@ void Bicrystal::ShiftGrainsAlongDSC(unsigned int n1, unsigned int n2, unsigned i
         for (unsigned int j = 0; j < n2; ++j) {
             for (unsigned int k = 0; k < n3; ++k) {
                 // Compute the components of the shift vector by dividing i, j, and k by their respective n values
-                shift_x = ((double) (i)/n1) * this->DSC_Basis[0] + ((double) (j)/n2) * this->DSC_Basis[1] + ((double) (k)/n3)* this->DSC_Basis[2];
-                shift_y = ((double) (i)/n1) * this->DSC_Basis[3] + ((double) (j)/n2)  * this->DSC_Basis[4] +  ((double) (k)/n3)* this->DSC_Basis[5];
-                shift_z = ((double) (i)/n1)* this->DSC_Basis[6] + ((double) (j)/n2) * this->DSC_Basis[7] +  ((double) (k)/n3) * this->DSC_Basis[8];
+                shift_x = ((double) (i)/n1) * this->DSC_Basis[0] + ((double) (j)/n2) * this->DSC_Basis[3] + ((double) (k)/n3)* this->DSC_Basis[6];
+                shift_y = ((double) (i)/n1) * this->DSC_Basis[1] + ((double) (j)/n2)  * this->DSC_Basis[4] +  ((double) (k)/n3)* this->DSC_Basis[7];
+                shift_z = ((double) (i)/n1)* this->DSC_Basis[2] + ((double) (j)/n2) * this->DSC_Basis[5] +  ((double) (k)/n3) * this->DSC_Basis[8];
 
                  // Apply the shift
                 this->Grain1->ApplyShift(shift_x, shift_y, shift_z);
@@ -814,9 +814,9 @@ void Bicrystal::ShiftGrainsAlongCSL(unsigned int n1, unsigned int n2, unsigned i
         for (unsigned int j = 0; j < n2; ++j) {
             for (unsigned int k = 0; k < n3; ++k) {
                 // Compute the translation vector based on the CSL basis
-                shift_x = ((double) (i) / n1) * CSL_Basis[0] + ((double) (j) / n2) * CSL_Basis[1] + ((double) (k) / n3) * CSL_Basis[2];
-                shift_y = ((double) (i) / n1) * CSL_Basis[3] + ((double) (j) / n2) * CSL_Basis[4] + ((double) (k) / n3) * CSL_Basis[5];
-                shift_z = ((double) (i) / n1) * CSL_Basis[6] + ((double) (j) / n2) * CSL_Basis[7] + ((double) (k) / n3) * CSL_Basis[8];
+                shift_x = ((double) (i) / n1) * CSL_Basis[0] + ((double) (j) / n2) * CSL_Basis[3] + ((double) (k) / n3) * CSL_Basis[6];
+                shift_y = ((double) (i) / n1) * CSL_Basis[1] + ((double) (j) / n2) * CSL_Basis[4] + ((double) (k) / n3) * CSL_Basis[7];
+                shift_z = ((double) (i) / n1) * CSL_Basis[2] + ((double) (j) / n2) * CSL_Basis[5] + ((double) (k) / n3) * CSL_Basis[8];
 
                 // Apply the shift
                 this->Grain1->ApplyShift(shift_x, shift_y, shift_z);
