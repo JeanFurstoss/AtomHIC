@@ -51,6 +51,7 @@ endif()
 add_library(${PROJECT_NAME} ${LIBRARY_TYPE} ${SOURCES} ${HEADERS})
 
 LINK_EIGEN(${PROJECT_NAME} PUBLIC)
+LINK_PACE(${PROJECT_NAME} PUBLIC)
 
 ## #################################################################
 ## Export header file

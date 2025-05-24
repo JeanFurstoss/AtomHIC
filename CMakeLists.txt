@@ -32,6 +32,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/MakeLibrary.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/FetchEigen.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/FetchPACE.cmake)
 
 #Project name
 project(AtomHic)

@@ -29,6 +29,7 @@
 
 #include <AtomicSystem.h>
 #include <SteinhardtDescriptors.h>
+#include <ACEDescriptors.h>
 #include <stdlib.h>
 #include <iostream>
 #include <sstream>
@@ -43,18 +44,25 @@ int main(int argc, char *argv[])
 	Displays Dis;
 	Dis.Logo();
 	if( argc < 3 ){
-		cerr << "Usage: ./ComputeDescriptors AtomicInputFilename NameOfDescriptor OutputFilename" << endl;
+		cerr << "Usage: ./ComputeDescriptors AtomicInputFilename NameOfDescriptor (yaml_input_filename) OutputFilename" << endl;
 		cerr << "The descriptor properties will be read from /data/FixedParameters/FixedParameters.dat" << endl;
 		cerr << "In addition to the output atomic file, this executable will generate a DescriptorProperties.ath file containing the descriptors properties and which can be used for fitting a ML for instance" << endl;
+		cerr << "The yaml_input filename shoudl be used only for ACE descriptors" << endl;
 		cerr << "Available descriptors : " << endl;
 		cerr << "\t - Steinhardt" << endl;
+		cerr << "\t - ACE" << endl;
 		return EXIT_FAILURE;
 	}
 	
-	string InputFilename, OutputFilename, DescriptorName;
+	string InputFilename, OutputFilename, DescriptorName, yaml_input_filename;
 	InputFilename = argv[1];
 	DescriptorName = argv[2];
-	OutputFilename = argv[3];
+	if( argc == 4 ){
+		OutputFilename = argv[3];
+	}else{
+		yaml_input_filename = argv[3];
+		OutputFilename = argv[4];
+	}
 
 	AtomicSystem MySystem(InputFilename);
 
@@ -67,6 +75,19 @@ int main(int argc, char *argv[])
 		ofstream writefile("DescriptorProperties.ath");
 		MyDescriptors.printDescriptorsPropToDatabase(writefile);
 		writefile.close();
+	}else if( DescriptorName == "ACE" ){
+		// Compute the descriptor
+		ACEDescriptors MyDescriptors(&MySystem,yaml_input_filename);
+		// Set the auxiliary property
+		cout << "After des" << endl;
+		MySystem.setAux_vec(MyDescriptors.getDescriptors(),MyDescriptors.getDim(),DescriptorName);
+		cout << "After set" << endl;
+	MySystem.printSystem_aux(OutputFilename,DescriptorName);
+		cout << "After print" << endl;
+		//// Print descriptor parameters
+		//ofstream writefile("DescriptorProperties.ath");
+		//MyDescriptors.printDescriptorsPropToDatabase(writefile);
+		//writefile.close();
 	}else{ // other developped descriptors could be put here
 		cerr << "The descriptor name does not correspond to a descriptor that AtomHIC can compute, aborting" << endl;
 		return EXIT_FAILURE;
