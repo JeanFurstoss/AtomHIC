@@ -1671,13 +1671,16 @@ bool AtomicSystem::read_cfg_file(const string& filename){
 	unsigned int NbAtRead = 0;
 	if(file){
 		unsigned int line_dt(1000), line_At(1000), line_H(1000), line_at(1000), buffer_uint, buffer_uint_1, count_H(0), count(0), nbAux(0), aux_count;
-		size_t pos_dt, pos_At, pos_H, pos_charge, pos_at, pos_aux_vec, pos_elem;
+		size_t pos_dt, pos_At, pos_H, pos_charge, pos_at, pos_aux_vec, pos_elem, pos_typeuint, pos_id;
 		double buffer_1, buffer_2, buffer_3, buffer_4, buffer_5;
 		double xlo,xhi,ylo,yhi,zlo,zhi;
 		string buffer_s, buffer_s_1, buffer_s_2, line, aux_name;
 		bool other_cfg = false, IsReducedCoords = false;
-		unsigned int nbAux_norm=5;
+		bool IsType_uint = false;
+		bool IsId = false;
+		unsigned int nbAux_norm=3;
 		vector<string> befAuxNames;
+		nbAtomType = 0;
 		while(file){
 			getline(file,line);
 			// find timestep
@@ -1766,7 +1769,16 @@ bool AtomicSystem::read_cfg_file(const string& filename){
 				IsElem = true;
 				nbAux_norm += 1;
 			}
-
+			pos_typeuint=line.find(" type");
+			if( pos_typeuint!=string::npos){
+				IsType_uint = true;
+				nbAux_norm += 1;
+			}
+			pos_id=line.find(" id");
+			if( pos_id!=string::npos){
+				IsId = true;
+				nbAux_norm += 1;
+			}
 			// find and get atom positions
 			pos_at=line.find("ITEM: ATOMS");
 			if( pos_at!=string::npos ){
@@ -1846,9 +1858,30 @@ bool AtomicSystem::read_cfg_file(const string& filename){
 					this->AtomList[NbAtRead].pos.y = buffer_2;
 					this->AtomList[NbAtRead].pos.z = buffer_3;
 				}
-				this->AtomList[NbAtRead].type_uint = buffer_uint_1;
-				if( IsElem ) this->AtomType[buffer_uint_1-1] = buffer_s;
-				if( IsCharge ) this->AtomCharge[buffer_uint_1-1] = buffer_4;
+				if( !IsType_uint ){
+					if( IsElem ){
+						bool elem_already_stored = false;
+						unsigned int current_typeuint = 0;
+						for(unsigned int i=0;i<nbAtomType;i++){
+							if( buffer_s == AtomType[i] ){
+								elem_already_stored = true;
+								current_typeuint = i;
+								break;
+							}
+						}
+						if( !elem_already_stored ){
+							AtomType[nbAtomType] = buffer_s;
+							nbAtomType += 1;
+							this->AtomList[NbAtRead].type_uint = nbAtomType;
+						}else this->AtomList[NbAtRead].type_uint = current_typeuint+1;
+					}else{
+						this->AtomList[NbAtRead].type_uint = 1;
+					}
+				}else{
+					this->AtomList[NbAtRead].type_uint = buffer_uint_1;
+					if( IsElem ) this->AtomType[buffer_uint_1-1] = buffer_s;
+				}
+				if( IsCharge ) this->AtomCharge[AtomList[NbAtRead].type_uint-1] = buffer_4;
 				if(nbAux>0){
 					for(unsigned int au=0;au<Aux_name.size();au++){
 						for(unsigned int au_v=0;au_v<Aux_size[au];au_v++) text >> Aux[au][NbAtRead*Aux_size[au]+au_v];
