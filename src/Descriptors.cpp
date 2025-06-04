@@ -1442,108 +1442,32 @@ void Descriptors::constructSubarrays(double &RatioTestDataset, bool filter, bool
 		IsTestDataset = true;
 	}
 }
+
 MatrixXd* Descriptors::getSubarray(unsigned int &subarray_nbdat, std::string filter_name, std::string label_name){
-	bool already = false;
-	unsigned int f = 0;
-	if( filter_name != "none" ){
-		for(unsigned int ft=0;ft<FilterValue.size();ft++){
-			if( filter_name == FilterValue[ft] ){
-				already = true;
-				f = ft;
-				break;
-			}
-		}
-		if( !already ){
-			cerr << "Filter value not found" << endl;
-			exit(EXIT_FAILURE);
-		}
-	}
-	already = false;
-	unsigned int l = 0;
-	if( label_name != "none" ){
-		for(unsigned int lt=0;lt<Labels.size();lt++){
-			if( label_name == Labels[lt] ){
-				already = true;
-				l = lt;
-				break;
-			}
-		}
-		if( !already ){
-			cerr << "Label value not found" << endl;
-			exit(EXIT_FAILURE);
-		}
-	}
+	unsigned int f = current_filter(filter_name);
+	unsigned int l = current_label(label_name);
 	subarray_nbdat = SubarraySize[f*nbLabels+l];
 	return DescriptorsSubarray[f*nbLabels+l];
 }
 
+MatrixXd* Descriptors::getTestDataset(unsigned int &subarray_nbdat, std::string filter_name, std::string label_name){
+	unsigned int f = current_filter(filter_name);
+	unsigned int l = current_label(label_name);
+	subarray_nbdat = TestDatasetSize[f*nbLabels+l];
+	return TestDataset[f*nbLabels+l];
+}
+
 unsigned int* Descriptors::getCorresIndexSubarray(unsigned int &subarray_nbdat, std::string filter_name, std::string label_name){
-	bool already = false; //TODO make a function for having f and l
-	unsigned int f = 0;
-	if( filter_name != "none" ){
-		for(unsigned int ft=0;ft<FilterValue.size();ft++){
-			if( filter_name == FilterValue[ft] ){
-				already = true;
-				f = ft;
-				break;
-			}
-		}
-		if( !already ){
-			cerr << "Filter value not found" << endl;
-			exit(EXIT_FAILURE);
-		}
-	}
-	already = false;
-	unsigned int l = 0;
-	if( label_name != "none" ){
-		for(unsigned int lt=0;lt<Labels.size();lt++){
-			if( label_name == Labels[lt] ){
-				already = true;
-				l = lt;
-				break;
-			}
-		}
-		if( !already ){
-			cerr << "Label value not found" << endl;
-			exit(EXIT_FAILURE);
-		}
-	}
+	unsigned int f = current_filter(filter_name);
+	unsigned int l = current_label(label_name);
 	subarray_nbdat = SubarraySize[f*nbLabels+l];
 	return CorresIndexSubarray[f*nbLabels+l];
 }
 
 unsigned int* Descriptors::getCorresIndexTestDataset(unsigned int &subarray_nbdat, std::string filter_name, std::string label_name){
-	bool already = false; //TODO make a function for having f and l
-	unsigned int f = 0;
-	if( filter_name != "none" ){
-		for(unsigned int ft=0;ft<FilterValue.size();ft++){
-			if( filter_name == FilterValue[ft] ){
-				already = true;
-				f = ft;
-				break;
-			}
-		}
-		if( !already ){
-			cerr << "Filter value not found" << endl;
-			exit(EXIT_FAILURE);
-		}
-	}
-	already = false;
-	unsigned int l = 0;
-	if( label_name != "none" ){
-		for(unsigned int lt=0;lt<Labels.size();lt++){
-			if( label_name == Labels[lt] ){
-				already = true;
-				l = lt;
-				break;
-			}
-		}
-		if( !already ){
-			cerr << "Label value not found" << endl;
-			exit(EXIT_FAILURE);
-		}
-	}
-	subarray_nbdat = SubarraySize[f*nbLabels+l];
+	unsigned int f = current_filter(filter_name);
+	unsigned int l = current_label(label_name);
+	subarray_nbdat = TestDatasetSize[f*nbLabels+l];
 	return CorresIndexTestDataset[f*nbLabels+l];
 }
 // END TEST subarray
@@ -1574,6 +1498,45 @@ void Descriptors::readFixedParams(){
 	file.close();
 	//cout << "From /data/FixedParameters/FixedParameters.dat the descriptors will be filtered by \"" << FilteringType << "\"" << endl;
 }
+
+unsigned int Descriptors::current_filter(const std::string &filter_name){
+	bool already = false;
+	unsigned int f = 0;
+	if( filter_name != "none" ){
+		for(unsigned int ft=0;ft<FilterValue.size();ft++){
+			if( filter_name == FilterValue[ft] ){
+				already = true;
+				f = ft;
+				break;
+			}
+		}
+		if( !already ){
+			cerr << "Filter value not found" << endl;
+			exit(EXIT_FAILURE);
+		}
+	}
+	return f;
+}
+
+unsigned int Descriptors::current_label(const std::string &label_name){
+	bool already = false;
+	unsigned int l = 0;
+	if( label_name != "none" ){
+		for(unsigned int lt=0;lt<Labels.size();lt++){
+			if( label_name == Labels[lt] ){
+				already = true;
+				l = lt;
+				break;
+			}
+		}
+		if( !already ){
+			cerr << "Label value not found" << endl;
+			exit(EXIT_FAILURE);
+		}
+	}
+	return l;
+}
+
 
 Descriptors::~Descriptors(){
 	if( FilterIndex ) delete[] FilterIndex;

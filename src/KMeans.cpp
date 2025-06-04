@@ -736,6 +736,7 @@ void KMeans::ReadModelParamFromDatabase(const string &name_of_database){
 }
 
 void KMeans::readFixedParams(){
+	MachineLearningModel::readFixedParams();
 	string fp;
 	#ifdef FIXEDPARAMETERS
 	fp = FIXEDPARAMETERS;

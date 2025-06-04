@@ -83,7 +83,7 @@ void GaussianMixtureModel::TrainModel(unsigned int &nbClust_min, unsigned int &n
 			}
 			NormalizeWeights(filter_value);
 			setGMMTools(filter_value);
-			ComputeAveLabelProb(filter_value);
+			ComputeStrongAveLabelProb(filter_value);
 			PrintLabelling(filter_value);
 			IsLabelled[current_f] = true;
 		}else{
@@ -258,15 +258,15 @@ void GaussianMixtureModel::setGMMTools(string filter_value){
 	IsGMMTools[current_f] = true;
 }
 
-void GaussianMixtureModel::ComputeAveLabelProb(string filter_value){
+void GaussianMixtureModel::ComputeSoftAveLabelProb(string filter_value){
 	unsigned int current_f = getCurrentFIndex(filter_value);
 	if( AveLabelProb[current_f] ) delete[] AveLabelProb[current_f];
 
 	AveLabelProb[current_f] = new long double[nbClust[current_f]*nbLabel];
 
 	double zero = 0.;
-	_MyDescriptors->constructSubarrays(zero,true,false);
-	_dataMat = _MyDescriptors->getSubarray(current_nbDat,filter_value);
+        _MyDescriptors->constructSubarrays(zero,true,false);
+        _dataMat = _MyDescriptors->getSubarray(current_nbDat,filter_value);
 	MyGMMTools[current_f]->setDataMat(_dataMat,current_nbDat);
 	CorresIndexDescriptors = _MyDescriptors->getCorresIndexSubarray(current_nbDat,filter_value);
 	
@@ -287,6 +287,31 @@ void GaussianMixtureModel::ComputeAveLabelProb(string filter_value){
 	for(unsigned int k=0;k<nbClust[current_f];k++)
 		for(unsigned int l=0;l<nbLabel;l++) AveLabelProb[current_f][k*nbLabel+l] /= NbDesLabel[l];
 	delete[] NbDesLabel;
+}
+
+void GaussianMixtureModel::ComputeStrongAveLabelProb(string filter_value){
+	unsigned int current_f = getCurrentFIndex(filter_value);
+	if( AveLabelProb[current_f] ) delete[] AveLabelProb[current_f];
+
+	AveLabelProb[current_f] = new long double[nbClust[current_f]*nbLabel];
+
+	_MyDescriptors->constructSubarrays(RatioTestTrain,true,true);
+	unsigned int *NbDesLabel = new unsigned int[nbLabel];
+	
+	for(unsigned int l=0;l<nbLabel;l++){
+		NbDesLabel[l] = 0;
+		string current_label = _MyDescriptors->getLabels(l);
+        	_dataMat = _MyDescriptors->getTestDataset(current_nbDat,filter_value,current_label);
+		MyGMMTools[current_f]->setDataMat(_dataMat,current_nbDat);
+		//CorresIndexDescriptors = _MyDescriptors->getCorresIndexSubarray(current_nbDat,filter_value);
+		MatrixXd MLC(nbClust[current_f],current_nbDat);
+		MyGMMTools[current_f]->ComputeMLC(MLC);
+		for(unsigned int k=0;k<nbClust[current_f];k++){
+			AveLabelProb[current_f][k*nbLabel+l] = 0.;
+			for(unsigned int i=0;i<current_nbDat;i++) AveLabelProb[current_f][k*nbLabel+l] += MLC(k,i);
+			AveLabelProb[current_f][k*nbLabel+l] /= current_nbDat;
+		}
+	}
 }
 
 void GaussianMixtureModel::PrintLabelling(string filter_value){
@@ -333,7 +358,7 @@ void GaussianMixtureModel::Labelling(string filter_value){
 	if( max*tolLabelSize > min ) cout << "Warning the \"" << filter_value << "\" descriptors are not homogeneously distributed within the labels (high difference between number of descriptors in each labels), which could biased the results obtained with the fitted GMM" << endl;
 	
 	if( IsLabelled[current_f] ) ClusterLabel[current_f].clear();
-	ComputeAveLabelProb(filter_value);
+	ComputeSoftAveLabelProb(filter_value);
 
 	// Search which label has the highest probability in each cluster
 	for(unsigned int k=0;k<nbClust[current_f];k++){
@@ -848,6 +873,7 @@ void GaussianMixtureModel::ReadModelParamFromDatabase(const string &name_of_data
 }
 
 void GaussianMixtureModel::readFixedParams(){
+	MachineLearningModel::readFixedParams();
 	string fp;
 	#ifdef FIXEDPARAMETERS
 	fp = FIXEDPARAMETERS;

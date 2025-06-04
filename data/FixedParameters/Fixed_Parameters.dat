@@ -19,8 +19,9 @@ TOL_POS_KNOWN_CSL_VEC 1e-2 // tolerance (in A) to know if the CSL basis gives th
 TOL_CSL_INTEGER 1e-3 // tolerance for an element of U (CSL matrix) to be an integer
 TOL_ALIGNMENT_CSL 1e-1 // tolerance to know if one of the CSL vector is aligned with the rotation axis (the scalar product should be near 1)
 
-// Parameters for descriptors
+// Parameters for descriptors and machine learning
 DESCRIPTORS_FILTERING_TYPE element // could be none, type element or one of the auxiliary properties of the atomic system read, this parameter is only used for training of ML models 
+ML_RATIO_TEST_TRAIN 0.1 // Ratio of the machine learning training dataset used to test the model (default 0.1)
 
 // Parameters for Steinhardt descriptors
 STEINHARDT_DESCRIPTORS_MODE Full // OneL (compute only one parameter, in this case the descriptor is a bond orientational parameter) or Full (compute all parameters between 1 and L_SPH)

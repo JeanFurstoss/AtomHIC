@@ -205,6 +205,29 @@ unsigned int MachineLearningModel::getCurrentFIndex(string filter_value){
 	return current_f;
 }
 
+void MachineLearningModel::readFixedParams(){
+	string fp;
+	#ifdef FIXEDPARAMETERS
+	fp = FIXEDPARAMETERS;
+	#endif
+	string backslash="/";
+	string filename=fp+backslash+FixedParam_Filename;
+	size_t pos_rattrain;
+	ifstream file(filename, ios::in);
+	string buffer_s, line;
+	if(file){
+		while(file){
+			getline(file,line);
+			pos_rattrain=line.find("ML_RATIO_TEST_TRAIN");
+			if(pos_rattrain!=string::npos){
+				istringstream text(line);
+				text >> buffer_s >> RatioTestTrain;
+				current_Properties.push_back(line);
+			}
+		}
+	}
+}
+
 void MachineLearningModel::ReadProperties(vector<string> &Properties){
 	size_t pos_rattrain;
 	string buffer_s;

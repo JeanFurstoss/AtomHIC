@@ -245,6 +245,7 @@ void DBScan::ComputeMuAndV(string filter_name){
 }
 
 void DBScan::readFixedParams(){
+	MachineLearningModel::readFixedParams();
 	string fp;
 	#ifdef FIXEDPARAMETERS
 	fp = FIXEDPARAMETERS;
@@ -289,6 +290,7 @@ void DBScan::readFixedParams(){
 }
 
 void DBScan::ReadProperties(vector<string> Properties){
+	MachineLearningModel::ReadProperties(Properties);
 	size_t pos_eps, pos_minPts;
 	string buffer_s;
 	for(unsigned int i=0;i<Properties.size();i++){
