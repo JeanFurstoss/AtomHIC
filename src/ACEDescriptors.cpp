@@ -58,21 +58,31 @@ void ACEDescriptors::ComputeDescriptors(){
 	// search maximum cutoff
 	unsigned int nbAtomType = _MySystem->getNbAtomType();
 	double max_cutoff = 0.;
-	for(unsigned int i=0;i<nbAtomType;i++){
-		if( max_dim < MyACEBBase->total_basis_size_rank1[i]+MyACEBBase->total_basis_size[i] )
-			max_dim = MyACEBBase->total_basis_size_rank1[i]+MyACEBBase->total_basis_size[i];
-		for(unsigned int j=i;j<nbAtomType;j++)
-			if( max_cutoff < MyACEBBase->radial_functions->cut(i,j) ) // TODO ELEMAP_TAG elemental mapping (i.e. be sure that the type unint of atomhic really correspond to the order readed in yaml WARNING !!!!
-				max_cutoff = MyACEBBase->radial_functions->cut(i,j);
-	}
-
-	// Allocate descriptor array and initialize to 0
 	const unsigned int lmaxi = MyACEBBase->lmax;
 	const unsigned int nradiali = MyACEBBase->nradmax;
 	const unsigned int nradbase = MyACEBBase->nradbase;
+	for(unsigned int i=0;i<nbAtomType;i++){
+		unsigned int mu_i = i; // TODO ELEMAP_TAG elemental mapping (i.e. be sure that the type unint of atomhic really correspond to the order readed in yaml WARNING !!!!
+		unsigned int current_dim = nbAtomType*MyACEBBase->total_basis_size_rank1[mu_i];
+		auto basis = MyACEBBase->basis[mu_i];
+    		const SHORT_INT_TYPE total_basis_size = MyACEBBase->total_basis_size[mu_i];
+		for (unsigned int func_ind = 0; func_ind < total_basis_size; ++func_ind) {
+        		auto func = &basis[func_ind];
+			current_dim += func->num_ms_combs;
+		}
+		if( max_dim < current_dim )
+			max_dim = current_dim;
+		for(unsigned int j=i;j<nbAtomType;j++){
+			unsigned int mu_j = j; // TODO ELEMAP_TAG
+			if( max_cutoff < MyACEBBase->radial_functions->cut(mu_i,mu_j) )
+				max_cutoff = MyACEBBase->radial_functions->cut(mu_i,mu_j);
+		}
+	}
+
+	// Allocate descriptor array and initialize to 0
 	//dim = (nradbase + nradiali*(lmaxi+1))*nbAtomType; // no sure maybe account for m ?
-	dim = (nradbase*nradiali*(lmaxi+1))*nbAtomType; // no sure also ..
-	dim = 24;
+	//dim = (nradbase*nradiali*(lmaxi+1))*nbAtomType; // no sure also ..
+	dim = max_dim;
 	_Descriptors = new double[nbDatTot*dim];
 	for(unsigned int i=0;i<nbDatTot;i++)
 		for(unsigned int d=0;d<dim;d++) _Descriptors[i*dim+d] = 0.;
@@ -108,7 +118,8 @@ void ACEDescriptors::ComputeDescriptors(){
 		double ypos = _MySystem->getWrappedPos(i).y;
 		double zpos = _MySystem->getWrappedPos(i).z;
 		unsigned int mu_i = _MySystem->getAtom(i).type_uint-1; // TODO ELEMAP_TAG
-    const SHORT_INT_TYPE total_basis_size = MyACEBBase->total_basis_size[mu_i];
+		const SHORT_INT_TYPE total_basis_size = MyACEBBase->total_basis_size[mu_i];
+		const SHORT_INT_TYPE total_basis_size_rank1 = MyACEBBase->total_basis_size_rank1[mu_i];
 		//ALGORITHM 1: Atomic base A
 		for(unsigned int j_loop=0;j_loop<_MySystem->getNeighbours(i*(nbNMax+1));j_loop++){
 			unsigned int id = _MySystem->getNeighbours(i*(nbNMax+1)+j_loop+1);
@@ -152,7 +163,7 @@ void ACEDescriptors::ComputeDescriptors(){
 				}
 			}
 		} //end loop over neighbours
-		for (unsigned int mu_j = 0; mu_j < MyACEBBase->nelements; mu_j++) {
+		for (unsigned int mu_j = 0; mu_j < nbAtomType; mu_j++) {
 			for (unsigned int n = 0; n < nradiali; n++) {
 				auto &A_lm = A(mu_j, n);
 				for (unsigned int l = 0; l <= lmaxi; l++) {
@@ -165,8 +176,8 @@ void ACEDescriptors::ComputeDescriptors(){
 			}
 		}    //now A's are constructed
 		// For rank = 1, A are still invariants by rotation => directly store them in Descriptor array
-		for (unsigned int mu_j = 0; mu_j < MyACEBBase->nelements; mu_j++) {
-			for (unsigned int n = 0; n < MyACEBBase->nradbase; n++){
+		for (unsigned int mu_j = 0; mu_j < nbAtomType; mu_j++) {
+			for (unsigned int n = 0; n < total_basis_size_rank1; n++){
 				_Descriptors[i*dim+count_dim] = A_rank1(mu_j,n);
 				count_dim++;
 			}
@@ -189,7 +200,6 @@ void ACEDescriptors::ComputeDescriptors(){
 
             //loop over m, collect B  = product of A with given ms
             A_forward_prod(0) = 1;
-            //A_backward_prod(r) = 1;
 
             //fill forward A-product triangle
 	    unsigned int t;
@@ -203,11 +213,6 @@ void ACEDescriptors::ComputeDescriptors(){
             B = A_forward_prod(t);
             _Descriptors[i*dim+count_dim] = B.real;
 	   count_dim++; 
-	    //fill backward A-product triangle TODO see if it changes values
-            //for (t = r; t >= 1; t--) {
-            //    A_backward_prod(t - 1) =
-            //            A_backward_prod(t) * A_cache(t);
-            //}
 	}
     } // end loop on total basis size
 	cout << "current dim = " << count_dim << endl;
