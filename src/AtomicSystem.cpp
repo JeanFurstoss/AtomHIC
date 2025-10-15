@@ -64,6 +64,22 @@ AtomicSystem::AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double z
 	this->AtomMass = _MyCrystal->getAtomMass();
 	this->AtomCharge = _MyCrystal->getAtomCharge();
 	this->IsCharge = _MyCrystal->getIsCharge();
+	this->IsMolId = _MyCrystal->getIsMolId();
+	if( IsMolId ) MolId = new unsigned int[nbAtom];
+	this->IsBond = _MyCrystal->getIsBond();
+	if( this->IsBond ){
+		this->nbBondType = _MyCrystal->getNbBondType();
+		this->nbBonds = round(_MyCrystal->getNbBond()*xhi*yhi*zhi/_MyCrystal->getVol());
+		Bonds = new unsigned int[this->nbBonds*2];
+		BondType = new unsigned int[this->nbBonds];
+	}
+	this->IsAngle = _MyCrystal->getIsAngle();
+	if( this->IsAngle ){
+		this->nbAngleType = _MyCrystal->getNbAngleType();
+		this->nbAngles = round(_MyCrystal->getNbAngle()*xhi*yhi*zhi/_MyCrystal->getVol());
+		Angles = new unsigned int[this->nbAngles*3];
+		AngleType = new unsigned int[this->nbAngles];
+	}
 	this->IsTilted = false;
 	this->G1 = new double[3];
 	this->G2 = new double[3];
@@ -160,6 +176,18 @@ AtomicSystem::AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double z
 			// initialize the NotSepTag array
 			this->NotSepTag = new vector<int>[this->nbAtom];
 			this->IsNotSepTag = true;
+			unsigned int count_mol = 1;
+			unsigned int count_bonds = 0;
+			unsigned int count_angles = 0;
+			unsigned int complete_bonds;
+			unsigned int complete_angles;
+			unsigned int current_bond;
+			unsigned int current_angle;
+			vector<unsigned int> b_prevs;
+			vector<unsigned int> a_prevs;
+			vector<unsigned int> a_compl;
+			unsigned int nbBondCryst = _MyCrystal->getNbBond();
+			unsigned int nbAngleCryst = _MyCrystal->getNbAngle();
 			// first loop to store atoms which should not be seperated
 			for(int i=-cla1;i<cla1+1;i++){
 				for(int j=-cla2;j<cla2+1;j++){
@@ -175,6 +203,7 @@ AtomicSystem::AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double z
 									break;
 								}
 							}
+							if( IsMolId &&  _MyCrystal->getNotSepList_size(n) == 0 ) ToTreat = false;
 							if( ToTreat ){
 								xpos = _MyCrystal->getMotif()[n].pos.x + delta_x;
 								ypos = _MyCrystal->getMotif()[n].pos.y + delta_y;
@@ -189,7 +218,41 @@ AtomicSystem::AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double z
 									this->AtomList[count].pos.y = ypos;
 									this->AtomList[count].pos.z = zpos;
 									this->NotSepTag[count].push_back(0);
+									if( IsMolId ) MolId[count] = count_mol;
 									id_notsep = count;
+									// store bonds and angle
+									if( IsBond ){
+										current_bond = 0;
+										b_prevs.clear();
+										for(unsigned int b=0;b<nbBondCryst;b++){ // an atom could be involved in multiple bonds, do not break the loop
+											for(unsigned int b_i=0;b_i<2;b_i++){
+												if( _MyCrystal->getBonds()[(b*2)+b_i]-1 == n ){ // +1 ?
+													Bonds[((count_bonds+current_bond)*2)+b_i] = count+1;
+													BondType[count_bonds+current_bond] = _MyCrystal->getBondType(b);
+													b_prevs.push_back(b);
+													current_bond++;
+												}
+											}
+										}
+										complete_bonds = 0;
+									}
+									if( IsAngle ){
+										current_angle = 0;
+										a_prevs.clear();
+										a_compl.clear();
+										for(unsigned int a=0;a<nbAngleCryst;a++){ // an atom could be involved in multiple bonds, do not break the loop
+											for(unsigned int a_i=0;a_i<3;a_i++){
+												if( _MyCrystal->getAngles()[(a*3)+a_i]-1 == n ){ // +1 ?
+													Angles[((count_angles+current_angle)*3)+a_i] = count+1;
+													AngleType[count_angles+current_angle] = _MyCrystal->getAngleType(a);
+													a_prevs.push_back(a);
+													a_compl.push_back(1);
+													current_angle++;
+												}
+											}
+										}
+										complete_angles = 0;
+									}
 									count += 1;
 									// store all its neighboring atoms which should not be separeted from him
 									for(unsigned int s=0;s<_MyCrystal->getNotSepList_size(n);s++){
@@ -231,18 +294,84 @@ AtomicSystem::AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double z
 										this->NotSepTag[count].push_back(-1);
 										this->NotSepTag[id_notsep].push_back(count);
 										this->NotSepTag[id_notsep][0] += 1;
+										if( IsMolId ) MolId[count] = count_mol;
+										// Store bonds and angles
+										if( IsBond ){
+											for(unsigned int b=0;b<nbBondCryst;b++){ // an atom could be involved in multiple bonds, do not break the loop
+												for(unsigned int b_i=0;b_i<2;b_i++){
+													if( _MyCrystal->getBonds()[(b*2)+b_i]-1 == id_s ){ // +1 ?
+														bool prev_found = false;
+														for(unsigned int b_prev=0;b_prev<current_bond;b_prev++){
+															if( b_prevs[b_prev] == b ){
+																if( count_bonds+b_prev >= nbBonds ){
+																	cout << "WARNING: Exceeding allocated number of bonds (" << nbBonds << ") !" << endl;
+																	prev_found = true;
+																	break;
+																}
+																Bonds[((count_bonds+b_prev)*2)+b_i] = count+1;
+																complete_bonds++;
+																prev_found = true;
+															}
+														}
+														if( !prev_found ){
+															Bonds[((count_bonds+current_bond)*2)+b_i] = count+1;
+															BondType[count_bonds+current_bond] = _MyCrystal->getBondType(b);
+															b_prevs.push_back(b);
+															current_bond++;
+														}
+													}
+												}
+											}
+										}
+										if( IsAngle ){
+											for(unsigned int a=0;a<nbAngleCryst;a++){ // an atom could be involved in multiple bonds, do not break the loop
+												for(unsigned int a_i=0;a_i<3;a_i++){
+													if( _MyCrystal->getAngles()[(a*3)+a_i]-1 == id_s ){ // +1 ?
+														bool prev_found = false;
+														for(unsigned int a_prev=0;a_prev<current_angle;a_prev++){
+															if( a_prevs[a_prev] == a ){
+																if( count_angles+a_prev >= nbAngles ){
+																	cout << "WARNING: Exceeding allocated number of angles (" << nbAngles << ") !" << endl;
+																	prev_found = true;
+																	break;
+																}
+
+																Angles[((count_angles+a_prev)*3)+a_i] = count+1;
+																if( a_compl[a_prev] == 1 ) a_compl[a_prev]++;
+																else if( a_compl[a_prev] == 2 ) complete_angles++;
+																else cout << "WARNING: More than 3 atoms are stored in 1 angle !" << endl;
+																prev_found = true;
+															}
+														}
+														if( !prev_found ){
+															Angles[((count_angles+current_angle)*3)+a_i] = count+1;
+															AngleType[count_angles+current_angle] = _MyCrystal->getAngleType(a);
+															a_prevs.push_back(a);
+															a_compl.push_back(1);
+															current_angle++;
+														}
+													}
+												}
+											}
+										}
+
 										count += 1;
-									}
-								}
-							}
+									} // end loop on neighboring atom to do not sep
+									count_bonds += complete_bonds;
+									count_angles += complete_angles;
+									count_mol++;
+								} // end if atom is inside box limits
+							} // end if ToTreat DoNotSep or molecule
 							if( break_comp) break;
-						}
+						} // end loop on Crystal motif
 						if( break_comp) break;
-					}
+					} // end loop on CL_z
 					if( break_comp) break;
-				}
+				} // end loop on CL_y
 				if( break_comp) break;
-			}
+			} // end loop on CL_x
+			cout << "Final nbBond = " << count_bonds << endl;
+			cout << "Final nbAngle = " << count_angles << endl;
 			// second loop to store atoms which may have not been stored
 			if( count < this->nbAtom-1 ){
 				for(int i=-cla1;i<cla1+1;i++){
@@ -314,6 +443,40 @@ AtomicSystem::AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double z
 AtomicSystem::AtomicSystem(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3){
 	AtomListConstructor(AtomList,nbAtom,_MyCrystal,H1,H2,H3);
 }
+
+AtomicSystem::AtomicSystem(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3, unsigned int *MolId){
+	AtomListConstructor(AtomList,nbAtom,_MyCrystal,H1,H2,H3);
+	this->MolId = MolId;
+	IsMolIdMine = false;
+	IsMolId = true;
+}
+
+AtomicSystem::AtomicSystem(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3, unsigned int *MolId, unsigned int nbBonds, unsigned int nbBondType, unsigned int *Bonds, unsigned int *BondType): nbBonds(nbBonds), nbBondType(nbBondType){
+	AtomListConstructor(AtomList,nbAtom,_MyCrystal,H1,H2,H3);
+	this->MolId = MolId;
+	IsMolIdMine = false;
+	IsMolId = true;
+	this->Bonds = Bonds;
+	this->BondType = BondType;
+	IsBondMine = false;
+	IsBond = true;
+}
+
+AtomicSystem::AtomicSystem(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3, unsigned int *MolId, unsigned int nbBonds, unsigned int nbBondType, unsigned int *Bonds, unsigned int *BondType, unsigned int nbAngles, unsigned int nbAngleType, unsigned int *Angles, unsigned int *AngleType): nbBonds(nbBonds), nbBondType(nbBondType), nbAngles(nbAngles), nbAngleType(nbAngleType){
+	AtomListConstructor(AtomList,nbAtom,_MyCrystal,H1,H2,H3);
+	this->MolId = MolId;
+	IsMolIdMine = false;
+	IsMolId = true;
+	this->Bonds = Bonds;
+	this->BondType = BondType;
+	IsBondMine = false;
+	IsBond = true;
+	this->Angles = Angles;
+	this->AngleType = AngleType;
+	IsAngleMine = false;
+	IsAngle = true;
+}
+
 
 void AtomicSystem::AtomListConstructor(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3){
 	if( this->AtomListConstructed ){
@@ -1972,17 +2135,35 @@ void AtomicSystem::print_lmp(const string& filename){
 	ofstream writefile(filename);
 	writefile << " # File generated using AtomHic\n";
 	writefile << this->File_Heading;
-        writefile << "\n\t" << this->nbAtom << "\tatoms\n\t" << this->nbAtomType << "\tatom types\n\n\t0.000000000000\t" << this->H1[0] << "\txlo xhi\n\t0.000000000000\t" << H2[1] << "\tylo yhi\n\t0.000000000000\t" << H3[2] << "\tzlo zhi\n";
+        writefile << "\n\t" << this->nbAtom << "\tatoms\n\t";
+	if( IsBond ) writefile << nbBonds << "\tbonds\n\t";
+	if( IsAngle ) writefile << nbAngles << "\tangles\n\t";
+        writefile << this->nbAtomType << "\tatom types\n\t";
+	if( IsBond ) writefile << nbBondType << "\tbond types\n\t";
+	if( IsAngle ) writefile << nbAngleType << "\tangle types\n\t";
+	writefile << "\n\t0.000000000000\t" << this->H1[0] << "\txlo xhi\n\t0.000000000000\t" << H2[1] << "\tylo yhi\n\t0.000000000000\t" << H3[2] << "\tzlo zhi\n";
 	if( this->IsTilted ) writefile << "\t" << H2[0] << "\t" << H3[0] << "\t" << H3[1] << "\txy xz yz\n";
 	writefile << "\nMasses\n\n";
 	for(unsigned int i=0;i<this->nbAtomType;i++) writefile << "\t" << i+1 << "\t" << this->AtomMass[i] << "\t# " << this->AtomType[i] << "\n";
-	if( IsCharge ){
+	if( IsMolId ){
+		writefile << "\nAtoms # full\n\n";
+		for(unsigned int i=0;i<this->nbAtom;i++) writefile << i+1 << "\t" << this->MolId[i] << "\t" << this->AtomList[i].type_uint << "\t" << this->AtomCharge[this->AtomList[i].type_uint-1] << "\t" << this->AtomList[i].pos.x << "\t" << this->AtomList[i].pos.y << "\t" << this->AtomList[i].pos.z << "\n"; 
+	}else if( IsCharge ){
 		writefile << "\nAtoms # charge\n\n";
 		for(unsigned int i=0;i<this->nbAtom;i++) writefile << i+1 << "\t" << this->AtomList[i].type_uint << "\t" << this->AtomCharge[this->AtomList[i].type_uint-1] << "\t" << this->AtomList[i].pos.x << "\t" << this->AtomList[i].pos.y << "\t" << this->AtomList[i].pos.z << "\n"; 
 	}else{
 		writefile << "\nAtoms # atomic\n\n";
 		for(unsigned int i=0;i<this->nbAtom;i++) writefile << i+1 << "\t" << this->AtomList[i].type_uint << "\t" << this->AtomList[i].pos.x << "\t" << this->AtomList[i].pos.y << "\t" << this->AtomList[i].pos.z << "\n"; 
 	}
+	if( IsBond ){
+		writefile << "\nBonds\n\n";
+		for(unsigned int i=0;i<nbBonds;i++) writefile << i+1 << "\t" << BondType[i] << "\t" << Bonds[i*2] << "\t" << Bonds[i*2+1] << "\n";
+	}
+	if( IsAngle ){
+		writefile << "\nAngles\n\n";
+		for(unsigned int i=0;i<nbAngles;i++) writefile << i+1 << "\t" << AngleType[i] << "\t" << Angles[i*3] << "\t" << Angles[i*3+1] << "\t" << Angles[i*3+2] << "\n";
+	}
+
 	writefile.close();
 	cout << "File " << filename << " successfully writted !" << endl;
 }
@@ -2196,6 +2377,15 @@ AtomicSystem::~AtomicSystem(){
 		delete[] density_name[i];
 	}
 	if( this->IsNotSepTag ) delete[] NotSepTag;
+	if( IsMolId && IsMolIdMine ) delete[] MolId;
+	if( IsBond && IsBondMine ){
+		delete[] Bonds;
+		delete[] BondType;
+	}
+	if( IsAngle && IsAngleMine ){
+		delete[] Angles;
+		delete[] AngleType;
+	}
 }
 
 

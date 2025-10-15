@@ -1,22 +1,23 @@
 // This file contains the different global variables used by the programm
 
 // Parameters for constructing crystals and bicrystals
-TOL_ORTHO_BOX 1 // tolerance (in A) for searching orthogonal box with inclined crystal cell vectors
-TOL_ORTHO_BOX_Z 1 // tolerance (in A) for searching orthogonal box with inclined crystal cell vectors in Z direction
+TOL_ORTHO_BOX 0.5 // tolerance (in A) for searching orthogonal box with inclined crystal cell vectors
+TOL_ORTHO_BOX_Z 0.5 // tolerance (in A) for searching orthogonal box with inclined crystal cell vectors in Z direction
 MIN_BOX_HEIGHT 75. // minimum box heigh (in A)
 MIN_BOX_ASIDE 3. // minimum box aside (in A)
 MOTIF_SHIFT 0 0 0 // shift (in A) applied to the crystal motif before constructing orthogonal cells along [100], [010] and [001] crystallographic directions respectively (default values 0. 0. 0.)
 MAX_MISFIT 0.02 // maximum misfit for pasting crystal over each others when creating bicrystal
 MAX_DUP 100 // maximum duplication of the two grains for pasting crystal over each others when creating bicrystal and respecting MAX_MISFIT
 GB_SPACE 2. // space between the two crystals (in A)
+FULL_GRAINS 1 // if 1 the two grains used for constructing bicrystals are fully considered (with duplication), if 0 their sizes correspond to the unit cell of the corresponding plane. FULL_GRAINS 0 allows to save memory during computation if the GB is really large (default 1)
 
 // Parameters for CSL calculation
 THETA_MAX_ROT_ANGLE_RAT 1e-1 // maximum angle deviation from the rationalized to the given rotation axis
 MAX_HKL_ROT_ANGLE 75 // maximum linear combination applied to vectors normal to rotation axis to search a rationalized rotation angle
 TOL_DIST_RAT_ANGLE 5e-2 // distance (in A) bellow which two lattice points are considered at the same place (used for rationalized the rotation angle)
 SIGMA_MAX 10000 // maximum sigma value for the GB (CSL)
-TOL_POS_KNOWN_CSL_VEC 1e-2 // tolerance (in A) to know if the CSL basis gives the CSL vector known from the rationalization process (if yes keep the base)
-TOL_CSL_INTEGER 1e-3 // tolerance for an element of U (CSL matrix) to be an integer
+TOL_POS_KNOWN_CSL_VEC 5e-1 // tolerance (in A) to know if the CSL basis gives the CSL vector known from the rationalization process (if yes keep the base)
+TOL_CSL_INTEGER 2e-2 // tolerance for an element of U (CSL matrix) to be an integer
 TOL_ALIGNMENT_CSL 1e-1 // tolerance to know if one of the CSL vector is aligned with the rotation axis (the scalar product should be near 1)
 
 // Parameters for descriptors and machine learning

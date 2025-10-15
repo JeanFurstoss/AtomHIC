@@ -97,9 +97,18 @@ protected:
 	//
 	double* DSC_Basis = nullptr; //does not point to anything at creation
     bool IsDSC_Basis = false; //whether DSC_Basis is valid or properly initialized
+    	// for full/bonds/angles atoms
+	unsigned int *MolId_G1, *MolId_G2;
+        unsigned int nbBonds_G1, nbBonds_G2, nbBondType_G1, nbBondType_G2;
+        unsigned int *Bonds_G1, *Bonds_G2;
+	unsigned int *BondType_G1, *BondType_G2;
+        unsigned int nbAngles_G1, nbAngles_G2, nbAngleType_G1, nbAngleType_G2;
+        unsigned int *Angles_G1, *Angles_G2;
+	unsigned int *AngleType_G1, *AngleType_G2;
 	//
 	// Parameters read from Fixed_Parameter.dat file
 	std::string FixedParam_Filename = "Fixed_Parameters.dat";
+	bool FullGrains = true;
 	double theta_max_rot_ax_rat;
 	double MaxHKL_rot_angle_rat;
 	double tol_dist_rot_angle_rat;

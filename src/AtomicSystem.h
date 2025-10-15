@@ -77,6 +77,21 @@ protected:
 	bool IsElem = false;
 	double timestep; // timestep related to the atomic system (cfg lammps file)
 	bool IsCharge = false;
+	bool IsMolId = false; // is molecule id (atom_style full in LAMMPS)
+	bool IsMolIdMine = true; // is molecule id (atom_style full in LAMMPS)
+	bool IsBond = false; // bond between 2 atoms (e.g. O-H bonds in ice with TIP4P potential)
+	bool IsBondMine = true; // bond between 2 atoms (e.g. O-H bonds in ice with TIP4P potential)
+	unsigned int nbBonds;
+	unsigned int *MolId; // MolId[i] => index of the molecule of atom i
+	unsigned int *Bonds; // Bonds[i*2] => index-1 of the atom 1 involved in bond i, Bond[i*2+1] => index-1 of atom 2 involved in bond i
+	unsigned int *BondType; // BondType[i] type of the bond i
+	unsigned int nbBondType;
+	bool IsAngle = false; // angle between 3 atoms (e.g. H-O-H angle in ice with TIP4P potential)
+	bool IsAngleMine = true; // angle between 3 atoms (e.g. H-O-H angle in ice with TIP4P potential)
+	unsigned int nbAngles;
+	unsigned int nbAngleType;
+	unsigned int *Angles; // Angles[i*3], Angles[i*3+1], Angles[i*3+2], indexes-1 atom 1, 2 and 3 involved in angle i (atom 2 is the center of the angle)
+	unsigned int *AngleType;
 	bool IsTilted = false;
 	bool IsCrystalDefined = false;
 	bool IsCrystalMine = false;
@@ -102,12 +117,23 @@ public:
 	AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double zhi, std::vector<int> cl_box); // construct atomic system from crystal and cell size
 	AtomicSystem(const std::string& filename); // construct AtomicSystem by reading file
 	AtomicSystem(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3); // construct AtomicSystem giving AtomList and cell vectors 
-	void AtomListConstructor(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3); // construct AtomicSystem giving AtomList and cell vectors 
+	AtomicSystem(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3, unsigned int *MolId); // construct AtomicSystem giving AtomList and cell vectors 
+	AtomicSystem(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3, unsigned int *MolId, unsigned int nbBonds, unsigned int nbBondType, unsigned int *Bonds, unsigned int *BondType); // construct AtomicSystem giving AtomList and cell vectors 
+	AtomicSystem(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3, unsigned int *MolId, unsigned int nbBonds, unsigned int nbBondType, unsigned int *Bonds, unsigned int *BondType, unsigned int nbAngles, unsigned int nbAngleType, unsigned int *Angles, unsigned int *AngleType); // construct AtomicSystem giving AtomList and cell vectors 
 	bool FilenameConstructor(const std::string& filename);
+	void AtomListConstructor(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3); // construct AtomicSystem giving AtomList and cell vectors
 	// getters
 	std::string getAtomType(const unsigned int i){ return this->AtomType[i]; };
 	unsigned int getNbAtomType(){ return this->nbAtomType; };
 	unsigned int getNbAtom(){ return this->nbAtom; }
+	unsigned int getNbBonds(){ return this->nbBonds; }
+	unsigned int getNbAngles(){ return this->nbAngles; }
+	unsigned int *getBonds(){ return this->Bonds; }
+	unsigned int *getMolId(){ return this->MolId; }
+	unsigned int getMolId(unsigned int &i){ return this->MolId[i]; }
+	unsigned int getBondType(unsigned int &i){ return this->BondType[i]; }
+	unsigned int *getAngles(){ return this->Angles; }
+	unsigned int getAngleType(unsigned int &i){ return this->AngleType[i]; }
 	Atom getAtom(const unsigned int Id){ return this->AtomList[Id]; }
 	double* getAux(const unsigned int AuxId){ return this->Aux[AuxId]; }
 	double* getDensityProf(const unsigned int DensityId){ return this->density_prof[DensityId]; }

@@ -57,6 +57,18 @@ private:
 	unsigned int *AtomSite;
 	unsigned int *NbAtomSite; // array such as NbAtomSite[i] = number of site for atom type AtomType[i]
 	bool IsCharge = false;
+	bool IsMolId = false; // is molecule id (atom_style full in LAMMPS)
+	bool IsBond = false; // bond between 2 atoms (e.g. O-H bonds in ice with TIP4P potential)
+	unsigned int nbBonds;
+	unsigned int *MolId; // MolId[i] => index of the molecule of atom i
+	unsigned int *Bonds; // Bonds[i*2] => index-1 of the atom 1 involved in bond i, Bond[i*2+1] => index-1 of atom 2 involved in bond i
+	unsigned int *BondType; // BondType[i] type of the bond i
+	unsigned int nbBondType;
+	bool IsAngle = false; // angle between 3 atoms (e.g. H-O-H angle in ice with TIP4P potential)
+	unsigned int nbAngles;
+	unsigned int nbAngleType;
+	unsigned int *Angles; // Angles[i*3], Angles[i*3+1], Angles[i*3+2], indexes-1 atom 1, 2 and 3 involved in angle i (atom 2 is the center of the angle)
+	unsigned int *AngleType;
 	double *AtomMass;
 	double *AtomCharge;
 	// Cell vectors
@@ -115,6 +127,14 @@ public:
 	const double getVol(){ return this->V; };
 	unsigned int getNbAtom(){ return this->nbAtom; }
 	unsigned int getNbAtomType(){ return this->nbAtomType; }
+	unsigned int getNbBondType(){ return this->nbBondType; }
+	unsigned int getNbAngleType(){ return this->nbAngleType; }
+	unsigned int getNbBond(){ return this->nbBonds; }
+	unsigned int* getBonds(){ return this->Bonds; }
+	unsigned int getBondType(unsigned int& i){ return this->BondType[i]; }
+	unsigned int getAngleType(unsigned int& i){ return this->AngleType[i]; }
+	unsigned int getNbAngle(){ return this->nbAngles; }
+	unsigned int* getAngles(){ return this->Angles; }
 	unsigned int getAtomSite(const unsigned int i){ return this->AtomSite[i]; }
 	const bool getIsMultisite(){ return this->IsMultisite; }
 	unsigned int getNbAtomSite(const unsigned int typeuint){ return this->NbAtomSite[typeuint-1]; }
@@ -127,6 +147,10 @@ public:
 	const double getAtomCharge(const unsigned int typeuint){ return this->AtomCharge[typeuint-1]; }
 	double* getAtomCharge(){ return this->AtomCharge; }
 	const bool getIsCharge(){ return this->IsCharge; }
+	const bool getIsMolId(){ return this->IsMolId; }
+	const unsigned int getMolId(unsigned int &i){ return this->MolId[i]; }
+	const bool getIsBond(){ return this->IsBond; }
+	const bool getIsAngle(){ return this->IsAngle; }
 	AtomicSystem* getOrientedSystem(){ return this->OrientedSystem; } 
 	const double* getRotMat(){ return this->rot_mat_total; };
 	bool getIsDoNotSep(){ return this->IsDoNotSep; }
@@ -148,6 +172,7 @@ public:
 	void RotateCrystal(const int& h_p, const int& k_p, const int& l_p);
 	void RotateCrystal(const double *RotMat);
 	void ConstructNotSepList();
+	void ConstructNotSepListFromMolId();
 	void ConstructOrthogonalCell();
 	void computeStoich();
 	void ChangeTypes(unsigned int *CorresArray);

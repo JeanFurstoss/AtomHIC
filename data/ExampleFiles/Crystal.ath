@@ -2,22 +2,38 @@
 
 CRYSTAL Crystallographic_structure // could be Cubic, Hexagonal, Orthorhombic
 DONOTSEPARE i n_1 j // (optional) do not separe atom of type i from its n_1 first neighbors of atom j during construction of oriented system (free surface) or GBs
-DONOTSEPARE k n_2 l 
+DONOTSEPARE k n_2 l // if the atom style is full (i.e. with molecule id, see below) it will work similarly to the DOTNOTSEPARE feature, meaning that all atoms belonging to a given molecule cannot be separated. A difference is that with a molecule id no neighbour research is done and thus the atoms in the same molecule are linked together nevermind their positions (be aware of bondary conditions when providing atom list) 
 DONOTSEPARE ..
 
-	N atoms // where N is the number of atom in the unit cell motif
-	n atom types // where n is the number of atom type
+	N_a atoms // where N_a is the number of atom in the unit cell motif
+	N_b bonds // where N_b is the number of bonds in the unit cell motif (optional)
+	N_ang angles // where N_ang is the number of angles in the unit cell motif (optional)
+	n_a atom types // where n_a is the number of atom type
+	n_b bond types // where n_b is the number of bond type (optional)
+	n_ang angle types // where n_ang is the number of angle type (optional)
 
 	0.00 a xlo xhi // where a is the first cell parameter
 	0.00 b ylo yhi // where b is the second cell parameter
 	0.00 c zlo zhi // where c is the third cell parameter
+	xy_t xz_t yz_t xy xz yz // where xy_t xz_t and yz_t are the tilt factor of the box (optional, xy_t have to be used for hexagonal crystal, triclinic still needs to be implemented)
+
 Masses
 
 	i masse_i # element_name number_of_site // where masse1 is the mass of element i and number_of_site is the number of crystallographic site for element i (number_of_site can be 0 if you don't know and it can be computed and printed in the file using the ./SaveNonCSCrystalBondOriParam executable)
 	j masse_j ...
 
-Atoms # charge/atomic // charge if the atoms have a charge, else atomic
+Atoms # full/charge/atomic // charge if the atoms have a charge, full if atoms have both charge and molecule ID, else atomic
 
-	N_i n_i (c_i) x_i y_i z_i s_i // N_i id of atom i, n_i element number of atom i, c_i charge (if atoms are charged) of atom i, x_i y_i z_i cartesian coordinates of atom i, s_i crystallographic site of atom i (1-based and increasing from 1 to number of different site) if unknown you can put 1 everywhere
+	N_i (mol_i) n_i (c_i) x_i y_i z_i s_i // N_i id of atom i, mol_i molecule id of atom i (if atoms are full), n_i element number of atom i, c_i charge (if atoms are charged) of atom i, x_i y_i z_i cartesian coordinates of atom i, s_i crystallographic site of atom i (1-based and increasing from 1 to number of different site) if unknown you can put 1 everywhere
 	N_i+1 n_i+1 ..
+
+Bonds // warning it is consider here that bonded atoms belong to a given molecule
+
+	b_i b_t n_i n_j // b_i is the bond id, b_t is the bond type, n_i and n_j are the id of atoms involved in the bond
+	..
+
+Angles // warning it is consider here that "angled" atoms belong to a given molecule
+
+	a_i a_t a_i a_j a_k // a_i is the angle id, a_t is the angle type, a_i, a_j and a_k are the ids of atoms involved in the angle
+	..
 

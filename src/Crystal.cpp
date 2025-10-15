@@ -78,6 +78,7 @@ Crystal::Crystal(const string& crystalName){
 	this->alength[1] = sqrt(pow(this->a2[0],2.)+pow(this->a2[1],2.)+pow(this->a2[2],2.));
 	this->alength[2] = sqrt(pow(this->a3[0],2.)+pow(this->a3[1],2.)+pow(this->a3[2],2.));
 	if( this->IsDoNotSep == true ) ConstructNotSepList();
+	if( this->IsMolId == true ) ConstructNotSepListFromMolId();
 	computeReciproqual();
 	computeStoich();
 	for(unsigned int i=0;i<this->nbAtomType;i++){
@@ -247,6 +248,10 @@ void Crystal::RotateCrystal(const double *RotMat){
 
 
 void Crystal::ConstructNotSepList(){
+	if( IsMolId ){
+		cout << "Warning the DONOTSEPARE tag is used in addition with molecule id (atom_style full) in Crystal " << name << ", the molecule has the priority over the DONOTSEPARE tag which is thus ignored";
+		return;
+	}
 	// construct full neighbor list in a large cutoff radius
 	double arr[3] = {this->alength[0], this->alength[1], this->alength[2]};
 	double rc_squared = pow(this->MT->max(arr,3),2.);
@@ -311,6 +316,31 @@ void Crystal::ConstructNotSepList(){
 			}
 		}
 	}
+}
+
+void Crystal::ConstructNotSepListFromMolId(){
+	this->IsDoNotSep = true;
+	vector<unsigned int> index_notused(nbAtom);
+	for(unsigned int i=0;i<this->nbAtom;i++) index_notused[i] = i;
+	for(unsigned int i=0;i<this->nbAtom;i++){
+		this->NotSepList.push_back(vector<int> ());
+		vector<unsigned int> index_torm;
+		for(unsigned int j=0;j<index_notused.size();j++){
+			if( index_notused[j] == i ){
+				index_notused.erase(index_notused.begin()+j);
+				break;
+			}
+		}
+		for(unsigned int j=0;j<index_notused.size();j++){
+			if( MolId[i] == MolId[index_notused[j]] ){
+				NotSepList[i].push_back(index_notused[j]);
+				index_torm.push_back(j);
+				for(unsigned int d=0;d<3;d++) NotSepList[i].push_back(0); // no boundary conditions to apply
+			}
+		}
+		for(unsigned int j=0;j<index_torm.size();j++) index_notused.erase(index_notused.begin()+index_torm[index_torm.size()-j-1]);
+	}
+
 }
 
 void Crystal::ConstructOrthogonalCell(){
@@ -559,8 +589,9 @@ void Crystal::ComputeOrthogonalPlanesAndDirections(){
 
 void Crystal::read_database(){
 	ifstream file(this->path2database, ios::in);
-	size_t pos_at, pos_x, pos_y, pos_z, pos_attype, pos_Mass, pos_At, pos_Crystal, pos_tilt, pos_DNS, pos_bondori;
-	unsigned int line_Mass(1000), line_At(1000), buffer_uint, buffer_uint_1, buffer_uint_2, count(0), line_bondori(1000), nbref2read(0);
+	size_t pos_at, pos_x, pos_y, pos_z, pos_attype, pos_Mass, pos_At, pos_Crystal, pos_tilt, pos_DNS, pos_bondori, pos_bond, pos_bondtype, pos_angle, pos_angletype, pos_Bond, pos_Angle;
+	unsigned int h_uint = 1e8;
+	unsigned int line_Mass(h_uint), line_At(h_uint), buffer_uint, buffer_uint_1, buffer_uint_2, buffer_uint_3, buffer_uint_4, count(0), line_bondori(h_uint), nbref2read(0), buffer_molid, line_Bond(h_uint), line_Angle(h_uint);
 	double buffer_1, buffer_2, buffer_3, buffer_4;
 	string buffer_s, buffer_s_1, buffer_s_2, line;
 	if(file){
@@ -582,7 +613,36 @@ void Crystal::read_database(){
 				Motif = new Atom[this->nbAtom];
 				this->AtomSite = new unsigned int[this->nbAtom];
 			}
-
+			pos_bond=line.find("bonds");
+			if(pos_bond!=string::npos){
+				istringstream text(line);
+				text >> buffer_uint;
+				this->IsBond = true;
+				this->nbBonds = buffer_uint;
+				Bonds = new unsigned int[nbBonds*2];
+				BondType = new unsigned int[nbBonds];
+			}
+			pos_bondtype=line.find("bond type");
+			if(pos_bondtype!=string::npos){
+				istringstream text(line);
+				text >> buffer_uint;
+				this->nbBondType = buffer_uint;
+			}
+			pos_angle=line.find("angles");
+			if(pos_angle!=string::npos){
+				istringstream text(line);
+				text >> buffer_uint;
+				this->IsAngle = true;
+				this->nbAngles = buffer_uint;
+				Angles = new unsigned int[nbAngles*3];
+				AngleType = new unsigned int[nbAngles];
+			}
+			pos_angletype=line.find("angle type");
+			if(pos_angletype!=string::npos){
+				istringstream text(line);
+				text >> buffer_uint;
+				this->nbAngleType = buffer_uint;
+			}
 			// find H1 vector
 			pos_x=line.find("xlo xhi");
 			if(pos_x!=string::npos){
@@ -657,27 +717,58 @@ void Crystal::read_database(){
 				istringstream text(line);
 				text >> buffer_s_1 >> buffer_s_2 >> buffer_s;
 				if( buffer_s == "charge" ) this->IsCharge = true;
+				else if( buffer_s == "full" ){
+					this->IsMolId = true;
+					MolId = new unsigned int[nbAtom];
+					this->IsCharge = true;
+				}
 			       	line_At = count;
 			}
 			if( count > line_At+1 && count < line_At+nbAtom+2 ){
 				istringstream text(line);
+				text >> buffer_uint;
+				if( this->IsMolId ){
+					text >> buffer_molid;
+					MolId[buffer_uint-1] = buffer_molid;
+				}
+				text >> buffer_uint_1;
 				if( this->IsCharge ){
-					text >> buffer_uint >> buffer_uint_1 >> buffer_1 >> buffer_2 >> buffer_3 >> buffer_4 >> buffer_uint_2;
-					this->Motif[buffer_uint-1].pos.x = buffer_2;
-					this->Motif[buffer_uint-1].pos.y = buffer_3;
-					this->Motif[buffer_uint-1].pos.z = buffer_4;
-					this->Motif[buffer_uint-1].type_uint = buffer_uint_1;
-					this->AtomSite[buffer_uint-1] = buffer_uint_2-1;
+					text >> buffer_1;
 					this->AtomCharge[buffer_uint_1-1] = buffer_1;
-				}else{
-					text >> buffer_uint >> buffer_uint_1 >> buffer_2 >> buffer_3 >> buffer_4 >> buffer_uint_2;
-					this->Motif[buffer_uint-1].pos.x = buffer_2;
-					this->Motif[buffer_uint-1].pos.y = buffer_3;
-					this->Motif[buffer_uint-1].pos.z = buffer_4;
-					this->Motif[buffer_uint-1].type_uint = buffer_uint_1;
-					this->AtomSite[buffer_uint-1] = buffer_uint_2-1;
+				}
+				text >> buffer_2 >> buffer_3 >> buffer_4 >> buffer_uint_2;
+				this->Motif[buffer_uint-1].pos.x = buffer_2;
+				this->Motif[buffer_uint-1].pos.y = buffer_3;
+				this->Motif[buffer_uint-1].pos.z = buffer_4;
+				this->Motif[buffer_uint-1].type_uint = buffer_uint_1;
+				this->AtomSite[buffer_uint-1] = buffer_uint_2-1;
+			}
+			// Read bonds
+			if( IsBond ){
+				pos_Bond=line.find("Bonds");
+				if(pos_Bond!=string::npos) line_Bond = count;
+				if( count > line_Bond+1 && count < line_Bond+nbBonds+2 ){
+					istringstream text(line);
+					text >> buffer_uint >> buffer_uint_1 >> buffer_uint_2 >> buffer_uint_3;
+					BondType[buffer_uint-1] = buffer_uint_1;
+					Bonds[(buffer_uint-1)*2] = buffer_uint_2;
+					Bonds[(buffer_uint-1)*2+1] = buffer_uint_3;
 				}
 			}
+			// Read angles
+			if( IsAngle ){
+				pos_Angle=line.find("Angles");
+				if(pos_Angle!=string::npos) line_Angle = count;
+				if( count > line_Angle+1 && count < line_Angle+nbAngles+2 ){
+					istringstream text(line);
+					text >> buffer_uint >> buffer_uint_1 >> buffer_uint_2 >> buffer_uint_3 >> buffer_uint_4;
+					AngleType[buffer_uint-1] = buffer_uint_1;
+					Angles[(buffer_uint-1)*3] = buffer_uint_2;
+					Angles[(buffer_uint-1)*3+1] = buffer_uint_3;
+					Angles[(buffer_uint-1)*3+2] = buffer_uint_4;
+				}
+			}
+
 			pos_bondori=line.find("REFERENCE_BOND_ORIENTATIONAL_PARAMETERS");
 			if(pos_bondori!=string::npos){
 				line_bondori = count;
@@ -852,6 +943,15 @@ Crystal::~Crystal(){
 	delete[] AtomSite;
 	delete[] AtomCharge;
 	delete[] crystal_def;
+	if( IsBond ){
+		delete[] Bonds;
+		delete[] BondType;
+	}
+	if( IsAngle ){
+		delete[] Angles;
+		delete[] AngleType;
+	}
+	if( IsMolId ) delete[] MolId;
 	if( IsOrientedSystem ) delete OrientedSystem;
 	if( IsReferenceBondOriParam ){
 		for(unsigned int t=0;t<MaxAtomType;t++) ReferenceBondOriParam[t].clear();

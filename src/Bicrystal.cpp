@@ -488,7 +488,6 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 // Constructor for bicrystal with plane GB with given misorientation and GB plane
 Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, double theta, int h_p, int k_p, int l_p, bool rationalize):h_a(h_a), k_a(k_a), l_a(l_a), theta(theta), h_p(h_p), k_p(k_p), l_p(l_p){
 	read_params();
-	bool FullGrains = true; 
 	this->MT = new MathTools;
 	setCrystal(crystalName);
 	string i_a_str(""), i_p_str("");
@@ -567,6 +566,7 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	unsigned int nbAtom2 = this->_MyCrystal2->getOrientedSystem()->getNbAtom();
 	unsigned int nbAtom1_G, nbAtom2_G;
 	this->nbAtom = nbAtom1*dupX1*dupY1 + nbAtom2*dupX2*dupY2;
+	if( nbAtom > 1e6 && FullGrains ) cout << "WARNING: the number of atoms for this GB is high (>1e6), to save memory if needed you can switch the FULL_GRAINS parameter to 0 in FixedParameters.dat" << endl;
 	this->AtomList = new Atom[this->nbAtom];
 	this->H1 = new double[3]; 
 	this->H2 = new double[3]; 
@@ -623,6 +623,60 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	this->AtomCharge = _MyCrystal->getAtomCharge();
 	this->IsCharge = _MyCrystal->getIsCharge();
 	this->IsTilted = false;
+	unsigned int nbMol_G1, nbMol_G2;
+	if( _MyCrystal->getIsMolId() ){
+		IsMolId = true;
+		MolId = new unsigned int[nbAtom];
+		MolId_G1 = new unsigned int[nbAtom1_G];
+		MolId_G2 = new unsigned int[nbAtom2_G];
+		nbMol_G1 = MT->max_p(_MyCrystal->getOrientedSystem()->getMolId(),nbAtom1);
+		nbMol_G2 = MT->max_p(_MyCrystal2->getOrientedSystem()->getMolId(),nbAtom2);
+	}
+	if( _MyCrystal->getIsBond() ){
+		IsBond = true;
+		nbBondType = _MyCrystal->getNbBondType();
+		nbBondType_G1 = _MyCrystal->getNbBondType();
+		nbBondType_G2 = _MyCrystal2->getNbBondType();
+		nbBonds_G1 = _MyCrystal->getOrientedSystem()->getNbBonds();
+		nbBonds_G2 = _MyCrystal2->getOrientedSystem()->getNbBonds();
+		nbBonds = (nbBonds_G1*dupX1*dupY1) + (nbBonds_G2*dupX2*dupY2);
+		Bonds = new unsigned int[nbBonds*2];
+		BondType = new unsigned int[nbBonds];
+		if( FullGrains ){
+			Bonds_G1 = new unsigned int[nbBonds_G1*2*dupX1*dupY1];
+			BondType_G1 = new unsigned int[nbBonds_G1*dupX1*dupY1];
+			Bonds_G2 = new unsigned int[nbBonds_G2*2*dupX2*dupY2];
+			BondType_G2 = new unsigned int[nbBonds_G2*dupX2*dupY2];
+		}else{
+			Bonds_G1 = new unsigned int[nbBonds_G1*2];
+			BondType_G1 = new unsigned int[nbBonds_G1];
+			Bonds_G2 = new unsigned int[nbBonds_G2*2];
+			BondType_G2 = new unsigned int[nbBonds_G2];
+		}
+	}
+	if( _MyCrystal->getIsAngle() ){
+		IsAngle = true;
+		nbAngleType = _MyCrystal->getNbAngleType();
+		nbAngleType_G1 = _MyCrystal->getNbAngleType();
+		nbAngleType_G2 = _MyCrystal2->getNbAngleType();
+		nbAngles_G1 = _MyCrystal->getOrientedSystem()->getNbAngles();
+		nbAngles_G2 = _MyCrystal2->getOrientedSystem()->getNbAngles();
+		nbAngles = (nbAngles_G1*dupX1*dupY1) + (nbAngles_G2*dupX2*dupY2);
+		Angles = new unsigned int[nbAngles*3];
+		AngleType = new unsigned int[nbAngles];
+		if( FullGrains ){
+			Angles_G1 = new unsigned int[nbAngles_G1*3*dupX1*dupY1];
+			AngleType_G1 = new unsigned int[nbAngles_G1*dupX1*dupY1];
+			Angles_G2 = new unsigned int[nbAngles_G2*3*dupX2*dupY2];
+			AngleType_G2 = new unsigned int[nbAngles_G2*dupX2*dupY2];
+		}else{
+			Angles_G1 = new unsigned int[nbAngles_G1*3];
+			AngleType_G1 = new unsigned int[nbAngles_G1];
+			Angles_G2 = new unsigned int[nbAngles_G2*3];
+			AngleType_G2 = new unsigned int[nbAngles_G2];
+		}
+	}
+
 	computeInverseCellVec();
 	// paste the two grains
 	for(unsigned int i=0;i<dupX1;i++){
@@ -631,11 +685,85 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 				this->AtomList[i*dupY1*nbAtom1+j*nbAtom1+n] = this->_MyCrystal->getOrientedSystem()->getAtom(n);
 				this->AtomList[i*dupY1*nbAtom1+j*nbAtom1+n].pos.x = Mx1*(this->AtomList[i*dupY1*nbAtom1+j*nbAtom1+n].pos.x + i*xl1);
 				this->AtomList[i*dupY1*nbAtom1+j*nbAtom1+n].pos.y = My1*(this->AtomList[i*dupY1*nbAtom1+j*nbAtom1+n].pos.y + j*yl1);
-				//this->AtomList[i*dupY1*nbAtom1+j*nbAtom1+n].pos.x = (this->AtomList[i*dupY1*nbAtom1+j*nbAtom1+n].pos.x + i*xl1);
-				//this->AtomList[i*dupY1*nbAtom1+j*nbAtom1+n].pos.y = (this->AtomList[i*dupY1*nbAtom1+j*nbAtom1+n].pos.y + j*yl1);
-				if( !FullGrains && i == 0 && j == 0 ) this->AtomList_G1[n] = this->AtomList[n];
-				else this->AtomList_G1[i*dupY1*nbAtom1+j*nbAtom1+n] = this->AtomList[i*dupY1*nbAtom1+j*nbAtom1+n];
+				if( !FullGrains && i == 0 && j == 0 ){
+					this->AtomList_G1[n] = this->AtomList[n];
+					if( IsMolId ){
+						MolId_G1[n] = (this->_MyCrystal->getOrientedSystem()->getMolId(n));
+						MolId[n] = MolId_G1[n];
+					}
+				}else if( FullGrains ){
+					this->AtomList_G1[i*dupY1*nbAtom1+j*nbAtom1+n] = this->AtomList[i*dupY1*nbAtom1+j*nbAtom1+n];
+					if( IsMolId ){
+						MolId_G1[i*dupY1*nbAtom1+j*nbAtom1+n] = (this->_MyCrystal->getOrientedSystem()->getMolId(n)) + i*dupY1*nbMol_G1 + j*nbMol_G1;
+						MolId[i*dupY1*nbAtom1+j*nbAtom1+n] = MolId_G1[i*dupY1*nbAtom1+j*nbAtom1+n];
+					}
+				}else if( IsMolId ) MolId[i*dupY1*nbAtom1+j*nbAtom1+n] = (this->_MyCrystal->getOrientedSystem()->getMolId(n)) + i*dupY1*nbMol_G1 + j*nbMol_G1;
 				this->AtomList[i*dupY1*nbAtom1+j*nbAtom1+n].pos.z += this->H3_G2[2]+(GBspace/2.);
+				
+			}
+			if( IsBond ){
+				if( !FullGrains && i == 0 && j == 0 ){
+					for(unsigned int n=0;n<nbBonds_G1;n++){
+						for(unsigned int d=0;d<2;d++){
+							Bonds_G1[n*2+d] = _MyCrystal->getOrientedSystem()->getBonds()[n*2+d];
+							Bonds[n*2+d] = Bonds_G1[n*2+d];
+						}
+						BondType_G1[n] = _MyCrystal->getOrientedSystem()->getBondType(n);
+						BondType[n] = BondType_G1[n];
+					}
+				}else if( FullGrains ){
+					unsigned int c_ind = i*dupY1*nbBonds_G1+j*nbBonds_G1;
+					unsigned int c_ind_a = i*dupY1*nbAtom1+j*nbAtom1;
+					for(unsigned int n=0;n<nbBonds_G1;n++){
+						unsigned int c_ind_n = c_ind+n;
+						for(unsigned int d=0;d<2;d++){
+							Bonds_G1[c_ind_n*2+d] = _MyCrystal->getOrientedSystem()->getBonds()[n*2+d] + c_ind_a;
+							Bonds[c_ind_n*2+d] = Bonds_G1[c_ind_n*2+d];
+						}
+						BondType_G1[c_ind_n] = _MyCrystal->getOrientedSystem()->getBondType(n);
+						BondType[c_ind_n] = BondType_G1[c_ind_n];
+					}
+				}else{
+					unsigned int c_ind = i*dupY1*nbBonds_G1+j*nbBonds_G1;
+					unsigned int c_ind_a = i*dupY1*nbAtom1+j*nbAtom1;
+					for(unsigned int n=0;n<nbBonds_G1;n++){
+						unsigned int c_ind_n = c_ind+n;
+						for(unsigned int d=0;d<2;d++) Bonds[c_ind_n*2+d] = _MyCrystal->getOrientedSystem()->getBonds()[n*2+d] + c_ind_a;
+						BondType[c_ind_n] = _MyCrystal->getOrientedSystem()->getBondType(n);
+					}
+				}
+			}
+			if( IsAngle ){
+				if( !FullGrains && i == 0 && j == 0 ){
+					for(unsigned int n=0;n<nbAngles_G1;n++){
+						for(unsigned int d=0;d<3;d++){
+							Angles_G1[n*3+d] = _MyCrystal->getOrientedSystem()->getAngles()[n*3+d];
+							Angles[n*3+d] = Angles_G1[n*3+d];
+						}
+						AngleType_G1[n] = _MyCrystal->getOrientedSystem()->getAngleType(n);
+						AngleType[n] = AngleType_G1[n];
+					}
+				}else if( FullGrains ){
+					unsigned int c_ind = i*dupY1*nbAngles_G1+j*nbAngles_G1;
+					unsigned int c_ind_a = i*dupY1*nbAtom1+j*nbAtom1;
+					for(unsigned int n=0;n<nbAngles_G1;n++){
+						unsigned int c_ind_n = c_ind+n;
+						for(unsigned int d=0;d<3;d++){
+							Angles_G1[c_ind_n*3+d] = _MyCrystal->getOrientedSystem()->getAngles()[n*3+d] + c_ind_a;
+							Angles[c_ind_n*3+d] = Angles_G1[c_ind_n*3+d];
+						}
+						AngleType_G1[c_ind_n] = _MyCrystal->getOrientedSystem()->getAngleType(n);
+						AngleType[c_ind_n] = AngleType_G1[c_ind_n];
+					}
+				}else{
+					unsigned int c_ind = i*dupY1*nbAngles_G1+j*nbAngles_G1;
+					unsigned int c_ind_a = i*dupY1*nbAtom1+j*nbAtom1;
+					for(unsigned int n=0;n<nbAngles_G1;n++){
+						unsigned int c_ind_n = c_ind+n;
+						for(unsigned int d=0;d<3;d++) Angles[c_ind_n*3+d] = _MyCrystal->getOrientedSystem()->getAngles()[n*3+d] + c_ind_a;
+						AngleType[c_ind_n] = _MyCrystal->getOrientedSystem()->getAngleType(n);
+					}
+				}
 			}
 		}
 	}
@@ -645,18 +773,109 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 				this->AtomList[nbAtom1*dupX1*dupY1+i*dupY2*nbAtom2+j*nbAtom2+n] = this->_MyCrystal2->getOrientedSystem()->getAtom(n);
 				this->AtomList[nbAtom1*dupX1*dupY1+i*dupY2*nbAtom2+j*nbAtom2+n].pos.x = Mx2*(this->AtomList[nbAtom1*dupX1*dupY1+i*dupY2*nbAtom2+j*nbAtom2+n].pos.x + i*xl2);
 				this->AtomList[nbAtom1*dupX1*dupY1+i*dupY2*nbAtom2+j*nbAtom2+n].pos.y = My2*(this->AtomList[nbAtom1*dupX1*dupY1+i*dupY2*nbAtom2+j*nbAtom2+n].pos.y + j*yl2);
-				//this->AtomList[nbAtom1*dupX1*dupY1+i*dupY2*nbAtom2+j*nbAtom2+n].pos.x = (this->AtomList[nbAtom1*dupX1*dupY1+i*dupY2*nbAtom2+j*nbAtom2+n].pos.x + i*xl2);
-				//this->AtomList[nbAtom1*dupX1*dupY1+i*dupY2*nbAtom2+j*nbAtom2+n].pos.y = (this->AtomList[nbAtom1*dupX1*dupY1+i*dupY2*nbAtom2+j*nbAtom2+n].pos.y + j*yl2);
-				if( !FullGrains && i == 0 && j == 0 ) this->AtomList_G2[n] = this->AtomList[nbAtom1*dupX1*dupY1+n];
-				else this->AtomList_G2[i*dupY2*nbAtom2+j*nbAtom2+n] = this->AtomList[nbAtom1*dupX1*dupY1+i*dupY2*nbAtom2+j*nbAtom2+n];
-				//this->AtomList[nbAtom1*dupX1*dupY1+i*dupY2*nbAtom2+j*nbAtom2+n].pos.z -= this->H3_G2[2]+(GBspace/2.);
-				//this->AtomList[nbAtom1*dupX1*dupY1+i*dupY2*nbAtom2+j*nbAtom2+n].pos.z += (this->_MyCrystal->getOrientedSystem()->getH3()[2]+GBspace);
+				if( !FullGrains && i == 0 && j == 0 ){
+					this->AtomList_G2[n] = this->AtomList[nbAtom1*dupX1*dupY1+n];
+					if( IsMolId ){
+						MolId_G2[n] = (this->_MyCrystal2->getOrientedSystem()->getMolId(n));
+						MolId[nbAtom1*dupX1*dupY1+n] = MolId_G2[n];
+					}
+				}else if( FullGrains ){
+					this->AtomList_G2[i*dupY2*nbAtom2+j*nbAtom2+n] = this->AtomList[nbAtom1*dupX1*dupY1+i*dupY2*nbAtom2+j*nbAtom2+n];
+					if( IsMolId ){
+						MolId_G2[i*dupY2*nbAtom2+j*nbAtom2+n] = (this->_MyCrystal2->getOrientedSystem()->getMolId(n)) + i*dupY2*nbMol_G2 + j*nbMol_G2;
+						MolId[nbAtom1*dupX1*dupY1+i*dupY2*nbAtom2+j*nbAtom2+n] = MolId_G2[i*dupY2*nbAtom2+j*nbAtom2+n] + nbMol_G1*dupX1*dupY1;
+					}
+				}else if( IsMolId ) MolId[nbAtom1*dupX1*dupY1+i*dupY2*nbAtom2+j*nbAtom2+n] = (this->_MyCrystal2->getOrientedSystem()->getMolId(n)) + i*dupY2*nbMol_G2 + j*nbMol_G2 + nbMol_G1*dupX1*dupY1;
 			}
+			if( IsBond ){
+				if( !FullGrains && i == 0 && j == 0 ){
+					for(unsigned int n=0;n<nbBonds_G2;n++){
+						for(unsigned int d=0;d<2;d++){
+							Bonds_G2[n*2+d] = _MyCrystal2->getOrientedSystem()->getBonds()[n*2+d];
+							Bonds[(n+nbBonds_G1*dupX1*dupY1)*2+d] = Bonds_G2[n*2+d] + nbAtom1*dupX1*dupY1;
+						}
+						BondType_G2[n] = _MyCrystal2->getOrientedSystem()->getBondType(n);
+						BondType[n+nbBonds_G1*dupX1*dupY1] = BondType_G2[n];
+					}
+				}else if( FullGrains ){
+					unsigned int c_ind = i*dupY2*nbBonds_G2+j*nbBonds_G2;
+					unsigned int c_ind_a = i*dupY2*nbAtom2+j*nbAtom2;
+					for(unsigned int n=0;n<nbBonds_G2;n++){
+						unsigned int c_ind_n = c_ind+n;
+						for(unsigned int d=0;d<2;d++){
+							Bonds_G2[c_ind_n*2+d] = _MyCrystal2->getOrientedSystem()->getBonds()[n*2+d] + c_ind_a;
+							Bonds[(c_ind_n+nbBonds_G1*dupX1*dupY1)*2+d] = Bonds_G2[c_ind_n*2+d] + nbAtom1*dupX1*dupY1;
+						}
+						BondType_G2[c_ind_n] = _MyCrystal2->getOrientedSystem()->getBondType(n);
+						BondType[c_ind_n + nbBonds_G1*dupX1*dupY1] = BondType_G2[c_ind_n];
+					}
+				}else{
+					unsigned int c_ind = i*dupY2*nbBonds_G2+j*nbBonds_G2 + nbBonds_G1*dupX1*dupY1;
+					unsigned int c_ind_a = i*dupY2*nbAtom2+j*nbAtom2 + nbAtom1*dupX1*dupY1;
+					for(unsigned int n=0;n<nbBonds_G2;n++){
+						unsigned int c_ind_n = c_ind+n;
+						for(unsigned int d=0;d<2;d++) Bonds[c_ind_n*2+d] = _MyCrystal2->getOrientedSystem()->getBonds()[n*2+d] + c_ind_a;
+						BondType[c_ind_n] = _MyCrystal2->getOrientedSystem()->getBondType(n);
+					}
+				}
+			}
+			if( IsAngle ){
+				if( !FullGrains && i == 0 && j == 0 ){
+					for(unsigned int n=0;n<nbAngles_G2;n++){
+						for(unsigned int d=0;d<3;d++){
+							Angles_G2[n*3+d] = _MyCrystal2->getOrientedSystem()->getAngles()[n*3+d];
+							Angles[(n + nbAngles_G1*dupX1*dupY1)*3+d] = Angles_G2[n*3+d] + nbAtom1*dupX1*dupY1;
+						}
+						AngleType_G2[n] = _MyCrystal2->getOrientedSystem()->getAngleType(n);
+						AngleType[n + nbAngles_G1*dupX1*dupY1] = AngleType_G2[n];
+					}
+				}else if( FullGrains ){
+					unsigned int c_ind = i*dupY2*nbAngles_G2+j*nbAngles_G2;
+					unsigned int c_ind_a = i*dupY2*nbAtom2+j*nbAtom2;
+					for(unsigned int n=0;n<nbAngles_G2;n++){
+						unsigned int c_ind_n = c_ind+n;
+						for(unsigned int d=0;d<3;d++){
+							Angles_G2[c_ind_n*3+d] = _MyCrystal2->getOrientedSystem()->getAngles()[n*3+d] + c_ind_a;
+							Angles[(c_ind_n + nbAngles_G1*dupX1*dupY1)*3+d] = Angles_G2[c_ind_n*3+d] + nbAtom1*dupX1*dupY1;
+						}
+						AngleType_G2[c_ind_n] = _MyCrystal2->getOrientedSystem()->getAngleType(n);
+						AngleType[c_ind_n + nbAngles_G1*dupX1*dupY1] = AngleType_G2[c_ind_n];
+					}
+				}else{
+					unsigned int c_ind = i*dupY2*nbAngles_G2+j*nbAngles_G2 + nbAngles_G1*dupX1*dupY1;
+					unsigned int c_ind_a = i*dupY2*nbAtom2+j*nbAtom2 + nbAtom1*dupX1*dupY1;
+					for(unsigned int n=0;n<nbAngles_G2;n++){
+						unsigned int c_ind_n = c_ind+n;
+						for(unsigned int d=0;d<3;d++) Angles[c_ind_n*3+d] = _MyCrystal2->getOrientedSystem()->getAngles()[n*3+d] + c_ind_a;
+						AngleType[c_ind_n] = _MyCrystal2->getOrientedSystem()->getAngleType(n);
+					}
+				}
+			}
+
 		}
 	}
+
+	if( FullGrains ){
+		nbBonds_G1 *= dupX1*dupY1;	
+		nbBonds_G2 *= dupX2*dupY2;	
+		nbAngles_G1 *= dupX1*dupY1;	
+		nbAngles_G2 *= dupX2*dupY2;	
+	}
+
 	// construct the two grains
-	this->Grain1 = new AtomicSystem(this->AtomList_G1,nbAtom1_G,this->_MyCrystal,this->H1_G1,this->H2_G1,this->H3_G1);
-	this->Grain2 = new AtomicSystem(this->AtomList_G2,nbAtom2_G,this->_MyCrystal2,this->H1_G2,this->H2_G2,this->H3_G2);
+	if( !IsMolId ){
+		this->Grain1 = new AtomicSystem(this->AtomList_G1, nbAtom1_G, this->_MyCrystal, this->H1_G1, this->H2_G1, this->H3_G1);
+		this->Grain2 = new AtomicSystem(this->AtomList_G2, nbAtom2_G, this->_MyCrystal2, this->H1_G2, this->H2_G2, this->H3_G2);
+	}else if( !IsBond ){
+		this->Grain1 = new AtomicSystem(this->AtomList_G1, nbAtom1_G, this->_MyCrystal, this->H1_G1, this->H2_G1, this->H3_G1, this->MolId_G1);
+		this->Grain2 = new AtomicSystem(this->AtomList_G2, nbAtom2_G, this->_MyCrystal2, this->H1_G2, this->H2_G2, this->H3_G2, this->MolId_G2);
+	}else if( !IsAngle ){
+		this->Grain1 = new AtomicSystem(this->AtomList_G1, nbAtom1_G, this->_MyCrystal, this->H1_G1, this->H2_G1, this->H3_G1, this->MolId_G1, nbBonds_G1, nbBondType_G1, this->Bonds_G1,this->BondType_G1);
+		this->Grain2 = new AtomicSystem(this->AtomList_G2, nbAtom2_G, this->_MyCrystal2, this->H1_G2, this->H2_G2, this->H3_G2, this->MolId_G2, nbBonds_G2, nbBondType_G2, this->Bonds_G2,this->BondType_G2);
+	}else{
+		this->Grain1 = new AtomicSystem(this->AtomList_G1, nbAtom1_G, this->_MyCrystal, this->H1_G1, this->H2_G1, this->H3_G1, this->MolId_G1, nbBonds_G1, nbBondType_G1, this->Bonds_G1, this->BondType_G1, nbAngles_G1, nbAngleType_G1, this->Angles_G1, this->AngleType_G1);
+		this->Grain2 = new AtomicSystem(this->AtomList_G2, nbAtom2_G, this->_MyCrystal2, this->H1_G2, this->H2_G2, this->H3_G2, this->MolId_G2, nbBonds_G2, nbBondType_G2, this->Bonds_G2, this->BondType_G2, nbAngles_G2, nbAngleType_G2, this->Angles_G2, this->AngleType_G2);
+	}
 
 	this->AreGrainsDefined = true;
 	string h_a_str = to_string(this->h_a);
@@ -1960,7 +2179,7 @@ void Bicrystal::read_params(){
 	string backslash="/";
 	string filename=fp+backslash+FixedParam_Filename;
 	ifstream file(filename, ios::in);
-	size_t pos_thetamax, pos_MaxHKL, pos_toldist, pos_sigmaMax, pos_tolpos_kC, pos_tolCSLint, pos_tolAlign, pos_rcut, pos_lsph, pos_MaxMisfit, pos_GBSpace, pos_MaxDup;
+	size_t pos_thetamax, pos_MaxHKL, pos_toldist, pos_sigmaMax, pos_tolpos_kC, pos_tolCSLint, pos_tolAlign, pos_rcut, pos_lsph, pos_MaxMisfit, pos_GBSpace, pos_MaxDup, pos_FullGrains;
 	string buffer_s, line;
 	if(file){
 		while(file){
@@ -2015,7 +2234,14 @@ void Bicrystal::read_params(){
 				istringstream text(line);
 				text >> buffer_s >> this->MaxDup;
 			}
-
+			pos_FullGrains=line.find("FULL_GRAINS ");
+			if(pos_FullGrains!=string::npos){
+				istringstream text(line);
+				unsigned int buf;
+				text >> buffer_s >> buf;
+				if( buf == 0 ) FullGrains = false;
+				else FullGrains = true;
+			}
 		}
 	}else{
 		cerr << "Can't read /data/FixedParameters/Fixed_Parameters.dat file !" << endl;
