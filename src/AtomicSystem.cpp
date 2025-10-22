@@ -370,8 +370,6 @@ AtomicSystem::AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double z
 				} // end loop on CL_y
 				if( break_comp) break;
 			} // end loop on CL_x
-			cout << "Final nbBond = " << count_bonds << endl;
-			cout << "Final nbAngle = " << count_angles << endl;
 			// second loop to store atoms which may have not been stored
 			if( count < this->nbAtom-1 ){
 				for(int i=-cla1;i<cla1+1;i++){
@@ -1466,8 +1464,9 @@ void AtomicSystem::printSystem(const string& filename){
 
 bool AtomicSystem::read_lmp_file(const string& filename){
 	ifstream file(filename, ios::in);
-	size_t pos_at, pos_x, pos_y, pos_z, pos_tilt, pos_attype, pos_Mass, pos_At, pos_vel;
-	unsigned int line_Mass(1000), line_At(1000), line_vel(1000), buffer_uint, buffer_uint_1, count(0);
+	size_t pos_at, pos_x, pos_y, pos_z, pos_tilt, pos_attype, pos_Mass, pos_At, pos_vel, pos_bond, pos_bondtype, pos_angle, pos_angletype, pos_Bond, pos_Angle;
+	unsigned int h_uint = 1e8;
+	unsigned int line_Mass(h_uint), line_At(h_uint), line_vel(h_uint), buffer_uint, buffer_uint_1, buffer_uint_2, buffer_uint_3, buffer_uint_4, count(0), buffer_molid, line_Bond(h_uint), line_Angle(h_uint);
 	double buffer_1, buffer_2, buffer_3, buffer_4;
 	double xlo,xhi,ylo,yhi,zlo,zhi;
 	string buffer_s, buffer_s_1, buffer_s_2, line;
@@ -1476,8 +1475,6 @@ bool AtomicSystem::read_lmp_file(const string& filename){
         unsigned int count_at = 0;
 	if(file){
 		while(getline(file,line)){
-			//getline(file,line);
-
 			// find number of atom
 			pos_at=line.find("atoms");
 			if(pos_at!=string::npos){
@@ -1488,6 +1485,37 @@ bool AtomicSystem::read_lmp_file(const string& filename){
 					AtomList = new Atom[this->nbAtom];
 					ReadOk++;
 				}
+			}
+			// manage bonds and angles
+			pos_bond=line.find("bonds");
+			if(pos_bond!=string::npos){
+				istringstream text(line);
+				text >> buffer_uint;
+				this->IsBond = true;
+				this->nbBonds = buffer_uint;
+				Bonds = new unsigned int[nbBonds*2];
+				BondType = new unsigned int[nbBonds];
+			}
+			pos_bondtype=line.find("bond type");
+			if(pos_bondtype!=string::npos){
+				istringstream text(line);
+				text >> buffer_uint;
+				this->nbBondType = buffer_uint;
+			}
+			pos_angle=line.find("angles");
+			if(pos_angle!=string::npos){
+				istringstream text(line);
+				text >> buffer_uint;
+				this->IsAngle = true;
+				this->nbAngles = buffer_uint;
+				Angles = new unsigned int[nbAngles*3];
+				AngleType = new unsigned int[nbAngles];
+			}
+			pos_angletype=line.find("angle type");
+			if(pos_angletype!=string::npos){
+				istringstream text(line);
+				text >> buffer_uint;
+				this->nbAngleType = buffer_uint;
 			}
 
 			// find H1 vector
@@ -1561,9 +1589,33 @@ bool AtomicSystem::read_lmp_file(const string& filename){
 					if( buffer_s == "charge" ) this->IsCharge = true;
 			       		line_At = count;
 					ReadOk++;
+				}else if( buffer_s == "full" ){
+					this->IsMolId = true;
+					MolId = new unsigned int[nbAtom];
+					this->IsCharge = true;
+					ReadOk++;
 				}
+
 			}
 			if( count > line_At+1 && count < line_At+2+this->nbAtom ){
+				//istringstream text(line); //TODO
+				//text >> buffer_uint;
+				//if( this->IsMolId ){
+				//	text >> buffer_molid;
+				//	MolId[buffer_uint-1] = buffer_molid;
+				//}
+				//text >> buffer_uint_1;
+				//if( this->IsCharge ){
+				//	text >> buffer_1;
+				//	this->AtomCharge[buffer_uint_1-1] = buffer_1;
+				//}
+				//text >> buffer_2 >> buffer_3 >> buffer_4 >> buffer_uint_2;
+				//this->Motif[buffer_uint-1].pos.x = buffer_2;
+				//this->Motif[buffer_uint-1].pos.y = buffer_3;
+				//this->Motif[buffer_uint-1].pos.z = buffer_4;
+				//this->Motif[buffer_uint-1].type_uint = buffer_uint_1;
+				//this->AtomSite[buffer_uint-1] = buffer_uint_2-1;
+
 				istringstream text(line);
 				if( this->IsCharge ){
 					text >> buffer_uint >> buffer_uint_1 >> buffer_1 >> buffer_2 >> buffer_3 >> buffer_4;
@@ -1583,6 +1635,32 @@ bool AtomicSystem::read_lmp_file(const string& filename){
 					NbAtRead++;
 				}
 			}
+			// Read bonds
+			if( IsBond ){
+				pos_Bond=line.find("Bonds");
+				if(pos_Bond!=string::npos) line_Bond = count;
+				if( count > line_Bond+1 && count < line_Bond+nbBonds+2 ){
+					istringstream text(line);
+					text >> buffer_uint >> buffer_uint_1 >> buffer_uint_2 >> buffer_uint_3;
+					BondType[buffer_uint-1] = buffer_uint_1;
+					Bonds[(buffer_uint-1)*2] = buffer_uint_2;
+					Bonds[(buffer_uint-1)*2+1] = buffer_uint_3;
+				}
+			}
+			// Read angles
+			if( IsAngle ){
+				pos_Angle=line.find("Angles");
+				if(pos_Angle!=string::npos) line_Angle = count;
+				if( count > line_Angle+1 && count < line_Angle+nbAngles+2 ){
+					istringstream text(line);
+					text >> buffer_uint >> buffer_uint_1 >> buffer_uint_2 >> buffer_uint_3 >> buffer_uint_4;
+					AngleType[buffer_uint-1] = buffer_uint_1;
+					Angles[(buffer_uint-1)*3] = buffer_uint_2;
+					Angles[(buffer_uint-1)*3+1] = buffer_uint_3;
+					Angles[(buffer_uint-1)*3+2] = buffer_uint_4;
+				}
+			}
+
 			pos_vel=line.find("Velocities");
 			if(pos_vel!=string::npos){
 				istringstream text(line);

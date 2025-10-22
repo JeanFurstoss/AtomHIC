@@ -313,6 +313,11 @@ void GMMTools::Initialize(){
 	}
 }
 
+void GMMTools::setSeed(unsigned int &seed){
+        FixedSeed = true;
+        this->seed = seed;
+}
+
 void GMMTools::InitFromKMeans(){
 	if( !IsKMeans ){
 		_MyKMeansTools = new KMeansTools(_nbClust, _dataMat, _nbDat, _dim);
@@ -320,6 +325,7 @@ void GMMTools::InitFromKMeans(){
 	}
 	//time_beg = high_resolution_clock::now();
 	_MyKMeansTools->ReadProperties(current_Properties);
+	if( FixedSeed ) _MyKMeansTools->setSeed(seed);
 	
 	if( InitMethod == "KMEANS" ) _MyKMeansTools->fit();
 	else if( InitMethod == "KMEANSPP" ){

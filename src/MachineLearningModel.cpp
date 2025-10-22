@@ -257,6 +257,47 @@ vector<string> MachineLearningModel::getAvailableDatabases(){
 	return baseAlreadySaved;
 }
 
+void MachineLearningModel::setLabelOrder(vector<string> &label_order){
+        bool isFullyLabelled = true;
+        for(unsigned int f=0;f<nbFilter;f++) isFullyLabelled *= IsLabelled[f];
+
+	if( !isFullyLabelled ){
+		cerr << "The ML model is not labelled, cannot change the order of label, aborting" << endl;
+		exit(EXIT_FAILURE);
+	}
+	if( label_order.size() != nbLabel ){
+		cerr << "The number of provided label is different from the one of the ML model, aborting" << endl;
+		exit(EXIT_FAILURE);
+	}
+	unsigned int *corarr_l = new unsigned int[nbLabel];
+	unsigned int l2ind;
+	for(unsigned int l1=0;l1<nbLabel;l1++){
+		bool found = false;
+		for(unsigned int l2=0;l2<nbLabel;l2++){
+			if( label_order[l1] == Labels[l2] ){
+				found = true;
+				l2ind = l2;
+				break;
+			}
+		}
+		if( !found ){
+			cerr << "The label " << label_order[l1] << " does not correspond to a label of the ML model, aborting" << endl;
+			exit(EXIT_FAILURE);
+		}
+		corarr_l[l2ind] = l1;
+	}
+	for(unsigned int l=0;l<nbLabel;l++) Labels[l] = corarr_l[l];
+	if( IsClassified ){
+		unsigned int nbDatTot = 0;
+		unsigned int newind;
+        	for(unsigned int f=0;f<nbFilter_descriptors;f++) nbDatTot += nbDat[f];
+		for(unsigned int i=0;i<nbDatTot;i++){
+			newind = corarr_l[static_cast<unsigned int>(round(Classificator[i*2]))];
+			Classificator[i*2] = static_cast<double>(newind);
+		}
+	}
+}
+
 MachineLearningModel::~MachineLearningModel(){
 	delete MT;
 	if( this->IsDescriptor ){

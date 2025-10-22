@@ -64,7 +64,7 @@ protected:
 	unsigned int nbFilter; // number of filter (e.g. if filtered by element, the number of element) in the ML model
 	unsigned int nbFilter_descriptors; // number of filter (e.g. if filtered by element, the number of element) of the descriptors
 	// Variables for labelling the model
-	bool IsLabelled = false;
+	std::vector<bool> IsLabelled; // IsLabelled[f] are the data with filter f labelled
 	unsigned int nbLabel;
 
 	unsigned int DescriptorSubarraySize = 1;
@@ -106,6 +106,7 @@ public:
 	double *getClassificator(){ return Classificator; }
 	std::string getFilteringType(){ return FilteringType; }
 	std::vector<std::string> getDescriptorProperties(){ return DescriptorProperties; }
+	void setLabelOrder(std::vector<std::string> &label_order); // change the order of label and the Classificator according to the new order
 protected:
 	unsigned int getCurrentFIndex(std::string filter_value);
 	// destructor

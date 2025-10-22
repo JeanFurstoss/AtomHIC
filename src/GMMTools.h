@@ -85,6 +85,8 @@ private:
 
 	KMeansTools *_MyKMeansTools;
 	bool IsKMeans = false;
+	bool FixedSeed = false;
+	unsigned int seed;
 
 	// FixedParameters
 	std::string FixedParam_Filename = "Fixed_Parameters.dat";
@@ -119,6 +121,7 @@ public:
 	void Initialize();
 	void RandomInit();
 	void InitFromKMeans();
+	void setSeed(unsigned int &seed);
 	
 	// gaussian related methods
 	void computeClusterProb();

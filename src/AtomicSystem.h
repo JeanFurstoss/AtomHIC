@@ -75,7 +75,7 @@ protected:
 	double *G3;
 	bool IsG = false;
 	bool IsElem = false;
-	double timestep; // timestep related to the atomic system (cfg lammps file)
+	double timestep = 0.; // timestep related to the atomic system (cfg lammps file)
 	bool IsCharge = false;
 	bool IsMolId = false; // is molecule id (atom_style full in LAMMPS)
 	bool IsMolIdMine = true; // is molecule id (atom_style full in LAMMPS)

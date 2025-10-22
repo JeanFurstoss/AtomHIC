@@ -114,6 +114,7 @@ void GaussianMixtureModel::TrainModel(unsigned int &_nbClust, std::string filter
 	MyGMMTools[current_f] = new GMMTools(nbClust[current_f],_dataMat,current_nbDat,dim);
 	IsGMMTools[current_f] = true;
 	MyGMMTools[current_f]->ReadProperties(current_Properties);
+	if( FixedSeed ) MyGMMTools[current_f]->setSeed(seed);
 	MyGMMTools[current_f]->fit();
 }
 
@@ -129,6 +130,7 @@ void GaussianMixtureModel::fitOptimalGMM(unsigned int &nbClust_min, unsigned int
 		unsigned int current_nbclust = nbClust_min+n;
 		MyGMMs.push_back(new GMMTools(current_nbclust,_dataMat,current_nbDat,dim));
 		MyGMMs[n]->ReadProperties(current_Properties);
+		if( FixedSeed ) MyGMMs[n]->setSeed(seed);
 	}
 	
 	//pragma
@@ -255,7 +257,13 @@ void GaussianMixtureModel::setGMMTools(string filter_value){
 	if( IsGMMTools[current_f] ) delete MyGMMTools[current_f];
 	MyGMMTools[current_f] = new GMMTools(nbClust[current_f],_dataMat,current_nbDat,dim,weights[current_f],mu[current_f],V[current_f]);
 	MyGMMTools[current_f]->ReadProperties(current_Properties);
+	if( FixedSeed ) MyGMMTools[current_f]->setSeed(seed);
 	IsGMMTools[current_f] = true;
+}
+
+void GaussianMixtureModel::setSeed(unsigned int &seed){
+	FixedSeed = true;
+	this->seed = seed;
 }
 
 void GaussianMixtureModel::ComputeSoftAveLabelProb(string filter_value){
@@ -865,6 +873,7 @@ void GaussianMixtureModel::ReadModelParamFromDatabase(const string &name_of_data
 		}
 		// initialize GMMTools
 		for(unsigned int f=0;f<nbFilter;f++) MyGMMTools[f] = new GMMTools(nbClust[f],dim,weights[f],mu[f],V[f]);
+		if( FixedSeed ) for(unsigned int f=0;f<nbFilter;f++) MyGMMTools[f]->setSeed(seed);
 	}else{
 		cerr << "The database environment \"" << path2base << "\" cannot be openned, aborting" << endl;
 		exit(EXIT_FAILURE);

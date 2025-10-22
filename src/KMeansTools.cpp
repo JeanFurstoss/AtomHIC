@@ -153,15 +153,20 @@ void KMeansTools::AffectData2Cluster(){
 	for(unsigned int i=0;i<_nbDat;i++) _nbDat2Cluster[_Data2Cluster[i]]++;
 }
 
+void KMeansTools::setSeed(unsigned int &seed){
+        FixedSeed = true;
+        this->seed = seed;
+}
+
 void KMeansTools::KMeansPPInitialization(){
 	random_device rd;
-    	mt19937 gen(rd());
+	mt19937 gen;
+    	if( FixedSeed ) gen.seed(seed);
+	else gen.seed(rd());
 	uniform_int_distribution<> distrib(0, _nbDat-1);
 	unsigned int rand_index = distrib(gen);
-	
 	_centroids.row(0) = _dataMat->row(rand_index);
 	_optimal_centroids.row(0) = _centroids.row(0);
-	
 	VectorXd min_distances(_nbDat);
 	for(unsigned int k=1;k<_nbClust;k++){
 		VectorXd new_dists = (_dataMat->rowwise() - _centroids.row(k-1)).rowwise().squaredNorm();

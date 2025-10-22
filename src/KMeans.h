@@ -57,7 +57,6 @@ private:
 
 	std::vector<std::vector<unsigned int>> ClusterLabel;
 	std::vector<long double*> AveLabelProb;
-	std::vector<bool> IsLabelled;
 
 	std::vector<KMeansTools*> MyKMeansTools;
 	std::vector<bool> IsKMeansTools;

@@ -74,7 +74,9 @@ private:
 	double tol_KMeans;
 	unsigned int MaxIter_KMeans;
 	unsigned int nbInit; // number of random initialization (we keep at the end the one with the highest likelihood)
-
+	
+	bool FixedSeed = false;
+	unsigned int seed;
 private:
 	void InitializeKMeansVariables();
 	void InitializeDataVariables();
@@ -90,6 +92,7 @@ public:
 	void KMeansPPInitialization();
 	void ComputeFullVariances();
 	void fit();
+	void setSeed(unsigned int &seed);
 	double ComputeSilhouette();
 
 	// getters

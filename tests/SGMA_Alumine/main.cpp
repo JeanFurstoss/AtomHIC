@@ -46,6 +46,12 @@ int main(int argc, char *argv[])
 		Descriptors MyDescriptors(&MySystem,DescriptorName,ftype);
 		GMM.setDescriptors(&MyDescriptors);
 		GMM.Classify();
+		vector<string> label_order;
+		label_order.push_back("Liquid");
+		label_order.push_back("Gamma");
+		label_order.push_back("FreeSurface");
+		label_order.push_back("Alpha");
+		GMM.setLabelOrder(label_order);
 		MySystem.setAux_vec(GMM.getClassificator(),2,"Struct");
 		MySystem.printSystem_aux("Output.cfg","Struct");
 }

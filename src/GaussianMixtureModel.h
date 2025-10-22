@@ -63,7 +63,6 @@ private:
 	
 	std::vector<std::vector<unsigned int>> ClusterLabel;
 	std::vector<long double*> AveLabelProb;
-	std::vector<bool> IsLabelled;
 
 	std::vector<GMMTools*> MyGMMTools;
 	std::vector<bool> IsGMMTools;
@@ -71,6 +70,8 @@ private:
 	// Variables for the labelling of the GMM
 	double tolLabelSize = .7; // tolerance for warning message for repartition of descriptor in labels
 	double tol2ndProb = .05; // tolerance for warning message for 2nd prob after labeling with the highest prob
+	bool FixedSeed = false;
+	unsigned int seed;
 
 	// FixedParameters
 	double fac_elbow = 0.1; // reduction factor for considering that its is a real elbow
@@ -90,6 +91,7 @@ public:
 	void fitOptimalGMM(unsigned int &_nbClust_min, unsigned int &_nbClust_max, std::string namefile="");
 	void Labelling(std::string filter_value);
 	void Labelling();
+	void setSeed(unsigned int &seed);
 	// specific methods of GMM
 private:
 	void Classify(std::string filter_name);

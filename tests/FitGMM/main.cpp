@@ -46,9 +46,12 @@ int main(int argc, char *argv[])
 	Properties.push_back("GMM_INIT_METHOD KMEANS");
 	Properties.push_back("KMEANS_TOL 1e-5");
 	Properties.push_back("KMEANS_MAX_ITER 1000");
-	Properties.push_back("KMEANS_NB_INIT 10");
+	Properties.push_back("KMEANS_NB_INIT 1");
+	Properties.push_back("ML_RATIO_TEST_TRAIN 0");
 	GMM.ReadProperties(Properties);
 	GMM.setDescriptors(&MyDescriptors);
+	unsigned int seed = 42;
+	GMM.setSeed(seed);
 	unsigned int nmin= 5;
 	unsigned int nmax= 6;
 	GMM.TrainModel(nmin,nmax,true);

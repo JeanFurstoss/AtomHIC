@@ -185,8 +185,8 @@ void Crystal::RotateCrystal(const int& h_p, const int& k_p, const int& l_p){
 	// for rotation around the z axis to align the normal dir with x axis
 	double theta_z, theta_y;
 	if( (h_p == 0) && (k_p == 0) ) theta_z = 0.;
- 	else if( k_p >= 0 ) theta_z = -acos(normalDir[0]/sqrt(pow(normalDir[0],2.)+pow(normalDir[1],2.)));
-	else if( k_p < 0 ) theta_z = acos(normalDir[0]/sqrt(pow(normalDir[0],2.)+pow(normalDir[1],2.))); 
+ 	else if( normalDir[1] >= 0 ) theta_z = -acos(normalDir[0]/sqrt(pow(normalDir[0],2.)+pow(normalDir[1],2.)));
+	else if( normalDir[1] < 0 ) theta_z = acos(normalDir[0]/sqrt(pow(normalDir[0],2.)+pow(normalDir[1],2.))); 
 	rot_axis[0] = 0;
 	rot_axis[1] = 0;
 	rot_axis[2] = 1;
