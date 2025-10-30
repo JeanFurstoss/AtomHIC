@@ -24,6 +24,7 @@
 #**********************************************************************************
 
 # Generic tools
+add_subdirectory(Atomsk)
 add_subdirectory(AnalyzeCSL)
 add_subdirectory(CreateOrientedPlane)
 add_subdirectory(CreateGB)

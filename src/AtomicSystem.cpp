@@ -567,6 +567,287 @@ bool AtomicSystem::FilenameConstructor(const string& filename){
 	return true;
 }
 
+AtomicSystem::AtomicSystem(AtomicSystem *AtSys, unsigned int &nbSys, std::string &dir){
+	nbAtom = 0;
+	nbAtomType = 0;
+	nbBonds = 0;
+	nbBondType = 0;
+	nbAngles = 0;
+	nbAngleType = 0;
+	this->AtomType = new string[this->MaxAtomType];
+	this->AtomMass = new double[this->MaxAtomType];
+	this->AtomCharge = new double[this->MaxAtomType];
+	// get properties of the system
+	IsElem = AtSys[0].getIsElem();
+	vector<unsigned int> *corres_array_elem;
+	IsCharge = AtSys[0].getIsCharge();
+	IsMolId = AtSys[0].getIsMolId();
+	IsBond = AtSys[0].getIsBond();
+	IsAngle = AtSys[0].getIsAngle();
+	IsVel = AtSys[0].getIsVel();
+	if( !IsElem ){
+		cout << "The elements are not defined in the AtomicSystems to merge, we will consider only types (integer based) when merging the systems" << endl;
+		for(unsigned int i=0;i<AtSys[0].getNbAtomType();i++){
+			AtomMass[i] = AtSys[0].getAtomMass(i);
+			if( IsCharge ) AtomCharge[i] = AtSys[0].getAtomCharge(i);
+		}
+	}else corres_array_elem = new vector<unsigned int>[nbSys];
+	IsSetAux = AtSys[0].getIsSetAux();
+	vector<string> Aux_name_temp;
+	vector<unsigned int> Aux_size_temp;
+	vector<unsigned int> *corres_array_aux;
+	if( IsSetAux ){
+		unsigned int beg=0;
+		if( IsVel ){
+			Aux_name_temp.push_back("Velocities");
+			Aux_size_temp.push_back(3);
+			beg = 1;
+		}
+		for(unsigned int n=beg;n<AtSys[0].getNbAux();n++){
+			Aux_name_temp.push_back(AtSys[0].getAux_name(n));
+			Aux_size_temp.push_back(AtSys[0].getAux_size(n));
+		}
+	}
+	
+	this->H1 = new double[3];
+	this->H2 = new double[3];
+	this->H3 = new double[3];
+	for(unsigned int i=0;i<3;i++){
+		this->H1[i] = AtSys[0].getH1()[i];
+		this->H2[i] = AtSys[0].getH2()[i];
+		this->H3[i] = AtSys[0].getH3()[i];
+	}
+	if( dir != "x" && dir != "y" && dir != "z" ){
+		cerr << "Merging direction should be x, y, or z, aborting" << endl;
+		exit(EXIT_FAILURE);
+	}
+	
+	// first loop on number of system to determine the global attribute of the merged system (nbAtom, nbAtomType, nbAux/Bond/Angle..)
+	for(unsigned int i=0;i<nbSys;i++){
+		nbAtom += AtSys[i].getNbAtom();
+		if( i != 0 ){
+			if( dir == "x" ){
+				for(unsigned int d=0;d<3;d++){
+					H1[d] += AtSys[i].getH1()[d];
+					if( H2[d] != AtSys[i].getH2()[d] || H3[d] != AtSys[i].getH3()[d] ) cout << "Warning, the cell vectors in the direction other than the merging one are different between the systems to merge, the ones of the first system provided will be kept for the final merged system" << endl;
+				}
+			}else if( dir == "y" ){
+				for(unsigned int d=0;d<3;d++){
+					H2[d] += AtSys[i].getH2()[d];
+					if( H1[d] != AtSys[i].getH1()[d] || H3[d] != AtSys[i].getH3()[d] ) cout << "Warning, the cell vectors in the direction other than the merging one are different between the systems to merge, the ones of the first system provided will be kept for the final merged system" << endl;
+				}
+			}else{
+				for(unsigned int d=0;d<3;d++){
+					H3[d] += AtSys[i].getH3()[d];
+					if( H2[d] != AtSys[i].getH2()[d] || H1[d] != AtSys[i].getH1()[d] ) cout << "Warning, the cell vectors in the direction other than the merging one are different between the systems to merge, the ones of the first system provided will be kept for the final merged system" << endl;
+				}
+			}
+			// manage aux prop
+			if( IsSetAux ){
+				unsigned int beg = 0;
+				if( IsVel ){
+				       	if( !AtSys[i].getIsVel() ){
+						cout << "All the systems have not velocities defined, in the merged system the velocities will then not be defined" << endl;
+						Aux_name_temp.erase(Aux_name_temp.begin());
+						Aux_size_temp.erase(Aux_size_temp.begin());
+						IsVel = false;
+					}else beg = 1;
+				}
+			        if( !AtSys[i].getIsSetAux() ){
+					cout << "All the systems have not auxiliary properties defined, in the merged system the auxiliary properties will then not be defined" << endl;
+					IsSetAux = false;
+				}else{
+					vector<unsigned int> indextodel;
+					for(unsigned int n=beg;n<Aux_name_temp.size();n++){
+						bool already = false;
+						for(unsigned int n2=0;n2<AtSys[i].getNbAux();n2++){
+							if( Aux_name_temp[n] == AtSys[i].getAux_name(n2) && Aux_size_temp[n] == AtSys[i].getAux_size(n2) ){
+								already = true;
+								break;
+							}
+						}
+						if( !already ){
+							cout << "The auxiliary property " << Aux_name_temp[n] << " is not defined in all system to merge, it will then not be defined in the merged system" << endl;
+							indextodel.push_back(n);
+						}
+					}
+					for(unsigned int n=indextodel.size()-1;n==0;n--){
+						Aux_name_temp.erase(Aux_name_temp.begin()+indextodel[n]);
+						Aux_size_temp.erase(Aux_size_temp.begin()+indextodel[n]);
+					}
+				}
+				if( Aux_name_temp.size() == 0 ) IsSetAux = false;
+			}
+		} // end if i != 0
+
+		if( IsElem ){
+			if( !AtSys[i].getIsElem() ){
+				cout << "Warning, the elements are not defined in all systems, this may cause mislabelling of elements in the merged system" << endl;
+				IsElem = false;
+			}else{
+				for(unsigned int n=0;n<AtSys[i].getNbAtomType();n++){
+					if( !AtSys[i].getIsElem() ) cout << "Warning the elements are not defined in all the AtomicSystems to merge, it may lead to mislabelling of atom type" << endl;
+					if( IsCharge && !AtSys[i].getIsCharge() )  cout << "Warning the charges are not defined in all the AtomicSystems to merge, we will then consider a charge of 0 when it is not defined" << endl;
+					bool already = false;
+					for(unsigned int n2=0;n2<nbAtomType;n2++){
+						if( AtomType[n2] == AtSys[i].getAtomType(n) ){
+							corres_array_elem[i].push_back(n2+1);
+							already = true;
+							break;
+						}
+					}
+					if( !already ){
+						AtomType[nbAtomType] = AtSys[i].getAtomType(n);
+						AtomMass[nbAtomType] = AtSys[i].getAtomMass(n);
+						if( IsCharge ){
+							if( !AtSys[i].getIsCharge() ) AtomCharge[nbAtomType] = 0.;
+							else AtomCharge[nbAtomType] = AtSys[i].getAtomCharge(n);
+						}
+						nbAtomType++;
+						if( nbAtomType >= MaxAtomType ){
+						       cerr << "The number of atom type is higher than the maximum number of atom type allowed (" << MaxAtomType << "), aborting" << endl;
+					       		exit(EXIT_FAILURE);
+						}		
+						corres_array_elem[i].push_back(nbAtomType);
+					}
+				}
+			}
+		}else if( AtSys[i].getNbAtomType() > nbAtomType ){
+			for(unsigned int n=nbAtomType;n<AtSys[i].getNbAtomType();n++){
+				AtomMass[n] = AtSys[i].getAtomMass(n);
+				AtomCharge[n] = AtSys[i].getAtomCharge(n);
+			}
+			nbAtomType = AtSys[i].getNbAtomType();
+		}
+		
+		if( IsMolId && !AtSys[i].getIsMolId() ){
+			cout << "All the systems have not molecule id defined, in the merged system the molecule id will then not be defined" << endl;
+			IsMolId = false;
+			
+		}
+		if( IsBond ){
+			if( !AtSys[i].getIsBond() ){
+				cout << "All the systems have not bonds defined, in the merged system the bonds will then not be defined" << endl;
+				IsBond = false;
+			}else{
+				nbBonds += AtSys[i].getNbBonds();
+				if( AtSys[i].getNbBondType() > nbBondType ) nbBondType = AtSys[i].getNbBondType();
+			}
+		}
+		if( IsAngle ){
+		        if( !AtSys[i].getIsAngle() ){
+				cout << "All the systems have not angles defined, in the merged system the angles will then not be defined" << endl;
+				IsAngle = false;
+			}else{
+				nbAngles += AtSys[i].getNbAngles();
+				if( AtSys[i].getNbAngleType() > nbAngleType ) nbAngleType = AtSys[i].getNbAngleType();
+			}
+
+		}
+	} // end first loop on nbSys
+	
+	// Initialize pointers that depends on nbAtom/Bond/Angle/Aux
+	AtomList = new Atom[nbAtom];
+	if( IsMolId ) MolId = new unsigned int[nbAtom];
+	if( IsBond ){
+		Bonds = new unsigned int[nbBonds*2];
+		BondType = new unsigned int[nbBonds];
+	}
+	if( IsAngle ){
+		Angles = new unsigned int[nbAngles*3];
+		AngleType = new unsigned int[nbAngles];
+	}
+	if( IsSetAux ){
+		corres_array_aux = new vector<unsigned int>[nbSys];
+		unsigned int buffer;
+		for(unsigned int i=0;i<Aux_name_temp.size();i++){
+			for(unsigned int n=0;n<nbSys;n++) corres_array_aux[n].push_back(AtSys[n].getAuxIdAndSize(Aux_name_temp[i],buffer));
+			Aux_name.push_back(Aux_name_temp[i]);
+			Aux_size.push_back(Aux_size_temp[i]);
+			Aux.push_back(new double[nbAtom*Aux_size[i]]);
+		}
+	}
+
+	// Merge the systems
+	unsigned int current_nbAt = 0;
+	unsigned int current_nbBonds = 0;
+	unsigned int current_nbAngles = 0;
+	unsigned int prev_nbAt = 0;
+	unsigned int prev_nbMol = 0;
+	double *current_H = new double[3];
+	for(unsigned int d=0;d<3;d++) current_H[d] = 0.;
+	for(unsigned int i=0;i<nbSys;i++){
+		// Atoms, Molecule Id and Aux
+		for(unsigned int n=0;n<AtSys[i].getNbAtom();n++){
+			if( current_nbAt >= nbAtom ){
+				cerr << "The number of stored atoms exceed the computed number of atom, aborting" << endl;
+				exit(EXIT_FAILURE);
+			}
+			AtomList[current_nbAt] = AtSys[i].getAtom(n);
+			AtomList[current_nbAt].pos.x += current_H[0];
+			AtomList[current_nbAt].pos.y += current_H[1];
+			AtomList[current_nbAt].pos.z += current_H[2];
+			unsigned int curtype = AtomList[current_nbAt].type_uint;
+			if( IsElem ) AtomList[current_nbAt].type_uint = corres_array_elem[i][curtype-1];
+			if( IsMolId ) MolId[current_nbAt] = AtSys[i].getMolId(n) + prev_nbMol;
+			if( IsSetAux ){
+				for(unsigned int a=0;a<Aux.size();a++){
+					for(unsigned int ad=0;ad<Aux_size[a];ad++) Aux[a][current_nbAt*Aux_size[a]+ad] = AtSys[i].getAux(corres_array_aux[i][a])[n];
+				}
+			}
+			current_nbAt++;
+		}
+		if( dir == "x" ) for(unsigned int d=0;d<3;d++) current_H[d] += AtSys[i].getH1()[d];
+		else if( dir == "y" ) for(unsigned int d=0;d<3;d++) current_H[d] += AtSys[i].getH2()[d];
+		else if( dir == "z" ) for(unsigned int d=0;d<3;d++) current_H[d] += AtSys[i].getH3()[d];
+		// Bonds
+		if( IsBond ){
+			for(unsigned int n=0;n<AtSys[i].getNbBonds();n++){
+				if( current_nbBonds >= nbBonds ){
+					cerr << "The number of stored bonds exceed the computed number of bond, aborting" << endl;
+					exit(EXIT_FAILURE);
+				}
+				for(unsigned int d=0;d<2;d++) Bonds[current_nbBonds*2+d] = AtSys[i].getBonds()[n*2+d] + prev_nbAt;
+				BondType[current_nbBonds] = AtSys[i].getBondType(n);
+				current_nbBonds++;
+			}
+		}
+		// Angles
+		if( IsAngle ){
+			for(unsigned int n=0;n<AtSys[i].getNbAngles();n++){
+				if( current_nbAngles >= nbAngles ){
+					cerr << "The number of stored angles exceed the computed number of angle, aborting" << endl;
+					exit(EXIT_FAILURE);
+				}
+				for(unsigned int d=0;d<3;d++) Angles[current_nbAngles*3+d] = AtSys[i].getAngles()[n*3+d] + prev_nbAt;
+				AngleType[current_nbAngles] = AtSys[i].getAngleType(n);
+				current_nbAngles++;
+			}
+		}
+
+		prev_nbAt += AtSys[i].getNbAtom();
+		if( IsMolId ) prev_nbMol += MT->max_p(MolId,current_nbAt);
+	}
+
+	this->MT = new MathTools;
+	this->G1 = new double[3];
+	this->G2 = new double[3];
+	this->G3 = new double[3];
+	this->IsG = true;
+	computeInverseCellVec();
+
+	if( IsElem ){
+		for(unsigned int i=0;i<nbSys;i++) corres_array_elem[i].clear();
+		delete[] corres_array_elem;
+	}
+	if( IsSetAux ){
+		for(unsigned int i=0;i<nbSys;i++) corres_array_aux[i].clear();
+		delete[] corres_array_aux;
+	}
+	delete[] current_H;
+
+}
+
 bool AtomicSystem::ReadAtomicFile(const string &filename){
 	string ext=filename.substr(filename.find_last_of(".") + 1);
 	cout << "Reading " << filename << " file..";
@@ -820,6 +1101,7 @@ void AtomicSystem::UpdateTypes2Crystal(){
 			nbAtomType = type_t2e.size();
 			AtomType = new string[nbAtomType];
 			for(unsigned int t=0;t<nbAtomType;t++) AtomType[type_t2e[t]-1] = element_t2e[t];
+			IsElem = true;
 		}else{
 			cout << "You can provide a Type2Element.ath file giving the correspondance between type and element in the working directory (an example is present in /data/ExampleFiles/)" << endl;
 			cout << "As this file has not been found, we will simply based correspondance with crystal database on type (integer-based) which could lead to dramatic confusion depending on what you are doing" << endl;
@@ -831,25 +1113,27 @@ void AtomicSystem::UpdateTypes2Crystal(){
 	       exit(EXIT_FAILURE);
 	}
 	// we want to allows considering ion types which are not in the crystal (e.g. solute ions)
-	for(unsigned int t=0;t<_MyCrystal->getNbAtomType();t++){
-		if( AtomType[t] != _MyCrystal->getAtomType()[t] ){
-			ok = false;
-			break;
-		}
-	}
-	if( ok ) return;
-	else{
-		// Compute the correspondance array
-		unsigned int *CorresArray = new unsigned int[_MyCrystal->getNbAtomType()];
-		for(unsigned int tc=0;tc<_MyCrystal->getNbAtomType();tc++){
-			for(unsigned int ta=0;ta<nbAtomType;ta++){
-				if( AtomType[ta] == _MyCrystal->getAtomType()[tc] ){
-					CorresArray[tc] = ta;
-					break;
-				}
+	if( IsElem ){
+		for(unsigned int t=0;t<_MyCrystal->getNbAtomType();t++){
+			if( AtomType[t] != _MyCrystal->getAtomType()[t] ){
+				ok = false;
+				break;
 			}
 		}
-		_MyCrystal->ChangeTypes(CorresArray);
+		if( ok ) return;
+		else{
+			// Compute the correspondance array
+			unsigned int *CorresArray = new unsigned int[_MyCrystal->getNbAtomType()];
+			for(unsigned int tc=0;tc<_MyCrystal->getNbAtomType();tc++){
+				for(unsigned int ta=0;ta<nbAtomType;ta++){
+					if( AtomType[ta] == _MyCrystal->getAtomType()[tc] ){
+						CorresArray[tc] = ta;
+						break;
+					}
+				}
+			}
+			_MyCrystal->ChangeTypes(CorresArray);
+		}
 	}
 }
 
@@ -1470,9 +1754,8 @@ bool AtomicSystem::read_lmp_file(const string& filename){
 	double buffer_1, buffer_2, buffer_3, buffer_4;
 	double xlo,xhi,ylo,yhi,zlo,zhi;
 	string buffer_s, buffer_s_1, buffer_s_2, line;
-	bool IsVel = false;
 	unsigned int ReadOk(0), NbAtRead(0), NbVelRead(0);
-        unsigned int count_at = 0;
+        unsigned int count_at(0), nbFields(0);
 	if(file){
 		while(getline(file,line)){
 			// find number of atom
@@ -1578,8 +1861,10 @@ bool AtomicSystem::read_lmp_file(const string& filename){
 				istringstream text(line);
 				text >> buffer_uint >> buffer_1 >> buffer_s_1 >> buffer_s;
 				this->AtomMass[buffer_uint-1] = buffer_1;
-				this->AtomType[buffer_uint-1] = buffer_s;
-				this->IsElem = true;
+				if( buffer_s_1 == "#" ){
+					this->AtomType[buffer_uint-1] = buffer_s;
+					this->IsElem = true;
+				}
 			}
 			pos_At=line.find("Atoms");
 			if(pos_At!=string::npos){
@@ -1587,53 +1872,47 @@ bool AtomicSystem::read_lmp_file(const string& filename){
 				text >> buffer_s_1 >> buffer_s_2 >> buffer_s;
 				if( buffer_s_1 == "Atoms" ){
 					if( buffer_s == "charge" ) this->IsCharge = true;
+					else if( buffer_s == "full" ){
+						this->IsMolId = true;
+						MolId = new unsigned int[this->nbAtom];
+						this->IsCharge = true;
+					}
 			       		line_At = count;
 					ReadOk++;
-				}else if( buffer_s == "full" ){
-					this->IsMolId = true;
-					MolId = new unsigned int[nbAtom];
-					this->IsCharge = true;
-					ReadOk++;
 				}
-
 			}
-			if( count > line_At+1 && count < line_At+2+this->nbAtom ){
-				//istringstream text(line); //TODO
-				//text >> buffer_uint;
-				//if( this->IsMolId ){
-				//	text >> buffer_molid;
-				//	MolId[buffer_uint-1] = buffer_molid;
-				//}
-				//text >> buffer_uint_1;
-				//if( this->IsCharge ){
-				//	text >> buffer_1;
-				//	this->AtomCharge[buffer_uint_1-1] = buffer_1;
-				//}
-				//text >> buffer_2 >> buffer_3 >> buffer_4 >> buffer_uint_2;
-				//this->Motif[buffer_uint-1].pos.x = buffer_2;
-				//this->Motif[buffer_uint-1].pos.y = buffer_3;
-				//this->Motif[buffer_uint-1].pos.z = buffer_4;
-				//this->Motif[buffer_uint-1].type_uint = buffer_uint_1;
-				//this->AtomSite[buffer_uint-1] = buffer_uint_2-1;
-
+			if( count == line_At+2 ){
 				istringstream text(line);
-				if( this->IsCharge ){
-					text >> buffer_uint >> buffer_uint_1 >> buffer_1 >> buffer_2 >> buffer_3 >> buffer_4;
-					this->AtomList[NbAtRead].pos.x = buffer_2;
-					this->AtomList[NbAtRead].pos.y = buffer_3;
-					this->AtomList[NbAtRead].pos.z = buffer_4;
-					this->AtomList[NbAtRead].type_uint = buffer_uint_1;
-					this->AtomCharge[buffer_uint_1-1] = buffer_1;
-					NbAtRead++;
-				}else{
-					text >> buffer_uint >> buffer_uint_1 >> buffer_2 >> buffer_3 >> buffer_4;
-					this->AtomList[NbAtRead].pos.x = buffer_2;
-					this->AtomList[NbAtRead].pos.y = buffer_3;
-					this->AtomList[NbAtRead].pos.z = buffer_4;
-					this->AtomList[NbAtRead].type_uint = buffer_uint_1;
-					this->AtomCharge[buffer_uint_1-1] = 0.;
-					NbAtRead++;
+				while( text >> buffer_s ) nbFields++;
+				if( nbFields == 10 ){
+					IsPeriodicArr = true;
+					PeriodicArr = new int[nbAtom*3];
 				}
+			}	
+
+			if( count > line_At+1 && count < line_At+2+this->nbAtom ){
+				istringstream text(line);
+				text >> buffer_uint;
+				if( buffer_uint > this->nbAtom ){
+					cerr << "An index of atom (" << buffer_uint << ") is higher than the total number of atom (" << this->nbAtom << "), aborting" << endl;
+					exit(EXIT_FAILURE);
+				}
+				if( this->IsMolId ){
+					text >> buffer_molid;
+					MolId[buffer_uint-1] = buffer_molid;
+				}
+				text >> buffer_uint_1;
+				if( this->IsCharge ){
+					text >> buffer_1;
+					this->AtomCharge[buffer_uint_1-1] = buffer_1;
+				}
+				text >> buffer_2 >> buffer_3 >> buffer_4;
+				this->AtomList[buffer_uint-1].pos.x = buffer_2;
+				this->AtomList[buffer_uint-1].pos.y = buffer_3;
+				this->AtomList[buffer_uint-1].pos.z = buffer_4;
+				this->AtomList[buffer_uint-1].type_uint = buffer_uint_1;
+				if( IsPeriodicArr ) for(unsigned int d=0;d<3;d++) text >> PeriodicArr[(buffer_uint-1)*3+d];//buffer_int_1 >> buffer_int_2 >> buffer_int_2;
+				NbAtRead++;
 			}
 			// Read bonds
 			if( IsBond ){
@@ -1642,6 +1921,14 @@ bool AtomicSystem::read_lmp_file(const string& filename){
 				if( count > line_Bond+1 && count < line_Bond+nbBonds+2 ){
 					istringstream text(line);
 					text >> buffer_uint >> buffer_uint_1 >> buffer_uint_2 >> buffer_uint_3;
+					if( buffer_uint > nbBonds ){
+						cerr << "An index of bond (" << buffer_uint << ") is higher than the total number of bond (" << nbBonds << "), aborting" << endl;
+						exit(EXIT_FAILURE);
+					}
+					if( buffer_uint_2 > this->nbAtom || buffer_uint_3 > this->nbAtom ){
+						cerr << "An index of atom in bond (" << buffer_uint << ") is higher than the total number of atom (" << this->nbAtom << "), aborting" << endl;
+						exit(EXIT_FAILURE);
+					}
 					BondType[buffer_uint-1] = buffer_uint_1;
 					Bonds[(buffer_uint-1)*2] = buffer_uint_2;
 					Bonds[(buffer_uint-1)*2+1] = buffer_uint_3;
@@ -1654,6 +1941,14 @@ bool AtomicSystem::read_lmp_file(const string& filename){
 				if( count > line_Angle+1 && count < line_Angle+nbAngles+2 ){
 					istringstream text(line);
 					text >> buffer_uint >> buffer_uint_1 >> buffer_uint_2 >> buffer_uint_3 >> buffer_uint_4;
+					if( buffer_uint > nbAngles ){
+						cerr << "An index of angle (" << buffer_uint << ") is higher than the total number of angle (" << nbAngles << "), aborting" << endl;
+						exit(EXIT_FAILURE);
+					}
+					if( buffer_uint_2 > this->nbAtom || buffer_uint_3 > this->nbAtom || buffer_uint_4 > this->nbAtom ){
+						cerr << "An index of atom in angle (" << buffer_uint << ") is higher than the total number of atom (" << this->nbAtom << "), aborting" << endl;
+						exit(EXIT_FAILURE);
+					}
 					AngleType[buffer_uint-1] = buffer_uint_1;
 					Angles[(buffer_uint-1)*3] = buffer_uint_2;
 					Angles[(buffer_uint-1)*3+1] = buffer_uint_3;
@@ -1667,9 +1962,12 @@ bool AtomicSystem::read_lmp_file(const string& filename){
 				text >> buffer_s;
 				this->Aux_size.push_back(3);
 				this->Aux_name.push_back("Velocities");
-				this->Aux.push_back(new double[3*this->nbAtom]);
+				this->Aux.push_back(nullptr);
+				unsigned int mys = Aux.size();
+				Aux[mys-1] = new double[3*(this->nbAtom+1)]; // I don't know why I should use nbAtom+1 here but if not there is a sysmalloc error
 			       	line_vel = count;
 				IsVel = true;
+				IsSetAux = true;
 			}
 			count += 1;
 			if( !file ) break;
@@ -1679,6 +1977,13 @@ bool AtomicSystem::read_lmp_file(const string& filename){
 		this->H1[0] = xhi-xlo;
 		this->H2[1] = yhi-ylo;
 		this->H3[2] = zhi-zlo;
+		if( IsPeriodicArr ){
+			for(unsigned int i=0;i<nbAtom;i++){
+				this->AtomList[i].pos.x += H1[0]*PeriodicArr[i*3] + H2[0]*PeriodicArr[i*3+1] + H3[0]*PeriodicArr[i*3+2];
+				this->AtomList[i].pos.y += H1[1]*PeriodicArr[i*3] + H2[1]*PeriodicArr[i*3+1] + H3[1]*PeriodicArr[i*3+2];
+				this->AtomList[i].pos.z += H1[2]*PeriodicArr[i*3] + H2[2]*PeriodicArr[i*3+1] + H3[2]*PeriodicArr[i*3+2];
+			}
+		}
 		ifstream file2;
 		file2.open(filename.c_str(), ifstream::in);
 		count = 0;
@@ -1687,9 +1992,13 @@ bool AtomicSystem::read_lmp_file(const string& filename){
 				if( IsVel && count > line_vel+1 && count < line_vel+2+this->nbAtom ){
 					istringstream text2(line);
 					text2 >> buffer_uint_1 >> buffer_1 >> buffer_2 >> buffer_3;	
-					this->Aux[0][(NbVelRead)*3] = buffer_1;
-					this->Aux[0][(NbVelRead)*3+1] = buffer_2;
-					this->Aux[0][(NbVelRead)*3+2] = buffer_3;
+					if( buffer_uint_1 > this->nbAtom ){
+						cerr << "An index of velocity (" << buffer_uint_1 << ") is higher than the total number of atom (" << this->nbAtom << "), aborting" << endl;
+						exit(EXIT_FAILURE);
+					}
+					this->Aux[0][(buffer_uint_1)*3] = buffer_1;
+					this->Aux[0][(buffer_uint_1)*3+1] = buffer_2;
+					this->Aux[0][(buffer_uint_1)*3+2] = buffer_3;
 					NbVelRead++;
 				}
 				count++;
@@ -1703,10 +2012,8 @@ bool AtomicSystem::read_lmp_file(const string& filename){
 	}
 	if( ReadOk == 5 ){
 		if( NbAtRead == this->nbAtom ){
-			if( IsVel && NbVelRead == this->nbAtom ){
-				cout << "done !" << endl;
-				return true;
-			}else{
+			if( IsVel && NbVelRead == this->nbAtom ) return true;
+			else{
 				if( IsVel ) cout << "warning ! the number of atomic velocities provided does not correspond to the number of atom" << endl;
 				return true;
 			}
@@ -2233,6 +2540,10 @@ void AtomicSystem::print_lmp(const string& filename){
 		writefile << "\nAtoms # atomic\n\n";
 		for(unsigned int i=0;i<this->nbAtom;i++) writefile << i+1 << "\t" << this->AtomList[i].type_uint << "\t" << this->AtomList[i].pos.x << "\t" << this->AtomList[i].pos.y << "\t" << this->AtomList[i].pos.z << "\n"; 
 	}
+	if( IsVel ){
+		writefile << "\nVelocities\n\n";
+		for(unsigned int i=0;i<nbAtom;i++) writefile << i+1 << "\t" << Aux[0][(i*3)] << "\t" << Aux[0][(i*3)+1] << "\t" << Aux[0][(i*3)+2] << "\n";
+	}
 	if( IsBond ){
 		writefile << "\nBonds\n\n";
 		for(unsigned int i=0;i<nbBonds;i++) writefile << i+1 << "\t" << BondType[i] << "\t" << Bonds[i*2] << "\t" << Bonds[i*2+1] << "\n";
@@ -2257,12 +2568,27 @@ void AtomicSystem::print_cfg(const string& filename){
 	       	writefile << "BOX BOUNDS xy xz yz pp pp pp\n" << this->MT->min(arr,4) << "\t" << this->H1[0]+this->MT->max(arr,4) << "\t" << H2[0] << "\n" << this->MT->min(arr_2,2) << "\t" << this->H2[1]+this->MT->max(arr_2,2) << "\t" << H3[0] << "\n0\t" << H3[2] << "\t" << H3[1] << "\n";
 	}
 	else writefile << "BOX BOUNDS pp pp pp\n" << "0\t" << H1[0] << "\n0\t" << H2[1] << "\n0\t" << H3[2] << "\n";
-	if(IsElem ){
-		writefile << "ITEM: ATOMS id type element xu yu zu q\n";
-		for(unsigned int i=0;i<this->nbAtom;i++) writefile << i+1 << " " << this->AtomList[i].type_uint << " " << this->AtomType[this->AtomList[i].type_uint-1] << " " << this->AtomList[i].pos.x << " " << this->AtomList[i].pos.y << " " << this->AtomList[i].pos.z << " " << this->AtomCharge[this->AtomList[i].type_uint-1] << "\n";
+	if( IsMolId ){
+		writefile << "ITEM: ATOMS id mol type element xu yu zu q\n";
+		for(unsigned int i=0;i<this->nbAtom;i++) writefile << i+1 << " " << this->MolId[i] << " " << this->AtomList[i].type_uint << " " << this->AtomType[this->AtomList[i].type_uint-1] << " " << this->AtomList[i].pos.x << " " << this->AtomList[i].pos.y << " " << this->AtomList[i].pos.z << " " << this->AtomCharge[this->AtomList[i].type_uint-1] << "\n";
+	}else if( IsElem ){
+		writefile << "ITEM: ATOMS id type element xu yu zu";
+		if( IsCharge ) writefile << " q";
+		writefile << "\n";
+		for(unsigned int i=0;i<this->nbAtom;i++){
+			writefile << i+1 << " " << this->AtomList[i].type_uint << " " << this->AtomType[this->AtomList[i].type_uint-1] << " " << this->AtomList[i].pos.x << " " << this->AtomList[i].pos.y << " " << this->AtomList[i].pos.z;
+		       if( IsCharge ) writefile	<< " " << this->AtomCharge[this->AtomList[i].type_uint-1];
+		       writefile << "\n";
+		}
 	}else{
-		writefile << "ITEM: ATOMS id type xu yu zu q\n";
-		for(unsigned int i=0;i<this->nbAtom;i++) writefile << i+1 << " " << this->AtomList[i].type_uint << " " << this->AtomList[i].pos.x << " " << this->AtomList[i].pos.y << " " << this->AtomList[i].pos.z << " " << this->AtomCharge[this->AtomList[i].type_uint-1] << "\n";
+		writefile << "ITEM: ATOMS id type xu yu zu";
+		if( IsCharge ) writefile << " q";
+		writefile << "\n";
+		for(unsigned int i=0;i<this->nbAtom;i++){
+			writefile << i+1 << " " << this->AtomList[i].type_uint << " " << this->AtomList[i].pos.x << " " << this->AtomList[i].pos.y << " " << this->AtomList[i].pos.z;
+		       if( IsCharge ) writefile	<< " " << this->AtomCharge[this->AtomList[i].type_uint-1];
+		       writefile << "\n";
+		}
 	}
 	writefile.close();
 	cout << "File " << filename << " successfully writted !" << endl;
@@ -2297,7 +2623,34 @@ void AtomicSystem::printSystem_aux(const string& filename, const string& AuxName
 	       	writefile << "BOX BOUNDS xy xz yz pp pp pp\n" << this->MT->min(arr,4) << "\t" << this->H1[0]+this->MT->max(arr,4) << "\t" << H2[0] << "\n" << this->MT->min(arr_2,2) << "\t" << this->H2[1]+this->MT->max(arr_2,2) << "\t" << H3[0] << "\n0\t" << H3[2] << "\t" << H3[1] << "\n";
 	}
 	else writefile << "BOX BOUNDS pp pp pp\n" << "0\t" << H1[0] << "\n0\t" << H2[1] << "\n0\t" << H3[2] << "\n";
-	if( IsElem ){
+	if( IsMolId ){
+		writefile << "ITEM: ATOMS id mol type element xu yu zu";
+		if( this->IsCharge ) writefile << " q";
+        	for(unsigned int i=0;i<AuxId.size();i++){
+			if( Aux_size[AuxId[i]] == 1 ) writefile << " " << this->Aux_name[AuxId[i]];
+			else for(unsigned int j=0;j<Aux_size[AuxId[i]];j++) writefile << " " << this->Aux_name[AuxId[i]] << "[" << j+1 << "]";
+		}
+		writefile << "\n";
+		if( this->IsCharge ){
+			for(unsigned int i=0;i<this->nbAtom;i++){
+				writefile << i+1 << " " << this->MolId[i] << " " << this->AtomList[i].type_uint << " " << this->AtomType[this->AtomList[i].type_uint-1] << " " << this->AtomList[i].pos.x << " " << this->AtomList[i].pos.y << " " << this->AtomList[i].pos.z << " " << this->AtomCharge[this->AtomList[i].type_uint-1];
+        			for(unsigned int j=0;j<AuxId.size();j++){
+					if( Aux_size[AuxId[j]] == 1 ) writefile << " " << this->Aux[AuxId[j]][i];
+					else for(unsigned int k=0;k<Aux_size[AuxId[j]];k++) writefile << " " << this->Aux[AuxId[j]][i*Aux_size[AuxId[j]]+k];
+				}
+				writefile << "\n";
+			}
+		}else{
+			for(unsigned int i=0;i<this->nbAtom;i++){
+				writefile << i+1 << " " << this->AtomList[i].type_uint << " " << this->AtomType[this->AtomList[i].type_uint-1] << " " << this->AtomList[i].pos.x << " " << this->AtomList[i].pos.y << " " << this->AtomList[i].pos.z;
+        			for(unsigned int j=0;j<AuxId.size();j++){
+					if( Aux_size[AuxId[j]] == 1 ) writefile << " " << this->Aux[AuxId[j]][i];
+					else for(unsigned int k=0;k<Aux_size[AuxId[j]];k++) writefile << " " << this->Aux[AuxId[j]][i*Aux_size[AuxId[j]]+k];
+				}
+				writefile << "\n";
+			}
+		}
+	}else if( IsElem ){
 		writefile << "ITEM: ATOMS id type element xu yu zu";
 		if( this->IsCharge ) writefile << " q";
         	for(unsigned int i=0;i<AuxId.size();i++){
@@ -2415,15 +2768,147 @@ unsigned int AtomicSystem::getAuxIdAndSize(std::string auxname, unsigned int &si
 	return ind; 
 }
 
-// Applyshift
 void AtomicSystem::ApplyShift(const double& shift_x, const double& shift_y, const double& shift_z){
-	if (this->AtomList == nullptr || this->nbAtom == 0) return;
 	for(unsigned int i = 0; i < this->nbAtom; i++){
 		this->AtomList[i].pos.x += shift_x;
 		this->AtomList[i].pos.y += shift_y;
 		this->AtomList[i].pos.z += shift_z;
 	}
 }
+
+void AtomicSystem::duplicate(const unsigned int& nx, const unsigned int& ny, const unsigned int& nz){
+	if( nx == 0 || ny == 0 || nz == 0 ){
+		cerr << "Cannot duplicate if one value is equal to zero, aborting" << endl;
+		exit(EXIT_FAILURE);
+	}
+	// TODO manage when IsAtomListMine is false and replace in bicrystal constructor with this method
+	if( !IsAtomListMine ){
+		cerr << "The AtomList array does not belong to the AtomicSystem object, cannot duplicate (to be implemented), aborting" << endl;
+		exit(EXIT_FAILURE);
+	}
+	cout << "Duplicating the system (" << nx << "," << ny << "," << nz << ")" << endl;
+	
+	unsigned int new_nbAtom = this->nbAtom*nx*ny*nz;
+	Atom *AtomList_temp = new Atom[nbAtom];
+	for(unsigned int i=0;i<nbAtom;i++) AtomList_temp[i] = AtomList[i];
+	delete[] AtomList;
+	AtomList = new Atom[new_nbAtom];
+	unsigned int new_nbBonds, new_nbAngles, nbMol;
+	unsigned int *MolId_temp, *Bonds_temp, *BondType_temp, *Angles_temp, *AngleType_temp;
+	vector<double*> Aux_temp;
+	if( IsMolId ){
+		MolId_temp = new unsigned int[nbAtom];
+		for(unsigned int i=0;i<nbAtom;i++) MolId_temp[i] = MolId[i];
+		nbMol = MT->max_p(MolId,nbAtom);
+		delete[] MolId;
+		MolId = new unsigned int[new_nbAtom];
+	}
+	if( IsBond ){
+		new_nbBonds = nbBonds*nx*ny*nz;
+		Bonds_temp = new unsigned int[nbBonds*2];
+		BondType_temp = new unsigned int[nbBonds];
+		for(unsigned int i=0;i<nbBonds;i++){
+			for(unsigned int d=0;d<2;d++) Bonds_temp[i*2+d] = Bonds[i*2+d];
+			BondType_temp[i] = BondType[i];
+		}
+		delete[] Bonds;
+		delete[] BondType;
+		Bonds = new unsigned int[new_nbBonds*2];
+		BondType = new unsigned int[new_nbBonds];
+	}
+	if( IsAngle ){
+		new_nbAngles = nbAngles*nx*ny*nz;
+		Angles_temp = new unsigned int[nbAngles*3];
+		AngleType_temp = new unsigned int[nbAngles];
+		for(unsigned int i=0;i<nbAngles;i++){
+			for(unsigned int d=0;d<3;d++) Angles_temp[i*3+d] = Angles[i*3+d];
+			AngleType_temp[i] = AngleType[i];
+		}
+		delete[] Angles;
+		delete[] AngleType;
+		Angles = new unsigned int[new_nbAngles*3];
+		AngleType = new unsigned int[new_nbAngles];
+	}
+	if( IsSetAux ){
+		for(unsigned int i=0;i<Aux.size();i++){
+			Aux_temp.push_back(new double[(nbAtom)*Aux_size[i]]);
+			for(unsigned int n=0;n<nbAtom;n++){
+				for(unsigned int d=0;d<Aux_size[i];d++) Aux_temp[i][n*Aux_size[i]+d] = Aux[i][n*Aux_size[i]+d];
+			}
+		}
+		for(unsigned int i=0;i<Aux.size();i++){
+			delete[] Aux[i];
+			Aux[i] = new double[(new_nbAtom)*Aux_size[i]];
+		}
+	}
+	
+	unsigned int ind, ind_a;
+	for(unsigned int i=0;i<nx;i++){
+		for(unsigned int j=0;j<ny;j++){
+			for(unsigned int k=0;k<nz;k++){
+				ind = i*ny*nz*nbAtom + j*nz*nbAtom + k*nbAtom;
+				for(unsigned int n=0;n<nbAtom;n++){
+					ind_a = ind + n;
+					AtomList[ind_a] = AtomList_temp[n];
+					AtomList[ind_a].pos.x += i*H1[0] + j*H2[0] + k*H3[0];
+					AtomList[ind_a].pos.y += i*H1[1] + j*H2[1] + k*H3[1];
+					AtomList[ind_a].pos.z += i*H1[2] + j*H2[2] + k*H3[2];
+					if( IsMolId ) MolId[ind_a] = MolId_temp[n] + i*ny*nz*nbMol + j*nz*nbMol + k*nbMol;
+					if( IsSetAux ){
+						for(unsigned int a=0;a<Aux_temp.size();a++){
+							for(unsigned int d=0;d<Aux_size[a];d++) Aux[a][ind_a*Aux_size[a]+d] = Aux_temp[a][n*Aux_size[a]+d];
+						}
+					}
+				}
+				if( IsBond ){
+					ind = i*ny*nz*nbBonds+j*nz*nbBonds+k*nbBonds;
+					ind_a = i*ny*nz*nbAtom + j*nz*nbAtom + k*nbAtom;
+					for(unsigned int n=0;n<nbBonds;n++){
+						unsigned int c_ind_n = ind+n;
+						for(unsigned int d=0;d<2;d++) Bonds[c_ind_n*2+d] = Bonds_temp[n*2+d] + ind_a;
+						BondType[c_ind_n] = BondType_temp[n];
+					}
+				}
+				if( IsAngle ){
+					ind = i*ny*nz*nbAngles+j*nz*nbAngles+k*nbAngles;
+					ind_a = i*ny*nz*nbAtom + j*nz*nbAtom + k*nbAtom;
+					for(unsigned int n=0;n<nbAngles;n++){
+						unsigned int c_ind_n = ind+n;
+						for(unsigned int d=0;d<3;d++) Angles[c_ind_n*3+d] = Angles_temp[n*3+d] + ind_a;
+						AngleType[c_ind_n] = AngleType_temp[n];
+					}
+				}
+			}
+		}
+	}
+	nbAtom = new_nbAtom;
+	delete[] AtomList_temp;
+	if( IsMolId ) delete[] MolId_temp;
+	if( IsBond ){
+		nbBonds = new_nbBonds;
+		delete[] Bonds_temp;
+		delete[] BondType_temp;
+	}
+	if( IsAngle ){
+		nbAngles = new_nbAngles;
+		delete[] Angles_temp;
+		delete[] AngleType_temp;
+	}
+	if( IsSetAux ) for(unsigned int i=0;i<Aux_temp.size();i++) delete[] Aux_temp[i];
+	
+	for(unsigned int i=0;i<3;i++){
+		this->H1[i] *= nx;
+		this->H2[i] *= ny;
+		this->H3[i] *= nz;
+	}
+	computeInverseCellVec();
+
+	if( this->IsWrappedPos ){
+		delete[] WrappedPos;
+		this->IsWrappedPos = false;
+	}
+}
+
 
 AtomicSystem::~AtomicSystem(){
 	if( this->IsAtomListMine ){
@@ -2464,6 +2949,7 @@ AtomicSystem::~AtomicSystem(){
 		delete[] Angles;
 		delete[] AngleType;
 	}
+	if( IsPeriodicArr ) delete[] PeriodicArr;
 }
 
 

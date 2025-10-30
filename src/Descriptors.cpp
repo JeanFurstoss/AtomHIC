@@ -153,6 +153,10 @@ void Descriptors::ConstructFilterIndexArray(AtomicSystem *_MySystem){
 				cout << "You can provide a Type2Element.ath file giving the correspondance between type and element in the working directory (an example is present in /data/ExampleFiles/)" << endl;
 				cout << "As this file has not been found, we will simply filter the descriptors by type which could lead to dramatic confusion depending on what you are doing" << endl;
 				FilteringType = "type";
+				for(unsigned int f=0;f<nbFilter;f++){
+					nbDat.push_back(0);
+					FilterValue[f] = f+1;
+				}
 			}
 		}else{
 			for(unsigned int f=0;f<nbFilter;f++){
@@ -161,7 +165,7 @@ void Descriptors::ConstructFilterIndexArray(AtomicSystem *_MySystem){
 			}
 			FilteringType = "element";
 		}
-		for(unsigned int i=0;i<nbDatTot;i++) nbDat[_MySystem->getAtom(i).type_uint-1]++;
+		for(unsigned int i=0;i<nbDatTot;i++) nbDat[_MySystem->getAtom(i).type_uint-1]++; 
 		nbDatMax = MT->max_vec(nbDat);
 		FilterIndex = new unsigned int[nbDatMax*nbFilter];
 		DescriptorFilter = new unsigned int[nbDatTot];

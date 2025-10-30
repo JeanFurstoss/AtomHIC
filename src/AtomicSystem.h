@@ -52,7 +52,7 @@ class ATOMHIC_EXPORT AtomicSystem {
 protected:
 	unsigned int nbAtom;
 	unsigned int nbAtomType;
-	unsigned int MaxAtomType=15;
+	unsigned int MaxAtomType=100;
 	std::string *AtomType; // the different atom species present in the system
 	double *AtomMass;
 	double *AtomCharge;
@@ -75,30 +75,33 @@ protected:
 	double *G3;
 	bool IsG = false;
 	bool IsElem = false;
+	bool IsVel = false;
 	double timestep = 0.; // timestep related to the atomic system (cfg lammps file)
 	bool IsCharge = false;
 	bool IsMolId = false; // is molecule id (atom_style full in LAMMPS)
 	bool IsMolIdMine = true; // is molecule id (atom_style full in LAMMPS)
 	bool IsBond = false; // bond between 2 atoms (e.g. O-H bonds in ice with TIP4P potential)
 	bool IsBondMine = true; // bond between 2 atoms (e.g. O-H bonds in ice with TIP4P potential)
-	unsigned int nbBonds;
+	unsigned int nbBonds = 0;
 	unsigned int *MolId; // MolId[i] => index of the molecule of atom i
 	unsigned int *Bonds; // Bonds[i*2] => index-1 of the atom 1 involved in bond i, Bond[i*2+1] => index-1 of atom 2 involved in bond i
 	unsigned int *BondType; // BondType[i] type of the bond i
-	unsigned int nbBondType;
+	unsigned int nbBondType = 0;
 	bool IsAngle = false; // angle between 3 atoms (e.g. H-O-H angle in ice with TIP4P potential)
 	bool IsAngleMine = true; // angle between 3 atoms (e.g. H-O-H angle in ice with TIP4P potential)
-	unsigned int nbAngles;
-	unsigned int nbAngleType;
+	unsigned int nbAngles = 0;
+	unsigned int nbAngleType = 0;
 	unsigned int *Angles; // Angles[i*3], Angles[i*3+1], Angles[i*3+2], indexes-1 atom 1, 2 and 3 involved in angle i (atom 2 is the center of the angle)
 	unsigned int *AngleType;
+	bool IsPeriodicArr = false; // .data file of LAMMPS write_data containing info on how apply BC for bonds/angles to be effective
+	int *PeriodicArr; // PeriodicArr[i*3+d] = times to apply the PC in d cell vector for atom i to be at the write place for bonds and angles to be preserved
 	bool IsTilted = false;
 	bool IsCrystalDefined = false;
 	bool IsCrystalMine = false;
 	bool FilenameConstructed = false;
 	bool AtomListConstructed = false;
 	Crystal *_MyCrystal;	
-	std::vector<double*> Aux; // auxiliary atom properties
+	std::vector<double*> Aux; // auxiliary atom properties => Aux[a][i*Aux_size[a]+d] = dimension d (over Aux_size[a]) of the auxiliary property with name Aux_name[a] of atom i
 	std::vector<unsigned int> Aux_size; // size of auxiliary atom properties
 	bool IsSetAux = false;
 	std::vector<std::string> Aux_name; // auxiliary atom properties
@@ -116,6 +119,7 @@ public:
 	AtomicSystem(){};
 	AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double zhi, std::vector<int> cl_box); // construct atomic system from crystal and cell size
 	AtomicSystem(const std::string& filename); // construct AtomicSystem by reading file
+	AtomicSystem(AtomicSystem *AtSys, unsigned int &nbSys, std::string &dir); // construct AtomicSystem with multiple AtomicSystems by merging along a given direction (to be used for replacing bicrystal construction in addition with the new duplicate method)
 	AtomicSystem(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3); // construct AtomicSystem giving AtomList and cell vectors 
 	AtomicSystem(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3, unsigned int *MolId); // construct AtomicSystem giving AtomList and cell vectors 
 	AtomicSystem(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3, unsigned int *MolId, unsigned int nbBonds, unsigned int nbBondType, unsigned int *Bonds, unsigned int *BondType); // construct AtomicSystem giving AtomList and cell vectors 
@@ -124,10 +128,14 @@ public:
 	void AtomListConstructor(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3); // construct AtomicSystem giving AtomList and cell vectors
 	// getters
 	std::string getAtomType(const unsigned int i){ return this->AtomType[i]; };
+	double getAtomMass(const unsigned int i){ return this->AtomMass[i]; };
+	double getAtomCharge(const unsigned int i){ return this->AtomCharge[i]; };
 	unsigned int getNbAtomType(){ return this->nbAtomType; };
 	unsigned int getNbAtom(){ return this->nbAtom; }
 	unsigned int getNbBonds(){ return this->nbBonds; }
+	unsigned int getNbBondType(){ return this->nbBondType; }
 	unsigned int getNbAngles(){ return this->nbAngles; }
+	unsigned int getNbAngleType(){ return this->nbAngleType; }
 	unsigned int *getBonds(){ return this->Bonds; }
 	unsigned int *getMolId(){ return this->MolId; }
 	unsigned int getMolId(unsigned int &i){ return this->MolId[i]; }
@@ -136,6 +144,9 @@ public:
 	unsigned int getAngleType(unsigned int &i){ return this->AngleType[i]; }
 	Atom getAtom(const unsigned int Id){ return this->AtomList[Id]; }
 	double* getAux(const unsigned int AuxId){ return this->Aux[AuxId]; }
+	unsigned int getNbAux(){ return this->Aux.size(); }
+	unsigned int getAux_size(unsigned int &i){ return this->Aux_size[i]; }
+	std::string getAux_name(unsigned int &i){ return this->Aux_name[i]; }
 	double* getDensityProf(const unsigned int DensityId){ return this->density_prof[DensityId]; }
 	unsigned int getAuxIdAndSize(std::string auxname, unsigned int &size); 
 	double get_current_rc(){ return this->current_rc_neigh; }
@@ -148,6 +159,13 @@ public:
 	unsigned int getNbMaxN(){ return this->nbMaxN; }
 	bool getIsNeighbours(){ return this->IsNeighbours; }
 	bool getIsCrystalDefined(){ return this->IsCrystalDefined; }
+	bool getIsElem(){ return this->IsElem; }
+	bool getIsCharge(){ return this->IsCharge; }
+	bool getIsMolId(){ return this->IsMolId; }
+	bool getIsBond(){ return this->IsBond; }
+	bool getIsAngle(){ return this->IsAngle; }
+	bool getIsVel(){ return this->IsVel; }
+	bool getIsSetAux(){ return this->IsSetAux; }
 	Crystal* getCrystal(){ return this->_MyCrystal; }
 	double* getH1(){ return this->H1; }
 	double* getH2(){ return this->H2; }
@@ -185,6 +203,7 @@ public:
 	void Print1dDensity(std::string filename, std::string auxname);
 	//applyshift
 	void ApplyShift(const double &shift_x, const double &shift_y, const double &shift_z);
+	void duplicate(const unsigned int &nx, const unsigned int &ny, const unsigned int &nz);
 	Position getWrappedPosition(unsigned int &i) const { return this->WrappedPos[i]; }
 	Atom& getAtomRef(unsigned int &i) { return this->AtomList[i]; }
 	//
