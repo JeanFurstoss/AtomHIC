@@ -41,6 +41,7 @@ add_subdirectory(KMeansClassification)
 add_subdirectory(DBScanClustering)
 add_subdirectory(SampleGBComplexionCSL)
 add_subdirectory(SampleGBComplexionDSC)
+add_subdirectory(SampleGBComplexionGammaSurface)
 # add other subdirectories of new generic tool here
 
 # other tools

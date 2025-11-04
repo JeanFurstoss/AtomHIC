@@ -956,8 +956,12 @@ void Bicrystal::PasteGrains(AtomicSystem* Grain1, AtomicSystem* Grain2) {
     unsigned int nbAtom1 = Grain1->getNbAtom();
     unsigned int nbAtom2 = Grain2->getNbAtom();
 
-    this->nbAtom = nbAtom1 + nbAtom2;
-    this->AtomList = new Atom[this->nbAtom];
+    unsigned int new_nbAtom = nbAtom1 + nbAtom2;
+    if( nbAtom != new_nbAtom ){
+	if( IsAtomListMine ) delete[] AtomList;
+	this->nbAtom = new_nbAtom;
+	this->AtomList = new Atom[this->nbAtom];
+    }
 
     // Copy atoms from Grain1 (already wrapped), + Z translation
     for (unsigned int i = 0; i < nbAtom1; ++i) {
@@ -971,6 +975,41 @@ void Bicrystal::PasteGrains(AtomicSystem* Grain1, AtomicSystem* Grain2) {
         this->AtomList[nbAtom1 + i] = Grain2->getAtom(i);
     }
 }
+
+void Bicrystal::ShiftGrainsAlongUCInPlane(unsigned int n1, unsigned int n2, bool vacuum) {
+	double shift_x, shift_y;
+	double shift_z = 0.;
+	double zero(0.);
+	char filename[128];
+	std::string File_Heading_save = this->File_Heading; 
+	auto sci_str = [](double value) { std::ostringstream oss; oss << std::scientific << std::setprecision(6) << value; return oss.str(); };
+	double fac_vac = 1.5;
+	if( vacuum ){
+		shift_z = this->H3[2] * ((fac_vac-1.)/2.);
+		for(unsigned int i=0;i<3;i++) this->H3[i] *= fac_vac;
+		computeInverseCellVec();
+
+	}
+
+	this->Grain2->ApplyShift(zero, zero, shift_z);
+	for (unsigned int i = 0; i < n1; ++i) {
+		for (unsigned int j = 0; j < n2; ++j) {
+			// Compute the components of the shift vector by dividing i, j, and k by their respective n values
+			shift_x = ((double) (i)/n1) * this->H1[0] + ((double) (j)/n2) * this->H2[0];
+			shift_y = ((double) (i)/n1) * this->H1[1] + ((double) (j)/n2) * this->H2[1];
+			 // Apply the shift
+			this->Grain1->ApplyShift(shift_x, shift_y, shift_z);
+			this->PasteGrains(this->Grain1, this->Grain2);
+			// Output file
+			snprintf(filename, sizeof(filename), "GB_Shift_%u_%u.lmp", i, j);
+					this->File_Heading = File_Heading_save+"# Applied DSC shift: [" + sci_str(shift_x) + ", " + sci_str(shift_y) + "]\n";
+			this->print_lmp(filename);
+			this->Grain1->ApplyShift(-shift_x, -shift_y, -shift_z);
+		}
+	}
+	this->Grain2->ApplyShift(zero, zero, -shift_z);
+}
+
 
 void Bicrystal::ShiftGrainsAlongDSC(unsigned int n1, unsigned int n2, unsigned int n3) {
     if (!this->IsDSC_Basis || this->DSC_Basis == nullptr) {
@@ -1015,6 +1054,7 @@ void Bicrystal::ShiftGrainsAlongDSC(unsigned int n1, unsigned int n2, unsigned i
                 snprintf(filename, sizeof(filename), "GB_DSC_Shift_%u_%u_%u.lmp", i, j, k);
 				this->File_Heading = File_Heading_save+"# Applied DSC shift: [" + sci_str(shift_x) + ", " + sci_str(shift_y) + ", " + sci_str(shift_z) + "]\n";
                 this->print_lmp(filename);
+		this->Grain1->ApplyShift(-shift_x, -shift_y, -shift_z);
             }
         }
     }
@@ -1059,6 +1099,7 @@ void Bicrystal::ShiftGrainsAlongCSL(unsigned int n1, unsigned int n2, unsigned i
                 snprintf(filename, sizeof(filename), "GB_CSL_Shift_%u_%u_%u.lmp", i, j, k);
 				this->File_Heading = File_Heading_save+"# Applied CSL shift: [" + sci_str(shift_x) + ", " + sci_str(shift_y) + ", " + sci_str(shift_z) + "]\n";
                 this->print_lmp(filename);
+		this->Grain1->ApplyShift(-shift_x, -shift_y, -shift_z);
             }
         }
     }
@@ -2162,10 +2203,32 @@ void Bicrystal::ComputeExcessVolume(){
 
 	}
 }
-void Bicrystal::print_Grains(){
+void Bicrystal::print_Grains(bool vacuum){
 	if( this->AreGrainsDefined ){
 		this->Grain1->print_lmp("Grain1.lmp");
 		this->Grain2->print_lmp("Grain2.lmp");
+		if( vacuum ){
+			double fac_vac = 1.5;
+			double sz1(0.), sz2(0.), zero(0.);
+			for(unsigned int i=0;i<3;i++){
+				this->Grain1->getH3()[i] *= fac_vac;
+				this->Grain2->getH3()[i] *= fac_vac;
+			}
+			sz1 = this->Grain1->getH3()[2] * ((fac_vac-1.)/2);
+			sz2 = this->Grain2->getH3()[2] * ((fac_vac-1.)/2);
+			this->Grain1->computeInverseCellVec();
+			this->Grain1->ApplyShift(zero,zero,sz1);
+			this->Grain2->computeInverseCellVec();
+			this->Grain2->ApplyShift(zero,zero,sz2);
+			this->Grain1->print_lmp("Grain1_vacuum.lmp");
+			this->Grain2->print_lmp("Grain2_vacuum.lmp");
+			for(unsigned int i=0;i<3;i++){
+				this->Grain1->getH3()[i] /= fac_vac;
+				this->Grain2->getH3()[i] /= fac_vac;
+			}
+			this->Grain1->ApplyShift(zero,zero,-sz1);
+			this->Grain2->ApplyShift(zero,zero,-sz2);
+		}
 	}else{
 		cout << "The two grains are not defined, we cannot print them" << endl;
 	}
