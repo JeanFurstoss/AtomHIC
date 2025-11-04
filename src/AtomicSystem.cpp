@@ -37,7 +37,7 @@
 
 using namespace std;
 
-AtomicSystem::AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double zhi, vector<int> cl_box):_MyCrystal(_MyCrystal){
+AtomicSystem::AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double zhi, vector<int> cl_box, bool neutral_surf):_MyCrystal(_MyCrystal){
 	read_params_atsys();
 	this->IsCrystalDefined = true;
 	// Compute the number of atom and verify it gives an integer number
@@ -436,6 +436,7 @@ AtomicSystem::AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double z
 	if( count < this->nbAtom ){
 		cout << "WARGNING :The number of atoms after constructing orthogonal cell is lower than expected !" << endl;
 	}
+	if( neutral_surf ) MakeSurfaceNeutral();
 }
 // construct AtomicSystem giving AtomList, number of atom and cell vectors 
 AtomicSystem::AtomicSystem(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3){
@@ -2514,6 +2515,27 @@ bool AtomicSystem::read_cfg_file(const string& filename){
 	}
 }
 
+// Compute periodic array (for atom_style full, allowing to get the right bond and angle relationship) assuming only that ions outside the box have non-null component of the periodic array
+void AtomicSystem::ComputePeriodicArr(){
+	if( !IsPeriodicArr ){
+		PeriodicArr = new int[nbAtom*3];
+		IsPeriodicArr = true;
+	}
+	// Initialize to zero
+	unsigned int loop=nbAtom*3;
+	for(unsigned int i=0;i<loop;i++) PeriodicArr[i] = 0;
+	
+	// compute reduced coordinates
+	double x,y,z;
+	for(unsigned int i=0;i<this->nbAtom;i++){
+		x = this->AtomList[i].pos.x*G1[0]+this->AtomList[i].pos.y*G2[0]+this->AtomList[i].pos.z*G3[0];
+		PeriodicArr[i*3] = -floor(x);
+		y = this->AtomList[i].pos.x*G1[1]+this->AtomList[i].pos.y*G2[1]+this->AtomList[i].pos.z*G3[1];
+		PeriodicArr[i*3+1] = -floor(y);
+		z = this->AtomList[i].pos.x*G1[2]+this->AtomList[i].pos.y*G2[2]+this->AtomList[i].pos.z*G3[2];
+		PeriodicArr[i*3+2] = -floor(z);
+	}
+}
 
 // TODO : change format for having more prec
 void AtomicSystem::print_lmp(const string& filename){
@@ -2521,6 +2543,7 @@ void AtomicSystem::print_lmp(const string& filename){
 	writefile << " # File generated using AtomHic\n";
 	writefile << this->File_Heading;
         writefile << "\n\t" << this->nbAtom << "\tatoms\n\t";
+	if( IsBond ) ComputePeriodicArr();
 	if( IsBond ) writefile << nbBonds << "\tbonds\n\t";
 	if( IsAngle ) writefile << nbAngles << "\tangles\n\t";
         writefile << this->nbAtomType << "\tatom types\n\t";
@@ -2532,7 +2555,7 @@ void AtomicSystem::print_lmp(const string& filename){
 	for(unsigned int i=0;i<this->nbAtomType;i++) writefile << "\t" << i+1 << "\t" << this->AtomMass[i] << "\t# " << this->AtomType[i] << "\n";
 	if( IsMolId ){
 		writefile << "\nAtoms # full\n\n";
-		for(unsigned int i=0;i<this->nbAtom;i++) writefile << i+1 << "\t" << this->MolId[i] << "\t" << this->AtomList[i].type_uint << "\t" << this->AtomCharge[this->AtomList[i].type_uint-1] << "\t" << this->AtomList[i].pos.x << "\t" << this->AtomList[i].pos.y << "\t" << this->AtomList[i].pos.z << "\n"; 
+		for(unsigned int i=0;i<this->nbAtom;i++) writefile << i+1 << "\t" << this->MolId[i] << "\t" << this->AtomList[i].type_uint << "\t" << this->AtomCharge[this->AtomList[i].type_uint-1] << "\t" << this->AtomList[i].pos.x << "\t" << this->AtomList[i].pos.y << "\t" << this->AtomList[i].pos.z << "\t" << this->PeriodicArr[i*3] << "\t" << this->PeriodicArr[i*3+1] << "\t" << this->PeriodicArr[i*3+2] << "\n"; 
 	}else if( IsCharge ){
 		writefile << "\nAtoms # charge\n\n";
 		for(unsigned int i=0;i<this->nbAtom;i++) writefile << i+1 << "\t" << this->AtomList[i].type_uint << "\t" << this->AtomCharge[this->AtomList[i].type_uint-1] << "\t" << this->AtomList[i].pos.x << "\t" << this->AtomList[i].pos.y << "\t" << this->AtomList[i].pos.z << "\n"; 
@@ -2909,6 +2932,49 @@ void AtomicSystem::duplicate(const unsigned int& nx, const unsigned int& ny, con
 	}
 }
 
+void AtomicSystem::MakeSurfaceNeutral(){
+	if( IsCharge == false ) return;
+	bool Possible = false; // at least we should have two atom types having charge with opposite sign
+	bool pos(false),neg(false);
+	for(unsigned int n=0;n<nbAtomType;n++){
+		if( AtomCharge[n] > 0 ) pos = true;
+		if( AtomCharge[n] < 0 ) neg = true;
+		if( pos && neg ){
+			Possible = true;
+			break;
+		}
+	}
+	if( !Possible ){
+		cout << "It is not possible to construct charge neutral surfaces as there are not two types of ions having charge with opposite signs" << endl;
+		return;
+	}
+	// Compute the average distance between ions to compute the standard deviation of the charge Gaussian expansion
+	double ave_dist = ComputeAverageDistance();
+	unsigned int nbPts_g = H3[2]/ave_dist;
+	Compute1dDensity("Charge","z",ave_dist,nbPts_g);
+}
+
+double AtomicSystem::ComputeAverageDistance(){
+	double rcut = 6.; // maybe try latter to have an more objective value for rcut
+	searchNeighbours(rcut);
+	double ave_dist = 0.;
+	double xp, yp ,zp, xpos, ypos, zpos;
+	for(unsigned int i=0;i<nbAtom;i++){
+		xpos = WrappedPos[i].x;
+		ypos = WrappedPos[i].y;
+		zpos = WrappedPos[i].z;
+		vector<double> dist;
+		for(unsigned int j=0;j<Neighbours[i*(nbMaxN+1)];j++){
+			unsigned int id = Neighbours[i*(nbMaxN+1)+j+1];
+			xp = WrappedPos[id].x+CLNeighbours[i*nbMaxN*3+j*3]*H1[0]+CLNeighbours[i*nbMaxN*3+j*3+1]*H2[0]+CLNeighbours[i*nbMaxN*3+j*3+2]*H3[0]-xpos;
+			yp = WrappedPos[id].y+CLNeighbours[i*nbMaxN*3+j*3]*H1[1]+CLNeighbours[i*nbMaxN*3+j*3+1]*H2[1]+CLNeighbours[i*nbMaxN*3+j*3+2]*H3[1]-ypos;
+			zp = WrappedPos[id].z+CLNeighbours[i*nbMaxN*3+j*3]*H1[2]+CLNeighbours[i*nbMaxN*3+j*3+1]*H2[2]+CLNeighbours[i*nbMaxN*3+j*3+2]*H3[2]-zpos;
+			dist.push_back(xp*xp+yp*yp+zp*zp);
+		}
+		ave_dist += sqrt(MT->min_vec(dist));
+	}
+	return ave_dist/nbAtom;
+}
 
 AtomicSystem::~AtomicSystem(){
 	if( this->IsAtomListMine ){

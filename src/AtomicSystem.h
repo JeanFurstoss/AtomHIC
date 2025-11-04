@@ -117,7 +117,7 @@ protected:
 	int l_sph_st;
 public:
 	AtomicSystem(){};
-	AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double zhi, std::vector<int> cl_box); // construct atomic system from crystal and cell size
+	AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double zhi, std::vector<int> cl_box, bool neutral_surf=false); // construct atomic system from crystal and cell size
 	AtomicSystem(const std::string& filename); // construct AtomicSystem by reading file
 	AtomicSystem(AtomicSystem *AtSys, unsigned int &nbSys, std::string &dir); // construct AtomicSystem with multiple AtomicSystems by merging along a given direction (to be used for replacing bicrystal construction in addition with the new duplicate method)
 	AtomicSystem(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3); // construct AtomicSystem giving AtomList and cell vectors 
@@ -185,6 +185,8 @@ public:
 	void setCrystal(const std::string& CrystalName);
 	void set_File_Heading(const std::string& Heading){ this->File_Heading = Heading; }
 	// methods
+	void MakeSurfaceNeutral(); // try to have neutral surfaces (considering only z-oriented surface)
+	double ComputeAverageDistance();
 	void UpdateTypes2Crystal();
 	void read_params_atsys();
 	void computeInverseCellVec();
@@ -205,6 +207,7 @@ public:
 	void ApplyShift(const double &shift_x, const double &shift_y, const double &shift_z);
 	void duplicate(const unsigned int &nx, const unsigned int &ny, const unsigned int &nz);
 	Position getWrappedPosition(unsigned int &i) const { return this->WrappedPos[i]; }
+	void ComputePeriodicArr();
 	Atom& getAtomRef(unsigned int &i) { return this->AtomList[i]; }
 	//
 	//void ApplyShift(const double &shift_x, const double &shift_y, const double &shift_z);

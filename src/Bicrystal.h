@@ -147,7 +147,7 @@ public:
 	// Accesses the DSC_Basis data structure and checks its validity, with a method to display its contents.
 	// methods
 	void read_params();
-	void print_Grains();
+	void print_Grains(bool vacuum = false);
 	void searchGBPos();
 	void ComputeExcessVolume();
         //void searchCSL(int h_a, int k_a, int l_a, double theta, int *CSL_vec, unsigned int verbose=0);
@@ -161,6 +161,7 @@ public:
 	//
 	void ShiftGrainsAlongDSC(unsigned int n1, unsigned int n2, unsigned int n3);
 	void ShiftGrainsAlongCSL(unsigned int n1, unsigned int n2, unsigned int n3);
+	void ShiftGrainsAlongUCInPlane(unsigned int n1, unsigned int n2, bool vacuum=false); 
 	void PasteGrains(AtomicSystem* grain1, AtomicSystem* grain2);
 	//changed name SampleGBComplexionDSC
 	// destructor
