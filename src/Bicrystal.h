@@ -46,12 +46,10 @@
 #include "ComputeAuxiliary.h"
 #include <string>
 #include <iomanip>
-#include <Displays.h>
 
 class ATOMHIC_EXPORT Bicrystal : public AtomicSystem {
 protected:
 	std::string NormalDir;
-	Displays Dis;
 	double Ldir; // box length in the GB normal direction
 	double ExcessVol;
 	bool IsVacuum;

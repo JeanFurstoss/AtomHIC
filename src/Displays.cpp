@@ -29,6 +29,7 @@
 #include <iostream>
 #include <stdlib.h>
 #include <omp.h>
+#include <iomanip>
 
 using namespace std; 
 using namespace std::chrono;
@@ -324,4 +325,15 @@ void Displays::DisplayGB(Crystal *Crystal1, Crystal *Crystal2){
 	delete[] i_2_d;
 	delete[] i_1_p;
 	delete[] i_2_p;
+}
+
+
+void Displays::ProgressBar(unsigned int &Final, unsigned int &current){
+	const int bar_length = 30;
+	if( current+1 == Final ){
+		cout << endl;
+		return;
+	}
+	double prog = double(current+1)/double(Final);
+	cout << "\r[" << string(floor(bar_length*prog),'X') << string(ceil(bar_length*(1-prog)),'-') << "] " << setprecision(3) << 100*prog << "%";
 }

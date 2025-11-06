@@ -556,7 +556,7 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 		{1, 1, 1, 1, 1},
 		{1, 1, 1, 1, 1}
     	};
-	Dis.DisplayArray(arr_elements, arr_fusion);
+	Dis->DisplayArray(arr_elements, arr_fusion);
 	cout << "Misfit values could be reduced by decreasing MAX_MISFIT in data/FixedParameters/FixedParameters.dat" << endl;
 	cout << endl;
 
@@ -941,7 +941,7 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 		i_p_2_y_str = "_"+to_string(-_MyCrystal2->getOrthogonalPlanes()[3]-_MyCrystal2->getOrthogonalPlanes()[4]);
 		i_p_2_z_str = "_"+to_string(-_MyCrystal2->getOrthogonalPlanes()[6]-_MyCrystal2->getOrthogonalPlanes()[7]);
 	}
-	Dis.DisplayGB(_MyCrystal,_MyCrystal2);
+	Dis->DisplayGB(_MyCrystal,_MyCrystal2);
 	cout << endl;
 	this->File_Heading = " # ["+h_a_str+"_"+k_a_str+i_a_str+"_"+l_a_str+"]"+theta_str+"°("+h_p_str+"_"+k_p_str+i_p_str+"_"+l_p_str+") "+crystalName+" grain boundary\n # The present GB have plane ("+h_p_1_z_str+"_"+k_p_1_z_str+i_p_1_z_str+"_"+l_p_1_z_str+") for lower grain and ("+h_p_2_z_str+"_"+k_p_2_z_str+i_p_2_z_str+"_"+l_p_2_z_str+") for upper grain\n";
 	this->Grain1->set_File_Heading(" # Lower grain of the ["+h_a_str+"_"+k_a_str+i_a_str+"_"+l_a_str+"]"+theta_str+"°("+h_p_str+"_"+k_p_str+i_p_str+"_"+l_p_str+") "+crystalName+" grain boundary\n # This system has x <=> ["+h_d_1_x_str+"_"+k_d_1_x_str+i_d_1_x_str+"_"+l_d_1_x_str+"], y <=> ["+h_d_1_y_str+"_"+k_d_1_y_str+i_d_1_y_str+"_"+l_d_1_y_str+"], z <=> ["+h_d_1_z_str+"_"+k_d_1_z_str+i_d_1_z_str+"_"+l_d_1_z_str+"] and x <=> ("+h_p_1_x_str+"_"+k_p_1_x_str+i_p_1_x_str+"_"+l_p_1_x_str+"), y <=> ("+h_p_1_y_str+"_"+k_p_1_y_str+i_p_1_y_str+"_"+l_p_1_y_str+"), z <=> ("+h_p_1_z_str+"_"+k_p_1_z_str+i_p_1_z_str+"_"+l_p_1_z_str+")\n");
@@ -963,7 +963,7 @@ void Bicrystal::PasteGrains(AtomicSystem* Grain1, AtomicSystem* Grain2) {
 	this->AtomList = new Atom[this->nbAtom];
     }
 
-    // Copy atoms from Grain1 (already wrapped), + Z translation
+    // Copy atoms from Grain1, + Z translation
     for (unsigned int i = 0; i < nbAtom1; ++i) {
         Atom A = Grain1->getAtom(i);
         A.pos.z += this->H3_G2[2] + (GBspace / 2.0);
@@ -1372,7 +1372,7 @@ bool Bicrystal::searchCSL(double *rot_ax_func, double theta_func, int *CSL_vec, 
 		{"a3",to_string(CSL_Basis[2]),to_string(CSL_Basis[5]),to_string(CSL_Basis[8])}
 	};
 	vector<vector<unsigned int>> arr_fusion = {{1,1,1,1},{1,1,1,1},{1,1,1,1},{1,1,1,1}};
-	Dis.DisplayArray(arr_element,arr_fusion);
+	Dis->DisplayArray(arr_element,arr_fusion);
 	cout << endl;
 	delete[] a1;
 	delete[] a1_inv;
@@ -1497,7 +1497,7 @@ void Bicrystal::printDSC() {
         {"DSC[3]", sci_str(this->DSC_Basis[2]), sci_str(this->DSC_Basis[5]), sci_str(this->DSC_Basis[8])}
     };
     std::vector<std::vector<unsigned int>> arr_fusion = {{1, 1, 1, 1}, {1, 1, 1, 1}, {1, 1, 1, 1}, {1, 1, 1, 1}};
-    Dis.DisplayArray(arr_element, arr_fusion);
+    Dis->DisplayArray(arr_element, arr_fusion);
     std::cout << std::endl;
 }
 void Bicrystal::printCSL(const std::string filename){
@@ -1545,7 +1545,7 @@ double Bicrystal::RationalizeOri(int h_a_func, int k_a_func, int l_a_func, doubl
 	else if( MT->max(arr,3) < 3 ) MaxHKL_Norm = MT->max(arr,3)*100;
 	else if( MT->max(arr,3) < 10 ) MaxHKL_Norm = MT->max(arr,3)*50;
 	else MaxHKL_Norm = MT->max(arr,3)*10;
-	cout << MaxHKL_Norm << endl;
+	//cout << MaxHKL_Norm << endl;
 	if( ( h_a_func == 0 && k_a_func == 0 ) || ( h_a_func == 0 && l_a_func == 0 ) || ( k_a_func == 0 && l_a_func == 0 ) ) DoNotRatAxis = true;
 	if( DoNotRatAxis || this->_MyCrystal->getCrystallo() == "Cubic" ){// for cubic crystals or simple rot axis, the scalar product between plane and direction vector is expressed simply
 		hp_near = h_a_func;
@@ -1599,8 +1599,8 @@ double Bicrystal::RationalizeOri(int h_a_func, int k_a_func, int l_a_func, doubl
 	}
 	norm1 = sqrt(norm1);
 	for(unsigned int i=0;i<3;i++) rot_ax_func[i] /= norm1;
-	cout << hp_near << " " << kp_near << " " << lp_near << endl;
-	MT->printVec(rot_ax_func);
+	//cout << hp_near << " " << kp_near << " " << lp_near << endl;
+	//MT->printVec(rot_ax_func);
 	// Now hp_near, kp_near and lp_near are plane indices which permits to simplify scalar product and the searching of vector normal to rotation axis	
 	// get cell parameter from crystal
 	double a_c = this->_MyCrystal->getALength()[0];
@@ -1908,7 +1908,7 @@ void Bicrystal::setOrientedCrystals(const string& crystalName, bool rationalize)
 		{"Grain 2",to_string(_MyCrystal2->GetCrystalDef()[0])+" %",to_string(_MyCrystal2->GetCrystalDef()[1])+" %",to_string(_MyCrystal2->GetCrystalDef()[2])+" %",to_string(_MyCrystal2->GetCrystalDef()[3])+" %"}
 	};
 	vector<vector<unsigned int>> arr_fusion = {{1,1,1,1,1},{1,1,1,1,1},{1,1,1,1,1}};
-	Dis.DisplayArray(arr_element,arr_fusion);
+	Dis->DisplayArray(arr_element,arr_fusion);
 	cout << "If these values are too large it may cause issues during the relaxation of the GB" << endl;
 	cout << "These values can be reduced by decreasing TOL_ORTHO_BOX and TOL_ORTHO_BOX_Z in data/FixedParameters/FixedParameters.dat" << endl;
 	cout << endl;
@@ -2210,12 +2210,12 @@ void Bicrystal::print_Grains(bool vacuum){
 		if( vacuum ){
 			double fac_vac = 1.5;
 			double sz1(0.), sz2(0.), zero(0.);
+			sz1 = this->Grain1->getH3()[2] * ((fac_vac-1.)/2);
+			sz2 = this->Grain2->getH3()[2] * ((fac_vac-1.)/2);
 			for(unsigned int i=0;i<3;i++){
 				this->Grain1->getH3()[i] *= fac_vac;
 				this->Grain2->getH3()[i] *= fac_vac;
 			}
-			sz1 = this->Grain1->getH3()[2] * ((fac_vac-1.)/2);
-			sz2 = this->Grain2->getH3()[2] * ((fac_vac-1.)/2);
 			this->Grain1->computeInverseCellVec();
 			this->Grain1->ApplyShift(zero,zero,sz1);
 			this->Grain2->computeInverseCellVec();

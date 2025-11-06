@@ -37,7 +37,8 @@
 
 using namespace std;
 
-AtomicSystem::AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double zhi, vector<int> cl_box, bool neutral_surf):_MyCrystal(_MyCrystal){
+AtomicSystem::AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double zhi, vector<int> cl_box):_MyCrystal(_MyCrystal){
+	Dis = new Displays;
 	read_params_atsys();
 	this->IsCrystalDefined = true;
 	// Compute the number of atom and verify it gives an integer number
@@ -436,14 +437,15 @@ AtomicSystem::AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double z
 	if( count < this->nbAtom ){
 		cout << "WARGNING :The number of atoms after constructing orthogonal cell is lower than expected !" << endl;
 	}
-	if( neutral_surf ) MakeSurfaceNeutral();
 }
 // construct AtomicSystem giving AtomList, number of atom and cell vectors 
 AtomicSystem::AtomicSystem(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3){
+	Dis = new Displays;
 	AtomListConstructor(AtomList,nbAtom,_MyCrystal,H1,H2,H3);
 }
 
 AtomicSystem::AtomicSystem(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3, unsigned int *MolId){
+	Dis = new Displays;
 	AtomListConstructor(AtomList,nbAtom,_MyCrystal,H1,H2,H3);
 	this->MolId = MolId;
 	IsMolIdMine = false;
@@ -451,6 +453,7 @@ AtomicSystem::AtomicSystem(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrys
 }
 
 AtomicSystem::AtomicSystem(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3, unsigned int *MolId, unsigned int nbBonds, unsigned int nbBondType, unsigned int *Bonds, unsigned int *BondType): nbBonds(nbBonds), nbBondType(nbBondType){
+	Dis = new Displays;
 	AtomListConstructor(AtomList,nbAtom,_MyCrystal,H1,H2,H3);
 	this->MolId = MolId;
 	IsMolIdMine = false;
@@ -462,6 +465,7 @@ AtomicSystem::AtomicSystem(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrys
 }
 
 AtomicSystem::AtomicSystem(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3, unsigned int *MolId, unsigned int nbBonds, unsigned int nbBondType, unsigned int *Bonds, unsigned int *BondType, unsigned int nbAngles, unsigned int nbAngleType, unsigned int *Angles, unsigned int *AngleType): nbBonds(nbBonds), nbBondType(nbBondType), nbAngles(nbAngles), nbAngleType(nbAngleType){
+	Dis = new Displays;
 	AtomListConstructor(AtomList,nbAtom,_MyCrystal,H1,H2,H3);
 	this->MolId = MolId;
 	IsMolIdMine = false;
@@ -516,6 +520,7 @@ void AtomicSystem::AtomListConstructor(Atom *AtomList, unsigned int nbAtom, Crys
 
 // Constructor using the filename of an atomic file (.cfg, .lmp, .xsf,..)
 AtomicSystem::AtomicSystem(const string& filename){
+	Dis = new Displays;
 	if( !FilenameConstructor(filename) ){
 		cerr << "Maybe try to change its format using atomsk or generate it with AtomHic (supported format lmp, cfg)" << endl;
 		exit(EXIT_FAILURE);
@@ -569,6 +574,7 @@ bool AtomicSystem::FilenameConstructor(const string& filename){
 }
 
 AtomicSystem::AtomicSystem(AtomicSystem *AtSys, unsigned int &nbSys, std::string &dir){
+	Dis = new Displays;
 	nbAtom = 0;
 	nbAtomType = 0;
 	nbBonds = 0;
@@ -914,7 +920,20 @@ void AtomicSystem::computeInverseCellVec(){
 
 unsigned int AtomicSystem::Compute1dDensity(std::string auxname, std::string dir, double sigma, unsigned int nbPts){
 	if( !IsWrappedPos ) computeWrap();
-	density_prof.push_back(new double[nbPts*2]);
+	// search if this density has already been computed or not
+	bool already_stored = false;
+	unsigned int ind_dens = 0;
+	for(unsigned int i=0;i<density_prof.size();i++){
+		if( auxname == density_name[i][0] && dir == density_name[i][1] ){
+		       ind_dens = i;
+		       already_stored = true;
+	       	       break;
+		}
+	}
+	if( !already_stored ){
+		density_prof.push_back(new double[nbPts*2]);
+		ind_dens = density_prof.size()-1;
+	}
 	int indexaux=-1;
 	for(unsigned int i=0;i<this->Aux_name.size();i++){
 		if( auxname == Aux_name[i] ){
@@ -926,31 +945,31 @@ unsigned int AtomicSystem::Compute1dDensity(std::string auxname, std::string dir
 		if( auxname == "Mass" ){
 			if( dir == "x" ){
 				for(unsigned int i=0;i<nbPts;i++){
-					this->density_prof[this->density_prof.size()-1][i*2] = 0;
-					this->density_prof[this->density_prof.size()-1][i*2+1] = this->H1[0]*i/(nbPts-1.);
+					this->density_prof[ind_dens][i*2] = 0;
+					this->density_prof[ind_dens][i*2+1] = this->H1[0]*i/(nbPts-1.);
 					for(unsigned int j=0;j<this->nbAtom;j++){
-						this->density_prof[this->density_prof.size()-1][i*2] += MT->gaussian(this->density_prof[this->density_prof.size()-1][i*2+1], this->WrappedPos[j].x, sigma)*(this->AtomMass[this->AtomList[j].type_uint-1]);
+						this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].x, sigma)*(this->AtomMass[this->AtomList[j].type_uint-1]);
 						// consider boundary conditions
-						this->density_prof[this->density_prof.size()-1][i*2] += MT->gaussian(this->density_prof[this->density_prof.size()-1][i*2+1], this->WrappedPos[j].x+this->H1[0], sigma)*(this->AtomMass[this->AtomList[j].type_uint-1]);
-						this->density_prof[this->density_prof.size()-1][i*2] += MT->gaussian(this->density_prof[this->density_prof.size()-1][i*2+1], this->WrappedPos[j].x-this->H1[0], sigma)*(this->AtomMass[this->AtomList[j].type_uint-1]);
+						this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].x+this->H1[0], sigma)*(this->AtomMass[this->AtomList[j].type_uint-1]);
+						this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].x-this->H1[0], sigma)*(this->AtomMass[this->AtomList[j].type_uint-1]);
 					}
 				}
 			}else if( dir == "y" ){
 				for(unsigned int i=0;i<nbPts;i++){
-					this->density_prof[this->density_prof.size()-1][i*2] = 0;
-					this->density_prof[this->density_prof.size()-1][i*2+1] = this->H2[1]*i/(nbPts-1.);
+					this->density_prof[ind_dens][i*2] = 0;
+					this->density_prof[ind_dens][i*2+1] = this->H2[1]*i/(nbPts-1.);
 					for(unsigned int j=0;j<this->nbAtom;j++){
-						this->density_prof[this->density_prof.size()-1][i*2] += MT->gaussian(this->density_prof[this->density_prof.size()-1][i*2+1], this->WrappedPos[j].y, sigma)*(this->AtomMass[this->AtomList[j].type_uint-1]);
+						this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].y, sigma)*(this->AtomMass[this->AtomList[j].type_uint-1]);
 						// BC
-						this->density_prof[this->density_prof.size()-1][i*2] += MT->gaussian(this->density_prof[this->density_prof.size()-1][i*2+1], this->WrappedPos[j].y+this->H2[1], sigma)*(this->AtomMass[this->AtomList[j].type_uint-1]);
-						this->density_prof[this->density_prof.size()-1][i*2] += MT->gaussian(this->density_prof[this->density_prof.size()-1][i*2+1], this->WrappedPos[j].y-this->H2[1], sigma)*(this->AtomMass[this->AtomList[j].type_uint-1]);
+						this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].y+this->H2[1], sigma)*(this->AtomMass[this->AtomList[j].type_uint-1]);
+						this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].y-this->H2[1], sigma)*(this->AtomMass[this->AtomList[j].type_uint-1]);
 					}
 				}
 			}else if( dir == "z" ){
 				for(unsigned int i=0;i<nbPts;i++){
-					this->density_prof[this->density_prof.size()-1][i*2] = 0;
-					this->density_prof[this->density_prof.size()-1][i*2+1] = this->H3[2]*i/(nbPts-1.);
-					for(unsigned int j=0;j<this->nbAtom;j++) this->density_prof[this->density_prof.size()-1][i*2] += MT->gaussian(this->density_prof[this->density_prof.size()-1][i*2+1], this->WrappedPos[j].z, sigma)*(this->AtomMass[this->AtomList[j].type_uint-1]);
+					this->density_prof[ind_dens][i*2] = 0;
+					this->density_prof[ind_dens][i*2+1] = this->H3[2]*i/(nbPts-1.);
+					for(unsigned int j=0;j<this->nbAtom;j++) this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].z, sigma)*(this->AtomMass[this->AtomList[j].type_uint-1]);
 				}
 			}else{
 			        cout << "The provided direction \"" << dir << "\" for density computation has not been recognize" << endl;
@@ -959,21 +978,21 @@ unsigned int AtomicSystem::Compute1dDensity(std::string auxname, std::string dir
 		}else if( auxname == "Charge" ){
 			if( dir == "x" ){
 				for(unsigned int i=0;i<nbPts;i++){
-					this->density_prof[this->density_prof.size()-1][i*2] = 0;
-					this->density_prof[this->density_prof.size()-1][i*2+1] = this->H1[0]*i/(nbPts-1.);
-					for(unsigned int j=0;j<this->nbAtom;j++) this->density_prof[this->density_prof.size()-1][i*2] += MT->gaussian(this->density_prof[this->density_prof.size()-1][i*2+1], this->WrappedPos[j].x, sigma)*(this->AtomCharge[this->AtomList[j].type_uint-1]);
+					this->density_prof[ind_dens][i*2] = 0;
+					this->density_prof[ind_dens][i*2+1] = this->H1[0]*i/(nbPts-1.);
+					for(unsigned int j=0;j<this->nbAtom;j++) this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].x, sigma)*(this->AtomCharge[this->AtomList[j].type_uint-1]);
 				}
 			}else if( dir == "y" ){
 				for(unsigned int i=0;i<nbPts;i++){
-					this->density_prof[this->density_prof.size()-1][i*2] = 0;
-					this->density_prof[this->density_prof.size()-1][i*2+1] = this->H2[1]*i/(nbPts-1.);
-					for(unsigned int j=0;j<this->nbAtom;j++) this->density_prof[this->density_prof.size()-1][i*2] += MT->gaussian(this->density_prof[this->density_prof.size()-1][i*2+1], this->WrappedPos[j].y, sigma)*(this->AtomCharge[this->AtomList[j].type_uint-1]);
+					this->density_prof[ind_dens][i*2] = 0;
+					this->density_prof[ind_dens][i*2+1] = this->H2[1]*i/(nbPts-1.);
+					for(unsigned int j=0;j<this->nbAtom;j++) this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].y, sigma)*(this->AtomCharge[this->AtomList[j].type_uint-1]);
 				}
 			}else if( dir == "z" ){
 				for(unsigned int i=0;i<nbPts;i++){
-					this->density_prof[this->density_prof.size()-1][i*2] = 0;
-					this->density_prof[this->density_prof.size()-1][i*2+1] = this->H3[2]*i/(nbPts-1.);
-					for(unsigned int j=0;j<this->nbAtom;j++) this->density_prof[this->density_prof.size()-1][i*2] += MT->gaussian(this->density_prof[this->density_prof.size()-1][i*2+1], this->WrappedPos[j].z, sigma)*(this->AtomCharge[this->AtomList[j].type_uint-1]);
+					this->density_prof[ind_dens][i*2] = 0;
+					this->density_prof[ind_dens][i*2+1] = this->H3[2]*i/(nbPts-1.);
+					for(unsigned int j=0;j<this->nbAtom;j++) this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].z, sigma)*(this->AtomCharge[this->AtomList[j].type_uint-1]);
 				}
 			}else{
 			        cout << "The provided direction \"" << dir << "\" for density computation has not been recognize" << endl;
@@ -982,26 +1001,26 @@ unsigned int AtomicSystem::Compute1dDensity(std::string auxname, std::string dir
 		}else if ( auxname == "Atomic" ){
 			if( dir == "x" ){
 				for(unsigned int i=0;i<nbPts;i++){
-					this->density_prof[this->density_prof.size()-1][i*2] = 0;
-					this->density_prof[this->density_prof.size()-1][i*2+1] = this->H1[0]*i/(nbPts-1.);
-					for(unsigned int j=0;j<this->nbAtom;j++) this->density_prof[this->density_prof.size()-1][i*2] += MT->gaussian(this->density_prof[this->density_prof.size()-1][i*2+1], this->WrappedPos[j].x, sigma);
+					this->density_prof[ind_dens][i*2] = 0;
+					this->density_prof[ind_dens][i*2+1] = this->H1[0]*i/(nbPts-1.);
+					for(unsigned int j=0;j<this->nbAtom;j++) this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].x, sigma);
 				}
 			}else if( dir == "y" ){
 				for(unsigned int i=0;i<nbPts;i++){
-					this->density_prof[this->density_prof.size()-1][i*2] = 0;
-					this->density_prof[this->density_prof.size()-1][i*2+1] = this->H2[1]*i/(nbPts-1.);
+					this->density_prof[ind_dens][i*2] = 0;
+					this->density_prof[ind_dens][i*2+1] = this->H2[1]*i/(nbPts-1.);
 					for(unsigned int j=0;j<this->nbAtom;j++){
-						this->density_prof[this->density_prof.size()-1][i*2] += MT->gaussian(this->density_prof[this->density_prof.size()-1][i*2+1], this->WrappedPos[j].y, sigma);
+						this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].y, sigma);
 						//BC
-						this->density_prof[this->density_prof.size()-1][i*2] += MT->gaussian(this->density_prof[this->density_prof.size()-1][i*2+1], this->WrappedPos[j].y+this->H2[1], sigma);
-						this->density_prof[this->density_prof.size()-1][i*2] += MT->gaussian(this->density_prof[this->density_prof.size()-1][i*2+1], this->WrappedPos[j].y-this->H2[1], sigma);
+						this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].y+this->H2[1], sigma);
+						this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].y-this->H2[1], sigma);
 					}
 				}
 			}else if( dir == "z" ){
 				for(unsigned int i=0;i<nbPts;i++){
-					this->density_prof[this->density_prof.size()-1][i*2] = 0;
-					this->density_prof[this->density_prof.size()-1][i*2+1] = this->H3[2]*i/(nbPts-1.);
-					for(unsigned int j=0;j<this->nbAtom;j++) this->density_prof[this->density_prof.size()-1][i*2] += MT->gaussian(this->density_prof[this->density_prof.size()-1][i*2+1], this->WrappedPos[j].z, sigma);
+					this->density_prof[ind_dens][i*2] = 0;
+					this->density_prof[ind_dens][i*2+1] = this->H3[2]*i/(nbPts-1.);
+					for(unsigned int j=0;j<this->nbAtom;j++) this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].z, sigma);
 				}
 			}else{
 			        cout << "The provided direction \"" << dir << "\" for density computation has not been recognize (directions available : x y z)" << endl;
@@ -1016,37 +1035,40 @@ unsigned int AtomicSystem::Compute1dDensity(std::string auxname, std::string dir
 	}else{
 		if( dir == "x" ){
 			for(unsigned int i=0;i<nbPts;i++){
-				this->density_prof[this->density_prof.size()-1][i*2] = 0;
-				this->density_prof[this->density_prof.size()-1][i*2+1] = this->H1[0]*i/(nbPts-1.);
-				for(unsigned int j=0;j<this->nbAtom;j++) this->density_prof[this->density_prof.size()-1][i*2] += MT->gaussian(this->density_prof[this->density_prof.size()-1][i*2+1], this->WrappedPos[j].x, sigma)*(this->Aux[indexaux][j]);
+				this->density_prof[ind_dens][i*2] = 0;
+				this->density_prof[ind_dens][i*2+1] = this->H1[0]*i/(nbPts-1.);
+				for(unsigned int j=0;j<this->nbAtom;j++) this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].x, sigma)*(this->Aux[indexaux][j]);
 			}
 		}else if( dir == "y" ){
 			for(unsigned int i=0;i<nbPts;i++){
-				this->density_prof[this->density_prof.size()-1][i*2] = 0;
-				this->density_prof[this->density_prof.size()-1][i*2+1] = this->H2[1]*i/(nbPts-1.);
+				this->density_prof[ind_dens][i*2] = 0;
+				this->density_prof[ind_dens][i*2+1] = this->H2[1]*i/(nbPts-1.);
 				for(unsigned int j=0;j<this->nbAtom;j++){
-					this->density_prof[this->density_prof.size()-1][i*2] += MT->gaussian(this->density_prof[this->density_prof.size()-1][i*2+1], this->WrappedPos[j].y, sigma)*(this->Aux[indexaux][j]);
+					this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].y, sigma)*(this->Aux[indexaux][j]);
 					//BC
-					this->density_prof[this->density_prof.size()-1][i*2] += MT->gaussian(this->density_prof[this->density_prof.size()-1][i*2+1], this->WrappedPos[j].y+this->H2[1], sigma)*(this->Aux[indexaux][j]);
-					this->density_prof[this->density_prof.size()-1][i*2] += MT->gaussian(this->density_prof[this->density_prof.size()-1][i*2+1], this->WrappedPos[j].y-this->H2[1], sigma)*(this->Aux[indexaux][j]);
+					this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].y+this->H2[1], sigma)*(this->Aux[indexaux][j]);
+					this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].y-this->H2[1], sigma)*(this->Aux[indexaux][j]);
 				}
 			}
 		}else if( dir == "z" ){
 			for(unsigned int i=0;i<nbPts;i++){
-				this->density_prof[this->density_prof.size()-1][i*2] = 0;
-				this->density_prof[this->density_prof.size()-1][i*2+1] = this->H3[2]*i/(nbPts-1.);
-				for(unsigned int j=0;j<this->nbAtom;j++) this->density_prof[this->density_prof.size()-1][i*2] += MT->gaussian(this->density_prof[this->density_prof.size()-1][i*2+1], this->WrappedPos[j].z, sigma)*(this->Aux[indexaux][j]);
+				this->density_prof[ind_dens][i*2] = 0;
+				this->density_prof[ind_dens][i*2+1] = this->H3[2]*i/(nbPts-1.);
+				for(unsigned int j=0;j<this->nbAtom;j++) this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].z, sigma)*(this->Aux[indexaux][j]);
 			}
 		}else{
 		        cout << "The provided direction \"" << dir << "\" for density computation has not been recognize (directions available : x y z)" << endl;
 			return 0;
 		}
 	}
-	this->density_name.push_back(new string[2]);
-	this->density_name[this->density_name.size()-1][0] = auxname;
-	this->density_name[this->density_name.size()-1][1] = dir;
-	this->density_nbPts.push_back(nbPts);
-	return this->density_name.size()-1;
+	if( already_stored ) this->density_nbPts[ind_dens] = nbPts;
+	else{
+		this->density_name.push_back(new string[2]);
+		this->density_name[this->density_name.size()-1][0] = auxname;
+		this->density_name[this->density_name.size()-1][1] = dir;
+		this->density_nbPts.push_back(nbPts);
+	}
+	return ind_dens;
 }
 
 void AtomicSystem::Print1dDensity(string filename, string auxname){
@@ -1062,6 +1084,7 @@ void AtomicSystem::Print1dDensity(string filename, string auxname){
 	writefile << this->density_name[indexaux][1] << " " << this->density_name[indexaux][0] << "Density" << endl;
 	for(unsigned int i=0;i<this->density_nbPts[indexaux];i++) writefile << this->density_prof[indexaux][i*2+1] << " " << this->density_prof[indexaux][i*2] << endl; 
 	writefile.close();
+	cout << filename << " file writted" << endl;
 }
 
 void AtomicSystem::setCrystal(Crystal* MyCrystal){
@@ -1076,6 +1099,66 @@ void AtomicSystem::setCrystal(const std::string& CrystalName){
 	this->IsCrystalDefined = true;
 	this->IsCrystalMine = true;
 	if( FilenameConstructed && nbAtomType > 1 ) UpdateTypes2Crystal();
+}
+
+void AtomicSystem::ComputeNotSepList(){
+	if( !IsCrystalDefined ){
+		cout << "Warning, the crystal is not defined, we cannot compute the DoNotSepare list" << endl;
+		return;
+	}else if( !_MyCrystal->getIsDoNotSep() ){
+		cout << "The crystal does not have a DoNotSepare list, we then cannot compute the list for the atomic system" << endl;
+		return;
+	}else if( IsNotSepTag ){
+	       cout << "The DoNotSepare list is already computed for this system, it will then not be computed" << endl;
+	       return;
+	}
+	this->NotSepTag = new vector<int>[this->nbAtom];
+	for(unsigned int i=0;i<nbAtom;i++) NotSepTag[i].push_back(0);
+	this->IsNotSepTag = true;
+	double rcut = MT->max_p(_MyCrystal->getALength(),3);
+	searchNeighbours(rcut);
+	unsigned int DNS_size = _MyCrystal->getDoNotSep().size();
+	#pragma omp parallel for
+	for(unsigned int i=0;i<nbAtom;i++){
+		double xp, yp ,zp, xpos, ypos, zpos;
+		bool ToTreat = false;
+		vector<unsigned int> type2search, nbNeigh;
+		for(unsigned int j=0;j<DNS_size;j++){
+			if( AtomList[i].type_uint == _MyCrystal->getDoNotSep()[j][0] ){
+				ToTreat = true;
+				nbNeigh.push_back(_MyCrystal->getDoNotSep()[j][1]);
+				type2search.push_back(_MyCrystal->getDoNotSep()[j][2]);
+			}
+		}
+		if( !ToTreat ) continue;
+		xpos = WrappedPos[i].x;
+		ypos = WrappedPos[i].y;
+		zpos = WrappedPos[i].z;
+		for(unsigned int n=0;n<nbNeigh.size();n++){
+			vector<double> ToSort;
+			for(unsigned int j=0;j<Neighbours[i*(nbMaxN+1)];j++){
+				unsigned int id = Neighbours[i*(nbMaxN+1)+j+1];
+				if( AtomList[id].type_uint == type2search[n] ){
+					xp = WrappedPos[id].x+CLNeighbours[i*nbMaxN*3+j*3]*H1[0]+CLNeighbours[i*nbMaxN*3+j*3+1]*H2[0]+CLNeighbours[i*nbMaxN*3+j*3+2]*H3[0]-xpos;
+					yp = WrappedPos[id].y+CLNeighbours[i*nbMaxN*3+j*3]*H1[1]+CLNeighbours[i*nbMaxN*3+j*3+1]*H2[1]+CLNeighbours[i*nbMaxN*3+j*3+2]*H3[1]-ypos;
+					zp = WrappedPos[id].z+CLNeighbours[i*nbMaxN*3+j*3]*H1[2]+CLNeighbours[i*nbMaxN*3+j*3+1]*H2[2]+CLNeighbours[i*nbMaxN*3+j*3+2]*H3[2]-zpos;
+					ToSort.push_back(xp*xp+yp*yp+zp*zp);
+					ToSort.push_back(id);
+				}
+			}
+			MT->sort(ToSort,0,2,ToSort);
+			if( (unsigned int) (ToSort.size()/2.) < nbNeigh[n] ){
+				cout << "Warning, not enough ions have been found to construct de DoNotSepare list, the cutoff should be increased" << endl;
+				continue;
+			}
+			for(unsigned int j=0;j<nbNeigh[n];j++){
+				NotSepTag[i][0]++;
+				NotSepTag[i].push_back((unsigned int) (ToSort[j*2+1]));
+				NotSepTag[(unsigned int) (ToSort[j*2+1])][0] = -1;
+			}
+		}
+	}
+
 }
 
 // This function modifies the ordering of type and type_uint of _MyCrystal for consistency
@@ -1125,13 +1208,19 @@ void AtomicSystem::UpdateTypes2Crystal(){
 		else{
 			// Compute the correspondance array
 			unsigned int *CorresArray = new unsigned int[_MyCrystal->getNbAtomType()];
+			unsigned int nb_type_found = 0;
 			for(unsigned int tc=0;tc<_MyCrystal->getNbAtomType();tc++){
 				for(unsigned int ta=0;ta<nbAtomType;ta++){
 					if( AtomType[ta] == _MyCrystal->getAtomType()[tc] ){
 						CorresArray[tc] = ta;
+						nb_type_found++;
 						break;
 					}
 				}
+			}
+			if( nb_type_found != _MyCrystal->getNbAtomType() ){
+				cout << "Warning, it seems that the provided crystal does not correspond to the atomic system" << endl;
+				return;
 			}
 			_MyCrystal->ChangeTypes(CorresArray);
 		}
@@ -1141,7 +1230,7 @@ void AtomicSystem::UpdateTypes2Crystal(){
 void AtomicSystem::computeWrap(){
 	//
 	// 
-    if (!this->IsWrappedPos){
+    if(!this->IsWrappedPos){
 	WrappedPos = new Position[this->nbAtom]; 
 	IsWrappedPos = true;
     }
@@ -2950,8 +3039,115 @@ void AtomicSystem::MakeSurfaceNeutral(){
 	}
 	// Compute the average distance between ions to compute the standard deviation of the charge Gaussian expansion
 	double ave_dist = ComputeAverageDistance();
-	unsigned int nbPts_g = H3[2]/ave_dist;
-	Compute1dDensity("Charge","z",ave_dist,nbPts_g);
+	// Search how many ions are in the bottom slab to compute the maximum number of ions to move
+	unsigned int nbMoveMax = 0;
+	unsigned int MinNbMoveMax = 20;
+	double slab_width = ave_dist*2.;
+	for(unsigned int i=0;i<nbAtom;i++) if( AtomList[i].pos.z < slab_width ) nbMoveMax++;
+	if( nbMoveMax < MinNbMoveMax ) nbMoveMax = MinNbMoveMax;
+	cout << "Trying to make charge neutral surfaces by moving " << nbMoveMax << " ions (or group of ions to be not separed) from the bottom surface to the upper one.." << endl;
+	// Increase H3 length to be sure to have free surfaces
+	double fac_vac = 1.5;
+	double shift_z = this->H3[2] * ((fac_vac-1.)/2.);
+	double *InitH3 = new double[3];
+	for(unsigned int i=0;i<3;i++){
+		InitH3[i] = this->H3[i];
+		this->H3[i] *= fac_vac;
+	}
+	computeInverseCellVec();
+	double zero(0.);
+	ApplyShift(zero,zero,shift_z);
+	computeWrap();
+
+	double *true_z = new double[nbAtom];
+	for(unsigned int i=0;i<nbAtom;i++) true_z[i] = AtomList[i].pos.z;
+	double zmid = ( MT->max_p(true_z,nbAtom) + MT->min_p(true_z,nbAtom) ) / 2.;
+	unsigned int nbPts_g = floor(H3[2]*2./ave_dist);
+	if( nbPts_g % 2 != 1 ) nbPts_g++;
+	unsigned int dens_ind = Compute1dDensity("Charge","z",ave_dist,nbPts_g);
+	Print1dDensity("InitialChargeDensity.dat","Charge");
+	unsigned int mid = floor((double) (nbPts_g) * zmid / H3[2])+1;
+	double low_int(0.),up_int(0.); // integrals of charge density in the upper and lower part of the system
+	for(unsigned int i=0;i<mid;i++) low_int += density_prof[dens_ind][i*2]; // no need to account for distance as step is regular and system is divided by the middle
+	for(unsigned int i=mid+1;i<nbPts_g;i++) up_int += density_prof[dens_ind][i*2];
+	vector<unsigned int> ind_moved;
+	ind_moved.push_back(0);
+	double charge_bal = fabs(low_int - up_int); // try to minize this quantity by moving ions of H3 from low to high
+	double init_charge_bal = charge_bal;
+	// at each step move the ions which is the most at the bottom
+	double *z = new double[nbAtom];
+	if( !IsNotSepTag ) for(unsigned int i=0;i<nbAtom;i++) z[i] = AtomList[i].pos.z;
+	else{
+		for(unsigned int i=0;i<nbAtom;i++){
+			true_z[i] = AtomList[i].pos.z;
+			if( NotSepTag[i][0] >= 0 ) z[i] = AtomList[i].pos.z; // store only ions which are not stored because of the NotSep list
+			else z[i] = std::numeric_limits<double>::max();
+		}
+	}
+	unsigned int ind_tomove = MT->min_p_ind(z,nbAtom);
+	double init_zmin = z[ind_tomove];
+	double final_zmin = init_zmin;
+	unsigned int opt_ind(0);
+	vector<unsigned int> nbIonsMoved;
+	nbIonsMoved.push_back(0);
+	for(unsigned int i=0;i<nbMoveMax;i++){
+		Dis->ProgressBar(nbMoveMax,i);
+		AtomList[ind_tomove].pos.x += InitH3[0];
+		AtomList[ind_tomove].pos.y += InitH3[1];
+		AtomList[ind_tomove].pos.z += InitH3[2];
+		nbIonsMoved.push_back(1);
+		if( IsNotSepTag){
+			for(unsigned int j=0;j<NotSepTag[ind_tomove][0];j++){
+				AtomList[NotSepTag[ind_tomove][j+1]].pos.x += InitH3[0];
+				AtomList[NotSepTag[ind_tomove][j+1]].pos.y += InitH3[1];
+				AtomList[NotSepTag[ind_tomove][j+1]].pos.z += InitH3[2];
+				nbIonsMoved[nbIonsMoved.size()-1]++;
+			}
+		}
+		computeWrap();
+		true_z[ind_tomove] += InitH3[2];
+		zmid = ( MT->max_p(true_z,nbAtom) + MT->min_p(true_z,nbAtom) ) / 2.;
+		mid = floor((double) (nbPts_g) * zmid / H3[2])+1;
+		// recompute density
+		dens_ind = Compute1dDensity("Charge","z",ave_dist,nbPts_g);
+		low_int = 0.;
+		up_int = 0.;
+		for(unsigned int i=0;i<mid;i++) low_int += ( density_prof[dens_ind][(i+1)*2] + density_prof[dens_ind][i*2] );
+		for(unsigned int i=mid;i<nbPts_g-1;i++) up_int += ( density_prof[dens_ind][(i+1)*2] + density_prof[dens_ind][i*2] );
+		// store value of charge balance and ion index
+		ind_moved.push_back(ind_tomove);
+		if( charge_bal > fabs(low_int - up_int) ){
+			charge_bal = fabs(low_int - up_int);
+			final_zmin = z[ind_tomove];
+			opt_ind = i+1;
+		}
+		z[ind_tomove] = AtomList[ind_tomove].pos.z;
+		ind_tomove = MT->min_p_ind(z,nbAtom);
+	}
+	for(unsigned int i=ind_moved.size()-1;i>opt_ind;i--){
+		AtomList[ind_moved[i]].pos.x -= InitH3[0];
+		AtomList[ind_moved[i]].pos.y -= InitH3[1];
+		AtomList[ind_moved[i]].pos.z -= InitH3[2];
+		if( IsNotSepTag){
+			for(unsigned int j=0;j<NotSepTag[ind_moved[i]][0];j++){
+				AtomList[NotSepTag[ind_moved[i]][j+1]].pos.x -= InitH3[0];
+				AtomList[NotSepTag[ind_moved[i]][j+1]].pos.y -= InitH3[1];
+				AtomList[NotSepTag[ind_moved[i]][j+1]].pos.z -= InitH3[2];
+			}
+		}
+	}
+	// recompute density
+	computeWrap();
+	dens_ind = Compute1dDensity("Charge","z",ave_dist,nbPts_g);
+	// Reset the system at its initial position and size
+	ApplyShift(zero,zero,-shift_z-(final_zmin-init_zmin));
+	for(unsigned int i=0;i<3;i++) this->H3[i] = InitH3[i];
+	computeInverseCellVec();
+	delete[] InitH3;
+	delete[] z;
+	delete[] true_z;
+	cout << "Initial charge balance = " << init_charge_bal << ", final one = " << charge_bal << ", number of ions moved = " << nbIonsMoved[opt_ind] << endl;
+	Print1dDensity("FinalChargeDensity.dat","Charge");
 }
 
 double AtomicSystem::ComputeAverageDistance(){
@@ -3016,6 +3212,7 @@ AtomicSystem::~AtomicSystem(){
 		delete[] AngleType;
 	}
 	if( IsPeriodicArr ) delete[] PeriodicArr;
+	delete Dis;
 }
 
 

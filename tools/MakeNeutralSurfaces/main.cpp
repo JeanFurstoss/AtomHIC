@@ -1,8 +1,10 @@
 //**********************************************************************************
-//*   Displays.h                                                                   *
+//*   MakeNeutralSurfaces/main.cpp                 		                   *
 //**********************************************************************************
-//* This file contains the declaration of the Displays class used to display stuff *
-//* during the execution of AtomHIC
+//* This file contains the implementation of the MakeNeutralSurfaces		   *
+//* executable.							                   *
+//* It allows to move atom from one surface to another to try make the surfaces as *
+//* neutral as possible
 //**********************************************************************************
 //* (C) Jan 2025 - Jean Furstoss                                                   *
 //*     Université de Poitiers, Institut PPRIME                                    *
@@ -24,37 +26,44 @@
 //* along with this program.  If not, see <http://www.gnu.org/licenses/>.          *
 //**********************************************************************************
 //* What is still needed to do here:                                               *
-//*	- display of the resume of bicrystal construction			   * 						                           *
-//*	- 						                           *
+//*	- work on Bicrystal class to have more clear outputs			   *
 //**********************************************************************************
 
-#ifndef DISPLAYS_H
-#define DISPLAYS_H
-
-#include "AtomHicExport.h"
-#include <chrono>
-#include <vector>
+#include <AtomicSystem.h>
+#include <stdlib.h>
+#include <iostream>
+#include <sstream>
 #include <string>
-#include "Crystal.h"
+#include <Displays.h>
 
-class ATOMHIC_EXPORT Displays {
-private:
-	std::chrono::high_resolution_clock::time_point time_beg;
-public:
-	// constructors
-	Displays();
-	// methods
-	void Logo();
-	void ExecutionTime();
-	void DisplayArray(const std::vector<std::vector<std::string>>& elements, const std::vector<std::vector<unsigned int>>& fusion);
-	void DisplayArray(const std::vector<std::vector<std::string>>& elements, const std::vector<std::vector<unsigned int>>& fusion, std::ofstream& filetoprint);
-	std::string center(const std::string& text, int width);
-	void DisplayGB(Crystal *Crystal1, Crystal *Crystal2);
-	void DisplayOrthogonalCell(Crystal *Crystal);
-	void ProgressBar(unsigned int &Final, unsigned int &current);
-	// destructor
-	~Displays(){};
-	
-};
+using namespace std;
 
-#endif
+
+int main(int argc, char *argv[])
+{
+	Displays Dis;
+	Dis.Logo();
+	if( argc != 3 && argc != 4 ){
+		cerr << "Usage: ./MakeNeutralSurfaces InputFilename (CrystalName) OutputFilename" << endl;
+		cerr << "This executable tries to move ions from the bottom surface to the upper one to get the surface as neutral as possible" << endl;
+		cerr << "The atomic system needs to define charges of the ions" << endl;
+		cerr << "The considered surfaces are the one oriented normal to the z axis" << endl;
+		cerr << "Providing the crystal name allows to apply the do not separe instructions readed from the crystal database (see /data/ExampleFiles/Crystal.ath for more informations)" << endl;
+		return EXIT_FAILURE;
+	}
+	string InputFilename = argv[1];
+	string OutputFilename, CrystalName;
+	AtomicSystem MySys(InputFilename);
+	if( argc == 3 )	OutputFilename = argv[2];
+	else{
+		CrystalName = argv[2];
+		OutputFilename = argv[3];
+		MySys.setCrystal(CrystalName);
+		MySys.ComputeNotSepList();
+	}
+	MySys.MakeSurfaceNeutral();
+	MySys.printSystem(OutputFilename);
+
+	Dis.ExecutionTime();	
+	return 0;
+}
