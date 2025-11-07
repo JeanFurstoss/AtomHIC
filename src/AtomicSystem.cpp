@@ -864,15 +864,15 @@ bool AtomicSystem::ReadAtomicFile(const string &filename){
 				if( !this->read_other_cfg(filename) ){
 					return false;
 				}else{
-					cout << " done !" << endl;
+					cout << " done ! (" << SystemCharacteristics() << ")" << endl;
 					return true;
 				}
 			}else{
-				cout << " done !" << endl;
+				cout << " done ! (" << SystemCharacteristics() << ")" << endl;
 				return true;
 			}
 		}else{
-			cout << " done !" << endl;
+			cout << " done ! (" << SystemCharacteristics() << ")" << endl;
 				return true;
 		}
 	}else{
@@ -881,18 +881,31 @@ bool AtomicSystem::ReadAtomicFile(const string &filename){
 				if( !this->read_lmp_file(filename) ){
 					return false;
 				}else{
-					cout << " done !" << endl;
+					cout << " done ! (" << SystemCharacteristics() << ")" << endl;
 					return true;
 				}
 			}else{
-				cout << " done !" << endl;
+				cout << " done ! (" << SystemCharacteristics() << ")" << endl;
 				return true;
 			}
 		}else{
-			cout << " done !" << endl;
+			cout << " done ! (" << SystemCharacteristics() << ")" << endl;
 			return true;
 		}
 	}
+}
+
+string AtomicSystem::SystemCharacteristics(bool cfg){
+	string msg=to_string(nbAtom);
+	if( IsMolId ) msg += " full";
+	else if( IsCharge ) msg += " charged";
+	msg += " atoms";
+	if( IsVel ) msg += " and velocities";
+	if( !cfg ){
+		if( IsBond ) msg += ", "+to_string(nbBonds)+" bonds";
+		if( IsAngle ) msg += ", "+to_string(nbAngles)+" angles";
+	}
+	return msg;
 }
 
 void AtomicSystem::computeInverseCellVec(){
@@ -2666,7 +2679,7 @@ void AtomicSystem::print_lmp(const string& filename){
 	}
 
 	writefile.close();
-	cout << "File " << filename << " successfully writted !" << endl;
+	cout << "File " << filename << " successfully writted ! (" << SystemCharacteristics() << ")" << endl;
 }
 
 void AtomicSystem::print_cfg(const string& filename){
@@ -2703,7 +2716,7 @@ void AtomicSystem::print_cfg(const string& filename){
 		}
 	}
 	writefile.close();
-	cout << "File " << filename << " successfully writted !" << endl;
+	cout << "File " << filename << " successfully writted ! (" << SystemCharacteristics(true) << ")" << endl;
 }
 
 void AtomicSystem::printSystem_aux(const string& filename, const string& AuxName){
@@ -2818,7 +2831,10 @@ void AtomicSystem::printSystem_aux(const string& filename, const string& AuxName
 		}
 	}
 	writefile.close();
-	cout << "File " << filename << " successfully writted !" << endl;
+	cout << "File " << filename << " successfully writted ! (" << SystemCharacteristics(true);
+	cout << ", auxiliary properties :";
+        for(unsigned int i=0;i<AuxId.size();i++) cout << " " << this->Aux_name[AuxId[i]] << " - " << Aux_size[AuxId[i]] << " dim -";
+	cout << ")" << endl;
 }
 
 void AtomicSystem::read_params_atsys(){

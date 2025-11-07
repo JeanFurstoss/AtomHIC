@@ -45,32 +45,30 @@ int main(int argc, char *argv[])
 {
 	Displays Dis;
 	Dis.Logo();
-	if( argc != 3 && argc != 5 ){
-		cerr << "Usage: ./DBScanClustering AtomicInputFilename (FilteringType VariableToCluster) OutputFilename" << endl;
-		cerr << "This executable performs a density based scan (DBScan) clustering of atoms with respect to a VariableToCluster, which could be either the atomic positions or a given auxiliary property (which could have arbitrary dimension)" << endl;
-		cerr << "The program will return an ovito output file with an auxiliary property named ClusterId, with ClusterId[1] is the id of the cluster (-1 => means undefined point, 0 => noisy point, else the cluster id) and ClusterId[2] is the status of the atoms (i.e. 1 => core, 0 => outlier point or -10 => not treated due to filtering for instance)" << endl;
-		cerr << "(parameters of DBScan are read from FixedParameters.dat)" << endl;
-		cerr << "The filtering type allows to consider different groups of atoms independently. It could be \"none\", \"element\" (should be defined in the atomic system or provided in a Type2Element.dat file), \"type\" (integer based) or an auxiliary property of the system " << endl;
-		cerr << "If FilteringType and VariableToCluster are not provided, the system will not be filtered (i.e. \"none\") and the vaiable to cluster will be the atomic position" << endl;
-		cerr << "This executable does not consider periodic boundary conditions even when the variable to cluster is the atomic position" << endl;
+	if( argc != 3 ){
+		cerr << "Usage: ./DBScanClustering AtomicInputFilename OutputFilename" << endl;
+		cerr << "AtomicInputFilename should be an atomic system" << endl;
+		cerr << "The program will return an ovito output file with the id of cluster (parameters of DBScan are read from FixedParameters.dat)" << endl;
+		cerr << "For the moment ions cannot be filtered" << endl;
 		return EXIT_FAILURE;
 	}
 	
 	string InputFilename = argv[1];
-	string OutputFilename;
-	string FilteringType = "none";
-	string VarToClust = "Position";
-	if( argc == 5 ){
-		FilteringType = argv[2];
-		VarToClust = argv[3];
-		OutputFilename = argv[4];
-	}else OutputFilename = argv[2];
-
+	string OutputFilename = argv[2];
 	AtomicSystem MySystem(InputFilename);
-	Descriptors MyDes(&MySystem,VarToClust,FilteringType);
+	unsigned int nbAt = MySystem.getNbAtom();
+	double *aux = new double[nbAt];
+	unsigned int Struct_ind, size_Struct;
+	Struct_ind = MySystem.getAuxIdAndSize("Struct",size_Struct);
+	for(unsigned int i=0;i<nbAt;i++){
+		if( MySystem.getAux(Struct_ind)[i*size_Struct] == 0 || MySystem.getAux(Struct_ind)[i*size_Struct] == 5 ) aux[i] = 1;
+		else aux[i] = 0;
+	}
+	MySystem.setAux(aux,"Crystal");
+	Descriptors MyDes(&MySystem,"Position","Crystal");
 	DBScan MyDB;
 	MyDB.setDescriptors(&MyDes);
-	MyDB.TrainModel();
+	MyDB.TrainModel(to_string(0.));
 	MySystem.setAux_vec(MyDB.getClassificator(),2,"ClusterId");
 	MySystem.printSystem_aux(OutputFilename,"ClusterId");
 	Dis.ExecutionTime();	

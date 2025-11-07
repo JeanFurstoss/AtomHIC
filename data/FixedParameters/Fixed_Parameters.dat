@@ -8,7 +8,7 @@ MIN_BOX_ASIDE 3. // minimum box aside (in A)
 MOTIF_SHIFT 0 0 0 // shift (in A) applied to the crystal motif before constructing orthogonal cells along [100], [010] and [001] crystallographic directions respectively (default values 0. 0. 0.)
 MAX_MISFIT 0.02 // maximum misfit for pasting crystal over each others when creating bicrystal
 MAX_DUP 100 // maximum duplication of the two grains for pasting crystal over each others when creating bicrystal and respecting MAX_MISFIT
-GB_SPACE 2. // space between the two crystals (in A)
+GB_SPACE 3. // space between the two crystals (in A)
 FULL_GRAINS 1 // if 1 the two grains used for constructing bicrystals are fully considered (with duplication), if 0 their sizes correspond to the unit cell of the corresponding plane. FULL_GRAINS 0 allows to save memory during computation if the GB is really large (default 1)
 
 // Parameters for CSL calculation
@@ -53,5 +53,6 @@ KMEANS_ELBOW_FACTOR 0.01 // for the optimization of the number of cluster K when
 KMEANS_NO_SIL_MIN_NO_ELBOW_CHOICE Max // when no Silhouette minimum has been found and the elbow method does not work, what number of cluster is consider to be the optimal (could be Max, Min or any number between n_clust_min and n_clust_max) (default Max)
 
 // Parameters for DBScan
-DBSCAN_EPS 6. // cutoff radius for neighbour research (euclidian distance) default value 3
+DBSCAN_EPS .00001 // cutoff radius for neighbour research (euclidian distance) default value 3
 DBSCAN_MINPTS 40 // min points within cutoff radius for a point to be consider as a core point (default value 5) 
+DBSCAN_NB_MAX_CLUSTER 200 // (default value 200) 

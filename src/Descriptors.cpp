@@ -797,6 +797,11 @@ void Descriptors::searchNeighbours(double rc, string FilterVal, string distFunc)
 	double *CellSizes = new double[dim];
 	unsigned int nbCellTot = 0;
 	double length = max_val[current_f*dim]-min_val[current_f*dim];
+	if( length == 0 ){
+		length = 1;
+		//cerr << "The dimension 1 of descriptors is flat, cannot search neighbours, aborting" << endl;
+		//exit(EXIT_FAILURE);
+	}
 	double CellVolume;
 	nbCells[0] = floor(length/rc);
 	if( nbCells[0] == 0 ){
@@ -807,6 +812,11 @@ void Descriptors::searchNeighbours(double rc, string FilterVal, string distFunc)
 	CellVolume = CellSizes[0];
 	for(unsigned int d=1;d<dim;d++){
 		double length = max_val[current_f*dim+d]-min_val[current_f*dim+d];
+		if( length == 0 ){
+			length = 1;
+			//cerr << "The dimension " << i+1 << " of descriptors is flat, cannot search neighbours, aborting" << endl;
+			//exit(EXIT_FAILURE);
+		}
 		nbCells[d] = floor(length/rc);
 		if( nbCells[d] == 0 ){
 			nbCells[d] = 1;
@@ -826,7 +836,7 @@ void Descriptors::searchNeighbours(double rc, string FilterVal, string distFunc)
 	}
 	// Fill cells
 	vector<vector<unsigned int>> Cells(nbCellTot); // Cells[ i1*(prod nbCell(d!=d1)) + i2*(prod nbCell(d!=d1 && d!=d2)) + .. + iN ][i] = id of ith point belonging to Cell (i1,i2,i3,..,iN)
-	#pragma omp parallel for
+	//#pragma omp parallel for
 	for(unsigned int i=0;i<nbDat[current_f];i++){
 		unsigned int current_cell_index = 0;
 		unsigned int current_index = FilterIndex[current_f*nbDatMax+i];
@@ -870,7 +880,7 @@ void Descriptors::searchNeighbours(double rc, string FilterVal, string distFunc)
 	nbMaxN.push_back(maxN);
 	// search neighbours
 	vector<vector<int>> combinations = MT->GenerateNDCombinations(dim,-1,1);
-	#pragma omp parallel for
+	//#pragma omp parallel for //TODO issue here or in the previous.. to fix
 	for(unsigned int n=0;n<nbCellTot;n++){
 		double squared_dist;
 		// get the dimension index of the cell

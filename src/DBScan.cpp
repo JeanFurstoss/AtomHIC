@@ -41,6 +41,13 @@ void DBScan::setDescriptors(Descriptors *D){
 	nbClust = new unsigned int[nbFilter];
 }
 
+void DBScan::TrainModel(){
+	for(unsigned int f=0;f<nbFilter;f++){
+		cout << "Performing DBScan for filter \"" << FilterValue[f] << "\"" << endl;
+		TrainModel(FilterValue[f]);
+	}
+}
+
 void DBScan::TrainModel(string filter_name){
 	if( !IsDescriptor ){
 		cerr << "The ML model does not have descriptors, training aborted" << endl;

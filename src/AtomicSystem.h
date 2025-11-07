@@ -202,6 +202,7 @@ public:
 	void print_lmp(const std::string& filename);
 	void print_cfg(const std::string& filename);
 	void printSystem_aux(const std::string& filename, const std::string& AuxId);
+	std::string SystemCharacteristics(bool cfg=false);
 	unsigned int searchNeighbours(const double& rc); // return nbNMax which is crucial for findings neighbours from the list
 	unsigned int searchNeighbours_restricted(const double& rc, const std::vector<unsigned int> & IndexToSearch, const std::vector<unsigned int> & IndexForSearch); // return nbNMax which is crucial for findings neighbours from the list
 	void computeWrap();

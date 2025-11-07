@@ -65,6 +65,7 @@ public:
 	void readFixedParams();
 	void setDescriptors(Descriptors *D);
 	void TrainModel(std::string filter_name);
+	void TrainModel();
 	void Classify(){};
 	void ReadProperties(std::vector<std::string> Properties);
 	unsigned int getNbClust(std::string filter_name);
