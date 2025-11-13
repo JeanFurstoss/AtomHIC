@@ -44,8 +44,28 @@ void DBScan::setDescriptors(Descriptors *D){
 void DBScan::TrainModel(){
 	for(unsigned int f=0;f<nbFilter;f++){
 		cout << "Performing DBScan for filter \"" << FilterValue[f] << "\"" << endl;
+		if( eps_meth == "AUTO" ) ComputeAutoEps(FilterValue[f]);
+		if( minPts_meth == "AUTO" ) ComputeAutoMinPts(FilterValue[f]);
+		cout << "Parameters used, eps = " << eps << ", minPts = " << minPts << endl;
 		TrainModel(FilterValue[f]);
 	}
+}
+
+void DBScan::ComputeAutoEps(string filter_name){ // TODO better use statistics of the system (e.g. third quartile of distance distribution)
+	double fac_eps = 2.;
+	eps = _MyDescriptors->ComputeAverageMinDistance(filter_name)*fac_eps;
+}
+
+void DBScan::ComputeAutoMinPts(string filter_name){ // TODO better use statistics of the system (e.g. third quartile of number of point distribution)
+	unsigned int current_filter = getCurrentFIndex(filter_name);
+	_MyDescriptors->searchNeighbours(eps,filter_name);
+	unsigned int current_filter_neigh;
+	unsigned int nbNMax = _MyDescriptors->getNbMaxNAndFilter(filter_name,current_filter_neigh);
+	double mean_minPts = 0.;
+	double fac_minpts = 0.25;
+	for(unsigned int i=0;i<nbDat[current_filter];i++) mean_minPts += _MyDescriptors->getNeighbours(current_filter_neigh)[i*(nbNMax+1)];
+	mean_minPts /= (double) nbDat[current_filter];
+	minPts = (unsigned int) (mean_minPts*fac_minpts);
 }
 
 void DBScan::TrainModel(string filter_name){
@@ -57,28 +77,10 @@ void DBScan::TrainModel(string filter_name){
 	if( !_MyDescriptors->getIsNeighbours(filter_name) || _MyDescriptors->get_current_rc(filter_name) != eps ){
 		_MyDescriptors->searchNeighbours(eps,filter_name);
 	}
-	unsigned int current_filter;
-	bool found = false;
-	for(unsigned int f=0;f<nbFilter;f++){
-		if( FilterValue[f] == filter_name ){
-			current_filter = f;
-			found = true;
-			break;
-		}
-	}
-	if( !found ){
-		cerr << "The provided filter value (" << filter_name << ") does not correspond to a filter value of the ML model, aborting" << endl;
-		exit(EXIT_FAILURE);
-	}
+	unsigned int current_filter = getCurrentFIndex(filter_name);
 	unsigned int current_filter_neigh;
 	unsigned int nbNMax = _MyDescriptors->getNbMaxNAndFilter(filter_name,current_filter_neigh);
 	unsigned int nbDes = nbDat[current_filter];
-	double mean_minPts = 0.;
-	for(unsigned int i=0;i<nbDes;i++) mean_minPts += _MyDescriptors->getNeighbours(current_filter_neigh)[i*(nbNMax+1)];
-	mean_minPts /= (double) nbDes;
-	minPts = (unsigned int) mean_minPts;
-	minPts--;
-	cout << "Average number of neighbours : " << minPts << endl;
 
 	cout << "Performing density based clustering.." << endl;
 	unsigned int nbDatTot = 0;
@@ -275,13 +277,13 @@ void DBScan::readFixedParams(){
 			pos_eps=line.find("DBSCAN_EPS");
 			if(pos_eps!=string::npos){
 				istringstream text(line);
-				text >> buffer_s >> eps;
+				text >> buffer_s >> eps_meth;
 				ReadOk++;
 			}
 			pos_minPts=line.find("DBSCAN_MINPTS");
 			if(pos_minPts!=string::npos){
 				istringstream text(line);
-				text >> buffer_s >> minPts;
+				text >> buffer_s >> minPts_meth;
 				ReadOk++;
 			}
 		}
@@ -294,6 +296,14 @@ void DBScan::readFixedParams(){
 		cerr << "Error during reading of FixedParameters.dat for DBScan, aborting" << endl;
 		exit(EXIT_FAILURE);
 	}
+	if( eps_meth != "AUTO" ){
+		istringstream text(eps_meth);
+		text >> eps;
+	}
+	if( minPts_meth != "AUTO" ){
+		istringstream text(minPts_meth);
+		text >> minPts;
+	}
 }
 
 void DBScan::ReadProperties(vector<string> Properties){
@@ -304,13 +314,21 @@ void DBScan::ReadProperties(vector<string> Properties){
 		pos_eps=Properties[i].find("DBSCAN_EPS");
 		if(pos_eps!=string::npos){
 			istringstream text(Properties[i]);
-			text >> buffer_s >> eps;
+			text >> buffer_s >> eps_meth;
 		}
 		pos_minPts=Properties[i].find("DBSCAN_MINPTS");
 		if(pos_minPts!=string::npos){
 			istringstream text(Properties[i]);
-			text >> buffer_s >> minPts;
+			text >> buffer_s >> minPts_meth;
 		}
+	}
+	if( eps_meth != "AUTO" ){
+		istringstream text(eps_meth);
+		text >> eps;
+	}
+	if( minPts_meth != "AUTO" ){
+		istringstream text(minPts_meth);
+		text >> minPts;
 	}
 }
 

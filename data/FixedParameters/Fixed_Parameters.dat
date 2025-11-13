@@ -53,6 +53,6 @@ KMEANS_ELBOW_FACTOR 0.01 // for the optimization of the number of cluster K when
 KMEANS_NO_SIL_MIN_NO_ELBOW_CHOICE Max // when no Silhouette minimum has been found and the elbow method does not work, what number of cluster is consider to be the optimal (could be Max, Min or any number between n_clust_min and n_clust_max) (default Max)
 
 // Parameters for DBScan
-DBSCAN_EPS .00001 // cutoff radius for neighbour research (euclidian distance) default value 3
-DBSCAN_MINPTS 40 // min points within cutoff radius for a point to be consider as a core point (default value 5) 
+DBSCAN_EPS AUTO // cutoff radius for neighbour research (euclidian distance), it could also be "AUTO", in this case it will be the average of mininum pair distances in the system times 2 (default value AUTO)
+DBSCAN_MINPTS AUTO // min points within cutoff radius for a point to be consider as a core point, it could also be "AUTO", in this case it will be the average of the number of point contained within the cutoff in the system times 0.25 (default value "AUTO") 
 DBSCAN_NB_MAX_CLUSTER 200 // (default value 200) 

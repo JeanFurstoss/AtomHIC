@@ -53,11 +53,13 @@
 #include "MathTools.h"
 #include <string>
 #include <Eigen/Dense>
+#include "Displays.h"
 
 using namespace Eigen;
 
 class ATOMHIC_EXPORT Descriptors {
 protected:
+	Displays Dis;
 	std::string name = "none";
 	std::vector<std::string> Properties; // Descriptor properties could be set from DescriptorProperties.ath file when reading labelled data or from MachineLearning database reading or when computed by the setProperties() method
 	AtomicSystem *_MySystem;
@@ -130,6 +132,7 @@ public:
 	void ConstructLabelIndexArray();
 	void ConstructDescriptorFromAtomicPosition();
 	void searchNeighbours(double rc, std::string filter_val, std::string distFunc="Euclidian");
+	double ComputeAverageMinDistance(std::string FilterVal, std::string distFunc="Euclidian");
 	void ComputeExtremums();
 	void SquaredDistance(unsigned int id_1, unsigned int id_2, unsigned int filter, double &squared_dist);// For the moment Euclidian distance (to add other distance and rename)
 	void readProperties(std::vector<std::string> _Properties);

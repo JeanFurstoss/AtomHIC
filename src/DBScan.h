@@ -28,11 +28,9 @@
 //**********************************************************************************
 //* What is still needed to do here:                                               *
 //*	- think about how to separate the TrainModel and the Classify methods      *
-//*	- implement a way for minPts automatic calculation or using the read value *
-//* from FixedParameters                                                           *
 //*	- think about how to classify unknown descriptors                          *
 //*	- think about parallelization			                           *
-//*	- 						                           *
+//*	- use Eigen and descriptors subarrays		                           *
 //**********************************************************************************
 
 #ifndef DBSCAN_H
@@ -57,6 +55,8 @@ private:
 	unsigned int nbClustMax = 200;
 	double eps = 3.;
 	unsigned int minPts = 5;
+	std::string eps_meth = "AUTO";
+	std::string minPts_meth = "AUTO";
 
 public:
 	// constructors
@@ -66,6 +66,8 @@ public:
 	void setDescriptors(Descriptors *D);
 	void TrainModel(std::string filter_name);
 	void TrainModel();
+	void ComputeAutoEps(std::string filter_name);
+	void ComputeAutoMinPts(std::string filter_name);
 	void Classify(){};
 	void ReadProperties(std::vector<std::string> Properties);
 	unsigned int getNbClust(std::string filter_name);

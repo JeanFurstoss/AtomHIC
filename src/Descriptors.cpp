@@ -758,38 +758,71 @@ double Descriptors::get_current_rc(std::string filter_name){
 	else return rc_neighbours[f];
 }
 
-void Descriptors::searchNeighbours(double rc, string FilterVal, string distFunc){
-	bool already = false;
-	unsigned int current_f;
-	for(unsigned int f=0;f<FilterValue.size();f++){
-		if( FilterValue[f] == FilterVal ){
-			already = true;
-			current_f = f;
-			break;
+double Descriptors::ComputeAverageMinDistance(string FilterVal, string distFunc){
+	unsigned int current_f = current_filter(FilterVal);
+	// search extremums for computing the apparent volume of the system 
+	if( !AreExtremums ) ComputeExtremums();
+	double AppVol = 1.;
+	for(unsigned int d=0;d<dim;d++){
+		double length = max_val[current_f*dim+d]-min_val[current_f*dim+d];
+		if( length == 0 ){
+			length = 1;
+			cout << "Warning, the dimension " << d+1 << " of descriptors is flat" << endl;
+			//cerr << "The dimension " << d+1 << " of descriptors is flat, cannot search neighbours, aborting" << endl;
+			//exit(EXIT_FAILURE);
 		}
+		AppVol *= length;
 	}
-	if( !already ){
-		cerr << "The provided filter value (" << FilterVal << ") does not correspond to a filter value of the descriptors, aborting" << endl;
-		exit(EXIT_FAILURE);
+	double Density = AppVol / nbDat[current_f];
+	double secFac = 2.; // TODO test this value
+	double rc = secFac*pow(Density,1./dim);
+	searchNeighbours(rc,FilterVal);
+	unsigned int current_f_neigh;
+        unsigned int current_nbMaxN = getNbMaxNAndFilter(FilterVal,current_f_neigh);
+	double ave_dist = 0.;
+	for(unsigned int i=0;i<nbDat[current_f];i++){
+		vector<double> dist_q;
+		unsigned int curid = FilterIndex[current_f*nbDatMax+i];
+		for(unsigned int j=0;j<Neighbours[current_f_neigh][i*(current_nbMaxN+1)];j++){
+			unsigned int id = FilterIndex[current_f*nbDatMax+Neighbours[current_f_neigh][i*(current_nbMaxN+1)+j+1]];
+			double curdist = 0.;
+			for(unsigned int d=0;d<dim;d++) curdist += (_Descriptors[curid*dim+d] - _Descriptors[id*dim+d]) * (_Descriptors[curid*dim+d] - _Descriptors[id*dim+d]);
+			dist_q.push_back(curdist);
+		}
+		ave_dist += sqrt(MT->min_vec(dist_q));
 	}
-	already = false;
+	return ave_dist / nbDat[current_f];
+}
+
+void Descriptors::searchNeighbours(double rc, string FilterVal, string distFunc){
+	unsigned int MaxNbCellPerDim = 10;
+	unsigned int current_f = current_filter(FilterVal);
+	bool already = false;
+	bool already_filter = false;
+	unsigned int current_ind_neigh = 0;
 	for(unsigned int f=0;f<Neigh_FilterValue.size();f++){
 		if( FilterVal == Neigh_FilterValue[f] ){
-			already = true;
-			break;
+			already_filter = true;
+			current_ind_neigh = f;
+		        if( rc_neighbours[f] == rc ){
+				already = true;
+				break;
+			}
 		}
 	}
 	if( already ){
-		cout << "Neighbour list has already been computed for this filter" << endl;
+		cout << "Neighbour list has already been computed for this filter and this cutoff" << endl;
 		return;
 	}
 	if( distFunc != "Euclidian" ){ // TODO maybe this ceil list algo also work for other type of distances (should have a look on the maths of distances)
 		cerr << "For the moment other distance function than Euclidian are not implemented, aborting" << endl;
 		exit(EXIT_FAILURE);
 	}
-	// TODO add verification on cutoff radius
+	if( !already_filter ){
+		Neigh_FilterValue.push_back(FilterVal);
+		current_ind_neigh = Neigh_FilterValue.size()-1;
+	}
 	double rc_squared = rc*rc;
-	Neigh_FilterValue.push_back(FilterVal);
 	// search extremums for computing the ceils 
 	if( !AreExtremums ) ComputeExtremums();
 	// ceil list algo
@@ -799,11 +832,13 @@ void Descriptors::searchNeighbours(double rc, string FilterVal, string distFunc)
 	double length = max_val[current_f*dim]-min_val[current_f*dim];
 	if( length == 0 ){
 		length = 1;
+		cout << "Warning the dimension 1 of descriptors is flat" << endl;
 		//cerr << "The dimension 1 of descriptors is flat, cannot search neighbours, aborting" << endl;
 		//exit(EXIT_FAILURE);
 	}
 	double CellVolume;
 	nbCells[0] = floor(length/rc);
+	if( nbCells[0] > MaxNbCellPerDim ) nbCells[0] = MaxNbCellPerDim;
 	if( nbCells[0] == 0 ){
 		nbCells[0] = 1;
 		CellSizes[0] = length;
@@ -814,10 +849,12 @@ void Descriptors::searchNeighbours(double rc, string FilterVal, string distFunc)
 		double length = max_val[current_f*dim+d]-min_val[current_f*dim+d];
 		if( length == 0 ){
 			length = 1;
-			//cerr << "The dimension " << i+1 << " of descriptors is flat, cannot search neighbours, aborting" << endl;
+			cout << "Warning, the dimension " << d+1 << " of descriptors is flat" << endl;
+			//cerr << "The dimension " << d+1 << " of descriptors is flat, cannot search neighbours, aborting" << endl;
 			//exit(EXIT_FAILURE);
 		}
 		nbCells[d] = floor(length/rc);
+		if( nbCells[d] > MaxNbCellPerDim ) nbCells[d] = MaxNbCellPerDim;
 		if( nbCells[d] == 0 ){
 			nbCells[d] = 1;
 			CellSizes[d] = length;
@@ -873,64 +910,89 @@ void Descriptors::searchNeighbours(double rc, string FilterVal, string distFunc)
 		HypSphVol *= pow(2.,((double) dim+1.)/2.);
 	}
 	HypSphVol *= pow(rc,dim);
-	double secFac = 1.5;
-	maxN *= (int) (secFac*HypSphVol/CellVolume); 
-	Neighbours.push_back(new unsigned int[(maxN+1)*nbDat[current_f]]);
-	unsigned int last_ind_n = Neighbours.size()-1;
-	nbMaxN.push_back(maxN);
+	double secFac = 2.;
+	if( (unsigned int) (maxN*secFac*HypSphVol/CellVolume) == 0 ) maxN = (unsigned int) (maxN*secFac);
+	else maxN = (unsigned int) (maxN*secFac*HypSphVol/CellVolume); 
+	if( !already_filter ){
+		Neighbours.push_back(new unsigned int[(maxN+1)*nbDat[current_f]]);
+		nbMaxN.push_back(maxN);
+		rc_neighbours.push_back(rc);
+	}else{
+		delete[] Neighbours[current_ind_neigh];
+		Neighbours[current_ind_neigh] = new unsigned int[(maxN+1)*nbDat[current_f]];
+		nbMaxN[current_ind_neigh] = maxN;
+		rc_neighbours[current_ind_neigh] = rc;
+	}
 	// search neighbours
 	vector<vector<int>> combinations = MT->GenerateNDCombinations(dim,-1,1);
-	//#pragma omp parallel for //TODO issue here or in the previous.. to fix
-	for(unsigned int n=0;n<nbCellTot;n++){
-		double squared_dist;
-		// get the dimension index of the cell
-		vector<unsigned int> current_cell_indexes(dim);
-		vector<unsigned int> neigh_cell_indexes(dim);
-		current_cell_indexes[0] = floor(n/CellIndexes[0]);
-		unsigned int n_new = n - current_cell_indexes[0]*CellIndexes[0];
-	       for(unsigned int d=1;d<dim;d++){
-		       current_cell_indexes[d] = floor( n_new / CellIndexes[d]);
-		       n_new -= current_cell_indexes[d]*CellIndexes[d];
-	       }
-		// search the neighbouring cells indexes
-		vector<unsigned int> full_cell_id;
-		for(unsigned int c=0;c<combinations.size();c++){
-			bool totreat = true;
-			for(unsigned int d=0;d<dim;d++){
-				neigh_cell_indexes[d] = current_cell_indexes[d] + combinations[c][d];
-				if( neigh_cell_indexes[d] < 0 || neigh_cell_indexes[d] >= nbCells[d] ){ // cell outside of bond => do not treat
-					totreat = false;
-					break;
-				}
-			}
-			if( !totreat ) continue;
-			full_cell_id.push_back(0);
-			unsigned int lastind = full_cell_id.size()-1;
-			for(unsigned int d=0;d<dim;d++) full_cell_id[lastind] += neigh_cell_indexes[d]*CellIndexes[d];
-		}
-
-	       // search neighbours of the current cell
-	       for(unsigned int i=0;i<Cells[n].size();i++){
-	       		// initialize counter
-	       		unsigned int count_neigh = 0;
-			for(unsigned int c=0;c<full_cell_id.size();c++){
-	       			for(unsigned int j=0;j<Cells[full_cell_id[c]].size();j++){
-					SquaredDistance(Cells[n][i],Cells[full_cell_id[c]][j],current_f,squared_dist);
-		       			if( squared_dist < rc_squared ){
-						Neighbours[last_ind_n][Cells[n][i]*(maxN+1)+1+count_neigh] = Cells[full_cell_id[c]][j];
-						count_neigh++;
-						if( count_neigh > maxN ){
-							cerr << "Maximum number of neighbours allowed overpassed, aborting" << endl;
-							exit(EXIT_FAILURE);
-						}
+	bool allok = false;
+	while( !allok ){
+		allok = true;
+		//#pragma omp parallel for // cannot parallelized for the moment due to the break statement..
+		for(unsigned int n=0;n<nbCellTot;n++){
+			Dis.ProgressBar(nbCellTot,n);
+			double squared_dist;
+			// get the dimension index of the cell
+			vector<unsigned int> current_cell_indexes(dim);
+			vector<unsigned int> neigh_cell_indexes(dim);
+			current_cell_indexes[0] = floor(n/CellIndexes[0]);
+			unsigned int n_new = n - current_cell_indexes[0]*CellIndexes[0];
+		       for(unsigned int d=1;d<dim;d++){
+			       current_cell_indexes[d] = floor( n_new / CellIndexes[d]);
+			       n_new -= current_cell_indexes[d]*CellIndexes[d];
+		       }
+			// search the neighbouring cells indexes
+			vector<unsigned int> full_cell_id;
+			for(unsigned int c=0;c<combinations.size();c++){
+				bool totreat = true;
+				for(unsigned int d=0;d<dim;d++){
+					neigh_cell_indexes[d] = current_cell_indexes[d] + combinations[c][d];
+					if( neigh_cell_indexes[d] < 0 || neigh_cell_indexes[d] >= nbCells[d] ){ // cell outside of bond => do not treat
+						totreat = false;
+						break;
 					}
 				}
+				if( !totreat ) continue;
+				full_cell_id.push_back(0);
+				unsigned int lastind = full_cell_id.size()-1;
+				for(unsigned int d=0;d<dim;d++) full_cell_id[lastind] += neigh_cell_indexes[d]*CellIndexes[d];
 			}
-			Neighbours[last_ind_n][Cells[n][i]*(maxN+1)] = count_neigh;
-	       }
+
+		       // search neighbours of the current cell
+		       for(unsigned int i=0;i<Cells[n].size();i++){
+		       		// initialize counter
+		       		unsigned int count_neigh = 0;
+				for(unsigned int c=0;c<full_cell_id.size();c++){
+		       			for(unsigned int j=0;j<Cells[full_cell_id[c]].size();j++){
+						if( Cells[n][i] != Cells[full_cell_id[c]][j] ){
+							SquaredDistance(Cells[n][i],Cells[full_cell_id[c]][j],current_f,squared_dist);
+			       				if( squared_dist < rc_squared ){
+								Neighbours[current_ind_neigh][Cells[n][i]*(maxN+1)+1+count_neigh] = Cells[full_cell_id[c]][j];
+								count_neigh++;
+								if( count_neigh > maxN ){
+									cout << "Maximum number of neighbours allowed overpassed, doubling this number and relaunch neighbour research" << endl;
+									allok = false;
+									break;
+									//cerr << "Maximum number of neighbours allowed overpassed, aborting" << endl;
+									//exit(EXIT_FAILURE);
+								}
+							}
+						}
+					}
+					if( !allok ) break;
+				}
+				if( !allok ) break;
+				Neighbours[current_ind_neigh][Cells[n][i]*(maxN+1)] = count_neigh;
+		       }
+		       if( !allok ) break;
+		} // end loop on nbCellTot
+		if( !allok ){
+			maxN *= 2;
+			delete[] Neighbours[current_ind_neigh];
+			Neighbours[current_ind_neigh] = new unsigned int[(maxN+1)*nbDat[current_f]];
+			nbMaxN[current_ind_neigh] = maxN;
+		}else IsNeighbours = true;
 	}
-	IsNeighbours = true;
-	rc_neighbours.push_back(rc);
 	delete[] nbCells;
 	delete[] CellSizes;
 	delete[] CellIndexes;
