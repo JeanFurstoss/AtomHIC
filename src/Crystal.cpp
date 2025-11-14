@@ -344,7 +344,6 @@ void Crystal::ConstructNotSepListFromMolId(){
 }
 
 void Crystal::ConstructOrthogonalCell(){
-	int CLsearch = 150;
 	// search the smallest orthogonal box for this orientation by testing linear combination of a1 a2 a3 giving cell vectors aligned with cartesian axis
 	// expect for the x axis which is already aligned with a crystallographic direction
 	vector<int> cl_box;
@@ -484,7 +483,6 @@ void Crystal::computeReciproqual(){
 void Crystal::ComputeOrthogonalPlanesAndDirections(){
 	// search which crystallographic planes are aligned with the x, y, and z planes and which crystallographic directions are aligned with the x, y and z directions
 	computeReciproqual();
-	int CLsearch = 50; // TODO add in FixedParameters
 	// search the smallest orthogonal box for this orientation by testing linear combination of a1 a2 a3 giving cell vectors aligned with cartesian axis
 	// expect for the x axis which is already aligned with a crystallographic direction
 	vector<int> xh_list;
@@ -823,7 +821,7 @@ void Crystal::read_params(){
 	string backslash="/";
 	string filename=fp+backslash+FixedParam_Filename;
 	ifstream file(filename, ios::in);
-	size_t pos_tolOrthoBox, pos_tolOrthoBoxZ, pos_minBoxHeight, pos_minBoxAside, pos_shift;
+	size_t pos_tolOrthoBox, pos_tolOrthoBoxZ, pos_minBoxHeight, pos_minBoxAside, pos_shift, pos_nblc;
 	string buffer_s, line;
 	if(file){
 		while(file){
@@ -853,7 +851,11 @@ void Crystal::read_params(){
 				istringstream text(line);
 				text >> buffer_s >> shift_x >> shift_y >> shift_z;
 			}
-
+			pos_nblc=line.find("NB_MAX_LC");
+			if(pos_nblc!=string::npos){
+				istringstream text(line);
+				text >> buffer_s >> CLsearch;
+			}
 		}
 	}else{
 		cerr << "Can't read /data/FixedParameters/Fixed_Parameters.dat file !" << endl;
@@ -862,7 +864,7 @@ void Crystal::read_params(){
 }
 
 void Crystal::ReadProperties(vector<string> Properties){
-	size_t pos_tolOrthoBox, pos_tolOrthoBoxZ, pos_minBoxHeight, pos_minBoxAside, pos_shift;
+	size_t pos_tolOrthoBox, pos_tolOrthoBoxZ, pos_minBoxHeight, pos_minBoxAside, pos_shift, pos_nblc;
 	string buffer_s;
 	for(unsigned int i=0;i<Properties.size();i++){
 		cout << Properties[i] << endl;
@@ -891,6 +893,12 @@ void Crystal::ReadProperties(vector<string> Properties){
 			istringstream text(Properties[i]);
 			text >> buffer_s >> shift_x >> shift_y >> shift_z;
 		}
+		pos_nblc=Properties[i].find("NB_MAX_LC");
+		if(pos_nblc!=string::npos){
+			istringstream text(Properties[i]);
+			text >> buffer_s >> CLsearch;
+		}
+
 	}
 }
 

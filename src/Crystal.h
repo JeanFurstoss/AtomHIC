@@ -99,6 +99,7 @@ private:
 	std::vector<std::string> BondOriParamProperties;
 	// Parameters to read
 	std::string FixedParam_Filename = "Fixed_Parameters.dat";
+	int CLsearch = 150;
 	double TolOrthoBox = 1.;
 	double TolOrthoBoxZ = 1.;
 	double MinBoxHeight = 10.;
