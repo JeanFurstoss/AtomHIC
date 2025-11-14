@@ -486,17 +486,18 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 }
 
 // Constructor for bicrystal with plane GB with given misorientation and GB plane
-Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, double theta, int h_p, int k_p, int l_p, bool rationalize):h_a(h_a), k_a(k_a), l_a(l_a), theta(theta), h_p(h_p), k_p(k_p), l_p(l_p){
+Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, double theta, int h_p, int k_p, int l_p, bool rationalize, vector<string> Properties):h_a(h_a), k_a(k_a), l_a(l_a), theta(theta), h_p(h_p), k_p(k_p), l_p(l_p){
 	read_params();
 	this->MT = new MathTools;
 	setCrystal(crystalName);
+	this->_MyCrystal->ReadProperties(Properties);
 	string i_a_str(""), i_p_str("");
 	if( _MyCrystal->getCrystallo() == "Hexagonal" ){
 		i_a_str = "_"+to_string(-(this->h_a)-(this->k_a));
 		i_p_str = "_"+to_string(-(this->h_p)-(this->k_p));
 	}
 	cout << "Constructing a GB misoriented by " << theta*180./M_PI << "° around [" << h_a << "_" << k_a << i_a_str << "_" << l_a << "] axis and one GB plane (" << h_p << "_" << k_p << i_p_str << "_" << l_p << ")" << endl;
-	setOrientedCrystals(crystalName, rationalize);
+	setOrientedCrystals(crystalName, rationalize, Properties);
 	// search the number of linear combination for the two system to have the same x y length
 	this->xl1 = this->_MyCrystal->getOrientedSystem()->getH1()[0];
 	this->xl2 = this->_MyCrystal2->getOrientedSystem()->getH1()[0];
@@ -1002,7 +1003,7 @@ void Bicrystal::ShiftGrainsAlongUCInPlane(unsigned int n1, unsigned int n2, bool
 			this->PasteGrains(this->Grain1, this->Grain2);
 			// Output file
 			snprintf(filename, sizeof(filename), "GB_Shift_%u_%u.lmp", i, j);
-					this->File_Heading = File_Heading_save+"# Applied DSC shift: [" + sci_str(shift_x) + ", " + sci_str(shift_y) + "]\n";
+					this->File_Heading = File_Heading_save+" # Applied shift: [" + sci_str(shift_x) + ", " + sci_str(shift_y) + "]\n";
 			this->print_lmp(filename);
 			this->Grain1->ApplyShift(-shift_x, -shift_y, -shift_z);
 		}
@@ -1865,7 +1866,7 @@ void Bicrystal::searchGBSize(const int h_p_func, const int k_p_func, const int l
 	}
 }
 
-void Bicrystal::setOrientedCrystals(const string& crystalName, bool rationalize){
+void Bicrystal::setOrientedCrystals(const string& crystalName, bool rationalize, vector<string> Properties){
 	this->RotCartToGrain2 = new double[9];
 	this->RotGrain1ToGrain2 = new double[9];
 	int *CSL_vec = new int[3];
@@ -1891,6 +1892,7 @@ void Bicrystal::setOrientedCrystals(const string& crystalName, bool rationalize)
 	// add the second rotation to be in the cartesian frame
 	MT->MatDotMat(this->RotGrain1ToGrain2,this->_MyCrystal->getRotMat(),this->RotCartToGrain2);
 	this->_MyCrystal2 = new Crystal(crystalName);
+	this->_MyCrystal2->ReadProperties(Properties);
 	this->_MyCrystal2->RotateCrystal(this->RotCartToGrain2);
 	
 	searchCSL(rot_ax,this->theta,CSL_vec,0);

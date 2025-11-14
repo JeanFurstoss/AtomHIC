@@ -122,7 +122,7 @@ public:
 	Bicrystal(const std::string& filename);
 	Bicrystal(const std::string& filename, const std::string CrystalName);
 	Bicrystal(const std::string& filename, const std::string NormalDir, const std::string CrystalName);
-	Bicrystal(const std::string& crystalName, int h_a, int k_a, int l_a, double theta, int h_p, int k_p, int l_p, bool rationalize=true);// Constructor for bicrystal with plane GB with given misorientation and GB plane
+	Bicrystal(const std::string& crystalName, int h_a, int k_a, int l_a, double theta, int h_p, int k_p, int l_p, bool rationalize, std::vector<std::string> Properties=std::vector<std::string>());// Constructor for bicrystal with plane GB with given misorientation and GB plane
 	Bicrystal(const std::string& crystalName, int h_a, int k_a, int l_a, double theta, int h_p, int k_p, int l_p, std::vector<int> FacetsType, unsigned int N_facet);// Constructor for bicrystal with facetted GB with given misorientation and GB plane and facet type
 	Bicrystal(const std::string& crystalName, int h_a, int k_a, int l_a, double theta); // constructor using only misorientation freedom degree (bicrystallo analyzis)
 	// getters
@@ -152,7 +152,7 @@ public:
         bool searchCSL(double *rot_ax, double theta, int *CSL_vec, unsigned int verbose=0);
 	void generateCSL();
 	void solve_DSC(const int *u, const unsigned int L, const double *B, double *DSC_Base, double tol);
-	void setOrientedCrystals(const std::string& crystalName, bool rationalize); // method initializing 2 crystals with a given misorientation relationship and plane
+	void setOrientedCrystals(const std::string& crystalName, bool rationalize, std::vector<std::string> Properties=std::vector<std::string>()); // method initializing 2 crystals with a given misorientation relationship and plane
 	double RationalizeOri(int h_a, int k_a, int l_a, double theta, double *rot_ax, int *CSL_vec);// return the rotation angle corresponding to the closest rational GB and a known CSL vector due to this rationalization
 	void searchGBSize(const int h_p_func, const int k_p_func, const int l_p_func);
 	void printCSL(const std::string filename);

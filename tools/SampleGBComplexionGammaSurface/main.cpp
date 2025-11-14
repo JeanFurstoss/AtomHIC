@@ -46,29 +46,29 @@ int main(int argc, char *argv[])
 {
 	Displays Dis;
 	Dis.Logo();
-	if( argc != 13 && argc != 15 ){
-		cerr << "Usage: SampleGBComplexionGammaSurface h_RotAxis k_RotAxis (i_RotAxis) l_RotAxis RotAngle(in degree) h_GBPlane k_GBPlane (i_GBPlane) l_GBPlane CrystalName(has to be defined in /data/Crystal/) Rationalize nx ny VacuumOrNot" << endl;
+	if( argc != 13 && argc != 15 && argc != 14 && argc != 16 ){
+		cerr << "Usage: SampleGBComplexionGammaSurface h_RotAxis k_RotAxis (i_RotAxis) l_RotAxis RotAngle(in degree) h_GBPlane k_GBPlane (i_GBPlane) l_GBPlane CrystalName(has to be defined in /data/Crystal/) Rationalize (-density) nx ny VacuumOrNot" << endl;
 		cerr << "The i Miller indexes (for rotation axis and GB plane) should only be used if the crystal is hexagonal" << endl;
 		cerr << "Rationalize can be either 0 or 1" << endl;
 		cerr << "1 => rationalize the GB (i.e. search the closest CSL GB to the provided parameters, in this case the parameters for CSL calculation in /data/FixedParameters/FixedParameters.dat can be important)" << endl;
 		cerr << "0 => do not rationalize the GB, in this case the parameters for constructing crystal and bicrystal in /data/FixedParameters/FixedParameters.dat can be important" << endl;
-		cerr << "       In that case, the grain construction uses fixed input parameters." << endl;
-		//
-	    cerr << "nx, ny specify the number of shifts (sampling points) along each of the two vectors in the GB plane defining the unit cell of the GB (gamma-surface)" << endl;
+		cerr << "If the \"-distance\" keyword is provided the two following parameters (nx ny) no longer represent the number of sampling points in each directions but the distance between two points in each direction (then the number of point will be computed from these distances)" << endl;
     	cerr << "  These values control how many configurations of the GB are generated with different relative vectors." << endl;
 	cerr << "VacuumOrNot could be 0 or 1, 0 => no vaccum is added to above and bellow the GB (i.e. the periodic BC will lead to 2 GBs in the system), 1 => add vacuum and center the GB in the middle of the cell" << endl;
 		cerr << "  Each configuration is saved as a separate dump file (e.g., GB_Shift_0_0.lmp, etc), also containing the values of the applied shift" << endl;
-		//
 		cerr << "In addition the program will also return 3 dump files containing the CSL lattice and the two grains (the two latters can be used to change shift between crystals), if vacuum = 1 Grain1_vacuum.lmp and Grain2_vacuum.lmp will be also generated" << endl;
+		cerr << "This program enforce the fixed parameter MIN_BOX_ASIDE to a value of 2A to be sure that the created GB has only one unit cell" << endl;
 		return EXIT_FAILURE;
 	}
 	int h_a, k_a ,l_a, h_p, k_p, l_p;
 	double theta;
 	unsigned int rat, vac;
 	unsigned int nx, ny;
+	double dx, dy;
 	bool rat_b, vac_b;
+	bool isDist = false;
 	string crystalName;
-	if( argc == 13 ){
+	if( argc == 13 || argc == 14 ){
 		istringstream iss_ha(argv[1]);
 		iss_ha >> h_a;
 		istringstream iss_ka(argv[2]);
@@ -90,13 +90,23 @@ int main(int argc, char *argv[])
 		iss_rat >> rat;
 		if( rat == 0 ) rat_b = false;
 		else rat_b = true;
-		// 
-		istringstream iss_nx(argv[10]);
-		iss_nx >> nx;
-		istringstream iss_ny(argv[11]); 
-		iss_ny >> ny;
-		istringstream iss_vac(argv[12]); 
-		iss_vac >> vac;
+		//
+		if( argc == 13 ){ 
+			istringstream iss_nx(argv[10]);
+			iss_nx >> nx;
+			istringstream iss_ny(argv[11]); 
+			iss_ny >> ny;
+			istringstream iss_vac(argv[12]); 
+			iss_vac >> vac;
+		}else{
+			istringstream iss_nx(argv[11]);
+			iss_nx >> dx;
+			istringstream iss_ny(argv[12]); 
+			iss_ny >> dy;
+			istringstream iss_vac(argv[13]); 
+			iss_vac >> vac;
+			isDist = true;
+		}
 		if( vac == 0 ) vac_b = false;
 		else vac_b = true;
 		//
@@ -125,19 +135,39 @@ int main(int argc, char *argv[])
 		iss_cn >> crystalName;
 		istringstream iss_rat(argv[11]);
 		iss_rat >> rat;
-		istringstream iss_nx(argv[12]);
-		iss_nx >> nx;
-		istringstream iss_ny(argv[13]); 
-		iss_ny >> ny;
-		istringstream iss_vac(argv[14]); 
-		iss_vac >> vac;
+		if( argc == 15 ){
+			istringstream iss_nx(argv[12]);
+			iss_nx >> nx;
+			istringstream iss_ny(argv[13]); 
+			iss_ny >> ny;
+			istringstream iss_vac(argv[14]); 
+			iss_vac >> vac;
+		}else{
+			istringstream iss_nx(argv[12]);
+			iss_nx >> dx;
+			istringstream iss_ny(argv[13]); 
+			iss_ny >> dy;
+			istringstream iss_vac(argv[14]); 
+			iss_vac >> vac;
+			isDist = true;
+		}
 		if( rat == 0 ) rat_b = false;
 		else rat_b = true;
 		if( vac == 0 ) vac_b = false;
 		else vac_b = true;
 	}
-	Bicrystal MyGB(crystalName,h_a,k_a,l_a,theta,h_p,k_p,l_p,rat_b);
-	// 
+	// set minimum aside to very small value to be sure that we only have the UC of the GB
+	vector<string> Properties;
+	Properties.push_back("MIN_BOX_ASIDE 2.");
+	Bicrystal MyGB(crystalName,h_a,k_a,l_a,theta,h_p,k_p,l_p,rat_b,Properties);
+	//
+	if( isDist ){
+		double Lx = MyGB.getH1()[0];
+		double Ly = MyGB.getH2()[1];
+		nx = round(Lx/dx);
+		ny = round(Ly/dy);
+	}
+		
 	MyGB.ShiftGrainsAlongUCInPlane(nx, ny, vac_b);
 
 	MyGB.print_lmp("GB.lmp");

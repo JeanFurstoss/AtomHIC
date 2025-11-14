@@ -165,6 +165,7 @@ public:
 	double *GetCrystalDef(){ return crystal_def; }
 	// methods
 	void read_params();
+	void ReadProperties(std::vector<std::string> Properties);
 	void read_database();
 	void ComputeCrystalDef();
 	void computeReciproqual();

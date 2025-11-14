@@ -861,6 +861,39 @@ void Crystal::read_params(){
 	}
 }
 
+void Crystal::ReadProperties(vector<string> Properties){
+	size_t pos_tolOrthoBox, pos_tolOrthoBoxZ, pos_minBoxHeight, pos_minBoxAside, pos_shift;
+	string buffer_s;
+	for(unsigned int i=0;i<Properties.size();i++){
+		cout << Properties[i] << endl;
+		pos_tolOrthoBox=Properties[i].find("TOL_ORTHO_BOX ");
+		if(pos_tolOrthoBox!=string::npos){
+			istringstream text(Properties[i]);
+			text >> buffer_s >> this->TolOrthoBox;
+		}
+		pos_tolOrthoBoxZ=Properties[i].find("TOL_ORTHO_BOX_Z ");
+		if(pos_tolOrthoBoxZ!=string::npos){
+			istringstream text(Properties[i]);
+			text >> buffer_s >> this->TolOrthoBoxZ;
+		}
+		pos_minBoxHeight=Properties[i].find("MIN_BOX_HEIGHT");
+		if(pos_minBoxHeight!=string::npos){
+			istringstream text(Properties[i]);
+			text >> buffer_s >> this->MinBoxHeight;
+		}
+		pos_minBoxAside=Properties[i].find("MIN_BOX_ASIDE");
+		if(pos_minBoxAside!=string::npos){
+			istringstream text(Properties[i]);
+			text >> buffer_s >> this->MinBoxAside;
+		}
+		pos_shift=Properties[i].find("MOTIF_SHIFT");
+		if(pos_shift!=string::npos){
+			istringstream text(Properties[i]);
+			text >> buffer_s >> shift_x >> shift_y >> shift_z;
+		}
+	}
+}
+
 void Crystal::ChangeTypes(unsigned int *CorresArray){
 	// Variables to modify:
 	// AtomType AtomType_uint NbAtomSite AtomMass AtomCharge, Motif, DoNotSep, Stoichiometry, ReferenceBondOriParam
