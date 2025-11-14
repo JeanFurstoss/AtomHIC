@@ -867,7 +867,6 @@ void Crystal::ReadProperties(vector<string> Properties){
 	size_t pos_tolOrthoBox, pos_tolOrthoBoxZ, pos_minBoxHeight, pos_minBoxAside, pos_shift, pos_nblc;
 	string buffer_s;
 	for(unsigned int i=0;i<Properties.size();i++){
-		cout << Properties[i] << endl;
 		pos_tolOrthoBox=Properties[i].find("TOL_ORTHO_BOX ");
 		if(pos_tolOrthoBox!=string::npos){
 			istringstream text(Properties[i]);
