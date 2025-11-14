@@ -37,6 +37,10 @@
 
 using namespace std;
 
+AtomicSystem::AtomicSystem(){
+	Dis = new Displays;
+}
+
 AtomicSystem::AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double zhi, vector<int> cl_box):_MyCrystal(_MyCrystal){
 	Dis = new Displays;
 	read_params_atsys();
@@ -3189,17 +3193,17 @@ double AtomicSystem::ComputeAverageDistance(){
 }
 
 AtomicSystem::~AtomicSystem(){
-	if( this->IsAtomListMine ){
+	if( AtomList && this->IsAtomListMine ){
 		delete[] AtomList;
 	}
 	if( this->IsCellVecMine ){
-		delete[] H1;
-		delete[] H2;
-		delete[] H3;
+		if( H1 ) delete[] H1;
+		if( H2 ) delete[] H2;
+		if( H3 ) delete[] H3;
 	}
-	delete[] G1;
-	delete[] G2;
-	delete[] G3;
+	if( G1 ) delete[] G1;
+	if( G2 ) delete[] G2;
+	if( G3 ) delete[] G3;
 	delete MT;
 	if( IsWrappedPos ) delete[] WrappedPos;
 	if( IsNeighbours ){

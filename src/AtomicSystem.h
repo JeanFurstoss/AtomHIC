@@ -59,7 +59,7 @@ protected:
 	std::string *AtomType; // the different atom species present in the system
 	double *AtomMass;
 	double *AtomCharge;
-	Atom *AtomList; // List of the atom belonging to the system
+	Atom *AtomList = nullptr; // List of the atom belonging to the system
 	bool IsAtomListMine = true;
 	Position *WrappedPos;
 	bool IsWrappedPos = false;
@@ -69,13 +69,13 @@ protected:
 	bool IsNeighbours = false;
 	std::vector<int> *NotSepTag; // array containing the atom which should not be separated: NotSepTag[i][0] = -1 => the atom i is stored because of the NotSep list, 0 => this atom is not related to the NotSep list, n => the atom has stored n neighbour because of the NotSep list, in the latter case: NotSepTag[i][j+1] return the index of the jth atom which has been stored with the ith one due to the NotSepList
 	bool IsNotSepTag = false;
-	double *H1; // cell vectors of the system
-	double *H2;
-	double *H3;
+	double *H1 = nullptr; // cell vectors of the system
+	double *H2 = nullptr;
+	double *H3 = nullptr;
 	bool IsCellVecMine = true;
-	double *G1; // inverse cell vectors of the system
-	double *G2;
-	double *G3;
+	double *G1 = nullptr; // inverse cell vectors of the system
+	double *G2 = nullptr;
+	double *G3 = nullptr;
 	bool IsG = false;
 	bool IsElem = false;
 	bool IsVel = false;
@@ -119,7 +119,7 @@ protected:
 	double current_rc_neigh;
 	int l_sph_st;
 public:
-	AtomicSystem(){};
+	AtomicSystem();
 	AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double zhi, std::vector<int> cl_box); // construct atomic system from crystal and cell size
 	AtomicSystem(const std::string& filename); // construct AtomicSystem by reading file
 	AtomicSystem(AtomicSystem *AtSys, unsigned int &nbSys, std::string &dir); // construct AtomicSystem with multiple AtomicSystems by merging along a given direction (to be used for replacing bicrystal construction in addition with the new duplicate method)
