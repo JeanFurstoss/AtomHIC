@@ -490,6 +490,7 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	read_params();
 	this->MT = new MathTools;
 	setCrystal(crystalName);
+	ReadProperties(Properties);
 	this->_MyCrystal->ReadProperties(Properties);
 	string i_a_str(""), i_p_str("");
 	if( _MyCrystal->getCrystallo() == "Hexagonal" ){
@@ -2314,7 +2315,70 @@ void Bicrystal::read_params(){
 	}
 }
 
-
+void Bicrystal::ReadProperties(vector<string> Properties){
+	size_t pos_thetamax, pos_MaxHKL, pos_toldist, pos_sigmaMax, pos_tolpos_kC, pos_tolCSLint, pos_tolAlign, pos_rcut, pos_lsph, pos_MaxMisfit, pos_GBSpace, pos_MaxDup, pos_FullGrains;
+	string buffer_s, line;
+	for(unsigned int i=0;i<Properties.size();i++){
+		pos_thetamax=Properties[i].find("THETA_MAX_ROT_ANGLE_RAT ");
+		if(pos_thetamax!=string::npos){
+			istringstream text(Properties[i]);
+			text >> buffer_s >> this->theta_max_rot_ax_rat;
+		}
+		pos_MaxHKL=Properties[i].find("MAX_HKL_ROT_ANGLE ");
+		if(pos_MaxHKL!=string::npos){
+			istringstream text(Properties[i]);
+			text >> buffer_s >> this->MaxHKL_rot_angle_rat;
+		}
+		pos_toldist=Properties[i].find("TOL_DIST_RAT_ANGLE ");
+		if(pos_toldist!=string::npos){
+			istringstream text(Properties[i]);
+			text >> buffer_s >> this->tol_dist_rot_angle_rat;
+		}
+		pos_sigmaMax=Properties[i].find("SIGMA_MAX ");
+		if(pos_sigmaMax!=string::npos){
+			istringstream text(Properties[i]);
+			text >> buffer_s >> this->SigmaMax;
+		}
+		pos_tolpos_kC=Properties[i].find("TOL_POS_KNOWN_CSL_VEC ");
+		if(pos_tolpos_kC!=string::npos){
+			istringstream text(Properties[i]);
+			text >> buffer_s >> this->tolpos_known_CSL;
+		}
+		pos_tolCSLint=Properties[i].find("TOL_CSL_INTEGER ");
+		if(pos_tolCSLint!=string::npos){
+			istringstream text(Properties[i]);
+			text >> buffer_s >> this->tol_CSL_integer;
+		}
+		pos_tolAlign=Properties[i].find("TOL_ALIGNMENT_CSL ");
+		if(pos_tolAlign!=string::npos){
+			istringstream text(Properties[i]);
+			text >> buffer_s >> this->tolAlignment_CSL;
+		}
+		pos_GBSpace=Properties[i].find("GB_SPACE ");
+		if(pos_GBSpace!=string::npos){
+			istringstream text(Properties[i]);
+			text >> buffer_s >> this->GBspace;
+		}
+		pos_MaxMisfit=Properties[i].find("MAX_MISFIT ");
+		if(pos_MaxMisfit!=string::npos){
+			istringstream text(Properties[i]);
+			text >> buffer_s >> this->MaxMisfit;
+		}
+		pos_MaxDup=Properties[i].find("MAX_DUP ");
+		if(pos_MaxDup!=string::npos){
+			istringstream text(Properties[i]);
+			text >> buffer_s >> this->MaxDup;
+		}
+		pos_FullGrains=Properties[i].find("FULL_GRAINS ");
+		if(pos_FullGrains!=string::npos){
+			istringstream text(Properties[i]);
+			unsigned int buf;
+			text >> buffer_s >> buf;
+			if( buf == 0 ) FullGrains = false;
+			else FullGrains = true;
+		}
+	}
+}
 
 Bicrystal::~Bicrystal(){
 	if( this->IsCrystal2 ) delete _MyCrystal2;

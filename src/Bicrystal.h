@@ -161,6 +161,7 @@ public:
 	void ShiftGrainsAlongCSL(unsigned int n1, unsigned int n2, unsigned int n3);
 	void ShiftGrainsAlongUCInPlane(unsigned int n1, unsigned int n2, bool vacuum=false); 
 	void PasteGrains(AtomicSystem* grain1, AtomicSystem* grain2);
+	void ReadProperties(std::vector<std::string> Properties);
 	//changed name SampleGBComplexionDSC
 	// destructor
 	~Bicrystal();
