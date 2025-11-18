@@ -59,7 +59,9 @@ int main(int argc, char *argv[])
 		}
 		return EXIT_FAILURE;
 	}
-	
+
+	Dis.Printer_NoFixedParams();
+
 	if( argc == 4 ){	
 		string InputFilename = argv[1];
 		string DatabaseFilename = argv[2];

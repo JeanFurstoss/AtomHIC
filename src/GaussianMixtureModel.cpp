@@ -883,13 +883,14 @@ void GaussianMixtureModel::ReadModelParamFromDatabase(const string &name_of_data
 
 void GaussianMixtureModel::readFixedParams(){
 	MachineLearningModel::readFixedParams();
-	string fp;
-	#ifdef FIXEDPARAMETERS
-	fp = FIXEDPARAMETERS;
-	#endif
-	string backslash="/";
-	string filename=fp+backslash+FixedParam_Filename;
-	ifstream file(filename, ios::in);
+	//string fp;
+	//#ifdef FIXEDPARAMETERS
+	//fp = FIXEDPARAMETERS;
+	//#endif
+	//string backslash="/";
+	//string filename=fp+backslash+FixedParam_Filename;
+	//ifstream file(filename, ios::in);
+	ifstream file(FixedParam_Filename, ios::in);
 	size_t pos_elfac, pos_nb_bic_inc, pos_after_el;
 	string buffer_s, line;
 	if(file){
@@ -914,11 +915,12 @@ void GaussianMixtureModel::readFixedParams(){
 				current_Properties.push_back(line);
 			}
 		}
-	}else{
-		cerr << "Can't read /data/FixedParameters/Fixed_Parameters.dat file !" << endl;
-		exit(EXIT_FAILURE);
+		file.close();
 	}
-	file.close();
+	//else{
+	//	cerr << "Can't read /data/FixedParameters/Fixed_Parameters.dat file !" << endl;
+	//	exit(EXIT_FAILURE);
+	//}
 }
 
 void GaussianMixtureModel::ReadProperties(vector<string> Properties){

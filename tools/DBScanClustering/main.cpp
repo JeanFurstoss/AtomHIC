@@ -49,13 +49,13 @@ int main(int argc, char *argv[])
 		cerr << "Usage: ./DBScanClustering AtomicInputFilename (FilteringType VariableToCluster) OutputFilename" << endl;
 		cerr << "This executable performs a density based scan (DBScan) clustering of atoms with respect to a VariableToCluster, which could be either the atomic positions or a given auxiliary property (which could have arbitrary dimension)" << endl;
 		cerr << "The program will return an ovito output file with an auxiliary property named ClusterId, with ClusterId[1] is the id of the cluster (-1 => means undefined point, 0 => noisy point, else the cluster id) and ClusterId[2] is the status of the atoms (i.e. 1 => core, 0 => outlier point or -10 => not treated due to filtering for instance)" << endl;
-		cerr << "(parameters of DBScan are read from FixedParameters.dat)" << endl;
+		cerr << "Parameters of DBScan are read from FixedParameters.ath file if it exists, if not default values will be used" << endl;
 		cerr << "The filtering type allows to consider different groups of atoms independently. It could be \"none\", \"element\" (should be defined in the atomic system or provided in a Type2Element.dat file), \"type\" (integer based) or an auxiliary property of the system " << endl;
-		cerr << "If FilteringType and VariableToCluster are not provided, the system will not be filtered (i.e. \"none\") and the vaiable to cluster will be the atomic position" << endl;
+		cerr << "If FilteringType and VariableToCluster are not provided, the system will not be filtered (i.e. \"none\") and the variable to cluster will be the atomic position" << endl;
 		cerr << "This executable does not consider periodic boundary conditions even when the variable to cluster is the atomic position" << endl;
 		return EXIT_FAILURE;
 	}
-	
+	Dis.Printer_DBScanClustering();	
 	string InputFilename = argv[1];
 	string OutputFilename;
 	string FilteringType = "none";

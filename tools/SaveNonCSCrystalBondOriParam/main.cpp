@@ -152,18 +152,17 @@ int main(int argc, char *argv[])
 {
 	Displays Dis;
 	Dis.Logo();
-	if( argc < 2 ){
+	if( argc != 2 && argc != 8 ){
 		cerr << "Usage: ./SaveNonCSCrystalBondOriParam CrystalName (lo_L hi_L lo_rc hi_rc min_diff min_val)" << endl;
 		cerr << "This executable will store reference bond orientational parameters for the different site of a non centrosymmetric crystal in the Crystal database of AtomHIC" << endl;
 		cerr << "The CrystalName argument should be the name of a .ath file present in /data/Crystal/ containing the informations of the crystal" << endl;
 		cerr << "An example of such file can be found in /data/ExampleFiles/Crystal.ath" << endl;
-		cerr << "If only CrystalName is provided, we will use the STEINHARDT_DESCRIPTORS_RCUT and STEINHARDT_DESCRIPTORS_L_SPH parameters in /data/FixedParameters/FixedParameters.dat (in this case you also have to put STEINHARDT_DESCRIPTORS_MODE to OneL" << endl;
+		cerr << "If only CrystalName is provided, the program will use the STEINHARDT_DESCRIPTORS_RCUT and STEINHARDT_DESCRIPTORS_L_SPH parameters in a FixedParameters.ath in the working directory, if this file is not provided default values will be used." << endl;
 		cerr << "In the other case, the program will search from lo_L to hi_L (step=1) spherical harmonics degree and lo_rc to hi_rc (step=0.5) cutoff radius, the lowest values allowing to separate the different crystal site by min_diff and with all values higher than min_val" << endl;
 		cerr << "Typical arguments could be lo_L = (number of atom type)*2, lo_rc = (smallest_cell_vector), min_diff = 0.05, min_val = 0.5" << endl;
 		cerr << "If the automatic founding of parameters does not success you can use the output of the executable to choose your prefered values, put it in /data/FixedParameters/FixedParameters.dat and then use this executable with CrystalName only to force these values" << endl;
 		return EXIT_FAILURE;
 	}
-	
 	MathTools MT;
 	string CrystalType = argv[1];
 	bool AutoFitOptiParam;
@@ -183,7 +182,11 @@ int main(int argc, char *argv[])
 		istringstream iss_min_val(argv[7]);
 		iss_min_val >> min_val;
 		AutoFitOptiParam = true;
-	}else AutoFitOptiParam = false;
+		Dis.Printer_NoFixedParams();
+	}else{
+		AutoFitOptiParam = false;
+		Dis.Printer_BondOriParam();
+	}
 
 	double zero_num = 1e-5;
 	

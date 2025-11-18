@@ -50,16 +50,18 @@ int main(int argc, char *argv[])
 		cerr << "Usage: SampleGBComplexionGammaSurface h_RotAxis k_RotAxis (i_RotAxis) l_RotAxis RotAngle(in degree) h_GBPlane k_GBPlane (i_GBPlane) l_GBPlane CrystalName(has to be defined in /data/Crystal/) Rationalize (-density) nx ny VacuumOrNot" << endl;
 		cerr << "The i Miller indexes (for rotation axis and GB plane) should only be used if the crystal is hexagonal" << endl;
 		cerr << "Rationalize can be either 0 or 1" << endl;
-		cerr << "1 => rationalize the GB (i.e. search the closest CSL GB to the provided parameters, in this case the parameters for CSL calculation in /data/FixedParameters/FixedParameters.dat can be important)" << endl;
-		cerr << "0 => do not rationalize the GB, in this case the parameters for constructing crystal and bicrystal in /data/FixedParameters/FixedParameters.dat can be important" << endl;
+		cerr << "1 => rationalize the GB (i.e. search the closest CSL GB to the provided parameters, in this case the fixed parameters for CSL calculation can be important, they are read from FixedParameters.ath file if exist if not defaults values are used)" << endl;
+		cerr << "0 => do not rationalize the GB" << endl;
 		cerr << "If the \"-distance\" keyword is provided the two following parameters (nx ny) no longer represent the number of sampling points in each directions but the distance between two points in each direction (then the number of point will be computed from these distances)" << endl;
-    	cerr << "  These values control how many configurations of the GB are generated with different relative vectors." << endl;
-	cerr << "VacuumOrNot could be 0 or 1, 0 => no vaccum is added to above and bellow the GB (i.e. the periodic BC will lead to 2 GBs in the system), 1 => add vacuum and center the GB in the middle of the cell" << endl;
-		cerr << "  Each configuration is saved as a separate dump file (e.g., GB_Shift_0_0.lmp, etc), also containing the values of the applied shift" << endl;
+		cerr << "nx, ny specify the number of shifts (sampling points) along each of the two unit cell GB vectors." << endl;
+    		cerr << "These values control how many configurations of the GB are generated with different translation between grains." << endl;
+		cerr << "VacuumOrNot could be 0 or 1, 0 => no vaccum is added to above and bellow the GB (i.e. the periodic BC will lead to 2 GBs in the system), 1 => add vacuum and center the GB in the middle of the cell" << endl;
+		cerr << "Each configuration is saved as a separate dump file (e.g., GB_Shift_0_0.lmp, etc), also containing the values of the applied shift" << endl;
 		cerr << "In addition the program will also return 3 dump files containing the CSL lattice and the two grains (the two latters can be used to change shift between crystals), if vacuum = 1 Grain1_vacuum.lmp and Grain2_vacuum.lmp will be also generated" << endl;
 		cerr << "This program enforce the fixed parameter MIN_BOX_ASIDE to a value of 2A to be sure that the created GB has only one unit cell" << endl;
 		return EXIT_FAILURE;
 	}
+	Dis.Printer_SampleGB_GammaSurface();
 	int h_a, k_a ,l_a, h_p, k_p, l_p;
 	double theta;
 	unsigned int rat, vac;
@@ -118,6 +120,7 @@ int main(int argc, char *argv[])
 		iss_ka >> k_a;
 		istringstream iss_ia(argv[3]);
 		iss_ia >> i_a;
+		if( i_a != (-h_a-k_a) ) cout << "Warning, i index of rotation axis is different than -h-k, i will be considered as equal to " << -h_a-k_a << endl;
 		istringstream iss_la(argv[4]);
 		iss_la >> l_a;
 		istringstream iss_theta(argv[5]);
@@ -129,6 +132,7 @@ int main(int argc, char *argv[])
 		iss_kp >> k_p;
 		istringstream iss_ip(argv[8]);
 		iss_ip >> i_p;
+		if( i_p != (-h_p-k_p) ) cout << "Warning, i index of GB plane is different than -h-k, i will be considered as equal to " << -h_p-k_p << endl;
 		istringstream iss_lp(argv[9]);
 		iss_lp >> l_p;
 		istringstream iss_cn(argv[10]);

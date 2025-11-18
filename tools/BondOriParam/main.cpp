@@ -30,6 +30,7 @@
 
 #include <AtomicSystem.h>
 #include <ComputeAuxiliary.h>
+#include <Crystal.h>
 #include <stdlib.h>
 #include <iostream>
 #include <sstream>
@@ -51,14 +52,19 @@ int main(int argc, char *argv[])
 		InputFilename = argv[1];
 		CrystalType = argv[2];
 		outfilename = argv[3];
+		Crystal MyCrystal(CrystalType);
+		if( MyCrystal.getIsReferenceBondOriParam() ) Dis.Printer_NoFixedParams();
+		else Dis.Printer_BondOriParam();
 	}else if( argc == 3 ){
 		InputFilename = argv[1];
 		outfilename = argv[2];
+		Dis.Printer_BondOriParam();
 	}else{
 		cerr << "Usage: ./BondOriParam AtomicInputFilename CrystalType(The crystal type has to be defined in /data/Crystal/) outputFilename" << endl;
 		cerr << "or: ./BondOriParam AtomicInputFilename outputFilename" << endl;
-		cerr << "In the latter case, the crystal will be considered as a monosite crystal and the value of spherical harmonic degree and cutoff radius will be read in (/data/FixedParameters/FixedParameters.dat)" << endl; 
-		cerr << "The first case should be used for multisite and non-centrosymmetric crystals for which the reference bond orientational parameters have been stored in the AtomHic database using the ./SaveNonCSCrystalBondOriParam executable" << endl;
+		cerr << "In the latter case, the crystal will be considered as a monosite crystal and the value of spherical harmonic degree and cutoff radius and SteinhardtStyle will be read in FixedParameters.ath file (if the file does not exist the default values will be used)" << endl; 
+		cerr << "The first case could be used for multisite and non-centrosymmetric crystals for which the reference bond orientational parameters have been stored in the AtomHic database using the ./SaveNonCSCrystalBondOriParam executable" << endl;
+		cerr << "In the first case, if the crystal is not multisite the values of cutoff radius will be computed from the cell parameters of crystal and the spherical harmonics degree and SteinhardtStyle will be read in FixedParameters.ath file if it exists" << endl;
 		cerr << "More details on the computation of this order parameter can be found in Furstoss et al. (2024) Comp. Mat. Science." << endl;
 		return EXIT_FAILURE;
 	}

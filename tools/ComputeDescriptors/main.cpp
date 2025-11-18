@@ -44,7 +44,7 @@ int main(int argc, char *argv[])
 	Dis.Logo();
 	if( argc < 3 ){
 		cerr << "Usage: ./ComputeDescriptors AtomicInputFilename NameOfDescriptor OutputFilename" << endl;
-		cerr << "The descriptor properties will be read from /data/FixedParameters/FixedParameters.dat" << endl;
+		cerr << "The descriptor properties will be read from FixedParameters.ath if it exists, if not, default values will be used" << endl;
 		cerr << "In addition to the output atomic file, this executable will generate a DescriptorProperties.ath file containing the descriptors properties and which can be used for fitting a ML for instance" << endl;
 		cerr << "Available descriptors : " << endl;
 		cerr << "\t - Steinhardt" << endl;
@@ -59,6 +59,7 @@ int main(int argc, char *argv[])
 	AtomicSystem MySystem(InputFilename);
 
 	if( DescriptorName == "Steinhardt" ){
+		Dis.Printer_ComputeDescriptors_Steinhardt();
 		// Compute the descriptor
 		SteinhardtDescriptors MyDescriptors(&MySystem);
 		// Set the auxiliary property
@@ -67,6 +68,7 @@ int main(int argc, char *argv[])
 		ofstream writefile("DescriptorProperties.ath");
 		MyDescriptors.printDescriptorsPropToDatabase(writefile);
 		writefile.close();
+		cout << "DescriptorProperties.ath file successfully writted" << endl;
 	}else{ // other developped descriptors could be put here
 		cerr << "The descriptor name does not correspond to a descriptor that AtomHIC can compute, aborting" << endl;
 		return EXIT_FAILURE;

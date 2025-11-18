@@ -109,11 +109,11 @@ protected:
 
 	// used to filtering the data (none by default but could be by element for instance i.e. the descriptor list is separate for the different types)
 	unsigned int nbFilter = 0; //
-	std::string FilteringType = "none";
 	std::vector<std::string> FilterValue; // FilterValue[f] = name of the f filter
 	unsigned int nbMaxFilter = 100; // only used for warning
 	
-	std::string FixedParam_Filename = "Fixed_Parameters.dat";
+	std::string FixedParam_Filename = "FixedParameters.ath";
+	std::string FilteringType = "none";
 
 public:
 	// constructors

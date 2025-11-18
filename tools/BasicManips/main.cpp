@@ -1,7 +1,7 @@
 //**********************************************************************************
-//*   Atomsk/main.cpp                                                        	   *
+//*   BasicManips/main.cpp                                                         *
 //**********************************************************************************
-//* This file contains the implementation of the Atomsk executable.          	   *
+//* This file contains the implementation of the BasicManips executable.      	   *
 //* It allows to do the duplicate, shift and merge options of atomsk, the  	   *
 //* difference with atomsk is that this program support bonds, angles and	   *
 //* atom_style full								   *
@@ -40,7 +40,7 @@
 using namespace std;
 
 void ExecMsg(){
-	cerr << "Usage: ./Atomsk Option ParametersThatDependOnOption OutputFilename" << endl;
+	cerr << "Usage: ./BasicManips Option ParametersThatDependOnOption OutputFilename" << endl;
 	cerr << "It allows to do the duplicate, shift and merge options of atomsk, the difference with atomsk is that this program support bonds, angles and atom_style full" << endl;
 	cerr << "Possible options and related parameters :" << endl;
 	cerr << "-duplicate InputFilename nx ny nz => duplicate the system nx, ny and nz times in x, y and z directions" << endl;
@@ -63,6 +63,7 @@ int main(int argc, char *argv[])
 		iss_np >> nmerge;
 	}
 	if( argc != 7 && argc != 3 && argc != nmerge+5 ) ExecMsg();
+	Dis.Printer_NoFixedParams();
 
 	if( argc == 7 && firstarg == "-duplicate" ){
 		AtomicSystem AtSys(argv[2]);

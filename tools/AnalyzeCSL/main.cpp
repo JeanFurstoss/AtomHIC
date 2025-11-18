@@ -46,7 +46,7 @@ int main(int argc, char *argv[])
 	Dis.Logo();
 	// check the number of argument
 	if( argc < 7 ){
-		cerr << "Usage: AnalyzeCSL RotAxis_X_Component RotAxis_Y_Component RotAxis_Z_Component Rot_Angle CrystalType Output_Filename" << endl;
+		cerr << "Usage: AnalyzeCSL RotAxis_X_Component RotAxis_Y_Component RotAxis_Z_Component Rot_Angle(InDegree) CrystalType Output_Filename" << endl;
 		cerr << "This executable compute the CSL lattice for a given misorientation and crystal type (which has to be defined in /data/Crystal/)" << endl;
 	        cerr << "It will print in Output_Filename : SigmaValue SallestCSLVector ShapeFactorCSLBasis_1 ShapeFactorCSLBasis_2 c1 c2 c3" << endl;
 		cerr << "Where ShapeFactorCSLBasis_1 = LargestCSLVector / SmallestCSLVector" << endl;
@@ -55,6 +55,7 @@ int main(int argc, char *argv[])
 		cerr << "The algorithm used for this calculation is based on a iterative procedure developped by Bonnet and Rolland 1975 and permitting to compute near-CSL for low symmetry crystals (for these type of crystals, the numerical parameters defined for CSL in /data/FixedParameters/FixedParameters.dat can be important)" << endl;
 		return EXIT_FAILURE;
 	}
+	Dis.Printer_AnalyzeCSL();
 	double ra_x, ra_y, ra_z, rot_angle;
 	istringstream iss_ra_x(argv[1]);
 	iss_ra_x >> ra_x;
@@ -64,6 +65,7 @@ int main(int argc, char *argv[])
 	iss_ra_z >> ra_z;
 	istringstream iss_rot_ang(argv[4]);
 	iss_rot_ang >> rot_angle;
+	rot_angle = rot_angle*M_PI/180.;
 	string CrystalType = argv[5];
 	string OutputFilename = argv[6];
 	

@@ -814,13 +814,14 @@ void Crystal::computeStoich(){
 }
 
 void Crystal::read_params(){
-	string fp;
-	#ifdef FIXEDPARAMETERS
-	fp = FIXEDPARAMETERS;
-	#endif
-	string backslash="/";
-	string filename=fp+backslash+FixedParam_Filename;
-	ifstream file(filename, ios::in);
+	//string fp;
+	//#ifdef FIXEDPARAMETERS
+	//fp = FIXEDPARAMETERS;
+	//#endif
+	//string backslash="/";
+	//string filename=fp+backslash+FixedParam_Filename;
+	//ifstream file(filename, ios::in);
+	ifstream file(FixedParam_Filename, ios::in);
 	size_t pos_tolOrthoBox, pos_tolOrthoBoxZ, pos_minBoxHeight, pos_minBoxAside, pos_shift, pos_nblc;
 	string buffer_s, line;
 	if(file){
@@ -857,10 +858,11 @@ void Crystal::read_params(){
 				text >> buffer_s >> CLsearch;
 			}
 		}
-	}else{
-		cerr << "Can't read /data/FixedParameters/Fixed_Parameters.dat file !" << endl;
-		exit(EXIT_FAILURE);
-	}
+		file.close();
+	}//else{
+	//	cerr << "Can't read /data/FixedParameters/Fixed_Parameters.dat file !" << endl;
+	//	exit(EXIT_FAILURE);
+	//}
 }
 
 void Crystal::ReadProperties(vector<string> Properties){

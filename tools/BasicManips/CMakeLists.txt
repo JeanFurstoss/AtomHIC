@@ -7,7 +7,7 @@
 ######################################################################
 
 #Project name
-project(Atomsk)
+project(BasicManips)
  
 #The file(GLOB...) allows for wildcard additions:
 file(GLOB HEADERS "*.h")

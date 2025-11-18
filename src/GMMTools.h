@@ -89,10 +89,10 @@ private:
 	unsigned int seed;
 
 	// FixedParameters
-	std::string FixedParam_Filename = "Fixed_Parameters.dat";
+	std::string FixedParam_Filename = "FixedParameters.ath";
 	double tol_Lkh_EM = 1e-4;
 	unsigned int MaxIter_EM = 100;
-	unsigned int nbInit = 1; // number of times the GMM is fitted (we keep at the end the one with the highest likelihood)
+	unsigned int nbInit = 10; // number of times the GMM is fitted (we keep at the end the one with the highest likelihood)
 	std::string InitMethod = "KMEANSPP"; // number of random initialization (we keep at the end the one with the highest likelihood)
 	std::vector<std::string> current_Properties;
 

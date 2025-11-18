@@ -250,16 +250,16 @@ void KMeansTools::ComputeFullVariances(){
 }
 
 void KMeansTools::readFixedParams(){
-	string fp;
-	#ifdef FIXEDPARAMETERS
-	fp = FIXEDPARAMETERS;
-	#endif
-	string backslash="/";
-	string filename=fp+backslash+FixedParam_Filename;
-	ifstream file(filename, ios::in);
+	//string fp;
+	//#ifdef FIXEDPARAMETERS
+	//fp = FIXEDPARAMETERS;
+	//#endif
+	//string backslash="/";
+	//string filename=fp+backslash+FixedParam_Filename;
+	//ifstream file(filename, ios::in);
+	ifstream file(FixedParam_Filename, ios::in);
 	size_t pos_tol, pos_maxIter, pos_nbInit;
 	string buffer_s, line;
-	unsigned int ReadOk(0);
 	if(file){
 		while(file){
 			getline(file,line);
@@ -267,30 +267,28 @@ void KMeansTools::readFixedParams(){
 			if(pos_tol!=string::npos){
 				istringstream text(line);
 				text >> buffer_s >> tol_KMeans;
-				ReadOk++;
 			}
 			pos_maxIter=line.find("KMEANS_MAX_ITER");
 			if(pos_maxIter!=string::npos){
 				istringstream text(line);
 				text >> buffer_s >> MaxIter_KMeans;
-				ReadOk++;
 			}
 			pos_nbInit=line.find("KMEANS_NB_INIT");
 			if(pos_nbInit!=string::npos){
 				istringstream text(line);
 				text >> buffer_s >> nbInit;
-				ReadOk++;
 			}
 		}
-	}else{
-		cerr << "Can't read /data/FixedParameters/Fixed_Parameters.dat file !" << endl;
-		exit(EXIT_FAILURE);
+		file.close();
 	}
-	file.close();
-	if( ReadOk != 3 ){
-		cerr << "Error during reading of FixedParameters.dat for KMeansTools, aborting" << endl;
-		exit(EXIT_FAILURE);
-	}
+	//else{
+	//	cerr << "Can't read /data/FixedParameters/Fixed_Parameters.dat file !" << endl;
+	//	exit(EXIT_FAILURE);
+	//}
+	//if( ReadOk != 3 ){
+	//	cerr << "Error during reading of FixedParameters.dat for KMeansTools, aborting" << endl;
+	//	exit(EXIT_FAILURE);
+	//}
 }
 
 void KMeansTools::ReadProperties(vector<string> Properties){

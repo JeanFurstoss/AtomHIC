@@ -85,8 +85,8 @@ protected:
 	double *Classificator; // depend on the ML model but generally for classification, [n*2] = index of the label with highest probability for descriptors n (index in _Descriptor array), [n*2+1] = probability
 	bool IsClassified = false;	
 	
-	std::string FixedParam_Filename = "Fixed_Parameters.dat";
-	double RatioTestTrain = 0.1; // TODO fixedParams
+	std::string FixedParam_Filename = "FixedParameters.ath";
+	double RatioTestTrain = 0.1;
 public:
 	// constructors
 	MachineLearningModel();

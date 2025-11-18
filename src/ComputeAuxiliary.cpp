@@ -40,8 +40,10 @@ using namespace std;
 
 // Compute bond orientational parameter, based on the work of Steinhardt, P. J. et al. 1983, modified by Chua et al. 2010 and modified by me for accounting for multisite crystals 
 double* ComputeAuxiliary::BondOrientationalParameter(){
+	vector<string> DesProp;
+	DesProp.push_back("STEINHARDT_MODE OneL");
 	if( _MySystem->getIsCrystalDefined() ){
-		if( _MySystem->getCrystal()->getIsMultisite() ){
+		if( _MySystem->getCrystal()->getIsMultisite() || _MySystem->getCrystal()->getIsReferenceBondOriParam() ){
 			if( !_MySystem->getCrystal()->getIsReferenceBondOriParam() ){
 				cerr << "The reference bond orientational parameters have not been computed for this crystal" << endl;
 				cerr << "Have a look on the SaveNonCSCrystalBondOriParam executable to compute them" << endl;
@@ -65,27 +67,21 @@ double* ComputeAuxiliary::BondOrientationalParameter(){
 		for(unsigned int i=0;i<3;i++) rcut += _MySystem->getCrystal()->getALength()[i];
 		rcut /= 3.;
 		rcut *= 1.25;
-		vector<string> DesProp;
-		DesProp.push_back("STEINHARDT_MODE OneL");
-		DesProp.push_back("NUMBER_OF_DIMENSION 10"); // set default value at 10
-		DesProp.push_back("STEINHARDT_STYLE Mono"); // set default value to mono
 		DesProp.push_back("CUTOFF_RADIUS "+to_string(rcut));
-		if( !IsSteinhardtDescriptor ){
-			StDes = new SteinhardtDescriptors(_MySystem,DesProp);
-			IsSteinhardtDescriptor = true;
-		}else{
-			StDes->readProperties(DesProp);
-			StDes->InitializeArrays();
-			StDes->ComputeDescriptors();
-		}
-		for(unsigned int i=0;i<_MySystem->getNbAtom();i++)
-			StDes->getDescriptors()[i] = 1. - StDes->getDescriptors()[i];
-		return StDes->getDescriptors();
-	}else{
-		cerr << "The bond orientational parameter cannot be computed is the crystal is not defined (to be implemented)" << endl;
-		exit(EXIT_FAILURE);
 	}
+	if( !IsSteinhardtDescriptor ){
+		StDes = new SteinhardtDescriptors(_MySystem,DesProp);
+		IsSteinhardtDescriptor = true;
+	}else{
+		StDes->readProperties(DesProp);
+		StDes->InitializeArrays();
+		StDes->ComputeDescriptors();
+	}
+	for(unsigned int i=0;i<_MySystem->getNbAtom();i++)
+		StDes->getDescriptors()[i] = 1. - StDes->getDescriptors()[i];
+	return StDes->getDescriptors();
 }
+
 void ComputeAuxiliary::ComputeAtomSiteIndex(){
 	if( _MySystem->getCrystal()->getIsMultisite() ){
 		if( !_MySystem->getCrystal()->getIsReferenceBondOriParam() ){
@@ -94,10 +90,10 @@ void ComputeAuxiliary::ComputeAtomSiteIndex(){
 			cerr << "Aborting" << endl;
 			exit(EXIT_FAILURE);
 		}
-	}else{
-		cerr << "The crystal is not multisite, we then cannot compute atom site index, aborting" << endl;
-		exit(EXIT_FAILURE);
-	}
+	}//else{
+	//	cerr << "The crystal is not multisite, we then cannot compute atom site index, aborting" << endl;
+	//	exit(EXIT_FAILURE);
+	//}
 	if( !IsSteinhardtDescriptor ){
 		StDes = new SteinhardtDescriptors(_MySystem,_MySystem->getCrystal()->getBondOriParamProperties());
 		IsSteinhardtDescriptor = true;

@@ -24,7 +24,7 @@
 #**********************************************************************************
 
 # Generic tools
-add_subdirectory(Atomsk)
+add_subdirectory(BasicManips)
 add_subdirectory(AnalyzeCSL)
 add_subdirectory(CreateOrientedPlane)
 add_subdirectory(CreateGB)
@@ -43,6 +43,7 @@ add_subdirectory(SampleGBComplexionCSL)
 add_subdirectory(SampleGBComplexionDSC)
 add_subdirectory(SampleGBComplexionGammaSurface)
 add_subdirectory(MakeNeutralSurfaces)
+add_subdirectory(DisplayFixedParameters)
 # add other subdirectories of new generic tool here
 
 # other tools

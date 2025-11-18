@@ -44,12 +44,6 @@
 
 class ATOMHIC_EXPORT SteinhardtDescriptors : public Descriptors {
 private:
-	// Properties of Steinhardt descriptors
-	double rc; // cutoff radius for neighbor research
-	int l_sph; // harmonic degree
-	std::string SteinhardtStyle; // multi, mono
-	std::string AverageStyle; // multi mono
-	std::string mode; // OneL Full
 	// variables for calculation
 	unsigned int nbNMax; // maximum number of neighbours of the AtomicSystem (used to access to the different arrays)
 	unsigned int *Malpha;// array containing the index of neighbours of the same species (or same site in case of multisite crystal) with the first line corresponding to the number of neighbours, i.e. Malpha[i*(nbNMax+1)] = nb of neighbour of atom i, Malpha[i*(nbNMax+1)+j+1] = id of the jth neighbour of atom i
@@ -63,6 +57,13 @@ private:
 	const int bar_length = 30;
 	double prog;
 	unsigned int count_t;
+	
+	// Properties of Steinhardt descriptors (FixedParameters)
+	double rc = 5.; // cutoff radius for neighbor research
+	int l_sph = 10; // harmonic degree
+	std::string SteinhardtStyle = "Mono"; // multi, mono
+	std::string AverageStyle = "Multi"; // multi mono
+	std::string mode = "Full"; // OneL Full
 public:
 	// constructors
 	SteinhardtDescriptors(AtomicSystem *_MySystem);

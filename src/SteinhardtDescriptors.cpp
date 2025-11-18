@@ -405,13 +405,14 @@ void SteinhardtDescriptors::readProperties(vector<string> _Properties){
 
 void SteinhardtDescriptors::readFixedParams(){
 	Descriptors::readFixedParams();
-	string fp;
-	#ifdef FIXEDPARAMETERS
-	fp = FIXEDPARAMETERS;
-	#endif
-	string backslash="/";
-	string filename=fp+backslash+FixedParam_Filename;
-	ifstream file(filename, ios::in);
+	//string fp;
+	//#ifdef FIXEDPARAMETERS
+	//fp = FIXEDPARAMETERS;
+	//#endif
+	//string backslash="/";
+	//string filename=fp+backslash+FixedParam_Filename;
+	//ifstream file(filename, ios::in);
+	ifstream file(FixedParam_Filename, ios::in);
 	size_t pos_rcut, pos_lsph, pos_StStyle, pos_AveStyle, pos_mode;
 	string buffer_s, line;
 	if(file){
@@ -443,11 +444,12 @@ void SteinhardtDescriptors::readFixedParams(){
 				text >> buffer_s >> AverageStyle;
 			}
 		}
-	}else{
-		cerr << "Can't read /data/FixedParameters/Fixed_Parameters.dat file !" << endl;
-		exit(EXIT_FAILURE);
+		file.close();
 	}
-	file.close();
+	//else{
+	//	cerr << "Can't read /data/FixedParameters/Fixed_Parameters.dat file !" << endl;
+	//	exit(EXIT_FAILURE);
+	//}
 	//cout << "From /data/FixedParameters/FixedParameters.dat we will compute Steinhardt descriptors using cutoff radius of " << rc << " and degree " << l_sph << " with style \"" << SteinhardtStyle << "\" and average style \"" << AverageStyle << "\"" << endl;
 }
 

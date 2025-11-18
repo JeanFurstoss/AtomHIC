@@ -70,10 +70,10 @@ private:
 	unsigned int _dim2;
 
 	// FixedParameters
-	std::string FixedParam_Filename = "Fixed_Parameters.dat";
-	double tol_KMeans;
-	unsigned int MaxIter_KMeans;
-	unsigned int nbInit; // number of random initialization (we keep at the end the one with the highest likelihood)
+	std::string FixedParam_Filename = "FixedParameters.ath";
+	double tol_KMeans = 1e-5;
+	unsigned int MaxIter_KMeans = 500;
+	unsigned int nbInit = 10; // number of random initialization (we keep at the end the one with the highest likelihood)
 	
 	bool FixedSeed = false;
 	unsigned int seed;

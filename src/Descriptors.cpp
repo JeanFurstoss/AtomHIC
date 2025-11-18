@@ -1549,13 +1549,14 @@ unsigned int* Descriptors::getCorresIndexTestDataset(unsigned int &subarray_nbda
 // END TEST subarray
 
 void Descriptors::readFixedParams(){
-	string fp;
-	#ifdef FIXEDPARAMETERS
-	fp = FIXEDPARAMETERS;
-	#endif
-	string backslash="/";
-	string filename=fp+backslash+FixedParam_Filename;
-	ifstream file(filename, ios::in);
+	//string fp;
+	//#ifdef FIXEDPARAMETERS
+	//fp = FIXEDPARAMETERS;
+	//#endif
+	//string backslash="/";
+	//string filename=fp+backslash+FixedParam_Filename;
+	//ifstream file(filename, ios::in);
+	ifstream file(FixedParam_Filename, ios::in);
 	size_t pos_filter;
 	string buffer_s, line;
 	if(file){
@@ -1567,11 +1568,12 @@ void Descriptors::readFixedParams(){
 				text >> buffer_s >> FilteringType;
 			}
 		}
-	}else{
-		cerr << "Can't read /data/FixedParameters/Fixed_Parameters.dat file !" << endl;
-		exit(EXIT_FAILURE);
+		file.close();
 	}
-	file.close();
+	//else{
+	//	cerr << "Can't read /data/FixedParameters/Fixed_Parameters.dat file !" << endl;
+	//	exit(EXIT_FAILURE);
+	//}
 	//cout << "From /data/FixedParameters/FixedParameters.dat the descriptors will be filtered by \"" << FilteringType << "\"" << endl;
 }
 

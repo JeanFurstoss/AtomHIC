@@ -50,6 +50,7 @@ int main(int argc, char *argv[])
 		cerr << "The numerical parameters used for this construction can be tuned in the /data/FixedParameters/FixedParameters.dat file" << endl;
 		return EXIT_FAILURE;
 	}
+	Dis.Printer_CreateOrientedPlane();
 	int h, k ,l, i;
 	string crystalType, filename;
 	if( argc == 6 ){

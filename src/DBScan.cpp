@@ -255,16 +255,16 @@ void DBScan::ComputeMuAndV(string filter_name){
 
 void DBScan::readFixedParams(){
 	MachineLearningModel::readFixedParams();
-	string fp;
-	#ifdef FIXEDPARAMETERS
-	fp = FIXEDPARAMETERS;
-	#endif
-	string backslash="/";
-	string filename=fp+backslash+FixedParam_Filename;
-	ifstream file(filename, ios::in);
+	//string fp;
+	//#ifdef FIXEDPARAMETERS
+	//fp = FIXEDPARAMETERS;
+	//#endif
+	//string backslash="/";
+	//string filename=fp+backslash+FixedParam_Filename;
+	//ifstream file(filename, ios::in);
+	ifstream file(FixedParam_Filename, ios::in);
 	size_t pos_eps, pos_minPts, pos_nbClustMax;
 	string buffer_s, line;
-	unsigned int ReadOk(0);
 	if(file){
 		while(file){
 			getline(file,line);
@@ -272,30 +272,28 @@ void DBScan::readFixedParams(){
 			if(pos_nbClustMax!=string::npos){
 				istringstream text(line);
 				text >> buffer_s >> nbClustMax;
-				ReadOk++;
 			}
 			pos_eps=line.find("DBSCAN_EPS");
 			if(pos_eps!=string::npos){
 				istringstream text(line);
 				text >> buffer_s >> eps_meth;
-				ReadOk++;
 			}
 			pos_minPts=line.find("DBSCAN_MINPTS");
 			if(pos_minPts!=string::npos){
 				istringstream text(line);
 				text >> buffer_s >> minPts_meth;
-				ReadOk++;
 			}
 		}
-	}else{
-		cerr << "Can't read /data/FixedParameters/Fixed_Parameters.dat file !" << endl;
-		exit(EXIT_FAILURE);
+		file.close();
 	}
-	file.close();
-	if( ReadOk != 3 ){
-		cerr << "Error during reading of FixedParameters.dat for DBScan, aborting" << endl;
-		exit(EXIT_FAILURE);
-	}
+	//else{
+	//	cerr << "Can't read /data/FixedParameters/Fixed_Parameters.dat file !" << endl;
+	//	exit(EXIT_FAILURE);
+	//}
+	//if( ReadOk != 3 ){
+	//	cerr << "Error during reading of FixedParameters.dat for DBScan, aborting" << endl;
+	//	exit(EXIT_FAILURE);
+	//}
 	if( eps_meth != "AUTO" ){
 		istringstream text(eps_meth);
 		text >> eps;

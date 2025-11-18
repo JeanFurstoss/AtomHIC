@@ -44,14 +44,17 @@ int main(int argc, char *argv[])
 	if( argc < 6 ){
 		cerr << "Usage: ./FitAndSaveGMM InputDirectory (NameOfDescriptor) n_clust_min n_clust_max Strongly(1)/Softly(0)Labelled NameOfDatabase" << endl;
 		cerr << "InputDirectory should contains subdirectories having the names of the labels and containing either: " << endl;
-	        cerr << "\t- atomic files (in .cfg format such as printed by AtomHIC) where the name of the auxiliary property to use as descriptor for GMM has to be provided in the NameOfDescriptor argument, in this case it is recommanded to provide the properties of the descriptor in a \"InputDirectory/DescriptorProperties.ath\" file (an example file could be found in /data/ExampleFiles/), the descriptors can be filtered (by type or element for instance) by setting the value of DESCRIPTORS_FILTERING_TYPE in /data/FixedParameters/FixedParameters.dat file" << endl;
+	        cerr << "\t- atomic files (in .cfg format such as printed by AtomHIC) where the name of the auxiliary property to use as descriptor for GMM has to be provided in the NameOfDescriptor argument, in this case it is recommanded to provide the properties of the descriptor in a \"InputDirectory/DescriptorProperties.ath\" file (an example file could be found in /data/ExampleFiles/), the descriptors can be filtered (by type or element for instance) by setting the value of DESCRIPTORS_FILTERING_TYPE in FixedParameters.ath file in the working directory (if not default value will be used)" << endl;
 		cerr << "\t- or files listing only the descriptors" << endl;
 		cerr << "n_clust_min and n_clust_max are the range for searching the optimal GMM number of cluster" << endl;
 		cerr << "Softly labelled GMM (0) means that the GMM is fitted on all descriptors and labelled afterwards, meaning that eventually some labels migth not correspond to a GMM cluster" << endl;
 		cerr << "Strongly labelled GMM (1) means that a GMM is fitted for each label, which are gathered at the end to construct the final GMM, meaning that each label are described by almost one GMM cluster" << endl;
 		cerr << "Once fitted and labelled, the obtained GMM parameters will be stored in a database which could then be used to classify data using the ./GMMClassification executable" << endl;
+		cerr << "The fixed parameters used for fitting the GMM ML model can be tuned in a FixedParameters.ath file in the working directory, if this fileis not provided default values will be used" << endl;
 		return EXIT_FAILURE;
 	}
+
+	Dis.Printer_FitAndSaveGMM();	
 	
 	if( argc == 6 ){	
 		string InputDir = argv[1];

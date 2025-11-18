@@ -407,13 +407,14 @@ exit(EXIT_FAILURE);
 
 
 void GMMTools::readFixedParams(){
-	string fp;
-	#ifdef FIXEDPARAMETERS
-	fp = FIXEDPARAMETERS;
-	#endif
-	string backslash="/";
-	string filename=fp+backslash+FixedParam_Filename;
-	ifstream file(filename, ios::in);
+	//string fp;
+	//#ifdef FIXEDPARAMETERS
+	//fp = FIXEDPARAMETERS;
+	//#endif
+	//string backslash="/";
+	//string filename=fp+backslash+FixedParam_Filename;
+	//ifstream file(filename, ios::in);
+	ifstream file(FixedParam_Filename, ios::in);
 	size_t pos_tol, pos_maxIter, pos_nbInit, pos_InitMethod;
 	string buffer_s, line;
 	unsigned int ReadOk(0);
@@ -445,15 +446,16 @@ void GMMTools::readFixedParams(){
 				ReadOk++;
 			}
 		}
-	}else{
-		cerr << "Can't read /data/FixedParameters/Fixed_Parameters.dat file !" << endl;
-		exit(EXIT_FAILURE);
+		file.close();
 	}
-	file.close();
-	if( ReadOk != 4 ){
-		cerr << "Error during reading of FixedParameters.dat for GaussianMixtureModel, aborting" << endl;
-		exit(EXIT_FAILURE);
-	}
+	//else{
+	//	cerr << "Can't read /data/FixedParameters/Fixed_Parameters.dat file !" << endl;
+	//	exit(EXIT_FAILURE);
+	//}
+	//if( ReadOk != 4 ){
+	//	cerr << "Error during reading of FixedParameters.dat for GaussianMixtureModel, aborting" << endl;
+	//	exit(EXIT_FAILURE);
+	//}
 }
 
 void GMMTools::ReadProperties(vector<string> Properties){

@@ -206,14 +206,15 @@ unsigned int MachineLearningModel::getCurrentFIndex(string filter_value){
 }
 
 void MachineLearningModel::readFixedParams(){
-	string fp;
-	#ifdef FIXEDPARAMETERS
-	fp = FIXEDPARAMETERS;
-	#endif
-	string backslash="/";
-	string filename=fp+backslash+FixedParam_Filename;
+	//string fp;
+	//#ifdef FIXEDPARAMETERS
+	//fp = FIXEDPARAMETERS;
+	//#endif
+	//string backslash="/";
+	//string filename=fp+backslash+FixedParam_Filename;
+	//ifstream file(filename, ios::in);
+	ifstream file(FixedParam_Filename, ios::in);
 	size_t pos_rattrain;
-	ifstream file(filename, ios::in);
 	string buffer_s, line;
 	if(file){
 		while(file){
@@ -225,6 +226,7 @@ void MachineLearningModel::readFixedParams(){
 				current_Properties.push_back(line);
 			}
 		}
+		file.close();
 	}
 }
 

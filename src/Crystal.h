@@ -97,14 +97,14 @@ private:
 	bool IsReferenceBondOriParam = false;
 	std::vector<double> *ReferenceBondOriParam; // ReferenceBondOriParam[t][s] = reference bond orientational parameter (used for searching atom site and computing order parameter of multisite and non centrosymmetric crystal) of atom type t and crystallographic site s
 	std::vector<std::string> BondOriParamProperties;
-	// Parameters to read
-	std::string FixedParam_Filename = "Fixed_Parameters.dat";
-	int CLsearch = 150;
-	double TolOrthoBox = 1.;
-	double TolOrthoBoxZ = 1.;
-	double MinBoxHeight = 10.;
-	double MinBoxAside = 10.;
 	double *crystal_def; // contains the deformation applied to the crystal for creating orthogonal box (crystal_def[0,1,2] = compression/dilatation in x,y,z direction, crystal_def[3] = shear invariant)
+	// Parameters to read
+	std::string FixedParam_Filename = "FixedParameters.ath";
+	double TolOrthoBox = 0.25;
+	double TolOrthoBoxZ = 0.25;
+	double MinBoxHeight = 20.;
+	double MinBoxAside = 3.;
+	int CLsearch = 150;
 	double shift_x = 0.;
 	double shift_y = 0.;
 	double shift_z = 0.;

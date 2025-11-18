@@ -1,10 +1,9 @@
 //**********************************************************************************
-//*   MakeNeutralSurfaces/main.cpp                 		                   *
+//*   DisplayFixedParameters/main.cpp                                              *
 //**********************************************************************************
-//* This file contains the implementation of the MakeNeutralSurfaces		   *
-//* executable.							                   *
-//* It allows to move atom from one surface to another to try make the surfaces as *
-//* neutral as possible
+//* This file contains the implementation of the DisplayFixedParameters executable *
+//* It allows to display all the fixed parameters used in AtomHIC by reading the   *
+//* parameters and their description in /data/FixedParameters/FixedParameters.ath  *
 //**********************************************************************************
 //* (C) Jan 2025 - Jean Furstoss                                                   *
 //*     Université de Poitiers, Institut PPRIME                                    *
@@ -26,10 +25,9 @@
 //* along with this program.  If not, see <http://www.gnu.org/licenses/>.          *
 //**********************************************************************************
 //* What is still needed to do here:                                               *
-//*	- work on Bicrystal class to have more clear outputs			   *
+//*	- 									   *
 //**********************************************************************************
 
-#include <AtomicSystem.h>
 #include <stdlib.h>
 #include <iostream>
 #include <sstream>
@@ -38,35 +36,11 @@
 
 using namespace std;
 
-
 int main(int argc, char *argv[])
 {
 	Displays Dis;
 	Dis.Logo();
-	if( argc != 3 && argc != 4 ){
-		cerr << "Usage: ./MakeNeutralSurfaces InputFilename (CrystalName) OutputFilename" << endl;
-		cerr << "This executable tries to move ions from the bottom surface to the upper one to get the surface as neutral as possible" << endl;
-		cerr << "The atomic system needs to define charges of the ions" << endl;
-		cerr << "The considered surfaces are the one oriented normal to the z axis" << endl;
-		cerr << "Providing the crystal name allows to apply the do not separe instructions readed from the crystal database (see /data/ExampleFiles/Crystal.ath for more informations)" << endl;
-		return EXIT_FAILURE;
-	}
-	
-	Dis.Printer_NoFixedParams();
-	
-	string InputFilename = argv[1];
-	string OutputFilename, CrystalName;
-	AtomicSystem MySys(InputFilename);
-	if( argc == 3 )	OutputFilename = argv[2];
-	else{
-		CrystalName = argv[2];
-		OutputFilename = argv[3];
-		MySys.setCrystal(CrystalName);
-		MySys.ComputeNotSepList();
-	}
-	MySys.MakeSurfaceNeutral();
-	MySys.printSystem(OutputFilename);
-
+	Dis.PrintFixedParameters();
 	Dis.ExecutionTime();	
 	return 0;
 }

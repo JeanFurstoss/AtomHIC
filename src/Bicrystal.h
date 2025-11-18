@@ -105,17 +105,18 @@ protected:
 	unsigned int *AngleType_G1, *AngleType_G2;
 	//
 	// Parameters read from Fixed_Parameter.dat file
-	std::string FixedParam_Filename = "Fixed_Parameters.dat";
+	std::string FixedParam_Filename = "FixedParameters.ath";
 	bool FullGrains = true;
-	double theta_max_rot_ax_rat;
-	double MaxHKL_rot_angle_rat;
-	double tol_dist_rot_angle_rat;
-	double SigmaMax;
-	double tolpos_known_CSL;
-	double tol_CSL_integer;
-	double tolAlignment_CSL;
-	double MaxMisfit, GBspace;
-	unsigned int MaxDup;
+	double theta_max_rot_ax_rat = 1.7e-2;
+	unsigned int MaxHKL_rot_angle_rat = 75;
+	double tol_dist_rot_angle_rat = 5e-2;
+	double tolpos_known_CSL = 5e-1;
+	double tol_CSL_integer = 1e-2;
+	double tolAlignment_CSL = 0.1;
+        double MaxMisfit = 0.02;
+	unsigned int MaxDup = 100;
+	double GBspace = 2.;
+
 public:
 	// constructors
 	Bicrystal(){};

@@ -1141,6 +1141,7 @@ bool Bicrystal::searchCSL(double *rot_ax_func, double theta_func, int *CSL_vec, 
 	//cout << "Searching CSL lattice" << endl;
 	this->CSL_Basis = new double[9];
 	this->IsCSL_Basis = true;
+	double SigmaMax = 10000.;
 	double *a1 = new double[9]; // basis vector of lattice 1 
 	double *a1_inv = new double[9]; // basis vector of lattice 1 
 	double *a2 = new double[9]; // basis vector of lattice 2 in coordinate of lattice 1 
@@ -1212,7 +1213,7 @@ bool Bicrystal::searchCSL(double *rot_ax_func, double theta_func, int *CSL_vec, 
 		// search if a2_a_1 could be the basic vector for computing DSC lattice
 		for(unsigned int i=0;i<3;i++) searchVec[i] = a2_a[i*3];
 		MT->MatDotRawVec(a1_inv,searchVec,searchVec);
-		L = MT->find_integer_vector(searchVec,tol_IntVec,this->SigmaMax,k,IsFindIntVec);
+		L = MT->find_integer_vector(searchVec,tol_IntVec,SigmaMax,k,IsFindIntVec);
 		if( !IsFindIntVec ){
 			if( verbose == 2 ) cout << "Fail ! Increasing tolerance !" << endl;
 			if( exp > 1.5 )	exp -= .5;
@@ -1225,7 +1226,7 @@ bool Bicrystal::searchCSL(double *rot_ax_func, double theta_func, int *CSL_vec, 
 		for(unsigned int i=0;i<3;i++) searchVec[i] = a2_a[i*3+1];
 		MT->invert3x3(Ei,Ei_inv);
 		MT->MatDotRawVec(Ei_inv,searchVec,searchVec);
-		L = MT->find_integer_vector(searchVec,tol_IntVec,this->SigmaMax,k,IsFindIntVec);
+		L = MT->find_integer_vector(searchVec,tol_IntVec,SigmaMax,k,IsFindIntVec);
 		if( !IsFindIntVec ){
 			if( verbose == 2 ) cout << "Fail ! Increasing tolerance !" << endl;
 			if( exp > 1.5 )	exp -= .5;
@@ -1236,7 +1237,7 @@ bool Bicrystal::searchCSL(double *rot_ax_func, double theta_func, int *CSL_vec, 
 			// Yes, test if the basis is also good for a2_a_3
 			for(unsigned int i=0;i<3;i++) searchVec[i] = a2_a[i*3+2];
 			MT->MatDotRawVec(Ei_inv,searchVec,searchVec);
-			M = MT->find_integer_vector(searchVec,tol_IntVec,this->SigmaMax,k,IsFindIntVec);
+			M = MT->find_integer_vector(searchVec,tol_IntVec,SigmaMax,k,IsFindIntVec);
 			if( !IsFindIntVec ){
 				if( verbose == 2 ) cout << "Fail ! Increasing tolerance !" << endl;
 				if( exp > 1.5 )	exp -= .5;
@@ -1252,7 +1253,7 @@ bool Bicrystal::searchCSL(double *rot_ax_func, double theta_func, int *CSL_vec, 
 			for(unsigned int i=0;i<3;i++) searchVec[i] = a2_a[i*3+2];
 			MT->invert3x3(Fi,Fi_inv);
 			MT->MatDotRawVec(Fi_inv,searchVec,searchVec);
-			M = MT->find_integer_vector(searchVec,tol_IntVec,this->SigmaMax,k,IsFindIntVec);
+			M = MT->find_integer_vector(searchVec,tol_IntVec,SigmaMax,k,IsFindIntVec);
 			if( !IsFindIntVec ){
 				if( verbose == 2 ) cout << "Fail ! Increasing tolerance !" << endl;
 				if( exp > 1.5 )	exp -= .5;
@@ -1321,11 +1322,11 @@ bool Bicrystal::searchCSL(double *rot_ax_func, double theta_func, int *CSL_vec, 
 					break;
 				}
 			}
-			if( FirstBase && this->sigma < this->SigmaMax && BaseAligned ){
+			if( FirstBase && this->sigma < SigmaMax && BaseAligned ){
 				BasePrec = tmp_2;
 				for(unsigned int i=0;i<9;i++) Backup_U1[i] = U_1_temp[i];
 				FirstBase = false;
-			}else if( tmp_2 < BasePrec && this->sigma < this->SigmaMax && BaseAligned ){
+			}else if( tmp_2 < BasePrec && this->sigma < SigmaMax && BaseAligned ){
 				BasePrec = tmp_2;
 				for(unsigned int i=0;i<9;i++) Backup_U1[i] = U_1_temp[i];
 			}
@@ -1359,8 +1360,7 @@ bool Bicrystal::searchCSL(double *rot_ax_func, double theta_func, int *CSL_vec, 
 		for(unsigned int i=0;i<9;i++) dev_CSL += fabs(round(Backup_U1[i]/1.)-(Backup_U1[i]/1.));
 		//MT->printMat(Backup_U1);
 		cout << "We find a CSL basis corresponding to sigma = " << this->sigma << endl;
-		cout << "Nevertheless the deviation from a perfect CSL lattice is : " << dev_CSL << endl;
-		cout << "If too high and leads to issue in creating the system, think about rationalizing the GB or increase the tolerances (TOL_ORTHO_BOX or TOL_ORTHO_BOX_Z)" << endl;
+		cout << "Nevertheless the deviation from a perfect CSL lattice is : " << dev_CSL  << " (sum of differences from integer of all elements of U)" << endl;
 		success=true;
 	}else{
 		cout << "Fail to find CSL basis" << endl;
@@ -2238,14 +2238,15 @@ void Bicrystal::print_Grains(bool vacuum){
 }
 
 void Bicrystal::read_params(){
-	string fp;
-	#ifdef FIXEDPARAMETERS
-	fp = FIXEDPARAMETERS;
-	#endif
-	string backslash="/";
-	string filename=fp+backslash+FixedParam_Filename;
-	ifstream file(filename, ios::in);
-	size_t pos_thetamax, pos_MaxHKL, pos_toldist, pos_sigmaMax, pos_tolpos_kC, pos_tolCSLint, pos_tolAlign, pos_rcut, pos_lsph, pos_MaxMisfit, pos_GBSpace, pos_MaxDup, pos_FullGrains;
+	//string fp;
+	//#ifdef FIXEDPARAMETERS
+	//fp = FIXEDPARAMETERS;
+	//#endif
+	//string backslash="/";
+	//string filename=fp+backslash+FixedParam_Filename;
+	//ifstream file(filename, ios::in);
+	ifstream file(FixedParam_Filename, ios::in);
+	size_t pos_thetamax, pos_MaxHKL, pos_toldist, pos_tolpos_kC, pos_tolCSLint, pos_tolAlign, pos_rcut, pos_lsph, pos_MaxMisfit, pos_GBSpace, pos_MaxDup, pos_FullGrains;
 	string buffer_s, line;
 	if(file){
 		while(file){
@@ -2265,11 +2266,6 @@ void Bicrystal::read_params(){
 				istringstream text(line);
 				text >> buffer_s >> this->tol_dist_rot_angle_rat;
 			}
-			pos_sigmaMax=line.find("SIGMA_MAX ");
-			if(pos_sigmaMax!=string::npos){
-				istringstream text(line);
-				text >> buffer_s >> this->SigmaMax;
-			}
 			pos_tolpos_kC=line.find("TOL_POS_KNOWN_CSL_VEC ");
 			if(pos_tolpos_kC!=string::npos){
 				istringstream text(line);
@@ -2284,6 +2280,7 @@ void Bicrystal::read_params(){
 			if(pos_tolAlign!=string::npos){
 				istringstream text(line);
 				text >> buffer_s >> this->tolAlignment_CSL;
+				tolAlignment_CSL = 1.-cos(tolAlignment_CSL);
 			}
 			pos_GBSpace=line.find("GB_SPACE ");
 			if(pos_GBSpace!=string::npos){
@@ -2309,14 +2306,15 @@ void Bicrystal::read_params(){
 				else FullGrains = true;
 			}
 		}
-	}else{
-		cerr << "Can't read /data/FixedParameters/Fixed_Parameters.dat file !" << endl;
-		exit(EXIT_FAILURE);
-	}
+		file.close();
+	}//else{
+	//	cerr << "Can't read /data/FixedParameters/Fixed_Parameters.dat file !" << endl;
+	//	exit(EXIT_FAILURE);
+	//}
 }
 
 void Bicrystal::ReadProperties(vector<string> Properties){
-	size_t pos_thetamax, pos_MaxHKL, pos_toldist, pos_sigmaMax, pos_tolpos_kC, pos_tolCSLint, pos_tolAlign, pos_rcut, pos_lsph, pos_MaxMisfit, pos_GBSpace, pos_MaxDup, pos_FullGrains;
+	size_t pos_thetamax, pos_MaxHKL, pos_toldist, pos_tolpos_kC, pos_tolCSLint, pos_tolAlign, pos_rcut, pos_lsph, pos_MaxMisfit, pos_GBSpace, pos_MaxDup, pos_FullGrains;
 	string buffer_s, line;
 	for(unsigned int i=0;i<Properties.size();i++){
 		pos_thetamax=Properties[i].find("THETA_MAX_ROT_ANGLE_RAT ");
@@ -2334,11 +2332,6 @@ void Bicrystal::ReadProperties(vector<string> Properties){
 			istringstream text(Properties[i]);
 			text >> buffer_s >> this->tol_dist_rot_angle_rat;
 		}
-		pos_sigmaMax=Properties[i].find("SIGMA_MAX ");
-		if(pos_sigmaMax!=string::npos){
-			istringstream text(Properties[i]);
-			text >> buffer_s >> this->SigmaMax;
-		}
 		pos_tolpos_kC=Properties[i].find("TOL_POS_KNOWN_CSL_VEC ");
 		if(pos_tolpos_kC!=string::npos){
 			istringstream text(Properties[i]);
@@ -2353,6 +2346,7 @@ void Bicrystal::ReadProperties(vector<string> Properties){
 		if(pos_tolAlign!=string::npos){
 			istringstream text(Properties[i]);
 			text >> buffer_s >> this->tolAlignment_CSL;
+			tolAlignment_CSL = 1.-cos(tolAlignment_CSL);
 		}
 		pos_GBSpace=Properties[i].find("GB_SPACE ");
 		if(pos_GBSpace!=string::npos){
