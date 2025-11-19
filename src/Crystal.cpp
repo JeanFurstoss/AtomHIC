@@ -380,7 +380,7 @@ void Crystal::ConstructOrthogonalCell(){
 		}
 	}
 	if( xh_list.size() == 0 || yh_list.size() == 0 || zh_list.size() == 0 ){
-		cerr << "There is no linear combination of crystal vectors giving an orthogonal cell, consider increase the tolerance or the number of CL in data/FixedParameters/FixedParameters.dat used for the research, aborting computation" << endl;
+		cerr << "There is no linear combination of crystal vectors giving an orthogonal cell, consider increase the tolerances (TOL_ORTHO_BOX or TOL_ORTHO_BOX_Z) or the number of linear combinations used for the research (NB_MAX_LC) in a FixedParameters.ath file, aborting computation" << endl;
 		exit(EXIT_FAILURE);
 	}
 

@@ -179,10 +179,10 @@ void KMeans::fitOptimalKMeans(unsigned int &nbClust_min, unsigned int &nbClust_m
 				istringstream iss_N(after_elbow_choice);
 				iss_N >> nbclust_to_choose;
 				if( nbclust_to_choose < nbClust_min ){
-					cout << "The provided number of cluster by KMEANS_NO_SIL_MIN_NO_ELBOW_CHOICE in /data/FixedParameters/FixedParameters.dat is lower than nbClust_min, we then selected N = nbClust_max" << endl;
+					cout << "The provided number of cluster by KMEANS_NO_SIL_MIN_NO_ELBOW_CHOICE in the FixedParameters.ath file (or the default value if this file is not provided) is lower than nbClust_min, we then selected N = nbClust_max" << endl;
 					optimal_index = nbRuns-1;
 				}else if( nbclust_to_choose > nbClust_max ){
-					cout << "The provided number of cluster by KMEANS_NO_SIL_MIN_NO_ELBOW_CHOICE in /data/FixedParameters/FixedParameters.dat is higher than nbClust_max, we then selected N = nbClust_max" << endl;
+					cout << "The provided number of cluster by KMEANS_NO_SIL_MIN_NO_ELBOW_CHOICE in the FixedParameters.ath file (or the default value if this file is not provided) is higher than nbClust_max, we then selected N = nbClust_max" << endl;
 					optimal_index = nbRuns-1;
 				}else optimal_index = nbclust_to_choose-nbClust_min;
 			}

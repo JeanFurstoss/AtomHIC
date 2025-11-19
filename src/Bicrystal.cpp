@@ -559,7 +559,7 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 		{1, 1, 1, 1, 1}
     	};
 	Dis->DisplayArray(arr_elements, arr_fusion);
-	cout << "Misfit values could be reduced by decreasing MAX_MISFIT in data/FixedParameters/FixedParameters.dat" << endl;
+	cout << "Misfit values could be reduced by decreasing MAX_MISFIT in a FixedParameters.ath file" << endl;
 	cout << endl;
 
 	generateCSL();
@@ -568,7 +568,7 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	unsigned int nbAtom2 = this->_MyCrystal2->getOrientedSystem()->getNbAtom();
 	unsigned int nbAtom1_G, nbAtom2_G;
 	this->nbAtom = nbAtom1*dupX1*dupY1 + nbAtom2*dupX2*dupY2;
-	if( nbAtom > 1e6 && FullGrains ) cout << "WARNING: the number of atoms for this GB is high (>1e6), to save memory if needed you can switch the FULL_GRAINS parameter to 0 in FixedParameters.dat" << endl;
+	if( nbAtom > 1e6 && FullGrains ) cout << "WARNING: the number of atoms for this GB is high (>1e6), to save memory if needed you can switch the FULL_GRAINS parameter to 0 in a FixedParameters.ath file" << endl;
 	this->AtomList = new Atom[this->nbAtom];
 	this->H1 = new double[3]; 
 	this->H2 = new double[3]; 
@@ -1913,7 +1913,7 @@ void Bicrystal::setOrientedCrystals(const string& crystalName, bool rationalize,
 	vector<vector<unsigned int>> arr_fusion = {{1,1,1,1,1},{1,1,1,1,1},{1,1,1,1,1}};
 	Dis->DisplayArray(arr_element,arr_fusion);
 	cout << "If these values are too large it may cause issues during the relaxation of the GB" << endl;
-	cout << "These values can be reduced by decreasing TOL_ORTHO_BOX and TOL_ORTHO_BOX_Z in data/FixedParameters/FixedParameters.dat" << endl;
+	cout << "These values can be reduced by decreasing TOL_ORTHO_BOX and TOL_ORTHO_BOX_Z in a FixedParameters.ath file" << endl;
 	cout << endl;
 	
 	double sp(0.),n1(0.),n2(0.);

@@ -412,10 +412,11 @@ void ComputeAuxiliary::read_params(){ // nothing to read for the moment
 				text >> buffer_s >> this->tolSites;
 			}
 		}
-	}else{
-		cerr << "Can't read /data/FixedParameters/Fixed_Parameters.dat file !" << endl;
-		exit(EXIT_FAILURE);
 	}
+	//else{
+	//	cerr << "Can't read /data/FixedParameters/Fixed_Parameters.dat file !" << endl;
+	//	exit(EXIT_FAILURE);
+	//}
 }
 
 // atomic strain as defined in ovito (i.e. Shimizu, Ogata, Li: Mater. Trans. 48 (2007), 2923)

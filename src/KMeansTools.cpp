@@ -217,7 +217,7 @@ void KMeansTools::fit(){
 		if( res > tol_KMeans ){
 			cout << "KMeans clustering did not converged after " << MaxIter_KMeans << " iterations" << endl;
 			cout << "Final residual : " << res << endl;
-		        cout << "Maybe increase number of iteration or the tolerance for KMeans in /data/FixedParameters/FixedParameters.dat" << endl;
+		        cout << "Maybe increase number of iteration or the tolerance for KMeans in a FixedParameters.ath file" << endl;
 		}
 		if( _inertia < _optimal_inertia ){
 			_optimal_inertia = _inertia;

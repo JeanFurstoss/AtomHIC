@@ -523,7 +523,7 @@ Descriptors::Descriptors(const string &FilenameOrDir, const string &DescriptorNa
 										}
 										if( !Type2Element ){
 											cerr << "Neither element nor type can be read from atomic file for filtering data, aborting" << endl;
-											cerr << "If you don't want to filter the data you can set the DESCRIPTORS_FILTERING_TYPE parameter to none in /data/FixedParameters/FixedParameters.dat" << endl;
+											cerr << "If you don't want to filter the data you can set the DESCRIPTORS_FILTERING_TYPE parameter to none in a FixedParameters.ath file" << endl;
 											exit(EXIT_FAILURE);
 										}
 									}else{

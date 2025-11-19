@@ -2866,10 +2866,11 @@ void AtomicSystem::read_params_atsys(){
 			//	text >> buffer_s >> this->l_sph_st;
 			//}
 		}
-	}else{
-		cerr << "Can't read /data/FixedParameters/Fixed_Parameters.dat file !" << endl;
-		exit(EXIT_FAILURE);
 	}
+	//else{
+	//	cerr << "Can't read /data/FixedParameters/Fixed_Parameters.dat file !" << endl;
+	//	exit(EXIT_FAILURE);
+	//}
 }
 
 vector<unsigned int> AtomicSystem::selectAtomInBox(const double x_lo,const double x_hi,const double y_lo,const double y_hi,const double z_lo,const double z_hi){
