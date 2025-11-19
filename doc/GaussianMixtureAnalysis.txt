@@ -1,4 +1,4 @@
-This documentation explains how to reproduce the Steinhardt Gaussian Mixture Analysis (SGMA) methodology presented in Furstoss et al. (submitted to Computer Physics Communications)
+This documentation explains how to reproduce the Steinhardt Gaussian Mixture Analysis (SGMA) methodology presented in Furstoss et al. (Computer Physics Communications 2025)
 The objective of the SGMA is to identify crystals, defects or other local atomic environments using a data-driven methodology. 
 In its first formulation it uses Steinhardt parameters as descriptors but given the structure of AtomHIC it could be easily used with other descriptors.
 
@@ -17,7 +17,7 @@ A database containing the different local atomic environments (called Labels in 
 This step can be achieved using the "FitAndSaveGMM" executable (or with the /tools/PythonTools/FitAndSaveGMM.py python script using the sklearn implementation of GMM tools), which will take as argument the name of the directory containing the labels subdirectories containing the dump files (see first step)
 This executable take also in argument the number of cluster minimum and maximum for the estimation of the optimal number of cluster (based on BIC minimization), it is recommanded to put the minimum number of cluster equal to the number of label in the database.
 The last argument of this executable is the name of the directory, let say MY_GMM_MODEL, in which the optimized parameters of the Gaussian Mixture Model will be stored (i.e. in /data/MachineLearningModels/GaussianMixtureModel/MY_GMM_MODEL). These parameters will then be used in the third step to make the structural analysis.
-Depending on the dimension of descriptors, number of input data and number of clusters, the fitting of the GMM can take a while. The tolerance and maximum iterations for the EM and KMeans algorithm, which are used for this fitting, can be tuned in the /data/FixedParameters/FixedParameters.dat file to save computational time but may result in poorer optimization (for the python version of the GMM fitting you can refer to the documentation of GMM in sklearn to tune the parameters and save computational time).
+Depending on the dimension of descriptors, number of input data and number of clusters, the fitting of the GMM can take a while. The tolerance and maximum iterations for the EM and KMeans algorithm, which are used for this fitting, can be tuned by editing a FixedParameters.ath file (example of parameters described in /data/FixedParameters/FixedParameter.ath) to save computational time but may result in poorer optimization.
 
 
 3. Structural analysis
@@ -31,13 +31,14 @@ The output file will contain an auxiliary property named Struct containing in th
 Notes:
 
 A. 
+Some filtering could be applied to the model (this could be set with the FILTERING_TYPE keyword in a FixedParameters.ath file), meaning that separate GMM will be fitted for the different values of the filter. 
 When the filtering is based on atomic species, it is much better to store the element names than the types (based on integers), which can change depending on the convention.
 Nevertheless the element names are not always given in the atomic files. 
 To overpass this issue without modifying the atomic files, AtomHIC can read a "Type2Element.ath" file in the working directory allowing to affect a type to a given element name.
 An example of such file can be found in /data/ExampleFiles/Type2Element.ath
 
 B.
-In step 2, the informations on Steinhardt descriptors properties (e.g. cutoff radius, average style) can be lost and thus not stored in the database informations. As these informations are very important for step 3, it is much better to store them. To do so, a "DescriptorProperties.ath" file has to be put in the DATABASE/ directory (constructed in step 1). A example of this file can be found in /data/ExampleFiles/ but this file is also automatically generated from the ComputeDescriptors executable and could thus be directly copied to the wanted directory.
+In step 2, the informations on Steinhardt descriptors properties (e.g. cutoff radius, average style) can be lost and thus not stored in the database informations. As these informations are very important for step 3, it is much better to store them. To do so, a "DescriptorProperties.ath" file could be put in the DATABASE/ directory (constructed in step 1). A example of this file can be found in /data/ExampleFiles/ but this file is also automatically generated from the ComputeDescriptors executable and could thus be directly copied to the wanted directory.
 
 C. 
 The GMM databases used in Furstoss et al. can directly be used (step 3) to analyse alumine and forsterite systems, their names are ForsteriteDefects_Furstoss_CompPhysCom and AluminePhase_Furstoss_CompPhysCom
