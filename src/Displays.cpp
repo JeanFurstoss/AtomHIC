@@ -687,7 +687,7 @@ void Displays::Printer_ComputeDescriptors_Steinhardt(){
 	cout << "\t STEINHARDT_DESCRIPTORS_RCUT " << rc << endl;
 	cout << "\t STEINHARDT_DESCRIPTORS_L_SPH " << l_sph << endl;
 	cout << "\t STEINHARDT_DESCRIPTORS_STYLE " << SteinhardtStyle << endl;
-	cout << "\t STEINHARDT_DESCRIPTORS_AVERAGE " << AverageStyle << endl;
+	cout << "\t STEINHARDT_DESCRIPTORS_AVERAGE_STYLE " << AverageStyle << endl;
 	PrintFootExecMsg();
 }
 

@@ -581,6 +581,7 @@ double* ComputeAuxiliary::Compute_D2Min(AtomicSystem &AnalyzedSystem, double rc)
 	const unsigned int nbNMax = _MySystem->getNbMaxN();
 	if( !this->IsD2Min ){
 		this->D2Min = new double[nbAt];
+		IsD2Min = true;
 	}
 
 	double *buffer_vec = new double[3];

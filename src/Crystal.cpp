@@ -390,8 +390,8 @@ void Crystal::ConstructOrthogonalCell(){
 	ind_z = MT->min(buffer_vector_d_z);
 	// fill the cl_box array
 	for(unsigned int i=0;i<3;i++) cl_box.push_back(xh_list[ind_x*3+i]);
-	for(unsigned int i=0;i<3;i++) cl_box.push_back(yh_list[ind_x*3+i]);
-	for(unsigned int i=0;i<3;i++) cl_box.push_back(zh_list[ind_x*3+i]);
+	for(unsigned int i=0;i<3;i++) cl_box.push_back(yh_list[ind_y*3+i]);
+	for(unsigned int i=0;i<3;i++) cl_box.push_back(zh_list[ind_z*3+i]);
 	double *xh = new double[3];
 	double *yh = new double[3];
 	double *zh = new double[3];

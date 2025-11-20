@@ -72,6 +72,7 @@ int main(int argc, char *argv[])
 	MyDB.setDescriptors(&MyDes);
 	MyDB.TrainModel();
 	MySystem.setAux_vec(MyDB.getClassificator(),2,"ClusterId");
+	if( argc != 5 ) VarToClust = "";
 	MySystem.printSystem_aux(OutputFilename,"ClusterId "+VarToClust);
 	Dis.ExecutionTime();	
 	return 0;

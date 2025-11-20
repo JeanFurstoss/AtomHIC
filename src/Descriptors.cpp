@@ -109,6 +109,7 @@ void Descriptors::ConstructLabelIndexArray(){
 			count_dat[current_label*nbFilter+f] += 1;
 		}
 	}
+	delete[] count_dat;
 }
 
 void Descriptors::ConstructFilterIndexArray(AtomicSystem *_MySystem){
@@ -323,7 +324,11 @@ Descriptors::Descriptors(const string &FilenameOrDir){ // This constructor read 
 		nbDatTot = nbDat[0];
 		_Descriptors = new double[dim*nbDat[0]];
 		Labels_uint = new unsigned int[nbDat[0]];
+		for(unsigned int i=0;i<nbDat[0];i++) Labels_uint[i] = 0;
+		unsigned int totnum = dim*nbDat[0];
+		for(unsigned int i=0;i<totnum;i++) _Descriptors[i] = 0.;
 		LabelsSize = new unsigned int[Labels.size()];
+		for(unsigned int i=0;i<Labels.size();i++) LabelsSize[i] = 0;
 		nbLabels = Labels.size();
 		nbFilter = 1;
 		FilterIndex = new unsigned int[nbDatMax];
@@ -578,6 +583,7 @@ Descriptors::Descriptors(const string &FilenameOrDir, const string &DescriptorNa
 		if( !IsFiltered ){
 			nbDat.push_back(count_dat);
 			nbFilter = 1;
+			FilterValue.push_back("none");
 		}
 		MT = new MathTools();
 		nbDatMax = MT->max_vec(nbDat);
@@ -615,14 +621,14 @@ Descriptors::Descriptors(const string &FilenameOrDir, const string &DescriptorNa
 									text >> buffer_s;
 									for(unsigned int f=0;f<nbFilter;f++){
 										if( buffer_s == FilterValue[f] ){
-											FilterIndex[f*nbDatMax+count_fil[f]] = count_dat;
 											current_fil = f;
-											count_fil[f]++;
 											break;
 										}
 									}
 								}else text >> buffer_s;
 							}
+							FilterIndex[current_fil*nbDatMax+count_fil[current_fil]] = count_dat;
+							count_fil[current_fil]++;
 							Labels_uint[current_fil*nbDatMax+count_fil[current_fil]-1] = l1;
 							LabelsSize[current_fil*Labels.size()+l1]++;
 							count_dat++;
@@ -1522,29 +1528,41 @@ void Descriptors::constructSubarrays(double &RatioTestDataset, bool filter, bool
 MatrixXd* Descriptors::getSubarray(unsigned int &subarray_nbdat, std::string filter_name, std::string label_name){
 	unsigned int f = current_filter(filter_name);
 	unsigned int l = current_label(label_name);
-	subarray_nbdat = SubarraySize[f*nbLabels+l];
-	return DescriptorsSubarray[f*nbLabels+l];
+	unsigned int cur_ind = 0;
+	if( subarray_label ) cur_ind = f*nbLabels+l;
+	else cur_ind = f;
+	subarray_nbdat = SubarraySize[cur_ind];
+	return DescriptorsSubarray[cur_ind];
 }
 
 MatrixXd* Descriptors::getTestDataset(unsigned int &subarray_nbdat, std::string filter_name, std::string label_name){
 	unsigned int f = current_filter(filter_name);
 	unsigned int l = current_label(label_name);
-	subarray_nbdat = TestDatasetSize[f*nbLabels+l];
-	return TestDataset[f*nbLabels+l];
+	unsigned int cur_ind = 0;
+	if( subarray_label ) cur_ind = f*nbLabels+l;
+	else cur_ind = f;
+	subarray_nbdat = TestDatasetSize[cur_ind];
+	return TestDataset[cur_ind];
 }
 
 unsigned int* Descriptors::getCorresIndexSubarray(unsigned int &subarray_nbdat, std::string filter_name, std::string label_name){
 	unsigned int f = current_filter(filter_name);
 	unsigned int l = current_label(label_name);
-	subarray_nbdat = SubarraySize[f*nbLabels+l];
-	return CorresIndexSubarray[f*nbLabels+l];
+	unsigned int cur_ind = 0;
+	if( subarray_label ) cur_ind = f*nbLabels+l;
+	else cur_ind = f;
+	subarray_nbdat = SubarraySize[cur_ind];
+	return CorresIndexSubarray[cur_ind];
 }
 
 unsigned int* Descriptors::getCorresIndexTestDataset(unsigned int &subarray_nbdat, std::string filter_name, std::string label_name){
 	unsigned int f = current_filter(filter_name);
 	unsigned int l = current_label(label_name);
-	subarray_nbdat = TestDatasetSize[f*nbLabels+l];
-	return CorresIndexTestDataset[f*nbLabels+l];
+	unsigned int cur_ind = 0;
+	if( subarray_label ) cur_ind = f*nbLabels+l;
+	else cur_ind = f;
+	subarray_nbdat = TestDatasetSize[cur_ind];
+	return CorresIndexTestDataset[cur_ind];
 }
 // END TEST subarray
 
@@ -1626,8 +1644,8 @@ Descriptors::~Descriptors(){
 	// TEST subarray
 	for(unsigned int s=0;s<DescriptorsSubarray.size();s++) if( DescriptorsSubarray[s] ) delete DescriptorsSubarray[s];
 	for(unsigned int s=0;s<TestDataset.size();s++) if( TestDataset[s] ) delete TestDataset[s];
-	for(unsigned int s=0;s<CorresIndexSubarray.size();s++) if( CorresIndexSubarray[s] ) delete CorresIndexSubarray[s];
-	for(unsigned int s=0;s<CorresIndexTestDataset.size();s++) if( CorresIndexTestDataset[s] ) delete CorresIndexTestDataset[s];
+	for(unsigned int s=0;s<CorresIndexSubarray.size();s++) if( CorresIndexSubarray[s] ) delete[] CorresIndexSubarray[s];
+	for(unsigned int s=0;s<CorresIndexTestDataset.size();s++) if( CorresIndexTestDataset[s] ) delete[] CorresIndexTestDataset[s];
 	// END TEST subarray
 	if( AreDescriptorsMine ) delete[] _Descriptors;
 	delete MT;

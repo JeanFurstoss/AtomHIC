@@ -320,6 +320,7 @@ void GaussianMixtureModel::ComputeStrongAveLabelProb(string filter_value){
 			AveLabelProb[current_f][k*nbLabel+l] /= current_nbDat;
 		}
 	}
+	delete[] NbDesLabel;
 }
 
 void GaussianMixtureModel::PrintLabelling(string filter_value){
@@ -1040,7 +1041,7 @@ GaussianMixtureModel::~GaussianMixtureModel(){
 	for(unsigned int n=0;n<MyGMMTools.size();n++)
 		if( MyGMMTools[n] ) delete MyGMMTools[n];
 	for(unsigned int n=0;n<AveLabelProb.size();n++)
-		if( AveLabelProb[n] ) delete AveLabelProb[n];
+		if( AveLabelProb[n] ) delete[] AveLabelProb[n];
 	if( IsClassified ){
 		delete[] Classificator;
 	}

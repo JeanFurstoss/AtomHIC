@@ -430,6 +430,7 @@ AtomicSystem::AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double z
 				if( break_comp) break;
 				}
 			}
+			delete[] cl_test;
 		} // END DoNotSep case
 		if( count < this->nbAtom ){
 			count_box_fill++;
@@ -546,9 +547,15 @@ bool AtomicSystem::FilenameConstructor(const string& filename){
 		delete[] AtomList; 
 	}
 	read_params_atsys();
+	this->AreTypeMassChargeMine = true;
 	this->AtomType = new string[this->MaxAtomType];
 	this->AtomMass = new double[this->MaxAtomType];
 	this->AtomCharge = new double[this->MaxAtomType];
+	for(unsigned int i=0;i<MaxAtomType;i++){
+		AtomType[i] = "";
+		AtomMass[i] = 0.;
+		AtomCharge[i] = 0.;
+	}
 	this->H1 = new double[3];
 	this->H2 = new double[3];
 	this->H3 = new double[3];
@@ -585,9 +592,15 @@ AtomicSystem::AtomicSystem(AtomicSystem *AtSys, unsigned int &nbSys, std::string
 	nbBondType = 0;
 	nbAngles = 0;
 	nbAngleType = 0;
+	this->AreTypeMassChargeMine = true;
 	this->AtomType = new string[this->MaxAtomType];
 	this->AtomMass = new double[this->MaxAtomType];
 	this->AtomCharge = new double[this->MaxAtomType];
+	for(unsigned int i=0;i<MaxAtomType;i++){
+		AtomType[i] = "";
+		AtomMass[i] = 0.;
+		AtomCharge[i] = 0.;
+	}
 	// get properties of the system
 	IsElem = AtSys[0].getIsElem();
 	vector<unsigned int> *corres_array_elem;
@@ -2071,7 +2084,9 @@ bool AtomicSystem::read_lmp_file(const string& filename){
 				this->Aux_name.push_back("Velocities");
 				this->Aux.push_back(nullptr);
 				unsigned int mys = Aux.size();
-				Aux[mys-1] = new double[3*(this->nbAtom+1)]; // I don't know why I should use nbAtom+1 here but if not there is a sysmalloc error
+				Aux[mys-1] = new double[3*(this->nbAtom)];
+				unsigned int totnum = nbAtom*3;
+				for(unsigned int i=0;i<totnum;i++) Aux[mys-1][i] = 0.;
 			       	line_vel = count;
 				IsVel = true;
 				IsSetAux = true;
@@ -2103,9 +2118,9 @@ bool AtomicSystem::read_lmp_file(const string& filename){
 						cerr << "An index of velocity (" << buffer_uint_1 << ") is higher than the total number of atom (" << this->nbAtom << "), aborting" << endl;
 						exit(EXIT_FAILURE);
 					}
-					this->Aux[0][(buffer_uint_1)*3] = buffer_1;
-					this->Aux[0][(buffer_uint_1)*3+1] = buffer_2;
-					this->Aux[0][(buffer_uint_1)*3+2] = buffer_3;
+					this->Aux[0][(buffer_uint_1-1)*3] = buffer_1;
+					this->Aux[0][(buffer_uint_1-1)*3+1] = buffer_2;
+					this->Aux[0][(buffer_uint_1-1)*3+2] = buffer_3;
 					NbVelRead++;
 				}
 				count++;
@@ -2325,7 +2340,8 @@ bool AtomicSystem::read_cfg_file(const string& filename){
 	unsigned int ReadOk(0);
 	unsigned int NbAtRead = 0;
 	if(file){
-		unsigned int line_dt(1000), line_At(1000), line_H(1000), line_at(1000), buffer_uint, buffer_uint_1, count_H(0), count(0), nbAux(0), aux_count;
+		unsigned int hi_number_uint = std::numeric_limits<unsigned int>::max() - 5e8; // 5e8 is now the maximum number of atoms
+		unsigned int line_dt(hi_number_uint), line_At(hi_number_uint), line_H(hi_number_uint), line_at(hi_number_uint), buffer_uint, buffer_uint_1, count_H(0), count(0), nbAux(0), aux_count;
 		size_t pos_dt, pos_At, pos_H, pos_charge, pos_at, pos_aux_vec, pos_elem, pos_typeuint, pos_id;
 		double buffer_1, buffer_2, buffer_3, buffer_4, buffer_5;
 		double xlo,xhi,ylo,yhi,zlo,zhi;
@@ -2974,6 +2990,10 @@ void AtomicSystem::duplicate(const unsigned int& nx, const unsigned int& ny, con
 			Aux[i] = new double[(new_nbAtom)*Aux_size[i]];
 		}
 	}
+	if( IsPeriodicArr ){
+		delete[] PeriodicArr;
+		PeriodicArr = new int[new_nbAtom*3];
+	}
 	
 	unsigned int ind, ind_a;
 	for(unsigned int i=0;i<nx;i++){
@@ -3213,7 +3233,7 @@ AtomicSystem::~AtomicSystem(){
 	}
 	if( IsSetAux ) for(unsigned int i=0;i<Aux.size();i++) delete[] Aux[i];
 	if( IsCrystalMine ) delete _MyCrystal;
-	if( !IsCrystalDefined ){
+	if( AreTypeMassChargeMine ){
 		delete[] AtomType;
 		delete[] AtomMass;
 		delete[] AtomCharge;

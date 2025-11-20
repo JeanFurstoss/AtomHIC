@@ -1174,7 +1174,7 @@ bool Bicrystal::searchCSL(double *rot_ax_func, double theta_func, int *CSL_vec, 
 	double *buffer_vec = new double[3];
 	int *buffer_vec_int = new int[3];
 	double NormRotAx = 0.;
-	double tmp, tmp_1, tmp_2, BasePrec;
+	double tmp(0.), tmp_1(0.), tmp_2(0.), BasePrec(0.);
 	for(unsigned int i=0;i<3;i++){
 		a1[i*3] = this->_MyCrystal->getA1()[i];
 		a1[i*3+1] = this->_MyCrystal->getA2()[i];
@@ -1191,7 +1191,8 @@ bool Bicrystal::searchCSL(double *rot_ax_func, double theta_func, int *CSL_vec, 
 	MT->Vec2rotMat(rot_ax_func,theta_func,R);
 	unsigned int L, M, N;
 	bool BaseFound = false;
-	bool IsFindIntVec, BaseAligned;
+	bool IsFindIntVec = false;
+	bool BaseAligned = false;
 	bool FirstBase = true;
 	double tol_DSC = 1e-6;
 	double tol_IntVec, sp;
@@ -1380,30 +1381,28 @@ bool Bicrystal::searchCSL(double *rot_ax_func, double theta_func, int *CSL_vec, 
 	delete[] a1_inv;
 	delete[] a2;
 	delete[] a2_a;
+	delete[] R;
 	delete[] U;
 	delete[] U_inv;
 	delete[] U_1;
+	delete[] Backup_U1;
+	delete[] U_1_temp;
 	delete[] U_2;
 	delete[] Ei;
 	delete[] Ei_inv;
 	delete[] Fi;
 	delete[] Fi_inv;
-	//
-
-	//delete[] DSC_Basis;
-	//
 	delete[] DSC_inv;
-	//
 	delete[] U_a;
 	delete[] searchVec;
+	delete[] CSL_Basis2;
+	delete[] CSL_Basis_temp;
+	delete[] buffer_mat;
 	delete[] k;
 	delete[] rot_ax;
-	delete[] R;
-	delete[] buffer_vec;
 	delete[] Known_CSL;
-	delete[] CSL_Basis_temp;
-	delete[] CSL_Basis2;
-	delete[] U_1_temp;
+	delete[] buffer_vec;
+	delete[] buffer_vec_int;
 	return success;
 }
 
@@ -1454,6 +1453,14 @@ void Bicrystal::generateCSL(){
 	double yhi = this->_MyCrystal->getOrientedSystem()->getH2()[1]*dupY1;
 	double zhi = this->_MyCrystal->getOrientedSystem()->getH3()[2]+this->_MyCrystal2->getOrientedSystem()->getH3()[2];
 	double tolpos = 1.e-1;
+	if( IsCSL ){
+		for(unsigned int i=0;i<CSL.size();i++) delete[] CSL[i];
+		CSL.clear();
+		for(unsigned int i=0;i<NodesG1.size();i++) delete[] NodesG1[i];
+		NodesG1.clear();
+		for(unsigned int i=0;i<NodesG2.size();i++) delete[] NodesG2[i];
+		NodesG2.clear();
+	}
 	for(int i=-CLMax;i<CLMax;i++){
 		for(int j=-CLMax;j<CLMax;j++){
 			for(int k=-CLMax;k<CLMax;k++){
@@ -1475,6 +1482,7 @@ void Bicrystal::generateCSL(){
 			}
 		}
 	}
+	IsCSL = true;
 	delete[] pos;
 }
 ////
@@ -1829,8 +1837,12 @@ double Bicrystal::RationalizeOri(int h_a_func, int k_a_func, int l_a_func, doubl
 
 	delete[] vec1;
 	delete[] vec2;
+	delete[] vec3;
+	delete[] vec4;
+	delete[] vec5;
 	delete[] int_vec;
 	delete[] uint_vec;
+	delete[] RotMat;
 	return theta_func+true_DeltaTheta[ind_rattheta];
 }
 
@@ -1865,6 +1877,9 @@ void Bicrystal::searchGBSize(const int h_p_func, const int k_p_func, const int l
 			}
 		}
 	}
+	delete[] vec1;
+	delete[] vec2;
+	// TODO continue this function
 }
 
 void Bicrystal::setOrientedCrystals(const string& crystalName, bool rationalize, vector<string> Properties){
@@ -1872,6 +1887,10 @@ void Bicrystal::setOrientedCrystals(const string& crystalName, bool rationalize,
 	this->RotGrain1ToGrain2 = new double[9];
 	int *CSL_vec = new int[3];
 	double *rot_ax = new double[3];
+	for(unsigned int i=0;i<3;i++){
+		CSL_vec[i] = 0;
+		rot_ax[i] = 0.;
+	}
 	// construct the first crystal with the wanted plane horyzontal
 	this->_MyCrystal->RotateCrystal(h_p,k_p,l_p);
 	if( rationalize ){
@@ -1922,29 +1941,7 @@ void Bicrystal::setOrientedCrystals(const string& crystalName, bool rationalize,
 		n1 += pow(this->_MyCrystal->getA1()[i],2.);
 		n2 += pow(this->_MyCrystal2->getA1()[i],2.);
 	}
-	//cout << "True misorientation angle a1 : " << acos(sp/(sqrt(n1)*sqrt(n2)))*180/M_PI << endl;
-	//sp = 0.;
-	//n1 = 0.;
-	//n2 = 0.;
-	//for(unsigned int i=0;i<3;i++){
-	//	sp -= this->_MyCrystal->getA2()[i]*this->_MyCrystal2->getA2()[i];
-	//	n1 += pow(this->_MyCrystal->getA2()[i],2.);
-	//	n2 += pow(this->_MyCrystal2->getA2()[i],2.);
-	//}
-	//cout << "True misorientation angle a2 : " << acos(sp/(sqrt(n1)*sqrt(n2)))*180/M_PI << endl;
-	//sp = 0.;
-	//n1 = 0.;
-	//n2 = 0.;
-	//for(unsigned int i=0;i<3;i++){
-	//	sp += this->_MyCrystal->getA3()[i]*this->_MyCrystal2->getA3()[i];
-	//	n1 += pow(this->_MyCrystal->getA3()[i],2.);
-	//	n2 += pow(this->_MyCrystal2->getA3()[i],2.);
-	//}
-	//cout << "True misorientation angle a3 : " << acos(sp/(sqrt(n1)*sqrt(n2)))*180/M_PI << endl;
-	//for(unsigned int i=0;i<3;i++) cout << this->_MyCrystal->getA2()[i] << " ";
-	//cout << endl;
-	//for(unsigned int i=0;i<3;i++) cout << this->_MyCrystal2->getA2()[i] << " ";
-	//cout << endl;
+
 	this->IsCrystal2 = true;
 	this->IsRotMatDefine = true;
 	delete[] rot_ax;

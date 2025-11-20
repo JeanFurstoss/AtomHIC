@@ -53,19 +53,20 @@ class Displays;
 class ATOMHIC_EXPORT AtomicSystem {
 protected:
 	unsigned int nbAtom;
-	Displays *Dis;
+	Displays *Dis = nullptr;
 	unsigned int nbAtomType;
 	unsigned int MaxAtomType=100;
-	std::string *AtomType; // the different atom species present in the system
-	double *AtomMass;
-	double *AtomCharge;
+	std::string *AtomType = nullptr; // the different atom species present in the system
+	double *AtomMass = nullptr;
+	double *AtomCharge = nullptr;
+	bool AreTypeMassChargeMine = false;
 	Atom *AtomList = nullptr; // List of the atom belonging to the system
 	bool IsAtomListMine = true;
-	Position *WrappedPos;
+	Position *WrappedPos = nullptr;
 	bool IsWrappedPos = false;
 	unsigned long int nbMaxN; // Maximum number of neighbours (computed as function of cuttof radius)
-	unsigned int *Neighbours; // List of neigbors, structured as 2D array [ nbAtom x (nbMaxNeighbours+1) ] where the first value of each line corresponds to the number of neighbours for the ith atom, i.e. Neighbours[i*(nbMaxN+1)] = nb of neighbour of atom i, Neighbours[i*(nbMaxN+1)+j+1] = id of the jth neighbour of atom i
-	int *CLNeighbours; // List of coefficient (NclX,Ncly,Nclz) applied to the atom position to be a neighbour [ nbAtom x (nbMaxNeighbours*3) ] where the first value of each line corresponds to the number of neighbours for the ith atom, i.e. CLNeighbours[i*nbMaxN*3+j*3] = integer applied to H1 to the jth neighbour of atom i for being its neighbour, CLNeighbours[i*nbMaxN*3+j*3+1] = integer applied to H2 to the jth neighbour of atom i for being its neighbour, CLNeighbours[i*nbMaxN*3+j*3+2] = integer applied to H3 to the jth neighbour of atom i for being its neighbour
+	unsigned int *Neighbours = nullptr; // List of neigbors, structured as 2D array [ nbAtom x (nbMaxNeighbours+1) ] where the first value of each line corresponds to the number of neighbours for the ith atom, i.e. Neighbours[i*(nbMaxN+1)] = nb of neighbour of atom i, Neighbours[i*(nbMaxN+1)+j+1] = id of the jth neighbour of atom i
+	int *CLNeighbours = nullptr; // List of coefficient (NclX,Ncly,Nclz) applied to the atom position to be a neighbour [ nbAtom x (nbMaxNeighbours*3) ] where the first value of each line corresponds to the number of neighbours for the ith atom, i.e. CLNeighbours[i*nbMaxN*3+j*3] = integer applied to H1 to the jth neighbour of atom i for being its neighbour, CLNeighbours[i*nbMaxN*3+j*3+1] = integer applied to H2 to the jth neighbour of atom i for being its neighbour, CLNeighbours[i*nbMaxN*3+j*3+2] = integer applied to H3 to the jth neighbour of atom i for being its neighbour
 	bool IsNeighbours = false;
 	std::vector<int> *NotSepTag; // array containing the atom which should not be separated: NotSepTag[i][0] = -1 => the atom i is stored because of the NotSep list, 0 => this atom is not related to the NotSep list, n => the atom has stored n neighbour because of the NotSep list, in the latter case: NotSepTag[i][j+1] return the index of the jth atom which has been stored with the ith one due to the NotSepList
 	bool IsNotSepTag = false;
@@ -86,25 +87,25 @@ protected:
 	bool IsBond = false; // bond between 2 atoms (e.g. O-H bonds in ice with TIP4P potential)
 	bool IsBondMine = true; // bond between 2 atoms (e.g. O-H bonds in ice with TIP4P potential)
 	unsigned int nbBonds = 0;
-	unsigned int *MolId; // MolId[i] => index of the molecule of atom i
-	unsigned int *Bonds; // Bonds[i*2] => index-1 of the atom 1 involved in bond i, Bond[i*2+1] => index-1 of atom 2 involved in bond i
-	unsigned int *BondType; // BondType[i] type of the bond i
+	unsigned int *MolId = nullptr; // MolId[i] => index of the molecule of atom i
+	unsigned int *Bonds = nullptr; // Bonds[i*2] => index-1 of the atom 1 involved in bond i, Bond[i*2+1] => index-1 of atom 2 involved in bond i
+	unsigned int *BondType = nullptr; // BondType[i] type of the bond i
 	unsigned int nbBondType = 0;
 	bool IsAngle = false; // angle between 3 atoms (e.g. H-O-H angle in ice with TIP4P potential)
 	bool IsAngleMine = true; // angle between 3 atoms (e.g. H-O-H angle in ice with TIP4P potential)
 	unsigned int nbAngles = 0;
 	unsigned int nbAngleType = 0;
-	unsigned int *Angles; // Angles[i*3], Angles[i*3+1], Angles[i*3+2], indexes-1 atom 1, 2 and 3 involved in angle i (atom 2 is the center of the angle)
-	unsigned int *AngleType;
+	unsigned int *Angles = nullptr; // Angles[i*3], Angles[i*3+1], Angles[i*3+2], indexes-1 atom 1, 2 and 3 involved in angle i (atom 2 is the center of the angle)
+	unsigned int *AngleType = nullptr;
 	bool IsPeriodicArr = false; // .data file of LAMMPS write_data containing info on how apply BC for bonds/angles to be effective
-	int *PeriodicArr; // PeriodicArr[i*3+d] = times to apply the PC in d cell vector for atom i to be at the write place for bonds and angles to be preserved
+	int *PeriodicArr = nullptr; // PeriodicArr[i*3+d] = times to apply the PC in d cell vector for atom i to be at the write place for bonds and angles to be preserved
 	bool IsTilted = false;
 	bool IsCrystalDefined = false;
 	bool IsCrystalMine = false;
 	bool FilenameConstructed = false;
 	bool AtomListConstructed = false;
-	Crystal *_MyCrystal;	
-	std::vector<double*> Aux; // auxiliary atom properties => Aux[a][i*Aux_size[a]+d] = dimension d (over Aux_size[a]) of the auxiliary property with name Aux_name[a] of atom i
+	Crystal *_MyCrystal = nullptr;	
+	std::vector<double*> Aux = std::vector<double*>(); // auxiliary atom properties => Aux[a][i*Aux_size[a]+d] = dimension d (over Aux_size[a]) of the auxiliary property with name Aux_name[a] of atom i
 	std::vector<unsigned int> Aux_size; // size of auxiliary atom properties
 	bool IsSetAux = false;
 	std::vector<std::string> Aux_name; // auxiliary atom properties

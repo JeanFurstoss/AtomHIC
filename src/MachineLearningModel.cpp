@@ -308,4 +308,5 @@ MachineLearningModel::~MachineLearningModel(){
 		delete[] buffer_vec_2_dim;
 	}
 	if( FilterIndexToModify ) delete[] FilterIndexToModify;
+	if( IsClassified ) delete[] Classificator;
 }
