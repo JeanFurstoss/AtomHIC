@@ -117,6 +117,8 @@ protected:
 	unsigned int MaxDup = 100;
 	double GBspace = 2.;
 
+	double fac_vacuum = 1.5; // no need to pass to FixedParameters as it is not an important value
+
 public:
 	// constructors
 	Bicrystal(){};
@@ -158,8 +160,8 @@ public:
 	void searchGBSize(const int h_p_func, const int k_p_func, const int l_p_func);
 	void printCSL(const std::string filename);
 	//
-	void ShiftGrainsAlongDSC(unsigned int n1, unsigned int n2, unsigned int n3);
-	void ShiftGrainsAlongCSL(unsigned int n1, unsigned int n2, unsigned int n3);
+	void ShiftGrainsAlongDSC(unsigned int n1, unsigned int n2, unsigned int n3, bool vacuum=false);
+	void ShiftGrainsAlongCSL(unsigned int n1, unsigned int n2, unsigned int n3, bool vacuum=false);
 	void ShiftGrainsAlongUCInPlane(unsigned int n1, unsigned int n2, bool vacuum=false); 
 	void PasteGrains(AtomicSystem* grain1, AtomicSystem* grain2);
 	void ReadProperties(std::vector<std::string> Properties);

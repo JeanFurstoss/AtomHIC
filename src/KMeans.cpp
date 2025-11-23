@@ -80,7 +80,7 @@ void KMeans::TrainModel(unsigned int &nbClust_min, unsigned int &nbClust_max, co
 				for(unsigned int n=0;n<optimal_nbClust;n++) ClusterLabel[current_f].push_back(l);
 			}
 			setKMeansTools(filter_value);
-			ComputeAveLabelProb(filter_value);
+			ComputeStrongAveLabelProb(filter_value);
 			PrintLabelling(filter_value);
 			IsLabelled[current_f] = true;
 		}else{
@@ -157,7 +157,7 @@ void KMeans::fitOptimalKMeans(unsigned int &nbClust_min, unsigned int &nbClust_m
 
 	// 2. if no minimum, search if there is an Elbow (i.e. a change in the slope of the SIL=f(N) curve lower than fac_elbow -> defined in FixedParameters, default 0.1)
 	bool ElbowFound = false;
-	if( !minFound ){
+	if( !minFound && nbRuns > 1 ){
 		optimal_index = 1;
 		double current_slope = fabs(SILs[1]-SILs[0]);
 		for(unsigned int n=1;n<nbRuns-1;n++){
@@ -234,7 +234,7 @@ void KMeans::setKMeansTools(string filter_value){
 	IsKMeansTools[current_f] = true;
 }
 
-void KMeans::ComputeAveLabelProb(string filter_value){
+void KMeans::ComputeSoftAveLabelProb(string filter_value){
 	unsigned int current_f = getCurrentFIndex(filter_value);
 	if( AveLabelProb[current_f] ) delete[] AveLabelProb[current_f];
 
@@ -264,6 +264,30 @@ void KMeans::ComputeAveLabelProb(string filter_value){
 	for(unsigned int k=0;k<nbClust[current_f];k++)
 		for(unsigned int l=0;l<nbLabel;l++) AveLabelProb[current_f][k*nbLabel+l] /= NbDesLabel[l];
 	delete[] NbDesLabel;
+}
+
+void KMeans::ComputeStrongAveLabelProb(string filter_value){
+	unsigned int current_f = getCurrentFIndex(filter_value);
+	if( AveLabelProb[current_f] ) delete[] AveLabelProb[current_f];
+
+	AveLabelProb[current_f] = new long double[nbClust[current_f]*nbLabel];
+
+	_MyDescriptors->constructSubarrays(RatioTestTrain,true,true);
+	
+	for(unsigned int l=0;l<nbLabel;l++)
+		for(unsigned int k=0;k<nbClust[current_f];k++) AveLabelProb[current_f][k*nbLabel+l] = 0.;
+	
+	for(unsigned int l=0;l<nbLabel;l++){
+		string current_label = _MyDescriptors->getLabels(l);
+        	_dataMat = _MyDescriptors->getTestDataset(current_nbDat,filter_value,current_label);
+		MyKMeansTools[current_f]->setDataMat(_dataMat,current_nbDat);
+	
+		MyKMeansTools[current_f]->AffectData2Cluster();
+		unsigned int *data2Cluster = MyKMeansTools[current_f]->getData2Cluster();
+			
+		for(unsigned int i=0;i<current_nbDat;i++) AveLabelProb[current_f][data2Cluster[i]*nbLabel+l] += 1.;
+		for(unsigned int k=0;k<nbClust[current_f];k++) AveLabelProb[current_f][k*nbLabel+l] /= current_nbDat;
+	}
 }
 
 void KMeans::PrintLabelling(string filter_value){
@@ -309,7 +333,7 @@ void KMeans::Labelling(string filter_value){
 	if( max*tolLabelSize > min ) cout << "Warning the \"" << filter_value << "\" descriptors are not homogeneously distributed within the labels (high difference between number of descriptors in each labels), which could biased the results obtained with the fitted KMeans" << endl;
 	
 	if( IsLabelled[current_f] ) ClusterLabel[current_f].clear();
-	ComputeAveLabelProb(filter_value);
+	ComputeSoftAveLabelProb(filter_value);
 
 	// Search which label has the highest probability in each cluster
 	for(unsigned int k=0;k<nbClust[current_f];k++){
@@ -850,4 +874,8 @@ void KMeans::ReadProperties(vector<string> Properties){
 }
 
 KMeans::~KMeans(){
+	for(unsigned int n=0;n<MyKMeansTools.size();n++)
+		if( MyKMeansTools[n] ) delete MyKMeansTools[n];
+	for(unsigned int n=0;n<AveLabelProb.size();n++)
+		if( AveLabelProb[n] ) delete[] AveLabelProb[n];
 }

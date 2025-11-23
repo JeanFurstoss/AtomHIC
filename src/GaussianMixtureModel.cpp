@@ -311,7 +311,6 @@ void GaussianMixtureModel::ComputeStrongAveLabelProb(string filter_value){
 		string current_label = _MyDescriptors->getLabels(l);
         	_dataMat = _MyDescriptors->getTestDataset(current_nbDat,filter_value,current_label);
 		MyGMMTools[current_f]->setDataMat(_dataMat,current_nbDat);
-		//CorresIndexDescriptors = _MyDescriptors->getCorresIndexSubarray(current_nbDat,filter_value);
 		MatrixXd MLC(nbClust[current_f],current_nbDat);
 		MyGMMTools[current_f]->ComputeMLC(MLC);
 		for(unsigned int k=0;k<nbClust[current_f];k++){
@@ -495,7 +494,7 @@ void GaussianMixtureModel::ChangeFilterIndex(){
 				mu_tmp[f][k].push_back(mu[f][k][d1]);
 				mu[f][k][d1] = 0.;
 				for(unsigned int d2=0;d2<dim;d2++){
-					V_tmp[f][k].push_back(mu[f][k][d1*dim+d2]);
+					V_tmp[f][k].push_back(V[f][k][d1*dim+d2]);
 					V[f][k][d1*dim+d2] = 0.;
 				}
 			}
@@ -1042,7 +1041,4 @@ GaussianMixtureModel::~GaussianMixtureModel(){
 		if( MyGMMTools[n] ) delete MyGMMTools[n];
 	for(unsigned int n=0;n<AveLabelProb.size();n++)
 		if( AveLabelProb[n] ) delete[] AveLabelProb[n];
-	if( IsClassified ){
-		delete[] Classificator;
-	}
 }

@@ -1477,8 +1477,9 @@ void Descriptors::constructSubarrays(double &RatioTestDataset, bool filter, bool
 			subarray_defined = true;
 		}else if( ( !subarray_filter && subarray_label ) || diffratiotest ){	
 			//cout << "Constructing descriptor subarrays using filter and labels" << endl;
-			for(unsigned int i=0;i<DescriptorsSubarray.size();i++){
-				delete[] DescriptorsSubarray[0];
+			unsigned int init_size = DescriptorsSubarray.size();
+			for(unsigned int i=0;i<init_size;i++){
+				delete DescriptorsSubarray[0];
 				DescriptorsSubarray.erase(DescriptorsSubarray.begin());
 				SubarraySize.erase(SubarraySize.begin());
 				delete TestDataset[0];

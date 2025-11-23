@@ -298,6 +298,7 @@ void MachineLearningModel::setLabelOrder(vector<string> &label_order){
 			Classificator[i*2] = static_cast<double>(newind);
 		}
 	}
+	delete[] corarr_l;
 }
 
 MachineLearningModel::~MachineLearningModel(){

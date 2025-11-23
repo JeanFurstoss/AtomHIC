@@ -984,11 +984,9 @@ void Bicrystal::ShiftGrainsAlongUCInPlane(unsigned int n1, unsigned int n2, bool
 	double zero(0.);
 	char filename[128];
 	std::string File_Heading_save = this->File_Heading; 
-	auto sci_str = [](double value) { std::ostringstream oss; oss << std::scientific << std::setprecision(6) << value; return oss.str(); };
-	double fac_vac = 1.5;
 	if( vacuum ){
-		shift_z = this->H3[2] * ((fac_vac-1.)/2.);
-		for(unsigned int i=0;i<3;i++) this->H3[i] *= fac_vac;
+		shift_z = this->H3[2] * ((fac_vacuum-1.)/2.);
+		for(unsigned int i=0;i<3;i++) this->H3[i] *= fac_vacuum;
 		computeInverseCellVec();
 
 	}
@@ -1004,7 +1002,7 @@ void Bicrystal::ShiftGrainsAlongUCInPlane(unsigned int n1, unsigned int n2, bool
 			this->PasteGrains(this->Grain1, this->Grain2);
 			// Output file
 			snprintf(filename, sizeof(filename), "GB_Shift_%u_%u.lmp", i, j);
-					this->File_Heading = File_Heading_save+" # Applied shift: [" + sci_str(shift_x) + ", " + sci_str(shift_y) + "]\n";
+			this->File_Heading = File_Heading_save+" # Applied shift: [" + to_string(shift_x) + ", " + to_string(shift_y) + "]\n";
 			this->print_lmp(filename);
 			this->Grain1->ApplyShift(-shift_x, -shift_y, -shift_z);
 		}
@@ -1013,98 +1011,114 @@ void Bicrystal::ShiftGrainsAlongUCInPlane(unsigned int n1, unsigned int n2, bool
 }
 
 
-void Bicrystal::ShiftGrainsAlongDSC(unsigned int n1, unsigned int n2, unsigned int n3) {
-    if (!this->IsDSC_Basis || this->DSC_Basis == nullptr) {
-        std::cerr << "DSC basis is not defined. Aborting shift." << std::endl;
-        return;
-    }
+void Bicrystal::ShiftGrainsAlongDSC(unsigned int n1, unsigned int n2, unsigned int n3, bool vacuum) { // TODO for the moment it does not account for the DoNotSep cases
+	if (!this->IsDSC_Basis || this->DSC_Basis == nullptr) {
+		cerr << "DSC basis is not defined. Aborting shift." << endl;
+		return;
+	}
+	
+	double shift_x, shift_y, shift_z, shift_2rm;
+	double shift_z_vac = 0.;
+	double zero(0.);
+	char filename[128];
+	string File_Heading_save = this->File_Heading; 
 
-    double shift_x, shift_y, shift_z;
-    char filename[128];
-	////STRING HEADING SAVED+ FGFGFSG
-	//this->File_Heading =
-	std::string File_Heading_save = this->File_Heading; 
-    for (unsigned int i = 0; i < n1; ++i) {
-        for (unsigned int j = 0; j < n2; ++j) {
-            for (unsigned int k = 0; k < n3; ++k) {
-                // Compute the components of the shift vector by dividing i, j, and k by their respective n values
-                shift_x = ((double) (i)/n1) * this->DSC_Basis[0] + ((double) (j)/n2) * this->DSC_Basis[1] + ((double) (k)/n3)* this->DSC_Basis[2];
-                shift_y = ((double) (i)/n1) * this->DSC_Basis[3] + ((double) (j)/n2)  * this->DSC_Basis[4] +  ((double) (k)/n3)* this->DSC_Basis[5];
-                shift_z = ((double) (i)/n1)* this->DSC_Basis[6] + ((double) (j)/n2) * this->DSC_Basis[7] +  ((double) (k)/n3) * this->DSC_Basis[8];
+	double fac_vacuum = 1.5;
+	if( vacuum ){
+		shift_z_vac = this->H3[2] * ((fac_vacuum-1.)/2.);
+		for(unsigned int i=0;i<3;i++) this->H3[i] *= fac_vacuum;
+		computeInverseCellVec();
+	}
+	this->Grain2->ApplyShift(zero, zero, shift_z_vac);
 
-                 // Apply the shift
-                this->Grain1->ApplyShift(shift_x, shift_y, shift_z);
+	for(unsigned int i=0;i<n1;i++){
+		for(unsigned int j=0;j<n2;j++){
+			for(unsigned int k=0;k<n3;k++){
+				shift_x = ((double) (i)/n1) * this->DSC_Basis[0] + ((double) (j)/n2) * this->DSC_Basis[1] + ((double) (k)/n3)* this->DSC_Basis[2];
+				shift_y = ((double) (i)/n1) * this->DSC_Basis[3] + ((double) (j)/n2)  * this->DSC_Basis[4] +  ((double) (k)/n3)* this->DSC_Basis[5];
+				shift_z = ((double) (i)/n1)* this->DSC_Basis[6] + ((double) (j)/n2) * this->DSC_Basis[7] +  ((double) (k)/n3) * this->DSC_Basis[8];
+				
+				this->Grain1->ApplyShift(shift_x, shift_y, shift_z);
+				this->Grain1->computeWrap();
+				
+				// Replace positions with the wrapped positions
+				unsigned int nbAtom = this->Grain1->getNbAtom();
+				for(unsigned int n=0;n<nbAtom;n++){
+					Position P = this->Grain1->getWrappedPosition(n);
+					this->Grain1->getAtomRef(n).pos = P;
+				}
+				 
+				// the shift for vacuum
+				shift_2rm = -shift_z;
+				if( vacuum ){
+					this->Grain1->ApplyShift(zero, zero, shift_z_vac);
+					shift_2rm -= shift_z_vac;
+				}
+				this->PasteGrains(this->Grain1, this->Grain2);
 
-                // Compute the wrapped coordinates
-                this->Grain1->computeWrap();
-
-                // Replace positions with the wrapped positions
-                unsigned int nbAtom = this->Grain1->getNbAtom();
-                for (unsigned int n = 0; n < nbAtom; ++n) {
-                    Position P = this->Grain1->getWrappedPosition(n);
-                    this->Grain1->getAtomRef(n).pos = P;
-                }
-				// Paste the two grains together (Z translation only)
-                this->PasteGrains(this->Grain1, this->Grain2);
-
-				auto sci_str = [](double value) {
-					std::ostringstream oss;
-					oss << std::scientific << std::setprecision(6) << value;
-					return oss.str();
-				};
-                // Output file
-                snprintf(filename, sizeof(filename), "GB_DSC_Shift_%u_%u_%u.lmp", i, j, k);
-				this->File_Heading = File_Heading_save+"# Applied DSC shift: [" + sci_str(shift_x) + ", " + sci_str(shift_y) + ", " + sci_str(shift_z) + "]\n";
-                this->print_lmp(filename);
-		this->Grain1->ApplyShift(-shift_x, -shift_y, -shift_z);
-            }
-        }
-    }
+				// Output file
+				snprintf(filename, sizeof(filename), "GB_DSC_Shift_%u_%u_%u.lmp", i, j, k);
+				this->File_Heading = File_Heading_save+"# Applied DSC shift: [" + to_string(shift_x) + ", " + to_string(shift_y) + ", " + to_string(shift_z) + "]\n";
+				this->print_lmp(filename);
+				this->Grain1->ApplyShift(-shift_x, -shift_y, shift_2rm);
+			}
+		}
+	}
 }
 
-void Bicrystal::ShiftGrainsAlongCSL(unsigned int n1, unsigned int n2, unsigned int n3) {
-    if (!this->IsCSL_Basis || this->CSL_Basis == nullptr) {
-        std::cerr << "CSL basis is not defined. Aborting shift." << std::endl;
-        return;
-    }
-
-    double shift_x, shift_y, shift_z;
-    char filename[128];
-	std::string File_Heading_save = this->File_Heading;
-    for (unsigned int i = 0; i < n1; ++i) {
-        for (unsigned int j = 0; j < n2; ++j) {
-            for (unsigned int k = 0; k < n3; ++k) {
-                // Compute the translation vector based on the CSL basis
-                shift_x = ((double) (i) / n1) * CSL_Basis[0] + ((double) (j) / n2) * CSL_Basis[1] + ((double) (k) / n3) * CSL_Basis[2];
-                shift_y = ((double) (i) / n1) * CSL_Basis[3] + ((double) (j) / n2) * CSL_Basis[4] + ((double) (k) / n3) * CSL_Basis[5];
-                shift_z = ((double) (i) / n1) * CSL_Basis[6] + ((double) (j) / n2) * CSL_Basis[7] + ((double) (k) / n3) * CSL_Basis[8];
-
-                // Apply the shift
-                this->Grain1->ApplyShift(shift_x, shift_y, shift_z);
-
-                // Compute the wrapped positions
-                this->Grain1->computeWrap();
-                unsigned int nbAtom = this->Grain1->getNbAtom();
-                for (unsigned int n = 0; n < nbAtom; ++n) {
-                    Position P = this->Grain1->getWrappedPosition(n);
-                    this->Grain1->getAtomRef(n).pos = P;
-                }
-
-                // Paste the two grains together (Z translation only)
-                this->PasteGrains(this->Grain1, this->Grain2);
-				auto sci_str = [](double value) {
-					std::ostringstream oss;
-					oss << std::scientific << std::setprecision(6) << value;
-					return oss.str();
-				};
-                // Save the output file
-                snprintf(filename, sizeof(filename), "GB_CSL_Shift_%u_%u_%u.lmp", i, j, k);
-				this->File_Heading = File_Heading_save+"# Applied CSL shift: [" + sci_str(shift_x) + ", " + sci_str(shift_y) + ", " + sci_str(shift_z) + "]\n";
-                this->print_lmp(filename);
-		this->Grain1->ApplyShift(-shift_x, -shift_y, -shift_z);
-            }
-        }
-    }
+void Bicrystal::ShiftGrainsAlongCSL(unsigned int n1, unsigned int n2, unsigned int n3, bool vacuum) {// TODO for the moment it does not account for the DoNotSep cases
+	if (!this->IsCSL_Basis || this->CSL_Basis == nullptr) {
+		cerr << "CSL basis is not defined. Aborting shift." << endl;
+		return;
+	}
+	
+	double shift_x, shift_y, shift_z, shift_2rm;
+	double shift_z_vac = 0.;
+	double zero(0.);
+	char filename[128];
+	string File_Heading_save = this->File_Heading;
+	
+	if( vacuum ){
+		shift_z_vac = this->H3[2] * ((fac_vacuum-1.)/2.);
+		for(unsigned int i=0;i<3;i++) this->H3[i] *= fac_vacuum;
+		computeInverseCellVec();
+	}
+	this->Grain2->ApplyShift(zero, zero, shift_z_vac);
+	
+	for(unsigned int i=0;i<n1;i++){
+		for(unsigned int j=0;j<n2;j++){
+			for(unsigned int k=0;k<n3;k++){
+				// Compute the translation vector based on the CSL basis
+				shift_x = ((double) (i) / n1) * CSL_Basis[0] + ((double) (j) / n2) * CSL_Basis[1] + ((double) (k) / n3) * CSL_Basis[2];
+				shift_y = ((double) (i) / n1) * CSL_Basis[3] + ((double) (j) / n2) * CSL_Basis[4] + ((double) (k) / n3) * CSL_Basis[5];
+				shift_z = ((double) (i) / n1) * CSL_Basis[6] + ((double) (j) / n2) * CSL_Basis[7] + ((double) (k) / n3) * CSL_Basis[8];
+				
+				this->Grain1->ApplyShift(shift_x, shift_y, shift_z);
+				this->Grain1->computeWrap();
+				
+				// Replace positions with the wrapped positions
+				unsigned int nbAtom = this->Grain1->getNbAtom();
+				for (unsigned int n = 0; n < nbAtom; ++n) {
+					Position P = this->Grain1->getWrappedPosition(n);
+					this->Grain1->getAtomRef(n).pos = P;
+				}
+	
+				// the shift for vacuum
+				shift_2rm = -shift_z;
+				if( vacuum ){
+					this->Grain1->ApplyShift(zero, zero, shift_z_vac);
+					shift_2rm -= shift_z_vac;
+				}
+				this->PasteGrains(this->Grain1, this->Grain2);
+				
+				// Save the output file
+				snprintf(filename, sizeof(filename), "GB_CSL_Shift_%u_%u_%u.lmp", i, j, k);
+				this->File_Heading = File_Heading_save+"# Applied CSL shift: [" + to_string(shift_x) + ", " + to_string(shift_y) + ", " + to_string(shift_z) + "]\n";
+				this->print_lmp(filename);
+				this->Grain1->ApplyShift(-shift_x, -shift_y, shift_2rm);
+			}
+		}
+	}
 }
 
 
@@ -2203,18 +2217,18 @@ void Bicrystal::ComputeExcessVolume(){
 
 	}
 }
+
 void Bicrystal::print_Grains(bool vacuum){
 	if( this->AreGrainsDefined ){
 		this->Grain1->print_lmp("Grain1.lmp");
 		this->Grain2->print_lmp("Grain2.lmp");
 		if( vacuum ){
-			double fac_vac = 1.5;
 			double sz1(0.), sz2(0.), zero(0.);
-			sz1 = this->Grain1->getH3()[2] * ((fac_vac-1.)/2);
-			sz2 = this->Grain2->getH3()[2] * ((fac_vac-1.)/2);
+			sz1 = this->Grain1->getH3()[2] * ((fac_vacuum-1.)/2);
+			sz2 = this->Grain2->getH3()[2] * ((fac_vacuum-1.)/2);
 			for(unsigned int i=0;i<3;i++){
-				this->Grain1->getH3()[i] *= fac_vac;
-				this->Grain2->getH3()[i] *= fac_vac;
+				this->Grain1->getH3()[i] *= fac_vacuum;
+				this->Grain2->getH3()[i] *= fac_vacuum;
 			}
 			this->Grain1->computeInverseCellVec();
 			this->Grain1->ApplyShift(zero,zero,sz1);
@@ -2223,8 +2237,8 @@ void Bicrystal::print_Grains(bool vacuum){
 			this->Grain1->print_lmp("Grain1_vacuum.lmp");
 			this->Grain2->print_lmp("Grain2_vacuum.lmp");
 			for(unsigned int i=0;i<3;i++){
-				this->Grain1->getH3()[i] /= fac_vac;
-				this->Grain2->getH3()[i] /= fac_vac;
+				this->Grain1->getH3()[i] /= fac_vacuum;
+				this->Grain2->getH3()[i] /= fac_vacuum;
 			}
 			this->Grain1->ApplyShift(zero,zero,-sz1);
 			this->Grain2->ApplyShift(zero,zero,-sz2);
@@ -2385,6 +2399,22 @@ Bicrystal::~Bicrystal(){
 		delete[] H1_G2;
 		delete[] H2_G2;
 		delete[] H3_G2;
+		if( IsMolId ){
+			delete[] MolId_G1;
+			delete[] MolId_G2;
+		}
+		if( IsBond ){
+			delete[] Bonds_G1;
+			delete[] Bonds_G2;
+			delete[] BondType_G1;
+			delete[] BondType_G2;
+		}
+		if( IsAngle ){
+			delete[] Angles_G1;
+			delete[] Angles_G2;
+			delete[] AngleType_G1;
+			delete[] AngleType_G2;
+		}
 	}
 	if( IsRotMatDefine ){
 		delete[] RotGrain1ToGrain2;

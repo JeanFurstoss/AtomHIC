@@ -90,7 +90,8 @@ private:
 	void appendOptimalKMeans(const std::string &filter_value="none");
 	void NormalizeWeights(std::string filter_value);
 	void setKMeansTools(std::string filter_value);
-	void ComputeAveLabelProb(std::string filter_value);
+	void ComputeSoftAveLabelProb(std::string filter_value);
+	void ComputeStrongAveLabelProb(std::string filter_value);
 	void PrintLabelling(std::string filter_value);
 
 public:

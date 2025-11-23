@@ -7,7 +7,7 @@
 ######################################################################
 
 #Project name
-project(SampleGBComplexionCSL)
+project(SampleGBShiftDoF)
  
 #The file(GLOB...) allows for wildcard additions:
 file(GLOB HEADERS "*.h")

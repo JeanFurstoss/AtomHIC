@@ -1213,7 +1213,6 @@ void AtomicSystem::UpdateTypes2Crystal(){
 				element_t2e.push_back(buffer_s);
 			}
 			nbAtomType = type_t2e.size();
-			AtomType = new string[nbAtomType];
 			for(unsigned int t=0;t<nbAtomType;t++) AtomType[type_t2e[t]-1] = element_t2e[t];
 			IsElem = true;
 		}else{
@@ -1253,6 +1252,7 @@ void AtomicSystem::UpdateTypes2Crystal(){
 				return;
 			}
 			_MyCrystal->ChangeTypes(CorresArray);
+			delete[] CorresArray;
 		}
 	}
 }
