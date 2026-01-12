@@ -212,6 +212,139 @@ void Displays::DisplayOrthogonalCell(Crystal *Crystal){
 
 }
 
+void Displays::DisplayFacetedGB(Crystal *Crystal1, Crystal *Crystal2, double *DirFacet1, double *DirFacet2){
+	string *Dirs1 = new string[3];
+	string *Dirs2 = new string[3];
+	string *Planes1 = new string[3];
+	string *Planes2 = new string[3];
+	int h_c, k_c, l_c, u_c, v_c, w_c;
+	Crystal1->SearchCrystallographicPlanesAndDirections(DirFacet1,h_c,k_c,l_c,u_c,v_c,w_c);
+	string Plane1Fac1 = "("+to_string(u_c)+"_"+to_string(v_c)+"_"+to_string(w_c)+")";
+	Crystal1->SearchCrystallographicPlanesAndDirections(DirFacet2,h_c,k_c,l_c,u_c,v_c,w_c);
+	string Plane1Fac2 = "("+to_string(u_c)+"_"+to_string(v_c)+"_"+to_string(w_c)+")";
+	Crystal2->SearchCrystallographicPlanesAndDirections(DirFacet1,h_c,k_c,l_c,u_c,v_c,w_c);
+	string Plane2Fac1 = "("+to_string(u_c)+"_"+to_string(v_c)+"_"+to_string(w_c)+")";
+	Crystal2->SearchCrystallographicPlanesAndDirections(DirFacet2,h_c,k_c,l_c,u_c,v_c,w_c);
+	string Plane2Fac2 = "("+to_string(u_c)+"_"+to_string(v_c)+"_"+to_string(w_c)+")";
+	unsigned int width = 0;
+	string *i_1_d = new string[3];
+	string *i_2_d = new string[3];
+	string *i_1_p = new string[3];
+	string *i_2_p = new string[3];
+	for(unsigned int i=0;i<3;i++){
+		i_1_d[i] = "";
+		i_2_d[i] = "";
+		i_1_p[i] = "";
+		i_2_p[i] = "";
+	}
+	if( Crystal1->getCrystallo() == "Hexagonal" ){
+		for(unsigned int i=0;i<3;i++){
+			i_1_d[i] = "_"+to_string(-Crystal1->getOrthogonalDirs()[i*3]-Crystal1->getOrthogonalDirs()[i*3+1]);
+			i_1_p[i] = "_"+to_string(-Crystal1->getOrthogonalPlanes()[i*3]-Crystal1->getOrthogonalPlanes()[i*3+1]);
+		}
+	}
+	if( Crystal2->getCrystallo() == "Hexagonal" ){
+		for(unsigned int i=0;i<3;i++){
+			i_2_d[i] = "_"+to_string(-Crystal2->getOrthogonalDirs()[i*3]-Crystal2->getOrthogonalDirs()[i*3+1]);
+			i_2_p[i] = "_"+to_string(-Crystal2->getOrthogonalPlanes()[i*3]-Crystal2->getOrthogonalPlanes()[i*3+1]);
+		}
+	}
+	
+	for(unsigned int i=0;i<3;i++){
+		Dirs1[i] = "["+to_string(Crystal1->getOrthogonalDirs()[i*3]);
+		Planes1[i] = "("+to_string(Crystal1->getOrthogonalPlanes()[i*3]);
+		Dirs2[i] = "["+to_string(Crystal2->getOrthogonalDirs()[i*3]);
+		Planes2[i] = "("+to_string(Crystal2->getOrthogonalPlanes()[i*3]);
+		
+		Dirs1[i] += "_"+to_string(Crystal1->getOrthogonalDirs()[i*3+1]);
+		Planes1[i] += "_"+to_string(Crystal1->getOrthogonalPlanes()[i*3+1]);
+		Dirs2[i] += "_"+to_string(Crystal2->getOrthogonalDirs()[i*3+1]);
+		Planes2[i] += "_"+to_string(Crystal2->getOrthogonalPlanes()[i*3+1]);
+		
+		Dirs1[i] += i_1_d[i];
+		Planes1[i] += i_1_p[i];
+		Dirs2[i] += i_2_d[i];
+		Planes2[i] += i_2_p[i];
+		
+		Dirs1[i] += "_"+to_string(Crystal1->getOrthogonalDirs()[i*3+2]);
+		Planes1[i] += "_"+to_string(Crystal1->getOrthogonalPlanes()[i*3+2]);
+		Dirs2[i] += "_"+to_string(Crystal2->getOrthogonalDirs()[i*3+2]);
+		Planes2[i] += "_"+to_string(Crystal2->getOrthogonalPlanes()[i*3+2]);
+		
+		Dirs1[i] += "]";
+		Planes1[i] += ")";
+		Dirs2[i] += "]";
+		Planes2[i] += ")";
+		if( Dirs1[i].length() > width ) width = Dirs1[i].length();
+		if( Dirs2[i].length() > width ) width = Dirs2[i].length();
+		if( Planes1[i].length() > width ) width = Planes1[i].length();
+		if( Planes2[i].length() > width ) width = Planes2[i].length();
+		if( Plane1Fac1.length() > width ) width = Plane1Fac1.length();
+		if( Plane2Fac1.length() > width ) width = Plane2Fac1.length();
+		if( Plane1Fac2.length() > width ) width = Plane1Fac2.length();
+		if( Plane2Fac2.length() > width ) width = Plane2Fac2.length();
+	}
+
+	width *= 2;
+	width += 12;
+	if( width % 2 != 0 ) width++;
+	unsigned int loop = (width-4)/2;
+	unsigned int loop2 = loop/2;
+	width *= 2;
+	string line = string(width+2, '-');
+	string side = "|";
+	side += string(width, ' ')+'|';
+	cout << "The GB is constructed following :" << endl << endl;
+	// Display grain 1
+	//
+	cout << "        " << line << endl;
+	cout << "        " << "|" << center(Planes2[2], width) << "|" << endl;
+	cout << "        " << side << endl;
+	cout << "        " << side << endl;
+	cout << "        " << "|" << center("Grain 2", width) << "|        ^ z   " << endl;
+	cout << "        " << side << "        |     " << endl;
+	cout << "        " << side << "        ---> xy" << endl;
+	cout << "        " << "|" << string(loop*2,' ') << "^ " << Dirs2[2] << string(width-(loop*2)-Dirs2[2].length()-2, ' ') << "|           " << endl;
+	cout << "        " << "|" << string(loop*2,' ') << "|" << string(width-1-(loop*2),' ') << "|             " << endl;
+	cout << "        " << "|" << string(loop*2,' ') << "---> x => " << Dirs2[0] << string(width-(loop*2)-10-Dirs2[0].length(), ' ') << "|" << endl;
+	cout << "        " << "|" << string(loop*2,' ') << "     y => " << Dirs2[1] << string(width-(loop*2)-10-Dirs2[1].length(), ' ') << "|" << endl;
+	cout << "        " << side << endl;
+	cout << "        " << side << endl;
+	cout << "        " << "|" << string(loop+1,' ') << "/\\" << string(loop+1,' ') << string(loop+1,' ') << "/\\" << string(loop+1,' ') << "|" << endl;
+	cout << "        " << "|" << string(loop,' ') << "/  \\" << string(loop,' ') << string(loop,' ') << "/  \\" << string(loop,' ') << "|" << endl;
+	for(unsigned int i=0;i<1;i++) cout << "        " << "|" << string(loop-i-1,' ') << "/ /" << string(i,' ') << string(i,' ') << "\\ \\" << string(loop-i-1,' ') << string(loop-i-1,' ') << "/ /" << string(i,' ') << string(i,' ') << "\\ \\" << string(loop-i-1,' ') << "|" << endl;
+	cout << "        " << "|" << string(loop-1-1,' ') << "/ /" << string(1,' ') << string(1,' ') << "\\ \\ " << Plane2Fac1 << string((loop-1-1)*2-1-Plane2Fac1.length(),' ') << "/ /" << string(1,' ') << string(1,' ') << "\\ \\" << string(loop-1-1,' ') << "|" << endl;
+	cout << "        " << "|" << string(loop-2-1,' ') << "/ /" << string(2,' ') << string(2,' ') << "\\ \\ " << string((loop-2-2)*2-Plane2Fac2.length(),' ') << Plane2Fac2 << " / /" << string(2,' ') << string(2,' ') << "\\ \\" << string(loop-2-1,' ') << "|" << endl;
+	for(unsigned int i=3;i<loop-2;i++) cout << "        " << "|" << string(loop-i-1,' ') << "/ /" << string(i,' ') << string(i,' ') << "\\ \\" << string(loop-i-1,' ') << string(loop-i-1,' ') << "/ /" << string(i,' ') << string(i,' ') << "\\ \\" << string(loop-i-1,' ') << "|" << endl;
+	cout << "        " << "|" << string(2-1,' ') << "/ /" << string((loop-2)*2-1-Plane1Fac1.length(),' ') << Plane1Fac1 << " \\ \\" << string(2-1,' ') << string(2-1,' ') << "/ / " << Plane1Fac2 << string((loop-2)*2-1-Plane1Fac2.length(),' ') << "\\ \\" << string(2-1,' ') << "|" << endl;
+	for(unsigned int i=loop-1;i<loop;i++) cout << "        " << "|" << string(loop-i-1,' ') << "/ /" << string(i,' ') << string(i,' ') << "\\ \\" << string(loop-i-1,' ') << string(loop-i-1,' ') << "/ /" << string(i,' ') << string(i,' ') << "\\ \\" << string(loop-i-1,' ') << "|" << endl;
+	cout << "        " << "  /" << string(loop*2,' ') << "\\  /" << string(2*loop,' ') << "\\" << endl;
+	cout << "        " << " /" << string(loop*2+2,' ') << "\\/" << string(2*(loop+1),' ') << "\\" << endl;
+	cout << "        " << side << endl;
+	cout << "        " << side << endl;
+	cout << "        " << "|" << center("Grain 1", width) << "|        ^ z   " << endl;
+	cout << "        " << side << "        |     " << endl;
+	cout << "        " << side << "        ---> xy" << endl;
+	cout << "        " << "|" << string(loop*2,' ') << "^ " << Dirs1[2] << string(width-(loop*2)-Dirs1[2].length()-2, ' ') << "|           " << endl;
+	cout << "        " << "|" << string(loop*2,' ') << "|" << string(width-1-(loop*2),' ') << "|             " << endl;
+	cout << "        " << "|" << string(loop*2,' ') << "---> x => " << Dirs1[0] << string(width-(loop*2)-10-Dirs1[0].length(), ' ') << "|" << endl;
+	cout << "        " << "|" << string(loop*2,' ') << "     y => " << Dirs1[1] << string(width-(loop*2)-10-Dirs1[1].length(), ' ') << "|" << endl;
+	cout << "        " << side << endl;
+	cout << "        " << side << endl;
+	cout << "        " << "|" << center(Planes1[2], width) << "|" << endl;
+	cout << "        " << line << endl;
+
+	delete[] Dirs1;
+	delete[] Dirs2;
+	delete[] Planes1;
+	delete[] Planes2;
+	delete[] i_1_d;
+	delete[] i_2_d;
+	delete[] i_1_p;
+	delete[] i_2_p;
+}
+
+
 void Displays::DisplayGB(Crystal *Crystal1, Crystal *Crystal2){
 	string *Dirs1 = new string[3];
 	string *Dirs2 = new string[3];
@@ -342,9 +475,9 @@ void Displays::ReadFixedParams(string filename){
 	ifstream file(filename, ios::in);
 	string buffer_s, line;
 	// crystal
-	size_t pos_tolOrthoBox, pos_tolOrthoBoxZ, pos_minBoxHeight, pos_minBoxAside, pos_shift, pos_nblc;
+	size_t pos_tolOrthoBox, pos_tolOrthoBoxZ, pos_minBoxHeight, pos_minBoxAside, pos_shift, pos_nblc, pos_max_hkl_search;
 	// bicrystals and CSL/DSC
-	size_t pos_thetamax, pos_MaxHKL, pos_toldist, pos_tolpos_kC, pos_tolCSLint, pos_tolAlign, pos_MaxMisfit, pos_GBSpace, pos_MaxDup, pos_FullGrains;
+	size_t pos_thetamax, pos_MaxHKL, pos_toldist, pos_tolpos_kC, pos_tolCSLint, pos_tolAlign, pos_MaxMisfit, pos_GBSpace, pos_MaxDup, pos_FullGrains, pos_maxvarfl, pos_maxdupf;
 	// descriptors and ML
 	size_t pos_filter, pos_rattrain;
 	// Steinhardt descriptors
@@ -397,6 +530,12 @@ void Displays::ReadFixedParams(string filename){
 			if(pos_nblc!=string::npos){
 				istringstream text(line);
 				text >> buffer_s >> CLsearch;
+				FixedParameters.push_back(line);
+			}
+			pos_max_hkl_search=line.find("MAX_HKL_SEARCH");
+			if(pos_max_hkl_search!=string::npos){
+				istringstream text(line);
+				text >> buffer_s >> max_hkl_search;
 				FixedParameters.push_back(line);
 			}
 			// Bicrystal and CSL/DSC
@@ -461,6 +600,18 @@ void Displays::ReadFixedParams(string filename){
 			if(pos_FullGrains!=string::npos){
 				istringstream text(line);
 				text >> buffer_s >> FullGrains;
+				FixedParameters.push_back(line);
+			}
+			pos_maxvarfl=line.find("MAX_VAR_FACET_LENGTH ");
+			if(pos_maxvarfl!=string::npos){
+				istringstream text(line);
+				text >> buffer_s >> this->maxVarL;
+				FixedParameters.push_back(line);
+			}
+			pos_maxdupf=line.find("MAX_DUP_FACET ");
+			if(pos_maxdupf!=string::npos){
+				istringstream text(line);
+				text >> buffer_s >> this->dupMaxFac;
 				FixedParameters.push_back(line);
 			}
 			// Descriptors and ML
@@ -699,6 +850,7 @@ void Displays::Printer_CreateGB(){
 	cout << "\t MIN_BOX_HEIGHT " << MinBoxHeight << endl;
 	cout << "\t MIN_BOX_ASIDE " << MinBoxAside << endl;
 	cout << "\t NB_MAX_LC " << CLsearch << endl;
+	cout << "\t MAX_HKL_SEARCH " << max_hkl_search << endl;
 	cout << "\t MOTIF_SHIFT " << shift_x << " " << shift_y << " " << shift_z << endl;
 	cout << "\t MAX_MISFIT " << MaxMisfit << endl;
 	cout << "\t MAX_DUP " << MaxDup << endl;
@@ -713,6 +865,30 @@ void Displays::Printer_CreateGB(){
 	PrintFootExecMsg();
 }
 
+void Displays::Printer_CreateFacetGB(){
+	ReadCurrentFixedParams();
+	PrintHeadExecMsg();
+	cout << "\t TOL_ORTHO_BOX " << TolOrthoBox << endl;
+	cout << "\t TOL_ORTHO_BOX_Z " << TolOrthoBoxZ << endl;
+	cout << "\t MIN_BOX_HEIGHT " << MinBoxHeight << endl;
+	cout << "\t MIN_BOX_ASIDE " << MinBoxAside << endl;
+	cout << "\t NB_MAX_LC " << CLsearch << endl;
+	cout << "\t MAX_HKL_SEARCH " << max_hkl_search << endl;
+	cout << "\t MOTIF_SHIFT " << shift_x << " " << shift_y << " " << shift_z << endl;
+	cout << "\t MAX_MISFIT " << MaxMisfit << endl;
+	cout << "\t MAX_DUP " << MaxDup << endl;
+	cout << "\t GB_SPACE " << GBspace << endl;
+	cout << "\t FULL_GRAINS " << FullGrains << endl;
+	cout << "\t THETA_MAX_ROT_ANGLE_RAT " << theta_max_rot_ax_rat << endl;
+	cout << "\t MAX_HKL_ROT_ANGLE " << MaxHKL_rot_angle_rat << endl;
+	cout << "\t TOL_DIST_RAT_ANGLE " << tol_dist_rot_angle_rat << endl;
+	cout << "\t TOL_POS_KNOWN_CSL_VEC " << tolpos_known_CSL << endl;
+	cout << "\t TOL_CSL_INTEGER " << tol_CSL_integer << endl;
+	cout << "\t TOL_ALIGNMENT_CSL " << tolAlignment_CSL << endl;
+	cout << "\t MAX_VAR_FACET_LENGTH " << maxVarL << endl;
+	cout << "\t MAX_DUP_FACET " << dupMaxFac << endl;
+	PrintFootExecMsg();
+}
 void Displays::Printer_CreateOrientedPlane(){
 	ReadCurrentFixedParams();
 	PrintHeadExecMsg();
@@ -721,6 +897,7 @@ void Displays::Printer_CreateOrientedPlane(){
 	cout << "\t MIN_BOX_HEIGHT " << MinBoxHeight << endl;
 	cout << "\t MIN_BOX_ASIDE " << MinBoxAside << endl;
 	cout << "\t NB_MAX_LC " << CLsearch << endl;
+	cout << "\t MAX_HKL_SEARCH " << max_hkl_search << endl;
 	cout << "\t MOTIF_SHIFT " << shift_x << " " << shift_y << " " << shift_z << endl;
 	PrintFootExecMsg();
 }
@@ -770,6 +947,7 @@ void Displays::Printer_SampleGB_GammaSurface(){
 	cout << "\t TOL_ORTHO_BOX_Z " << TolOrthoBoxZ << endl;
 	cout << "\t MIN_BOX_HEIGHT " << MinBoxHeight << endl;
 	cout << "\t NB_MAX_LC " << CLsearch << endl;
+	cout << "\t MAX_HKL_SEARCH " << max_hkl_search << endl;
 	cout << "\t MOTIF_SHIFT " << shift_x << " " << shift_y << " " << shift_z << endl;
 	cout << "\t MAX_MISFIT " << MaxMisfit << endl;
 	cout << "\t MAX_DUP " << MaxDup << endl;

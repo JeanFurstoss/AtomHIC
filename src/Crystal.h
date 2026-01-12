@@ -81,8 +81,8 @@ private:
 	double *a2_star;
 	double *a3_star;
 	double V; // elementary volum
-	int *OrthogonalPlanes;
-	int *OrthogonalDirs;
+	int *OrthogonalPlanes; // [i] for i = 0,1,2 => h,k,l Miller indices of plane normal to x cartesian axis, 3,4,5 normal to y and 6,7,8 normal to z
+	int *OrthogonalDirs;// [i] for i = 0,1,2 => h,k,l Miller indices of direction aligned with x cartesian axis, 3,4,5 aligned with y and 6,7,8 aligned with z
 	Atom *Motif;
 	bool IsOrientedSystem = false;
 	bool IsMultisite = false;
@@ -105,6 +105,7 @@ private:
 	double MinBoxHeight = 20.;
 	double MinBoxAside = 3.;
 	int CLsearch = 150;
+	int max_hkl_search = 10;
 	double shift_x = 0.;
 	double shift_y = 0.;
 	double shift_z = 0.;
@@ -164,6 +165,9 @@ public:
 	std::vector<double> *getReferenceBondOriParam(){ return ReferenceBondOriParam; }
 	bool getIsReferenceBondOriParam(){ return IsReferenceBondOriParam; }
 	double *GetCrystalDef(){ return crystal_def; }
+	int getNbCLSearch(){ return CLsearch; }
+	double getMinBoxHeight(){ return MinBoxHeight; }
+	double getMinBoxAside(){ return MinBoxAside; }
 	// methods
 	void read_params();
 	void ReadProperties(std::vector<std::string> Properties);
@@ -171,13 +175,15 @@ public:
 	void ComputeCrystalDef();
 	void computeReciproqual();
 	void ComputeOrthogonalPlanesAndDirections();
-	void RotateCrystal(const int& h_p, const int& k_p, const int& l_p);
+	void SearchCrystallographicPlanesAndDirections(double *Dir, int &h, int &k, int &l, int &u, int &v, int &w);
+	void RotateCrystal(const int& h_p, const int& k_p, const int& l_p, const int& h_px=0, const int& k_px=0, const int& l_px=0);
 	void RotateCrystal(const double *RotMat);
 	void ConstructNotSepList();
 	void ConstructNotSepListFromMolId();
 	void ConstructOrthogonalCell();
 	void computeStoich();
 	void ChangeTypes(unsigned int *CorresArray);
+	double ComputeD_hkl(const int& h, const int& k, const int& l);
 	// destructor
 	~Crystal();
 	

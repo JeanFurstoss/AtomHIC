@@ -37,121 +37,338 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	setCrystal(crystalName);
 
 }
-	
+
 // Constructor for bicrystal with facetted GB with given misorientation and GB plane and facet type (for the moment this is implemented for 2D facets and for a GB composed 2 different facet types, i.e. with one facet direction parallel to x direction)
-Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, double theta, int h_p, int k_p, int l_p, vector<int> FacetsType, unsigned int N_facet):h_a(h_a), k_a(k_a), l_a(l_a), theta(theta), h_p(h_p), k_p(k_p), l_p(l_p){ 
+Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, double theta, int h_p, int k_p, int l_p, vector<int> FacetsType, double L_facet, vector<string> Properties, int h_px, int k_px, int l_px):h_a(h_a), k_a(k_a), l_a(l_a), theta(theta), h_p(h_p), k_p(k_p), l_p(l_p){ 
+	double zero_num = 1.e-9;
 	this->MT = new MathTools;
 	read_params();
 	setCrystal(crystalName);
-	setOrientedCrystals(crystalName, false);
+	// impose MIN_BOX_HEIGH to very small value as it will be duplicated in z later given the facet height
+	size_t pos_minBoxHeight, pos_minBoxAside;
+	string buffer_s;
+	double InitMinBoxHeight = _MyCrystal->getMinBoxHeight();
+	double InitMinBoxAside = _MyCrystal->getMinBoxAside();
+	bool already_h = false;
+	bool already_a = false;
+	for(unsigned int i=0;i<Properties.size();i++){
+		pos_minBoxHeight=Properties[i].find("MIN_BOX_HEIGHT");
+		if(pos_minBoxHeight!=string::npos){
+			istringstream text(Properties[i]);
+			text >> buffer_s >> InitMinBoxHeight;
+			already_h = true;
+			Properties[i] = "MIN_BOX_HEIGHT 2.";
+		}
+		pos_minBoxAside=Properties[i].find("MIN_BOX_ASIDE");
+		if(pos_minBoxAside!=string::npos){
+			istringstream text(Properties[i]);
+			text >> buffer_s >> InitMinBoxAside;
+			already_a = true;
+			Properties[i] = "MIN_BOX_ASIDE 2.";
+		}
+
+	}
+	if( !already_h ) Properties.push_back("MIN_BOX_HEIGHT 2.");
+	if( !already_a ) Properties.push_back("MIN_BOX_ASIDE 2.");
+	ReadProperties(Properties);
+	this->_MyCrystal->ReadProperties(Properties);
+	string i_a_str(""), i_p_str("");
+	if( _MyCrystal->getCrystallo() == "Hexagonal" ){
+		i_a_str = "_"+to_string(-(this->h_a)-(this->k_a));
+		i_p_str = "_"+to_string(-(this->h_p)-(this->k_p));
+	}
+	cout << "Constructing a GB misoriented by " << theta*180./M_PI << "° around [" << h_a << "_" << k_a << i_a_str << "_" << l_a << "] axis and one GB plane (" << h_p << "_" << k_p << i_p_str << "_" << l_p << ")" << endl;
+	setOrientedCrystals(crystalName, false, Properties, h_px, k_px, l_px);
+	_MyCrystal->ComputeOrthogonalPlanesAndDirections();
+	_MyCrystal2->ComputeOrthogonalPlanesAndDirections();
 	double *Dir1_G1 = new double[3];
 	double *Dir2_G1 = new double[3];
-	double *Dir1_G2 = new double[3];
-	double *Dir2_G2 = new double[3];
+	double facnorm1(0.), facnorm2(0.);
+	double sp_t = 0.;
 	for(unsigned int i=0;i<3;i++){
-		Dir1_G1[i] = FacetsType[0]*_MyCrystal->getA1()[i]-FacetsType[2]*_MyCrystal->getA2()[i]+FacetsType[1]*_MyCrystal->getA3()[i];
-		Dir2_G1[i] = FacetsType[3]*_MyCrystal->getA1()[i]+FacetsType[5]*_MyCrystal->getA2()[i]-FacetsType[4]*_MyCrystal->getA3()[i];
+		Dir1_G1[i] = FacetsType[0]*_MyCrystal->getA1_star()[i]+FacetsType[1]*_MyCrystal->getA2_star()[i]+FacetsType[2]*_MyCrystal->getA3_star()[i];
+		Dir2_G1[i] = FacetsType[3]*_MyCrystal->getA1_star()[i]+FacetsType[4]*_MyCrystal->getA2_star()[i]+FacetsType[5]*_MyCrystal->getA3_star()[i];
+		facnorm1 += Dir1_G1[i]*Dir1_G1[i];
+		facnorm2 += Dir2_G1[i]*Dir2_G1[i];
 	}
-	if( Dir1_G1[2]*Dir2_G1[2] > 0 || Dir1_G1[1]*Dir2_G1[1] < 0 ){
-		if( Dir1_G1[2] < 0 ){
-			for(unsigned int i=0;i<3;i++){
-				Dir1_G1[i] = FacetsType[0]*_MyCrystal->getA1()[i]+FacetsType[2]*_MyCrystal->getA2()[i]-FacetsType[1]*_MyCrystal->getA3()[i];
-			}
-		} else {
-			for(unsigned int i=0;i<3;i++){
-				Dir2_G1[i] = FacetsType[3]*_MyCrystal->getA1()[i]-FacetsType[5]*_MyCrystal->getA2()[i]+FacetsType[4]*_MyCrystal->getA3()[i];
-			}
-		}
-		if( Dir1_G1[2]*Dir2_G1[2] > 0 || Dir1_G1[1]*Dir2_G1[1] < 0 ){
-			cerr << "The given facets do not permit to construct the wanted GB, aborting calculation" << endl;
-			exit(EXIT_FAILURE);
-		}
+	facnorm1 = sqrt(facnorm1);
+	facnorm2 = sqrt(facnorm2);
+	for(unsigned int d=0;d<2;d++) sp_t += Dir1_G1[d]*Dir2_G1[d];
+	if( sp_t < 0. ){
+		for(unsigned int i=0;i<3;i++) FacetsType[3+i] *= -1;
+		facnorm2 *= -1.;
 	}
-	if( Dir1_G1[1] < 0 ){
-		for(unsigned int i=0;i<3;i++){
-			Dir1_G1[i] *= -1;
-			Dir2_G1[i] *= -1;
-		}
+	for(unsigned int i=0;i<3;i++){
+		Dir1_G1[i] /= facnorm1;
+		Dir2_G1[i] /= facnorm2;
 	}
-	// search LC for which the facet gives horyzontal GB
-	unsigned int n1,n2;
-	double tol = 1e-1;
-	unsigned int nbMaxCL = 150;
-	bool breaked = false;
-	for(unsigned int i1=1;i1<nbMaxCL;i1++){
-		for(unsigned int i2=1;i2<nbMaxCL;i2++){
-			if( fabs(i1*Dir1_G1[2] + i2*Dir2_G1[2]) < tol ){
-				n1 = i1;
-				n2 = i2;
-				breaked = true;
-				break;
-			}
-		}
-		if( breaked ) break;
+	double *FacetJctDir = new double[3];
+	MT->mixedProd(Dir1_G1,Dir2_G1,FacetJctDir);
+	double abs_xf = fabs(FacetJctDir[0]);
+	double abs_yf = fabs(FacetJctDir[1]);
+	double abs_zf = fabs(FacetJctDir[2]);
+	bool good_facet = true;
+ 	if( abs_xf < zero_num && abs_yf < zero_num && abs_zf < zero_num ){
+		cerr << "The two provided facet planes are colinear, the faceted GB cannot be constructed, aborting calculation" << endl;
+		good_facet = false;
 	}
-	if( !breaked ){
-		cerr << "We don't find linear combination of facet for this GB, consider increasing tolerance (in FixedParameters.dat) or number of CL investigated, aborting calculation" << endl;
+	if( fabs(Dir1_G1[0]) < zero_num && fabs(Dir1_G1[1]) < zero_num ){
+		cerr << "The first facet is horyzontal, cannot construct a faceted GB with this facet, aborting calculation" << endl;
+		good_facet = false;
+	}
+	if( fabs(Dir2_G1[0]) < zero_num && fabs(Dir2_G1[1]) < zero_num ){
+		cerr << "The second facet is horyzontal, cannot construct a faceted GB with this facet, aborting calculation" << endl;
+		good_facet = false;
+	}
+	if( !(( Dir1_G1[2] < 0. && Dir2_G1[2] >= 0 ) || ( Dir1_G1[2] <= 0. && Dir2_G1[2] > 0 ) || ( Dir1_G1[2] > 0. && Dir2_G1[2] <= 0 ) || ( Dir1_G1[2] >= 0. && Dir2_G1[2] < 0 )) ){
+		cerr << "The two provided facets planes have the same z-slope sign, the periodic boundary conditions cannot then be respected, aborting calculation" << endl; 
+		good_facet = false;
+	}
+	if( abs_zf > zero_num ){
+		cerr << "The line junction between the two provided facets is not parallel to z-plane, the periodic boundary conditions cannot then be respected, aborting calculation" << endl;
+		good_facet = false;
+	}
+	if( !good_facet ){
+		cerr << "Grain 1 (i.e. crystal reference frame for the facets) is oriented following:" << endl;
+		Dis->DisplayOrthogonalCell(_MyCrystal);
+		unsigned int max_hkl_search_facet = 0;
+		cerr << "Enter the maximum hkl value for searching admissible facet for this system: ";
+		cin >> max_hkl_search_facet;
+		cout << endl;
+		ShowPossibleFacets(max_hkl_search_facet);
 		exit(EXIT_FAILURE);
 	}
-	// correct the direction accounting for the small deformation applied to crystals during construction of grains
-	MT->MatDotRawVec(this->_MyCrystal->getTiltTrans(), Dir1_G1, Dir1_G1);
-	MT->MatDotRawVec(this->_MyCrystal->getTiltTrans(), Dir2_G1, Dir2_G1);
-	MT->MatDotRawVec(this->_MyCrystal2->getTiltTrans(), Dir1_G1, Dir1_G2);
-	MT->MatDotRawVec(this->_MyCrystal2->getTiltTrans(), Dir2_G1, Dir2_G2);
-	n1 *= N_facet;
-	n2 *= N_facet;
-	double DeltaZ = fabs(n1*Dir1_G1[2]);
-	// search the number of linear combination for the two system to have the same x y length
+	Dis->DisplayFacetedGB(_MyCrystal,_MyCrystal2,Dir1_G1,Dir2_G1);
+	// search the number of linear combination for the two system to have the same x y length (same as for classic GB construction TODO put in a function)
+	// TODO ! Here and in the other constructor, set the MIN_BOX_ASIDE to crystal to very small value and then control the min box aside during the duplication!!! IMPORTANT !!!
+	//  above described should be done for normal constructor but for facet I can:
 	this->xl1 = this->_MyCrystal->getOrientedSystem()->getH1()[0];
 	this->xl2 = this->_MyCrystal2->getOrientedSystem()->getH1()[0];
 	this->yl1 = this->_MyCrystal->getOrientedSystem()->getH2()[1];
 	this->yl2 = this->_MyCrystal2->getOrientedSystem()->getH2()[1];
-	bool find = false;
-	for(unsigned int i=0;i<MaxDup;i++){
-		for(unsigned int j=0;j<MaxDup;j++){
-			if( fabs(2*(xl1*i-xl2*j)/(xl1*i+xl2*j)) < MaxMisfit ){
-				dupX1 = i;
-				dupX2 = j;
-				find = true;
-				break;
-			}
+	this->zl1 = this->_MyCrystal->getOrientedSystem()->getH3()[2];
+	this->zl2 = this->_MyCrystal2->getOrientedSystem()->getH3()[2];
+	//  make a four imbricated loop to search in the same time what combination of G1 and G2 respect misfit and the min box aside AND the PBC for Facets
+	double final_xbox, final_ybox;
+	bool found_dup = false;
+	for(unsigned int i1=1;i1<MaxDup;i1++){
+		for(unsigned int i2=1;i2<MaxDup;i2++){
+			final_xbox = (xl1*i1 + xl2*i2)/2.;
+    			double temp_MisfitX = fabs(1. - (final_xbox / (xl1*i1)));
+			if( temp_MisfitX < MaxMisfit && final_xbox > InitMinBoxAside ){
+				for(unsigned int j1=1;j1<MaxDup;j1++){
+					for(unsigned int j2=1;j2<MaxDup;j2++){
+						final_ybox = (yl1*j1 + yl2*j2)/2.;
+    						double temp_MisfitY = fabs(1. - (final_ybox / (yl1*j1)));
+						if( temp_MisfitY < MaxMisfit && final_ybox > InitMinBoxAside ){
+    							Mx1 = final_xbox / (xl1*i1);
+    							My1 = final_ybox / (yl1*j1);
+							_MyCrystal->getA1()[0] *= Mx1;
+							_MyCrystal->getA1()[1] *= My1;
+							_MyCrystal->getA2()[0] *= Mx1;
+							_MyCrystal->getA2()[1] *= My1;
+							_MyCrystal->getA3()[0] *= Mx1;
+							_MyCrystal->getA3()[1] *= My1;
+							_MyCrystal->computeReciproqual();
+							facnorm1 = 0.;
+							facnorm2 = 0.;
+							for(unsigned int i=0;i<3;i++){
+								Dir1_G1[i] = FacetsType[0]*_MyCrystal->getA1_star()[i]+FacetsType[1]*_MyCrystal->getA2_star()[i]+FacetsType[2]*_MyCrystal->getA3_star()[i];
+								Dir2_G1[i] = FacetsType[3]*_MyCrystal->getA1_star()[i]+FacetsType[4]*_MyCrystal->getA2_star()[i]+FacetsType[5]*_MyCrystal->getA3_star()[i];
+								facnorm1 += Dir1_G1[i]*Dir1_G1[i];
+								facnorm2 += Dir2_G1[i]*Dir2_G1[i];
+							}
+							facnorm1 = sqrt(facnorm1);
+							facnorm2 = sqrt(facnorm2);
+							for(unsigned int i=0;i<3;i++){
+								Dir1_G1[i] /= facnorm1;
+								Dir2_G1[i] /= facnorm2;
+							}
+
+							MT->mixedProd(Dir1_G1,Dir2_G1,FacetJctDir);
+							double facnorm3 = 0.;
+							for(unsigned int i=0;i<3;i++) facnorm3 += FacetJctDir[i]*FacetJctDir[i];
+							facnorm3 = sqrt(facnorm3);
+							for(unsigned int i=0;i<3;i++) FacetJctDir[i] /= facnorm3;
+							abs_xf = fabs(FacetJctDir[0]);
+							abs_yf = fabs(FacetJctDir[1]);
+							double tol_bc = 1e-1; // in A TODO FixedParameters ?
+							if( fabs( (final_xbox*abs_yf) - (final_ybox*abs_xf) ) < tol_bc || abs_xf < zero_num || abs_yf < zero_num ){
+								found_dup = true;
+								dupX1 = i1;
+								dupY1 = j1;
+								dupX2 = i2;
+								dupY2 = j2;
+    								Mx2 = final_xbox / (xl2*i2);
+    								My2 = final_ybox / (yl2*j2);
+								break;
+							}else{
+								_MyCrystal->getA1()[0] /= Mx1;
+								_MyCrystal->getA1()[1] /= My1;
+								_MyCrystal->getA2()[0] /= Mx1;
+								_MyCrystal->getA2()[1] /= My1;
+								_MyCrystal->getA3()[0] /= Mx1;
+								_MyCrystal->getA3()[1] /= My1;
+							}
+						}
+					} // end loop j2
+					if( found_dup ) break;
+				} // end loop j1
+				if( found_dup ) break;
+			} // end if i1,i2
+		} // end loop i2
+		if( found_dup ) break;
+	} // end loop i1
+	if( !found_dup ){
+		cerr << "We do not find any combination of the two grains to have a misfit lower than provided by the fixed parameters and the facet respecting periodic boundary conditions" << endl;
+		cerr << "Increase MAX_MISFIT or MAX_DUP parameters in a FixedParameters.ath file" << endl;
+		exit(EXIT_FAILURE);
+	}	
+							
+	cout << "Pasting the two grains over each others leads to:" << endl;
+    	vector<vector<string>> arr_elements = {
+		{"", "Grain 1", "Grain 2"}, 
+		{"Direction", "X", "Y", "X", "Y"},
+		{"Duplicates", to_string(dupX1), to_string(dupY1), to_string(dupX2), to_string(dupY2)},
+		{"Misfits", to_string((Mx1-1.)*100.)+" %", to_string((My1-1.)*100.)+" %", to_string((Mx2-1.)*100.)+" %", to_string((My2-1.)*100.)+" %"}
+	};
+	vector<vector<unsigned int>> arr_fusion = {
+		{1,  2, 2},
+		{1, 1, 1, 1, 1},
+		{1, 1, 1, 1, 1},
+		{1, 1, 1, 1, 1}
+    	};
+	Dis->DisplayArray(arr_elements, arr_fusion);
+	cout << "Misfit values could be reduced by decreasing MAX_MISFIT in a FixedParameters.ath file" << endl;
+	cout << endl;
+
+	// compute the corrected facet length and the number of facet to be put in the box
+	// Facet length should be a mutliple of the reticular distance
+	unsigned int dupSys = 1;
+	double *l1 = new double[3]; // normal of facet junction comprised in facet 1
+	double *l2 = new double[3]; // normal of facet junction comprised in facet 2
+	double buffer;
+	int buffer_int;
+	MT->mixedProd(Dir1_G1,FacetJctDir,l1);
+	// if the first facet is vertical exchange facets
+	if( fabs(Dir1_G1[2]) < zero_num  ){
+		MT->mixedProd(FacetJctDir,Dir2_G1,l1);
+		MT->mixedProd(Dir1_G1,FacetJctDir,l2);
+		for(unsigned int i=0;i<3;i++){
+			buffer = Dir1_G1[i];
+			Dir1_G1[i] = Dir2_G1[i];
+			Dir2_G1[i] = buffer;
+			buffer_int = FacetsType[i];
+			FacetsType[i] = FacetsType[3+i];
+			FacetsType[3+i] = buffer_int;
 		}
-		if( find ) break;
+	}else
+		MT->mixedProd(FacetJctDir,Dir2_G1,l2);
+	double norm_l1 = sqrt( pow(l1[0],2) + pow(l1[1],2) + pow(l1[2],2) );
+	double norm_l2 = sqrt( pow(l2[0],2) + pow(l2[1],2) + pow(l2[2],2) );
+	for(unsigned int i=0;i<3;i++){
+		l1[i] /= norm_l1;
+		l1[i] /= norm_l2;
 	}
-	find = false;
-	for(unsigned int i=0;i<MaxDup;i++){
-		for(unsigned int j=0;j<MaxDup;j++){
-			if( fabs(2*(yl1*i-yl2*j)/(yl1*i+yl2*j)) < MaxMisfit ){
-				dupY1 = i;
-				dupY2 = j;
-				find = true;
-				break;
+	double norm_xy_l1 = sqrt( pow(l1[0],2) + pow(l1[1],2) );
+	double norm_xy_l2 = sqrt( pow(l2[0],2) + pow(l2[1],2) );
+	double fac_L_facet_xy;
+	fac_L_facet_xy = (norm_xy_l1/norm_l1) - ( norm_xy_l2*l1[2] / (norm_l2*l2[2]) );
+	double alpha = acos( (norm_xy_l1*norm_xy_l2) + (l1[2]*l2[2]) );
+	double dfac1 = _MyCrystal->ComputeD_hkl(FacetsType[0],FacetsType[1],FacetsType[2]) / sin(alpha);
+	double dfac2 = _MyCrystal->ComputeD_hkl(FacetsType[3],FacetsType[4],FacetsType[5]) / sin(alpha);
+	unsigned int Nfacets;
+
+	// Facet length should be a mutliple of the reticular distance
+	double n2On1 = -l1[2]*dfac2/(l2[2]*dfac1);
+	unsigned int nLcor = round(L_facet / dfac2 );
+	unsigned int nd_max = round(L_facet * maxVarL / dfac2);
+	double new_L_facet = nLcor * dfac2;
+	vector<unsigned int> PossibleN;
+	// search possible facets for the two length being a multiple of reticular distance
+	for(unsigned int i=0;i<nd_max+1;i++){
+	        double n2 = double (nLcor + i) * n2On1;
+	        if( fabs(round(n2)-n2) < 1e-6 ) PossibleN.push_back(nLcor+i);
+	        n2 = double (nLcor - i) * n2On1;
+	        if( fabs(round(n2)-n2) < 1e-6 ) PossibleN.push_back(nLcor-i);
+	}
+	if( PossibleN.size() == 0 ){
+		cerr << "Cannot find a combination of facets length respecting reticular distances (increase MAX_VAR_FACET_LENGTH parameter in a FixedParameters.ath file)" << endl;
+		exit(EXIT_FAILURE);
+	}
+	double denom = ((norm_xy_l1/norm_l1) - ( norm_xy_l2*l1[2] / (norm_l2*l2[2]) ))*norm_xy_l1;
+	double nume = (fabs(l1[0])*final_xbox) + (fabs(l1[1])*final_ybox);
+	double tol = 1e-5;
+	bool found = false;
+	for(unsigned int k=1;k<dupMaxFac;k++){
+		unsigned int current_N = round(k*nume/(nLcor*dfac2*denom));
+		if( current_N < 2 ) continue;
+		else if( current_N % 2 != 0 ) current_N++;
+		for(unsigned int i_N=0;i_N<2;i_N++){
+			unsigned int N = current_N + i_N*2;
+			for(unsigned int i_n=0;i_n<PossibleN.size();i_n++){
+				unsigned int n = PossibleN[i_n];
+				if( fabs( (N*n*dfac2*denom) - (k*nume) ) < tol ){
+					Nfacets = N;
+					dupSys = k;
+					nLcor = n;
+					found = true;
+					break;
+				}
 			}
+			if( found ) break;
+			N = current_N - i_N*2;
+			for(unsigned int i_n=0;i_n<PossibleN.size();i_n++){
+				unsigned int n = PossibleN[i_n];
+				if( fabs( (N*n*dfac2*denom) - (k*nume) ) < tol ){
+					Nfacets = N;
+					dupSys = k;
+					nLcor = n;
+					found = true;
+					break;
+				}
+			}
+			if( found ) break;
 		}
-		if( find ) break;
+		if( found ) break;
 	}
-	double final_xbox = (xl1*dupX1 + xl2*dupX2)/2;
-    	double final_ybox = (yl1*dupY1 + yl2*dupY2)/2;
-    	Mx1 = final_xbox / (xl1*dupX1);
-    	My1 = final_ybox / (yl1*dupY1);
-    	Mx2 = final_xbox / (xl2*dupX2);
-    	My2 = final_ybox / (yl2*dupY2);
-	cout << "Duplicates : " << dupX1 << " " << dupY1 << " " << dupX2 << " " << dupY2 << endl;
-	cout << "Misfits : " << Mx1 << " " << My1 << " " << Mx2 << " " << My2 << endl;
-	// search if the facets can be putted in the y length
-	double dup_fac_y = final_ybox / ( n1*Dir1_G1[1] + n2*Dir2_G1[1] );
-	if( dup_fac_y < 1. ){
-		final_ybox /= dup_fac_y;
-		dupY1 *= round(1./dup_fac_y);
-		dupY2 *= round(1./dup_fac_y);
+	if( !found ){
+		cerr << "Cannot find a facet length allowing to respect periodic boundary conditions (increase MAX_VAR_FACET_LENGTH or MAX_DUP_FACET parameters in a FixedParameters.ath file)" << endl;
+		exit(EXIT_FAILURE);
 	}
+	new_L_facet = nLcor * dfac2;
+	dupX1 *= dupSys;
+	dupX2 *= dupSys;
+	dupY1 *= dupSys;
+	dupY2 *= dupSys;
+	final_xbox *= dupSys;
+	final_ybox *= dupSys;
+
+	cout << "The provided facet length (" << L_facet << " A) has been replaced by " << new_L_facet << " A in order to respect PBC in GB plane and intereticular distances" << endl;
+	if( Nfacets < 2 ) cout << "If the difference between the provided facet length and the new one is too high, you can try to change the MIN_BOX_ASIDE parameter in a FixedParameters.ath file, to provide a system dimension closer to the one of the provided facet length" << endl;
+	cout << "The system will be composed of " << Nfacets << " facets such that:" << endl;
+	L_facet = new_L_facet;
+	double L_facet2 = -L_facet*l1[2]/l2[2];
+	double FacetLength;
+        if( FacetJctDir[0] < zero_num ) FacetLength = final_ybox;
+	else FacetLength = final_xbox/cos(atan(FacetJctDir[1]/FacetJctDir[0]));
+	if( fabs(round(L_facet/dfac2)-(L_facet/dfac2)) > 1e-5 ) cout << "WARNING !! The length of facet 1 is not a multiple of the reticular distance of facet 2, some issues could occur !" << endl;
+	if( fabs(round(L_facet2/dfac1)-(L_facet2/dfac1)) > 1e-5 ) cout << "WARNING !! The length of facet 2 is not a multiple of the reticular distance of facet 1, some issues could occur !" << endl;
+	cout << "\t facet type (" << FacetsType[0] << "_" << FacetsType[1] << "_" << FacetsType[2] << ") has length : " << L_facet << " A, for total area of " << double (Nfacets)*FacetLength*L_facet << " A2" << endl;
+	cout << "\t facet type (" << FacetsType[3] << "_" << FacetsType[4] << "_" << FacetsType[5] << ") has length : " << L_facet2 << " A, for total area of " << double (Nfacets)*FacetLength*L_facet2 << " A2" << endl;
+	double L1xy = L_facet*norm_xy_l1/norm_l1;
+	double L2xy = L_facet2*norm_xy_l2/norm_l2;
+
+	// Compute the facet height see if the grains should be duplicated in z direction
+	double DeltaZ = L_facet*sin(acos(norm_xy_l1/norm_l1))/2.; // divied by two as the 2 grains share equally the facet
+	unsigned int zdup1 = ceil((InitMinBoxHeight+2.*DeltaZ)/_MyCrystal->getOrientedSystem()->getH3()[2])+1; 
+	unsigned int zdup2 = ceil((InitMinBoxHeight+2.*DeltaZ)/_MyCrystal2->getOrientedSystem()->getH3()[2])+1; 
+
 	// initialize the variables and pointers
 	unsigned int nbAtom1 = this->_MyCrystal->getOrientedSystem()->getNbAtom();
 	unsigned int nbAtom2 = this->_MyCrystal2->getOrientedSystem()->getNbAtom();
-	unsigned int nbAtom_temp = nbAtom1*dupX1*dupY1 + nbAtom2*dupX2*dupY2;
-	Atom *AtomList_temp = new Atom[nbAtom_temp];
-	this->AtomList_G1 = new Atom[nbAtom1];
-	this->AtomList_G2 = new Atom[nbAtom2];
+	unsigned int nbAtom_temp = nbAtom1*dupX1*dupY1*zdup1 + nbAtom2*dupX2*dupY2*zdup2;
+	Atom *AtomList_temp = new Atom[nbAtom_temp]; // init this array with the maximum number of atom
 	this->H1_G1 = new double[3];
 	this->H2_G1 = new double[3];
 	this->H3_G1 = new double[3];
@@ -170,25 +387,27 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	this->H2[2] = 0.;
 	this->H3[0] = 0.;
 	this->H3[1] = 0.;
-	this->H3[2] = this->_MyCrystal->getOrientedSystem()->getH3()[2] + this->_MyCrystal2->getOrientedSystem()->getH3()[2]+GBspace-DeltaZ;
-	this->H1_G1[0] = Mx1*xl1;
+	this->H3[2] = (this->_MyCrystal->getOrientedSystem()->getH3()[2])*zdup1 + ((this->_MyCrystal2->getOrientedSystem()->getH3()[2]+GBspace)*zdup2) + GBspace;
+	this->H1_G1[0] = Mx1*xl1*dupX1;
 	this->H1_G1[1] = 0.;
 	this->H1_G1[2] = 0.;
 	this->H2_G1[0] = 0.;
-	this->H2_G1[1] = My1*yl1;
+	this->H2_G1[1] = My1*yl1*dupY1;
 	this->H2_G1[2] = 0.;
 	this->H3_G1[0] = 0.;
 	this->H3_G1[1] = 0.;
-	this->H3_G1[2] = this->_MyCrystal->getOrientedSystem()->getH3()[2];
-	this->H1_G2[0] = Mx2*xl2;
+	double zboxG1 = (this->_MyCrystal->getOrientedSystem()->getH3()[2])*zdup1;
+	this->H3_G1[2] = zboxG1;
+	this->H1_G2[0] = Mx2*xl2*dupX2;
 	this->H1_G2[1] = 0.;
 	this->H1_G2[2] = 0.;
 	this->H2_G2[0] = 0.;
-	this->H2_G2[1] = My2*yl2;
+	this->H2_G2[1] = My2*yl2*dupY2;
 	this->H2_G2[2] = 0.;
 	this->H3_G2[0] = 0.;
 	this->H3_G2[1] = 0.;
-	this->H3_G2[2] = this->_MyCrystal2->getOrientedSystem()->getH3()[2];
+	double zboxG2 = (this->_MyCrystal2->getOrientedSystem()->getH3()[2])*zdup2;
+	this->H3_G2[2] = zboxG2;
 	this->nbAtomType = _MyCrystal->getNbAtomType();
 	this->AtomType = _MyCrystal->getAtomType();
 	this->AtomMass = _MyCrystal->getAtomMass();
@@ -196,67 +415,160 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	this->IsCharge = _MyCrystal->getIsCharge();
 	this->IsTilted = false;
 	computeInverseCellVec();
+
+	// Compute the equation of plane of the different facets (full facet planes + vertical planes)
+	unsigned int NbPlanes = 2*(Nfacets+1);// times 2 because there is 2 planes per facets and just need to store 1 value per plane as the other ones are the normal
+	double *FullPlaneEq = new double[NbPlanes]; 
+	double *NormalPlaneEq = new double[NbPlanes*3]; // just store the normal of facet plane of each plane (redondant but allows to save time in the atom loop
+	double *VertPlaneEq = new double[NbPlanes];
+	double VertPlaneSlope;
+	bool xpar = false;
+	if( FacetJctDir[0] > zero_num ) VertPlaneSlope = FacetJctDir[1]/FacetJctDir[0];
+	else{
+		VertPlaneSlope = 0.;
+		xpar = true;
+	}
+	double invcosphi = 1./cos(atan(VertPlaneSlope));
+
+	if( Dir1_G1[2] < 0 ) for(unsigned int i=0;i<3;i++) Dir1_G1[i] *= -1.;
+	else for(unsigned int i=0;i<3;i++) Dir2_G1[i] *= -1.;
+
+	if( VertPlaneSlope < 0. ){
+		VertPlaneEq[0] = 0.; // values of y for x = 0
+		FullPlaneEq[0] = 0.;
+	}else{
+		VertPlaneEq[0] = - VertPlaneSlope*final_xbox; 
+		FullPlaneEq[0] = - Dir1_G1[1]*VertPlaneSlope*final_xbox;
+	}
+	for(unsigned int i=0;i<3;i++) NormalPlaneEq[i] = Dir1_G1[i];
+
+	for(unsigned int i=0;i<Nfacets;i++){
+		if( VertPlaneSlope < 0. ){
+			VertPlaneEq[i*2+1] = ((L1xy/2.) + i*(L2xy+L1xy))*invcosphi; // values of y for x = 0
+			VertPlaneEq[i*2+2] = ((L1xy/2.) + L2xy + i*(L2xy+L1xy))*invcosphi;
+			FullPlaneEq[i*2+1] = Dir2_G1[1]*(VertPlaneEq[i*2+1]+(L2xy*invcosphi/2.)); // values of y for x = 0 and z = 0
+			FullPlaneEq[i*2+2] = Dir1_G1[1]*(VertPlaneEq[i*2+2]+(L1xy*invcosphi/2.));
+		}else{
+			VertPlaneEq[i*2+1] = -(VertPlaneSlope*final_xbox) + ((L1xy/2.) + i*(L2xy+L1xy))*invcosphi; // values of y for x = 0 
+			VertPlaneEq[i*2+2] = -(VertPlaneSlope*final_xbox) + ((L1xy/2.) + L2xy + i*(L2xy+L1xy))*invcosphi;
+			if( xpar ){
+				FullPlaneEq[i*2+1] = Dir2_G1[0]*(VertPlaneEq[i*2+1]+(L2xy*invcosphi/2.));
+				FullPlaneEq[i*2+2] = Dir1_G1[0]*(VertPlaneEq[i*2+2]+(L1xy*invcosphi/2.));
+			}else{
+				FullPlaneEq[i*2+1] = Dir2_G1[1]*(VertPlaneEq[i*2+1]+(L2xy*invcosphi/2.));
+				FullPlaneEq[i*2+2] = Dir1_G1[1]*(VertPlaneEq[i*2+2]+(L1xy*invcosphi/2.));
+			}
+		}
+		for(unsigned int d=0;d<3;d++){
+			NormalPlaneEq[i*6+3+d] = Dir2_G1[d];
+			NormalPlaneEq[i*6+6+d] = Dir1_G1[d];
+		}
+	}
+	if( VertPlaneSlope < 0. ){
+		if( xpar ){
+			VertPlaneEq[NbPlanes-1] = final_xbox; // values of y for x = 0
+			FullPlaneEq[NbPlanes-1] = final_xbox;
+		}else{
+			VertPlaneEq[NbPlanes-1] = final_ybox - VertPlaneSlope*final_xbox; // values of y for x = 0
+			FullPlaneEq[NbPlanes-1] = final_ybox - VertPlaneSlope*final_xbox;
+		}
+	}else{
+		if( xpar ){
+			VertPlaneEq[NbPlanes-1] = final_xbox; 
+			FullPlaneEq[NbPlanes-1] = Dir1_G1[0]*final_xbox;
+		}else{
+			VertPlaneEq[NbPlanes-1] = final_ybox; 
+			FullPlaneEq[NbPlanes-1] = Dir1_G1[1]*final_ybox;
+		}
+	}
+	for(unsigned int i=0;i<3;i++) NormalPlaneEq[(NbPlanes-1)*3+i] = Dir1_G1[i];
 	// paste the two grains
 	double xpos, ypos, zpos, Lin;
-	double fullFaceLength_1 = My1*(n1*Dir1_G1[1]+n2*Dir2_G1[1]);
-	double slope1_1 = Dir1_G1[2]/(My1*Dir1_G1[1]);
-	double slope2_1 = Dir2_G1[2]/(My1*Dir2_G1[1]);
-	double fullFaceLength_2 = My2*(n1*Dir1_G2[1]+n2*Dir2_G2[1]);
-	double slope1_2 = Dir1_G2[2]/(My2*Dir1_G2[1]);
-	double slope2_2 = Dir2_G2[2]/(My2*Dir2_G2[1]);
-	//cout << fullFaceLength_1 << " " << fullFaceLength_2 << " " << slope1_1 << " " << slope1_2 << " " << slope2_1 << " " << slope2_2 << endl;
-	double Origin;
+
 	unsigned int trueNbAt1 = 0;
 	unsigned int trueNbAt2 = 0;
-	if( slope1_1 > 0 ) Origin = this->_MyCrystal->getOrientedSystem()->getH3()[2]-DeltaZ;
-	else Origin = this->_MyCrystal->getOrientedSystem()->getH3()[2];
 	unsigned int at_count = 0;
+	double hG1_inf= zboxG1-(2.*DeltaZ);
+	double hG2_sup= 2.*DeltaZ;
+	double eps_pos = 1e-2;
+	// TODO manage bonds and angle
 	if( !this->_MyCrystal->getIsDoNotSep() ){
 		// for crystals where ions can be separated
 		for(unsigned int i=0;i<dupX1;i++){
 			for(unsigned int j=0;j<dupY1;j++){
-				for(unsigned int n=0;n<nbAtom1;n++){
-					ypos = My1*(this->_MyCrystal->getOrientedSystem()->getAtom(n).pos.y+j*yl1);
-					zpos = this->_MyCrystal->getOrientedSystem()->getAtom(n).pos.z;
-					if( i == 0 && j == 0 ){
-						this->AtomList_G1[n] = this->_MyCrystal->getOrientedSystem()->getAtom(n);
-						this->AtomList_G1[n].pos.y = ypos;
-						this->AtomList_G1[n].pos.x *= Mx1;
-					}
-					if( 0. <= fmod(ypos,fullFaceLength_1) && fmod(ypos,fullFaceLength_1) < (My1*n1*Dir1_G1[1]) ) Lin = zpos-slope1_1*ypos-Origin+slope1_1*((double) floor(ypos/fullFaceLength_1))*fullFaceLength_1;
-					else if( (My1*n1*Dir1_G1[1]) <= fmod(ypos,fullFaceLength_1) && fmod(ypos,fullFaceLength_1) < fullFaceLength_1 ) Lin = zpos-(slope2_1*ypos)-Origin+((((double) floor(ypos/fullFaceLength_1))+1.)*slope2_1*fullFaceLength_1);
-					if( Lin <= 0. ){
-						AtomList_temp[at_count] = this->_MyCrystal->getOrientedSystem()->getAtom(n);
-						AtomList_temp[at_count].pos.x = Mx1*(AtomList_temp[at_count].pos.x + i*xl1);
-						AtomList_temp[at_count].pos.y = ypos;
-						TagGrain[at_count] = 1;
-						at_count += 1;
+				for(unsigned int k=0;k<zdup1;k++){
+					for(unsigned int n=0;n<nbAtom1;n++){
+						xpos = Mx1*((this->_MyCrystal->getOrientedSystem()->getAtom(n).pos.x)+i*xl1); // no need to account for tilted cell vectors as the oriented system in always orthogonal
+						ypos = My1*((this->_MyCrystal->getOrientedSystem()->getAtom(n).pos.y)+j*yl1);
+						zpos = (this->_MyCrystal->getOrientedSystem()->getAtom(n).pos.z)+k*zl1;
+						if( zpos < hG1_inf ){
+							AtomList_temp[at_count] = this->_MyCrystal->getOrientedSystem()->getAtom(n);
+							AtomList_temp[at_count].pos.x = xpos;
+							AtomList_temp[at_count].pos.y = ypos;
+							AtomList_temp[at_count].pos.z = zpos;
+							TagGrain[at_count] = 1;
+							at_count += 1;
+						}else{
+							for(unsigned int f=0;f<NbPlanes-1;f++){
+								// First test if atom is between two vertical planes
+								double buffer_v;
+							        if( xpar ) buffer_v = eps_pos + xpos;
+								else buffer_v = eps_pos + ypos - VertPlaneSlope*xpos;
+								if( ( buffer_v > VertPlaneEq[f] ) && ( buffer_v < VertPlaneEq[f+1] ) ){
+									// Then test if atom is bellow the real plane
+									double buffer_f = -eps_pos + xpos*NormalPlaneEq[f*3] + ypos*NormalPlaneEq[f*3+1] + (zpos-zboxG1+DeltaZ)*NormalPlaneEq[f*3+2];
+									if( buffer_f < FullPlaneEq[f] ){
+										AtomList_temp[at_count] = this->_MyCrystal->getOrientedSystem()->getAtom(n);
+										AtomList_temp[at_count].pos.x = xpos;
+										AtomList_temp[at_count].pos.y = ypos;
+										AtomList_temp[at_count].pos.z = zpos;
+										TagGrain[at_count] = 1;
+										at_count += 1;
+									}
+									break;
+								}
+							}
+						}
 					}
 				}
 			}
 		}
 		trueNbAt1 = at_count;
-		if( slope1_2 > 0 ) Origin = 0.;
-		else Origin = DeltaZ;
 		for(unsigned int i=0;i<dupX2;i++){
 			for(unsigned int j=0;j<dupY2;j++){
-				for(unsigned int n=0;n<nbAtom2;n++){
-					ypos = My2*(this->_MyCrystal2->getOrientedSystem()->getAtom(n).pos.y+j*yl2);
-					zpos = this->_MyCrystal2->getOrientedSystem()->getAtom(n).pos.z;
-					if( i == 0 && j == 0 ){
-						this->AtomList_G2[n] = this->_MyCrystal2->getOrientedSystem()->getAtom(n);
-						this->AtomList_G2[n].pos.y = ypos;
-						this->AtomList_G2[n].pos.x *= Mx2;
-					}
-					if( 0. <= fmod(ypos,fullFaceLength_2) && fmod(ypos,fullFaceLength_2) < (My2*n1*Dir1_G2[1]) ) Lin = zpos-slope1_2*ypos-Origin+slope1_2*((double) floor(ypos/fullFaceLength_2))*fullFaceLength_2;
-					else if( (My2*n1*Dir1_G2[1]) <= fmod(ypos,fullFaceLength_2) && fmod(ypos,fullFaceLength_2) < fullFaceLength_2 ) Lin = zpos-(slope2_2*ypos)-Origin+((((double) floor(ypos/fullFaceLength_2))+1.)*slope2_2*fullFaceLength_2);
-					if( Lin >= 0. ){
-						AtomList_temp[at_count] = this->_MyCrystal2->getOrientedSystem()->getAtom(n);
-						AtomList_temp[at_count].pos.x = Mx2*(AtomList_temp[at_count].pos.x + i*xl2);
-						AtomList_temp[at_count].pos.y = ypos;
-						AtomList_temp[at_count].pos.z += (this->_MyCrystal->getOrientedSystem()->getH3()[2]+(GBspace/2.)-DeltaZ);
-						TagGrain[at_count] = 2;
-						at_count += 1;
+				for(unsigned int k=0;k<zdup2;k++){
+					for(unsigned int n=0;n<nbAtom2;n++){
+						xpos = Mx2*((this->_MyCrystal2->getOrientedSystem()->getAtom(n).pos.x)+i*xl2); // no need to account for tilted cell vectors as the oriented system in always orthogonal
+						ypos = My2*((this->_MyCrystal2->getOrientedSystem()->getAtom(n).pos.y)+j*yl2);
+						zpos = (this->_MyCrystal2->getOrientedSystem()->getAtom(n).pos.z)+k*zl2;
+						if( zpos > hG2_sup ){
+							AtomList_temp[at_count] = this->_MyCrystal2->getOrientedSystem()->getAtom(n);
+							AtomList_temp[at_count].pos.x = xpos;
+							AtomList_temp[at_count].pos.y = ypos;
+							AtomList_temp[at_count].pos.z = zpos;
+							TagGrain[at_count] = 2;
+							at_count += 1;
+						}else{
+							for(unsigned int f=0;f<NbPlanes-1;f++){
+								// First test if atom is between two vertical planes
+								double buffer_v;
+							        if( xpar ) buffer_v = eps_pos + xpos;
+								else buffer_v = eps_pos + ypos - VertPlaneSlope*xpos;
+								if( ( buffer_v > VertPlaneEq[f] ) && ( buffer_v < VertPlaneEq[f+1] ) ){
+									// Then test if atom is above the real plane
+									double buffer_f = eps_pos + xpos*NormalPlaneEq[f*3] + ypos*NormalPlaneEq[f*3+1] + (zpos-DeltaZ)*NormalPlaneEq[f*3+2];
+									if( buffer_f > FullPlaneEq[f] ){
+										AtomList_temp[at_count] = this->_MyCrystal2->getOrientedSystem()->getAtom(n);
+										AtomList_temp[at_count].pos.x = xpos;
+										AtomList_temp[at_count].pos.y = ypos;
+										AtomList_temp[at_count].pos.z = zpos;
+										TagGrain[at_count] = 2;
+										at_count += 1;
+									}
+									break;
+								}
+							}
+						}
 					}
 				}
 			}
@@ -264,79 +576,165 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 		trueNbAt2 = at_count-trueNbAt1;
 	}else{
 		// do not sep case
+		_MyCrystal->getOrientedSystem()->ComputeNotSepList();
+		_MyCrystal2->getOrientedSystem()->ComputeNotSepList();
+		vector<int>* NotSepTag1 = _MyCrystal->getOrientedSystem()->getNotSepTag();
+		vector<int>* NotSepTag2 = _MyCrystal2->getOrientedSystem()->getNotSepTag();
+		for(unsigned int n1=0;n1<nbAtom1;n1++){
+			for(unsigned int n2=0;n2<nbAtom1;n2++){
+				if( n1 != n2 && NotSepTag1[n1][0] > 0 && NotSepTag1[n2][0] > 0 ){
+					for(unsigned int n1_1=0;n1_1<NotSepTag1[n1][0];n1_1++){
+						for(unsigned int n2_2=0;n2_2<NotSepTag1[n2][0];n2_2++){
+							if( NotSepTag1[n1][n1_1+1] == NotSepTag1[n2][n2_2+1] ){
+								cout << "ions stored twice !!" << endl;
+							}
+						}
+					}
+				}
+			}
+		}
+		cout << "END" << endl;
 		for(unsigned int i=0;i<dupX1;i++){
 			for(unsigned int j=0;j<dupY1;j++){
-				for(unsigned int n=0;n<nbAtom1;n++){
-					if( i == 0 && j == 0 ){
-						this->AtomList_G1[n] = this->_MyCrystal->getOrientedSystem()->getAtom(n);
-						this->AtomList_G1[n].pos.y *= My1;
-						this->AtomList_G1[n].pos.x *= Mx1;
-					}
-					if( this->_MyCrystal->getOrientedSystem()->getNotSepTag()[n][0] >= 0 ){
-						ypos = My1*(this->_MyCrystal->getOrientedSystem()->getAtom(n).pos.y+j*yl1);
-						zpos = this->_MyCrystal->getOrientedSystem()->getAtom(n).pos.z;
-						if( 0. <= fmod(ypos,fullFaceLength_1) && fmod(ypos,fullFaceLength_1) < (My1*n1*Dir1_G1[1]) ) Lin = zpos-slope1_1*ypos-Origin+slope1_1*((double) floor(ypos/fullFaceLength_1))*fullFaceLength_1;
-						else if( (My1*n1*Dir1_G1[1]) <= fmod(ypos,fullFaceLength_1) && fmod(ypos,fullFaceLength_1) < fullFaceLength_1 ) Lin = zpos-(slope2_1*ypos)-Origin+((((double) floor(ypos/fullFaceLength_1))+1.)*slope2_1*fullFaceLength_1);
-						if( Lin <= 0. ){
-							AtomList_temp[at_count] = this->_MyCrystal->getOrientedSystem()->getAtom(n);
-							AtomList_temp[at_count].pos.x = Mx1*(AtomList_temp[at_count].pos.x + i*xl1);
-							AtomList_temp[at_count].pos.y = ypos;
-							TagGrain[at_count] = 1;
-							at_count += 1;
-							if( this->_MyCrystal->getOrientedSystem()->getNotSepTag()[n][0] > 0 ){
-								for(unsigned int ns=0;ns<this->_MyCrystal->getOrientedSystem()->getNotSepTag()[n][0];ns++){
-									AtomList_temp[at_count] = this->_MyCrystal->getOrientedSystem()->getAtom(this->_MyCrystal->getOrientedSystem()->getNotSepTag()[n][ns+1]);
-									AtomList_temp[at_count].pos.x = Mx1*(AtomList_temp[at_count].pos.x + i*xl1);
-									AtomList_temp[at_count].pos.y = My1*(AtomList_temp[at_count].pos.y + j*yl1);
+				for(unsigned int k=0;k<zdup1;k++){
+					for(unsigned int n=0;n<nbAtom1;n++){
+						if( NotSepTag1[n][0] >= 0 ){
+							xpos = Mx1*((this->_MyCrystal->getOrientedSystem()->getAtom(n).pos.x)+i*xl1); // no need to account for tilted cell vectors as the oriented system in always orthogonal
+							ypos = My1*((this->_MyCrystal->getOrientedSystem()->getAtom(n).pos.y)+j*yl1);
+							zpos = (this->_MyCrystal->getOrientedSystem()->getAtom(n).pos.z)+k*zl1;
+							if( zpos < hG1_inf ){
+								AtomList_temp[at_count] = this->_MyCrystal->getOrientedSystem()->getAtom(n);
+								AtomList_temp[at_count].pos.x = xpos;
+								AtomList_temp[at_count].pos.y = ypos;
+								AtomList_temp[at_count].pos.z = zpos;
+								TagGrain[at_count] = 1;
+								at_count += 1;
+								for(unsigned int neigh=0;neigh<NotSepTag1[n][0];neigh++){
+									AtomList_temp[at_count] = this->_MyCrystal->getOrientedSystem()->getAtom(NotSepTag1[n][neigh+1]);
+									AtomList_temp[at_count].pos.x *= Mx1;
+									AtomList_temp[at_count].pos.y *= My1;
+									AtomList_temp[at_count].pos.x += i*xl1;
+									AtomList_temp[at_count].pos.y += j*yl1;
+									AtomList_temp[at_count].pos.z += k*zl1;
 									TagGrain[at_count] = 1;
 									at_count += 1;
 								}
+							}else{
+								for(unsigned int f=0;f<NbPlanes-1;f++){
+									// First test if atom is between two vertical planes
+									double buffer_v;
+								        if( xpar ) buffer_v = eps_pos + xpos;
+									else buffer_v = eps_pos + ypos - VertPlaneSlope*xpos;
+									if( ( buffer_v > VertPlaneEq[f] ) && ( buffer_v < VertPlaneEq[f+1] ) ){
+										// Then test if atom is bellow the real plane
+										double buffer_f = -eps_pos + xpos*NormalPlaneEq[f*3] + ypos*NormalPlaneEq[f*3+1] + (zpos-zboxG1+DeltaZ)*NormalPlaneEq[f*3+2];
+										if( buffer_f < FullPlaneEq[f] ){
+											AtomList_temp[at_count] = this->_MyCrystal->getOrientedSystem()->getAtom(n);
+											AtomList_temp[at_count].pos.x = xpos;
+											AtomList_temp[at_count].pos.y = ypos;
+											AtomList_temp[at_count].pos.z = zpos;
+											TagGrain[at_count] = 1;
+											at_count += 1;
+											for(unsigned int neigh=0;neigh<NotSepTag1[n][0];neigh++){
+												AtomList_temp[at_count] = this->_MyCrystal->getOrientedSystem()->getAtom(NotSepTag1[n][neigh+1]);
+												AtomList_temp[at_count].pos.x *= Mx1;
+												AtomList_temp[at_count].pos.y *= My1;
+												AtomList_temp[at_count].pos.x += i*xl1;
+												AtomList_temp[at_count].pos.y += j*yl1;
+												AtomList_temp[at_count].pos.z += k*zl1;
+												TagGrain[at_count] = 1;
+												at_count += 1;
+											}
+										}
+										break;
+									}
+								}
 							}
-						}
-					}
-				}
-			}
-		}
+						} // end if NotSepTag >= 0
+					} // end loop nbAtom1
+				} // end loop z grain1
+			} // end loop y grain1
+		} // end loop x grain1
 		trueNbAt1 = at_count;
-		if( slope1_2 > 0 ) Origin = 0.;
-		else Origin = DeltaZ;
 		for(unsigned int i=0;i<dupX2;i++){
 			for(unsigned int j=0;j<dupY2;j++){
-				for(unsigned int n=0;n<nbAtom2;n++){
-					if( i == 0 && j == 0 ){
-						this->AtomList_G2[n] = this->_MyCrystal2->getOrientedSystem()->getAtom(n);
-						this->AtomList_G2[n].pos.y *= My2;
-						this->AtomList_G2[n].pos.x *= Mx2;
-					}
-					if( this->_MyCrystal2->getOrientedSystem()->getNotSepTag()[n][0] >= 0 ){
-						ypos = My2*(this->_MyCrystal2->getOrientedSystem()->getAtom(n).pos.y+j*yl2);
-						zpos = this->_MyCrystal2->getOrientedSystem()->getAtom(n).pos.z;
-						if( 0. <= fmod(ypos,fullFaceLength_2) && fmod(ypos,fullFaceLength_2) < (My2*n1*Dir1_G2[1]) ) Lin = zpos-slope1_2*ypos-Origin+slope1_2*((double) floor(ypos/fullFaceLength_2))*fullFaceLength_2;
-						else if( (My2*n1*Dir1_G2[1]) <= fmod(ypos,fullFaceLength_2) && fmod(ypos,fullFaceLength_2) < fullFaceLength_2 ) Lin = zpos-(slope2_2*ypos)-Origin+((((double) floor(ypos/fullFaceLength_2))+1.)*slope2_2*fullFaceLength_2);
-						if( Lin >= 0. ){
-							AtomList_temp[at_count] = this->_MyCrystal2->getOrientedSystem()->getAtom(n);
-							AtomList_temp[at_count].pos.x = Mx2*(AtomList_temp[at_count].pos.x + i*xl2);
-							AtomList_temp[at_count].pos.y = ypos;
-							AtomList_temp[at_count].pos.z += (this->_MyCrystal->getOrientedSystem()->getH3()[2]-DeltaZ);
-							TagGrain[at_count] = 2;
-							at_count += 1;
-							if( this->_MyCrystal2->getOrientedSystem()->getNotSepTag()[n][0] > 0 ){
-								for(unsigned int ns=0;ns<this->_MyCrystal2->getOrientedSystem()->getNotSepTag()[n][0];ns++){
-									AtomList_temp[at_count] = this->_MyCrystal2->getOrientedSystem()->getAtom(this->_MyCrystal2->getOrientedSystem()->getNotSepTag()[n][ns+1]);
-									AtomList_temp[at_count].pos.x = Mx2*(AtomList_temp[at_count].pos.x + i*xl2);
-									AtomList_temp[at_count].pos.y = My2*(AtomList_temp[at_count].pos.y + j*yl2);
-									AtomList_temp[at_count].pos.z += (this->_MyCrystal->getOrientedSystem()->getH3()[2]-DeltaZ);
+				for(unsigned int k=0;k<zdup2;k++){
+					for(unsigned int n=0;n<nbAtom2;n++){
+						if( NotSepTag2[n][0] >= 0 ){
+							xpos = Mx2*((this->_MyCrystal2->getOrientedSystem()->getAtom(n).pos.x)+i*xl2); // no need to account for tilted cell vectors as the oriented system in always orthogonal
+							ypos = My2*((this->_MyCrystal2->getOrientedSystem()->getAtom(n).pos.y)+j*yl2);
+							zpos = (this->_MyCrystal2->getOrientedSystem()->getAtom(n).pos.z)+k*zl2;
+							if( zpos > hG2_sup ){
+								AtomList_temp[at_count] = this->_MyCrystal2->getOrientedSystem()->getAtom(n);
+								AtomList_temp[at_count].pos.x = xpos;
+								AtomList_temp[at_count].pos.y = ypos;
+								AtomList_temp[at_count].pos.z = zpos;
+								TagGrain[at_count] = 2;
+								at_count += 1;
+								for(unsigned int neigh=0;neigh<NotSepTag2[n][0];neigh++){
+									AtomList_temp[at_count] = this->_MyCrystal2->getOrientedSystem()->getAtom(NotSepTag2[n][neigh+1]);
+									AtomList_temp[at_count].pos.x *= Mx2;
+									AtomList_temp[at_count].pos.y *= My2;
+									AtomList_temp[at_count].pos.x += i*xl2;
+									AtomList_temp[at_count].pos.y += j*yl2;
+									AtomList_temp[at_count].pos.z += k*zl2;
 									TagGrain[at_count] = 2;
 									at_count += 1;
 								}
+							}else{
+								for(unsigned int f=0;f<NbPlanes-1;f++){
+									// First test if atom is between two vertical planes
+									double buffer_v;
+								        if( xpar ) buffer_v = eps_pos + xpos;
+									else buffer_v = eps_pos + ypos - VertPlaneSlope*xpos;
+									if( ( buffer_v > VertPlaneEq[f] ) && ( buffer_v < VertPlaneEq[f+1] ) ){
+										// Then test if atom is above the real plane
+										double buffer_f = eps_pos + xpos*NormalPlaneEq[f*3] + ypos*NormalPlaneEq[f*3+1] + (zpos-DeltaZ)*NormalPlaneEq[f*3+2];
+										if( buffer_f > FullPlaneEq[f] ){
+											AtomList_temp[at_count] = this->_MyCrystal2->getOrientedSystem()->getAtom(n);
+											AtomList_temp[at_count].pos.x = xpos;
+											AtomList_temp[at_count].pos.y = ypos;
+											AtomList_temp[at_count].pos.z = zpos;
+											TagGrain[at_count] = 2;
+											at_count += 1;
+											for(unsigned int neigh=0;neigh<NotSepTag2[n][0];neigh++){
+												AtomList_temp[at_count] = this->_MyCrystal2->getOrientedSystem()->getAtom(NotSepTag2[n][neigh+1]);
+												AtomList_temp[at_count].pos.x *= Mx2;
+												AtomList_temp[at_count].pos.y *= My2;
+												AtomList_temp[at_count].pos.x += i*xl2;
+												AtomList_temp[at_count].pos.y += j*yl2;
+												AtomList_temp[at_count].pos.z += k*zl2;
+												TagGrain[at_count] = 2;
+												at_count += 1;
+											}
+										}
+										break;
+									}
+								}
 							}
-						}
-					}
-				}
-			}
-		}
+						} // end if NotSepTag >= 0
+					} // end loop nbAtom2
+				} // end z grain2
+			} // end y grain2
+		} // end x grain2
 		trueNbAt2 = at_count-trueNbAt1;
+	} // end if DoNotSep case
+	nbAtom1 = trueNbAt1;
+	nbAtom2 = trueNbAt2;
+	this->AtomList_G1 = new Atom[trueNbAt1];
+	this->AtomList_G2 = new Atom[trueNbAt2];
+	unsigned int countG1=0;
+	unsigned int countG2=0;
+	for(unsigned int i=0;i<at_count;i++){
+		if( TagGrain[i] == 1 ){
+			AtomList_G1[countG1] = AtomList_temp[i];
+			countG1++;
+		}else{
+			AtomList_G2[countG2] = AtomList_temp[i];
+			countG2++;
+		}
 	}
+
 	// Initialize the two grains
 	this->Grain1 = new AtomicSystem(this->AtomList_G1,nbAtom1,_MyCrystal,this->H1_G1,this->H2_G1,this->H3_G1);
 	this->Grain2 = new AtomicSystem(this->AtomList_G2,nbAtom2,_MyCrystal2,this->H1_G2,this->H2_G2,this->H3_G2);
@@ -449,7 +847,7 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 		this->AtomList = new Atom[this->nbAtom];
 		for(unsigned int i=0;i<this->nbAtom;i++){
 			this->AtomList[i] = AtomList_temp[i];
-			if( TagGrain[i] == 2 ) this->AtomList[i].pos.z += (GBspace/2.);
+			if( TagGrain[i] == 2 ) this->AtomList[i].pos.z += (GBspace/2.)-(2.*DeltaZ)+zboxG1;
 		}
 	}
 	string h_a_str = to_string(h_a);
@@ -480,13 +878,71 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	delete[] AtomList_temp;
 	delete[] Dir1_G1;
 	delete[] Dir2_G1;
-	delete[] Dir1_G2;
-	delete[] Dir2_G2;
 	delete[] TagGrain;
 }
 
+void Bicrystal::ShowPossibleFacets(unsigned int max_hkl_u){
+	if( max_hkl_u == 0 ) return;
+	double zero_num = 1.e-9;
+	int max_hkl = (int) max_hkl_u;
+	vector<vector<int>> hklcombs = MT->GenerateHKLCombinations(-max_hkl,max_hkl);
+	vector<int> AdmissibleFacets;
+	double *Dir1_G1 = new double[3];
+	double *Dir2_G1 = new double[3];
+	double facnorm1(0.), facnorm2(0.), sp_t(0.);
+	double *FacetJctDir = new double[3];
+	for(unsigned int i=0;i<hklcombs.size();i++){
+		for(unsigned int j=i;j<hklcombs.size();j++){
+			facnorm1 = 0.;
+			facnorm2 = 0.;
+			sp_t = 0.;
+			for(unsigned int d=0;d<3;d++){
+				Dir1_G1[d] = hklcombs[i][0]*_MyCrystal->getA1_star()[d]+hklcombs[i][1]*_MyCrystal->getA2_star()[d]+hklcombs[i][2]*_MyCrystal->getA3_star()[d];
+				Dir2_G1[d] = hklcombs[j][0]*_MyCrystal->getA1_star()[d]+hklcombs[j][1]*_MyCrystal->getA2_star()[d]+hklcombs[j][2]*_MyCrystal->getA3_star()[d];
+				facnorm1 += Dir1_G1[d]*Dir1_G1[d];
+				facnorm2 += Dir2_G1[d]*Dir2_G1[d];
+			}
+			for(unsigned int d=0;d<2;d++) sp_t += Dir1_G1[d]*Dir2_G1[d];
+			facnorm1 = sqrt(facnorm1);
+			facnorm2 = sqrt(facnorm2);
+			if( sp_t < 0. ){
+				for(unsigned int d=0;d<3;d++) hklcombs[j][d] *= -1;
+				facnorm2 *= -1.;
+			}
+			for(unsigned int d=0;d<3;d++){
+				Dir1_G1[d] /= facnorm1;
+				Dir2_G1[d] /= facnorm2;
+			}
+			MT->mixedProd(Dir1_G1,Dir2_G1,FacetJctDir);
+			double abs_xf = fabs(FacetJctDir[0]);
+			double abs_yf = fabs(FacetJctDir[1]);
+			double abs_zf = fabs(FacetJctDir[2]);
+ 			if( ( Dir2_G1[0] != 0. || Dir2_G1[1] != 0. ) && ( Dir1_G1[0] != 0. || Dir1_G1[1] != 0. ) && ( ( Dir1_G1[2] < 0. && Dir2_G1[2] >= 0 ) || ( Dir1_G1[2] <= 0. && Dir2_G1[2] > 0 ) || ( Dir1_G1[2] > 0. && Dir2_G1[2] <= 0 ) || ( Dir1_G1[2] >= 0. && Dir2_G1[2] < 0 ) ) && ( abs_xf > zero_num || abs_yf > zero_num ) && abs_zf < zero_num ){
+				AdmissibleFacets.push_back(hklcombs[i][0]);
+				AdmissibleFacets.push_back(hklcombs[i][1]);
+				AdmissibleFacets.push_back(hklcombs[i][2]);
+				AdmissibleFacets.push_back(hklcombs[j][0]);
+				AdmissibleFacets.push_back(hklcombs[j][1]);
+				AdmissibleFacets.push_back(hklcombs[j][2]);
+			}
+		}
+	}
+	if( AdmissibleFacets.size() == 0 ){
+		cout << "No facets are possible for this GB (computed for h, k and l between -" << max_hkl << " and " << max_hkl << ")" << endl;
+		return;
+	}
+	cout << "Admissible facets (computed for h, k and l between -" << max_hkl << " and " << max_hkl << ") for this GB are:" << endl;
+	//cout << "(" << AdmissibleFacets[0] << "_" << AdmissibleFacets[1] << "_" << AdmissibleFacets[2] << ")/(" << AdmissibleFacets[3] << "_" << AdmissibleFacets[4] << "_" << AdmissibleFacets[5] << ")";
+	//for(unsigned int i=1;i<AdmissibleFacets.size()/6;i++)
+	//	cout << ", or (" << AdmissibleFacets[i*6] << "_" << AdmissibleFacets[i*6+1] << "_" << AdmissibleFacets[i*6+2] << ")/(" << AdmissibleFacets[i*6+3] << "_" << AdmissibleFacets[i*6+4] << "_" << AdmissibleFacets[i*6+5] << ")";
+	//cout << endl;
+	cout << AdmissibleFacets[0] << " " << AdmissibleFacets[1] << " " << AdmissibleFacets[2] << "  " << AdmissibleFacets[3] << " " << AdmissibleFacets[4] << " " << AdmissibleFacets[5] << endl;
+	for(unsigned int i=1;i<AdmissibleFacets.size()/6;i++)
+		cout << "" << AdmissibleFacets[i*6] << " " << AdmissibleFacets[i*6+1] << " " << AdmissibleFacets[i*6+2] << "  " << AdmissibleFacets[i*6+3] << " " << AdmissibleFacets[i*6+4] << " " << AdmissibleFacets[i*6+5] << endl;
+}
+
 // Constructor for bicrystal with plane GB with given misorientation and GB plane
-Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, double theta, int h_p, int k_p, int l_p, bool rationalize, vector<string> Properties):h_a(h_a), k_a(k_a), l_a(l_a), theta(theta), h_p(h_p), k_p(k_p), l_p(l_p){
+Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, double theta, int h_p, int k_p, int l_p, bool rationalize, vector<string> Properties, int h_px, int k_px, int l_px):h_a(h_a), k_a(k_a), l_a(l_a), theta(theta), h_p(h_p), k_p(k_p), l_p(l_p){
 	read_params();
 	this->MT = new MathTools;
 	setCrystal(crystalName);
@@ -498,7 +954,11 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 		i_p_str = "_"+to_string(-(this->h_p)-(this->k_p));
 	}
 	cout << "Constructing a GB misoriented by " << theta*180./M_PI << "° around [" << h_a << "_" << k_a << i_a_str << "_" << l_a << "] axis and one GB plane (" << h_p << "_" << k_p << i_p_str << "_" << l_p << ")" << endl;
-	setOrientedCrystals(crystalName, rationalize, Properties);
+	setOrientedCrystals(crystalName, rationalize, Properties, h_px, k_px, l_px);
+	_MyCrystal->ComputeOrthogonalPlanesAndDirections();
+	_MyCrystal2->ComputeOrthogonalPlanesAndDirections();
+	Dis->DisplayGB(_MyCrystal,_MyCrystal2);
+	cout << endl;
 	// search the number of linear combination for the two system to have the same x y length
 	this->xl1 = this->_MyCrystal->getOrientedSystem()->getH1()[0];
 	this->xl2 = this->_MyCrystal2->getOrientedSystem()->getH1()[0];
@@ -517,8 +977,8 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 		if( find ) break;
 	}
 	if( !find ){
-		cerr << "We do not find any combination of the two grains in X direction to have a misfit lower than provided in FixedParameters" << endl;
-		cerr << "Increase MAX_MISFIT or MAX_DUP parameters in FixedParameters" << endl;
+		cerr << "We do not find any combination of the two grains in X direction to have a misfit lower than provided in the fixed parameters" << endl;
+		cerr << "Increase MAX_MISFIT or MAX_DUP parameters in a FixedParameters.ath file" << endl;
 		exit(EXIT_FAILURE);
 	}
 	find = false;
@@ -534,8 +994,8 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 		if( find ) break;
 	}
 	if( !find ){
-		cerr << "We do not find any combination of the two grains in Y direction to have a misfit lower than provided in FixedParameters" << endl;
-		cerr << "Increase MAX_MISFIT or MAX_DUP parameters in FixedParameters" << endl;
+		cerr << "We do not find any combination of the two grains in Y direction to have a misfit lower than provided by the fixed parameters" << endl;
+		cerr << "Increase MAX_MISFIT or MAX_DUP parameters in a FixedParameters.ath file" << endl;
 		exit(EXIT_FAILURE);
 	}
 
@@ -887,8 +1347,6 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	string h_p_str = to_string(this->h_p);
 	string k_p_str = to_string(this->k_p);
 	string l_p_str = to_string(this->l_p);
-	_MyCrystal->ComputeOrthogonalPlanesAndDirections();
-	_MyCrystal2->ComputeOrthogonalPlanesAndDirections();
 	string h_p_1_z_str = to_string(_MyCrystal->getOrthogonalPlanes()[6]);
 	string k_p_1_z_str = to_string(_MyCrystal->getOrthogonalPlanes()[7]);
 	string l_p_1_z_str = to_string(_MyCrystal->getOrthogonalPlanes()[8]);
@@ -943,8 +1401,6 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 		i_p_2_y_str = "_"+to_string(-_MyCrystal2->getOrthogonalPlanes()[3]-_MyCrystal2->getOrthogonalPlanes()[4]);
 		i_p_2_z_str = "_"+to_string(-_MyCrystal2->getOrthogonalPlanes()[6]-_MyCrystal2->getOrthogonalPlanes()[7]);
 	}
-	Dis->DisplayGB(_MyCrystal,_MyCrystal2);
-	cout << endl;
 	this->File_Heading = " # ["+h_a_str+"_"+k_a_str+i_a_str+"_"+l_a_str+"]"+theta_str+"°("+h_p_str+"_"+k_p_str+i_p_str+"_"+l_p_str+") "+crystalName+" grain boundary\n # The present GB have plane ("+h_p_1_z_str+"_"+k_p_1_z_str+i_p_1_z_str+"_"+l_p_1_z_str+") for lower grain and ("+h_p_2_z_str+"_"+k_p_2_z_str+i_p_2_z_str+"_"+l_p_2_z_str+") for upper grain\n";
 	this->Grain1->set_File_Heading(" # Lower grain of the ["+h_a_str+"_"+k_a_str+i_a_str+"_"+l_a_str+"]"+theta_str+"°("+h_p_str+"_"+k_p_str+i_p_str+"_"+l_p_str+") "+crystalName+" grain boundary\n # This system has x <=> ["+h_d_1_x_str+"_"+k_d_1_x_str+i_d_1_x_str+"_"+l_d_1_x_str+"], y <=> ["+h_d_1_y_str+"_"+k_d_1_y_str+i_d_1_y_str+"_"+l_d_1_y_str+"], z <=> ["+h_d_1_z_str+"_"+k_d_1_z_str+i_d_1_z_str+"_"+l_d_1_z_str+"] and x <=> ("+h_p_1_x_str+"_"+k_p_1_x_str+i_p_1_x_str+"_"+l_p_1_x_str+"), y <=> ("+h_p_1_y_str+"_"+k_p_1_y_str+i_p_1_y_str+"_"+l_p_1_y_str+"), z <=> ("+h_p_1_z_str+"_"+k_p_1_z_str+i_p_1_z_str+"_"+l_p_1_z_str+")\n");
 	this->Grain2->set_File_Heading(" # Upper grain of the ["+h_a_str+"_"+k_a_str+i_a_str+"_"+l_a_str+"]"+theta_str+"°("+h_p_str+"_"+k_p_str+i_p_str+"_"+l_p_str+") "+crystalName+" grain boundary\n # This system has x <=> ["+h_d_2_x_str+"_"+k_d_2_x_str+i_d_2_x_str+"_"+l_d_2_x_str+"], y <=> ["+h_d_2_y_str+"_"+k_d_2_y_str+i_d_2_y_str+"_"+l_d_2_y_str+"], z <=> ["+h_d_2_z_str+"_"+k_d_2_z_str+i_d_2_z_str+"_"+l_d_2_z_str+"] and x <=> ("+h_p_2_x_str+"_"+k_p_2_x_str+i_p_2_x_str+"_"+l_p_2_x_str+"), y <=> ("+h_p_2_y_str+"_"+k_p_2_y_str+i_p_2_y_str+"_"+l_p_2_y_str+"), z <=> ("+h_p_2_z_str+"_"+k_p_2_z_str+i_p_2_z_str+"_"+l_p_2_z_str+")\n");
@@ -1896,7 +2352,7 @@ void Bicrystal::searchGBSize(const int h_p_func, const int k_p_func, const int l
 	// TODO continue this function
 }
 
-void Bicrystal::setOrientedCrystals(const string& crystalName, bool rationalize, vector<string> Properties){
+void Bicrystal::setOrientedCrystals(const string& crystalName, bool rationalize, vector<string> Properties, int h_px, int k_px, int l_px){
 	this->RotCartToGrain2 = new double[9];
 	this->RotGrain1ToGrain2 = new double[9];
 	int *CSL_vec = new int[3];
@@ -1906,7 +2362,7 @@ void Bicrystal::setOrientedCrystals(const string& crystalName, bool rationalize,
 		rot_ax[i] = 0.;
 	}
 	// construct the first crystal with the wanted plane horyzontal
-	this->_MyCrystal->RotateCrystal(h_p,k_p,l_p);
+	this->_MyCrystal->RotateCrystal(h_p,k_p,l_p,h_px,k_px,l_px);
 	if( rationalize ){
 		double temp_var = RationalizeOri(this->h_a,this->k_a,this->l_a,this->theta,rot_ax,CSL_vec);
 		this->theta = temp_var;
@@ -2257,11 +2713,21 @@ void Bicrystal::read_params(){
 	//string filename=fp+backslash+FixedParam_Filename;
 	//ifstream file(filename, ios::in);
 	ifstream file(FixedParam_Filename, ios::in);
-	size_t pos_thetamax, pos_MaxHKL, pos_toldist, pos_tolpos_kC, pos_tolCSLint, pos_tolAlign, pos_rcut, pos_lsph, pos_MaxMisfit, pos_GBSpace, pos_MaxDup, pos_FullGrains;
+	size_t pos_thetamax, pos_MaxHKL, pos_toldist, pos_tolpos_kC, pos_tolCSLint, pos_tolAlign, pos_rcut, pos_lsph, pos_MaxMisfit, pos_GBSpace, pos_MaxDup, pos_FullGrains, pos_maxvarfl, pos_maxdupf;
 	string buffer_s, line;
 	if(file){
 		while(file){
 			getline(file,line);
+			pos_maxvarfl=line.find("MAX_VAR_FACET_LENGTH ");
+			if(pos_maxvarfl!=string::npos){
+				istringstream text(line);
+				text >> buffer_s >> this->maxVarL;
+			}
+			pos_maxdupf=line.find("MAX_DUP_FACET ");
+			if(pos_maxdupf!=string::npos){
+				istringstream text(line);
+				text >> buffer_s >> this->dupMaxFac;
+			}
 			pos_thetamax=line.find("THETA_MAX_ROT_ANGLE_RAT ");
 			if(pos_thetamax!=string::npos){
 				istringstream text(line);
@@ -2325,9 +2791,19 @@ void Bicrystal::read_params(){
 }
 
 void Bicrystal::ReadProperties(vector<string> Properties){
-	size_t pos_thetamax, pos_MaxHKL, pos_toldist, pos_tolpos_kC, pos_tolCSLint, pos_tolAlign, pos_rcut, pos_lsph, pos_MaxMisfit, pos_GBSpace, pos_MaxDup, pos_FullGrains;
+	size_t pos_thetamax, pos_MaxHKL, pos_toldist, pos_tolpos_kC, pos_tolCSLint, pos_tolAlign, pos_rcut, pos_lsph, pos_MaxMisfit, pos_GBSpace, pos_MaxDup, pos_FullGrains, pos_maxvarfl, pos_maxdupf;
 	string buffer_s, line;
 	for(unsigned int i=0;i<Properties.size();i++){
+		pos_maxvarfl=Properties[i].find("MAX_VAR_FACET_LENGTH ");
+		if(pos_maxvarfl!=string::npos){
+			istringstream text(Properties[i]);
+			text >> buffer_s >> this->maxVarL;
+		}
+		pos_maxdupf=Properties[i].find("MAX_DUP_FACET ");
+		if(pos_maxdupf!=string::npos){
+			istringstream text(Properties[i]);
+			text >> buffer_s >> this->dupMaxFac;
+		}
 		pos_thetamax=Properties[i].find("THETA_MAX_ROT_ANGLE_RAT ");
 		if(pos_thetamax!=string::npos){
 			istringstream text(Properties[i]);

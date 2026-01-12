@@ -29,6 +29,7 @@
 #include <vector>
 #include "MathTools.h"
 #include <cmath>
+#include <numeric>
 
 using namespace std;
 
@@ -1188,6 +1189,63 @@ vector<vector<int>> MathTools::GenerateNDCombinations(int dim, int minValue, int
     vector<int> combination(dim, 0); // Initialise une combinaison avec des 0
     GenerateCombinations(combination, dim, 0, minValue, maxValue, results);
     return results;
+}
+
+int MathTools::gcd3(int a, int b, int c){
+	return std::gcd(std::gcd(abs(a), abs(b)), abs(c));
+}
+
+// Generate non redondant hkl combinations between min and maxhkl
+vector<vector<int>> MathTools::GenerateHKLCombinations(int minHKL, int maxHKL){
+	vector<vector<int>> results;
+	for(int h=minHKL;h<=maxHKL;h++){
+		for(int k=minHKL;k<=maxHKL;k++){
+			for(int l=minHKL;l<=maxHKL;l++){
+				if(h == 0 && k == 0 && l == 0)
+					continue;
+				// Normalize by gcd to remove scalar multiples
+				int g = gcd3(h, k, l);
+				int nh = h / g;
+				int nk = k / g;
+				int nl = l / g;
+				
+				// determine first non-zero component
+				if(nh != 0){
+				    if(nh < 0){
+					    nh = -nh;
+					    nk = -nk;
+					    nl = -nl;
+				    }
+				}else if(nk != 0){
+				    if(nk < 0){
+					    nh = -nh;
+					    nk = -nk;
+					    nl = -nl;
+				    }
+				}else{ // nh == 0 && nk == 0, so only nl is non-zero
+				    if(nl < 0){
+					    nh = -nh;
+					    nk = -nk;
+					    nl = -nl;
+				    }
+				}
+				bool already = false;
+				for(unsigned int n=0;n<results.size();n++){
+					if( results[n][0] == nh && results[n][1] == nk && results[n][2] == nl ){
+						already = true;
+						break;
+					}
+				}
+				if( !already ){
+					results.push_back(vector<int>(3));
+					results[results.size()-1][0] = nh;
+					results[results.size()-1][1] = nk;
+					results[results.size()-1][2] = nl;
+				}
+			}
+		}
+	}
+	return results;
 }
 
 MathTools::~MathTools(){

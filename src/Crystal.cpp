@@ -146,7 +146,16 @@ string Crystal::getDatabasePath(string crystalName){
 }
 
 // construct a z oriented (hkl) unit cell plane
-void Crystal::RotateCrystal(const int& h_p, const int& k_p, const int& l_p){
+void Crystal::RotateCrystal(const int& h_p, const int& k_p, const int& l_p, const int& h_px, const int& k_px, const int& l_px){
+	bool full_constrained = true;
+	if( h_px == 0 && k_px == 0 && l_px == 0 ) full_constrained = false;
+	else{
+		if( h_p*h_px + k_p*k_px + l_p*l_px != 0 ){
+			cout << "The provided planes for orienting the crystal (i.e. (" << h_p << "_" << k_p << "_" << l_p << ") oriented along z axis and (" << h_px << "_" << k_px << "_" << l_px << ") oriented along x axis) are not normal to each others, an orthogonal cell cannot then be constructed" << endl;
+			cout << "The crystal plane aligned with the x axis will thus be computed automatically" << endl;
+			full_constrained = false;
+		}
+	}
 	int arr[3] = {abs(h_p),abs(k_p),abs(l_p)};
 	int maxhkl = MT->max(arr,3)*15;
 	int max_hkl_cryst = 100;
@@ -164,23 +173,29 @@ void Crystal::RotateCrystal(const int& h_p, const int& k_p, const int& l_p){
 	normalDir[0] = h_p*(this->a1_star[0]) + k_p*(this->a2_star[0]) + l_p*(this->a3_star[0]);	
 	normalDir[1] = h_p*(this->a1_star[1]) + k_p*(this->a2_star[1]) + l_p*(this->a3_star[1]);	
 	normalDir[2] = h_p*(this->a1_star[2]) + k_p*(this->a2_star[2]) + l_p*(this->a3_star[2]);
-	// search the smallest orthogonal direction with integer Miller indices to the wanted one => to be aligned with the cartesian x axis
-	for(int i=-maxhkl;i<maxhkl;i++){
-		for(int j=-maxhkl;j<maxhkl;j++){
-			for(int k=-maxhkl;k<maxhkl;k++){
-				if( ( abs(i*h_p+j*k_p+k*l_p) < tolScalarProd ) && ( i != 0 || j != 0 || k!= 0 ) ){
-					buffer_vector_d.push_back(pow(i,2.)+pow(j,2.)+pow(k,2.));
-					buffer_vector_i.push_back(i);
-					buffer_vector_i.push_back(j);
-					buffer_vector_i.push_back(k);
+	if( !full_constrained ){
+		// search the smallest orthogonal direction with integer Miller indices to the wanted one => to be aligned with the cartesian x axis
+		for(int i=-maxhkl;i<maxhkl;i++){
+			for(int j=-maxhkl;j<maxhkl;j++){
+				for(int k=-maxhkl;k<maxhkl;k++){
+					if( ( abs(i*h_p+j*k_p+k*l_p) < tolScalarProd ) && ( i != 0 || j != 0 || k!= 0 ) ){
+						buffer_vector_d.push_back(pow(i,2.)+pow(j,2.)+pow(k,2.));
+						buffer_vector_i.push_back(i);
+						buffer_vector_i.push_back(j);
+						buffer_vector_i.push_back(k);
+					}
 				}
 			}
 		}
+		unsigned int minhkl = MT->min(buffer_vector_d);
+		orthoDir[0] = (buffer_vector_i[minhkl*3]*(this->a1[0])) + (buffer_vector_i[minhkl*3+1]*(this->a2[0])) + (buffer_vector_i[minhkl*3+2]*(this->a3[0]));
+		orthoDir[1] = (buffer_vector_i[minhkl*3]*(this->a1[1])) + (buffer_vector_i[minhkl*3+1]*(this->a2[1])) + (buffer_vector_i[minhkl*3+2]*(this->a3[1]));
+		orthoDir[2] = (buffer_vector_i[minhkl*3]*(this->a1[2])) + (buffer_vector_i[minhkl*3+1]*(this->a2[2])) + (buffer_vector_i[minhkl*3+2]*(this->a3[2]));
+	}else{
+		orthoDir[0] = h_px*(this->a1_star[0]) + k_px*(this->a2_star[0]) + l_px*(this->a3_star[0]);	
+		orthoDir[1] = h_px*(this->a1_star[1]) + k_px*(this->a2_star[1]) + l_px*(this->a3_star[1]);	
+		orthoDir[2] = h_px*(this->a1_star[2]) + k_px*(this->a2_star[2]) + l_px*(this->a3_star[2]);
 	}
-	unsigned int minhkl = MT->min(buffer_vector_d);
-	orthoDir[0] = (buffer_vector_i[minhkl*3]*(this->a1[0])) + (buffer_vector_i[minhkl*3+1]*(this->a2[0])) + (buffer_vector_i[minhkl*3+2]*(this->a3[0]));
-	orthoDir[1] = (buffer_vector_i[minhkl*3]*(this->a1[1])) + (buffer_vector_i[minhkl*3+1]*(this->a2[1])) + (buffer_vector_i[minhkl*3+2]*(this->a3[1]));
-	orthoDir[2] = (buffer_vector_i[minhkl*3]*(this->a1[2])) + (buffer_vector_i[minhkl*3+1]*(this->a2[2])) + (buffer_vector_i[minhkl*3+2]*(this->a3[2]));
 	// compute the rotation angles needed to align the wanted direction with the cartesian z axis and have the x cartesian axis corresponding to the smallest crystallographic direction possible
 	// for rotation around the z axis to align the normal dir with x axis
 	double theta_z, theta_y;
@@ -480,11 +495,99 @@ void Crystal::computeReciproqual(){
 	delete[] mixedProd;
 }
 
+void Crystal::SearchCrystallographicPlanesAndDirections(double *Dir, int &h, int &k, int &l, int &u, int &v, int &w){
+	computeReciproqual();
+	// search the crystalligraphic plane and direction aligned with a given direction
+	// initialize indices to zero (if not found the plane and dir will be zero)
+	h = 0; k = 0; l = 0; u = 0; v = 0; w = 0;
+	double *DirNorm = new double[3];
+	double norm = 0.;
+	for(unsigned int i=0;i<3;i++){
+		norm += Dir[i]*Dir[i];
+		DirNorm[i] = Dir[i];
+	}
+	for(unsigned int i=0;i<3;i++) DirNorm[i] /= sqrt(norm);
+
+	vector<int> diff_list;
+	vector<int> diff_list_p;
+	vector<double> buffer_vector_d, buffer_vector_d_p;
+	double sp, X, Y, Z;
+	double tol_angle = cos(2.*M_PI/180.);
+	for(int i=-max_hkl_search;i<max_hkl_search+1;i++){
+		for(int j=-max_hkl_search;j<max_hkl_search+1;j++){
+			for(int k=-max_hkl_search;k<max_hkl_search+1;k++){
+				if( i != 0 || j !=0 || k != 0 ){
+					// directions
+					X = (i*this->a1[0]+j*this->a2[0]+k*this->a3[0]);
+					Y = (i*this->a1[1]+j*this->a2[1]+k*this->a3[1]);
+					Z = (i*this->a1[2]+j*this->a2[2]+k*this->a3[2]);
+					//sp = fabs(acos(( X*DirNorm[0] + Y*DirNorm[1] + Z*DirNorm[2] ) / sqrt(X*X + Y*Y + Z*Z)));
+					sp = ( X*DirNorm[0] + Y*DirNorm[1] + Z*DirNorm[2] ) / sqrt(X*X + Y*Y + Z*Z);
+					if( sp > tol_angle ){
+						buffer_vector_d.push_back(sp);
+						diff_list.push_back(i);
+						diff_list.push_back(j);
+						diff_list.push_back(k);
+					}
+					// planes
+					X = i*this->a1_star[0]+j*this->a2_star[0]+k*this->a3_star[0];
+					Y = i*this->a1_star[1]+j*this->a2_star[1]+k*this->a3_star[1];
+					Z = i*this->a1_star[2]+j*this->a2_star[2]+k*this->a3_star[2];
+					//sp = fabs(acos(( X*DirNorm[0] + Y*DirNorm[1] + Z*DirNorm[2] ) / sqrt(X*X + Y*Y + Z*Z)));
+					sp = ( X*DirNorm[0] + Y*DirNorm[1] + Z*DirNorm[2] ) / sqrt(X*X + Y*Y + Z*Z);
+					if( sp > tol_angle ){
+						buffer_vector_d_p.push_back(sp);
+						diff_list_p.push_back(i);
+						diff_list_p.push_back(j);
+						diff_list_p.push_back(k);
+					}
+				}
+			}
+		}
+	}
+	if( diff_list.size() == 0 ) cout << "We cannot find crystallographic directions aligned with the provided direction (increase MAX_HKL_SEARCH parameter in a FixedParameters.ath file)" << endl;
+	if( diff_list_p.size() == 0 ) cout << "We cannot find crystallographic planes aligned with the provided direction (increase MAX_HKL_SEARCH parameter in a FixedParameters.ath file)" << endl;
+
+	if( diff_list.size() != 0 && diff_list_p.size() != 0 ){
+		unsigned int ind;
+		int *buffer_vec = new int[3];
+		// directions
+		ind = MT->max(buffer_vector_d);
+		for(unsigned int j=0;j<3;j++) buffer_vec[j] = diff_list[ind*3+j];
+		MT->reduce_vec(buffer_vec,buffer_vec);
+		if( buffer_vec[0] < 0 ) for(unsigned int j=0;j<3;j++) buffer_vec[j] *= -1;
+		else if( buffer_vec[0] == 0 ){
+			if( buffer_vec[1] < 0 ) for(unsigned int j=0;j<3;j++) buffer_vec[j] *= -1;
+		        else if( buffer_vec[1] == 0 && buffer_vec[2] < 0 ) for(unsigned int j=0;j<3;j++) buffer_vec[j] *= -1;
+		}
+		h = buffer_vec[0];
+		k = buffer_vec[1];
+		l = buffer_vec[2];
+		// planes
+		ind = MT->max(buffer_vector_d_p);
+		for(unsigned int j=0;j<3;j++) buffer_vec[j] = diff_list_p[ind*3+j];
+		MT->reduce_vec(buffer_vec,buffer_vec);
+		if( buffer_vec[0] < 0 ) for(unsigned int j=0;j<3;j++) buffer_vec[j] *= -1;
+		else if( buffer_vec[0] == 0 ){
+			if( buffer_vec[1] < 0 ) for(unsigned int j=0;j<3;j++) buffer_vec[j] *= -1;
+		        else if( buffer_vec[1] == 0 && buffer_vec[2] < 0 ) for(unsigned int j=0;j<3;j++) buffer_vec[j] *= -1;
+		}
+		u = buffer_vec[0];
+		v = buffer_vec[1];
+		w = buffer_vec[2];
+		delete[] buffer_vec;
+	}
+	delete[] DirNorm;
+}
+
 void Crystal::ComputeOrthogonalPlanesAndDirections(){
 	// search which crystallographic planes are aligned with the x, y, and z planes and which crystallographic directions are aligned with the x, y and z directions
+	// initialize indices to zero (if not found the plane and dir will be zero)
+	for(unsigned int i=0;i<9;i++){
+		OrthogonalPlanes[i] = 0;		
+		OrthogonalDirs[i] = 0;
+	}
 	computeReciproqual();
-	// search the smallest orthogonal box for this orientation by testing linear combination of a1 a2 a3 giving cell vectors aligned with cartesian axis
-	// expect for the x axis which is already aligned with a crystallographic direction
 	vector<int> xh_list;
 	vector<int> yh_list;
 	vector<int> zh_list;
@@ -492,50 +595,56 @@ void Crystal::ComputeOrthogonalPlanesAndDirections(){
 	vector<int> yh_list_p;
 	vector<int> zh_list_p;
 	vector<double> buffer_vector_d_x, buffer_vector_d_y, buffer_vector_d_z, buffer_vector_d_x_p, buffer_vector_d_y_p, buffer_vector_d_z_p;
-	double absX, absY, absZ;
-	for(int i=-CLsearch;i<CLsearch+1;i++){
-		for(int j=-CLsearch;j<CLsearch+1;j++){
-			for(int k=-CLsearch;k<CLsearch+1;k++){
+	double absX, absY, absZ, X, Y, Z;
+	for(int i=-max_hkl_search;i<max_hkl_search+1;i++){
+		for(int j=-max_hkl_search;j<max_hkl_search+1;j++){
+			for(int k=-max_hkl_search;k<max_hkl_search+1;k++){
 				if( i != 0 || j !=0 || k != 0 ){
 					// directions
-					absX = fabs(i*this->a1[0]+j*this->a2[0]+k*this->a3[0]);
-					absY = fabs(i*this->a1[1]+j*this->a2[1]+k*this->a3[1]);
-					absZ = fabs(i*this->a1[2]+j*this->a2[2]+k*this->a3[2]);
-					if( absY < TolOrthoBox && absZ < TolOrthoBox ){
+					X = i*this->a1[0]+j*this->a2[0]+k*this->a3[0];
+					Y = i*this->a1[1]+j*this->a2[1]+k*this->a3[1];
+					Z = i*this->a1[2]+j*this->a2[2]+k*this->a3[2];
+					absX = fabs(X);
+					absY = fabs(Y);
+					absZ = fabs(Z);
+					if( absY < TolOrthoBox && absZ < TolOrthoBoxZ && X > 0 ){
 						buffer_vector_d_x.push_back(absY+absZ);
 						xh_list.push_back(i);
 						xh_list.push_back(j);
 						xh_list.push_back(k);
 					}
-					if( absX < TolOrthoBoxZ && absY < TolOrthoBoxZ ){
+					if( absX < TolOrthoBox && absY < TolOrthoBox && Z > 0 ){
 						buffer_vector_d_z.push_back(absX+absY);
 						zh_list.push_back(i);
 						zh_list.push_back(j);
 						zh_list.push_back(k);
 					}
-					if( absX < TolOrthoBox && absZ < TolOrthoBox ){
+					if( absX < TolOrthoBox && absZ < TolOrthoBoxZ && Y > 0 ){
 						buffer_vector_d_y.push_back(absX+absZ);
 						yh_list.push_back(i);
 						yh_list.push_back(j);
 						yh_list.push_back(k);
 					}
 					// planes
-					absX = fabs(i*this->a1_star[0]+j*this->a2_star[0]+k*this->a3_star[0]);
-					absY = fabs(i*this->a1_star[1]+j*this->a2_star[1]+k*this->a3_star[1]);
-					absZ = fabs(i*this->a1_star[2]+j*this->a2_star[2]+k*this->a3_star[2]);
-					if( absY < TolOrthoBox && absZ < TolOrthoBox ){
+					X = i*this->a1_star[0]+j*this->a2_star[0]+k*this->a3_star[0];
+					Y = i*this->a1_star[1]+j*this->a2_star[1]+k*this->a3_star[1];
+					Z = i*this->a1_star[2]+j*this->a2_star[2]+k*this->a3_star[2];
+					absX = fabs(X);
+					absY = fabs(Y);
+					absZ = fabs(Z);
+					if( absY < TolOrthoBox && absZ < TolOrthoBoxZ && X > 0 ){
 						buffer_vector_d_x_p.push_back(absY+absZ);
 						xh_list_p.push_back(i);
 						xh_list_p.push_back(j);
 						xh_list_p.push_back(k);
 					}
-					if( absX < TolOrthoBoxZ && absY < TolOrthoBoxZ ){
+					if( absX < TolOrthoBox && absY < TolOrthoBox && Z > 0 ){
 						buffer_vector_d_z_p.push_back(absX+absY);
 						zh_list_p.push_back(i);
 						zh_list_p.push_back(j);
 						zh_list_p.push_back(k);
 					}
-					if( absX < TolOrthoBox && absZ < TolOrthoBox ){
+					if( absX < TolOrthoBox && absZ < TolOrthoBoxZ && Y > 0 ){
 						buffer_vector_d_y_p.push_back(absX+absZ);
 						yh_list_p.push_back(i);
 						yh_list_p.push_back(j);
@@ -545,43 +654,50 @@ void Crystal::ComputeOrthogonalPlanesAndDirections(){
 			}
 		}
 	}
-	if( xh_list.size() == 0 || yh_list.size() == 0 || zh_list.size() == 0 ){
-		cerr << "We cannot find crystallographic directions aligned with cartesian axis" << endl;
-		return;
-	}
-	if( xh_list_p.size() == 0 || yh_list_p.size() == 0 || zh_list_p.size() == 0 ){
-		cerr << "We cannot find crystallographic directions aligned with cartesian axis" << endl;
-		return;
-	}
-
-	unsigned int ind_x, ind_y, ind_z;
 	int *buffer_vec = new int[3];
-	// directions
-	ind_x = MT->min(buffer_vector_d_x);
-	ind_y = MT->min(buffer_vector_d_y);
-	ind_z = MT->min(buffer_vector_d_z);
-	for(unsigned int j=0;j<3;j++) buffer_vec[j] = xh_list[ind_x*3+j];
-	MT->reduce_vec(buffer_vec,buffer_vec);
-	for(unsigned int j=0;j<3;j++) OrthogonalDirs[j] = buffer_vec[j];
-	for(unsigned int j=0;j<3;j++) buffer_vec[j] = yh_list[ind_y*3+j];
-	MT->reduce_vec(buffer_vec,buffer_vec);
-	for(unsigned int j=0;j<3;j++) OrthogonalDirs[j+3] = buffer_vec[j];
-	for(unsigned int j=0;j<3;j++) buffer_vec[j] = zh_list[ind_z*3+j];
-	MT->reduce_vec(buffer_vec,buffer_vec);
-	for(unsigned int j=0;j<3;j++) OrthogonalDirs[j+6] = buffer_vec[j];
-	// planes
-	ind_x = MT->min(buffer_vector_d_x_p);
-	ind_y = MT->min(buffer_vector_d_y_p);
-	ind_z = MT->min(buffer_vector_d_z_p);
-	for(unsigned int j=0;j<3;j++) buffer_vec[j] = xh_list_p[ind_x*3+j];
-	MT->reduce_vec(buffer_vec,buffer_vec);
-	for(unsigned int j=0;j<3;j++) OrthogonalPlanes[j] = buffer_vec[j];
-	for(unsigned int j=0;j<3;j++) buffer_vec[j] = yh_list_p[ind_y*3+j];
-	MT->reduce_vec(buffer_vec,buffer_vec);
-	for(unsigned int j=0;j<3;j++) OrthogonalPlanes[j+3] = buffer_vec[j];
-	for(unsigned int j=0;j<3;j++) buffer_vec[j] = zh_list_p[ind_z*3+j];
-	MT->reduce_vec(buffer_vec,buffer_vec);
-	for(unsigned int j=0;j<3;j++) OrthogonalPlanes[j+6] = buffer_vec[j];
+	unsigned int ind;
+	if( xh_list.size() == 0 ) cout << "We cannot find crystallographic direction aligned with x cartesian axis (increase MAX_HKL_SEARCH parameter in a FixedParameters.ath file)" << endl;
+	else{
+		ind = MT->min(buffer_vector_d_x);
+		for(unsigned int j=0;j<3;j++) buffer_vec[j] = xh_list[ind*3+j];
+		MT->reduce_vec(buffer_vec,buffer_vec);
+		for(unsigned int j=0;j<3;j++) OrthogonalDirs[j] = buffer_vec[j];
+	}
+	if( yh_list.size() == 0 ) cout << "We cannot find crystallographic direction aligned with y cartesian axis (increase MAX_HKL_SEARCH parameter in a FixedParameters.ath file)" << endl;
+	else{
+		ind = MT->min(buffer_vector_d_y);
+		for(unsigned int j=0;j<3;j++) buffer_vec[j] = yh_list[ind*3+j];
+		MT->reduce_vec(buffer_vec,buffer_vec);
+		for(unsigned int j=0;j<3;j++) OrthogonalDirs[j+3] = buffer_vec[j];
+	}
+	if( zh_list.size() == 0 ) cout << "We cannot find crystallographic direction aligned with z cartesian axis (increase MAX_HKL_SEARCH parameter in a FixedParameters.ath file)" << endl;
+	else{
+		ind = MT->min(buffer_vector_d_z);
+		for(unsigned int j=0;j<3;j++) buffer_vec[j] = zh_list[ind*3+j];
+		MT->reduce_vec(buffer_vec,buffer_vec);
+		for(unsigned int j=0;j<3;j++) OrthogonalDirs[j+6] = buffer_vec[j];
+	}
+	if( xh_list_p.size() == 0 ) cout << "We cannot find crystallographic plane aligned with x cartesian axis (increase MAX_HKL_SEARCH parameter in a FixedParameters.ath file)" << endl;
+	else{
+		ind = MT->min(buffer_vector_d_x_p);
+		for(unsigned int j=0;j<3;j++) buffer_vec[j] = xh_list_p[ind*3+j];
+		MT->reduce_vec(buffer_vec,buffer_vec);
+		for(unsigned int j=0;j<3;j++) OrthogonalPlanes[j] = buffer_vec[j];
+	}
+	if( yh_list_p.size() == 0 ) cout << "We cannot find crystallographic plane aligned with y cartesian axis (increase MAX_HKL_SEARCH parameter in a FixedParameters.ath file)" << endl;
+	else{
+		ind = MT->min(buffer_vector_d_y_p);
+		for(unsigned int j=0;j<3;j++) buffer_vec[j] = yh_list_p[ind*3+j];
+		MT->reduce_vec(buffer_vec,buffer_vec);
+		for(unsigned int j=0;j<3;j++) OrthogonalPlanes[j+3] = buffer_vec[j];
+	}
+	if( zh_list_p.size() == 0 ) cout << "We cannot find crystallographic plane aligned with z cartesian axis (increase MAX_HKL_SEARCH parameter in a FixedParameters.ath file)" << endl;
+	else{
+		ind = MT->min(buffer_vector_d_z_p);
+		for(unsigned int j=0;j<3;j++) buffer_vec[j] = zh_list_p[ind*3+j];
+		MT->reduce_vec(buffer_vec,buffer_vec);
+		for(unsigned int j=0;j<3;j++) OrthogonalPlanes[j+6] = buffer_vec[j];
+	}
 	delete[] buffer_vec;
 }
 
@@ -813,6 +929,14 @@ void Crystal::computeStoich(){
 	}
 }
 
+double Crystal::ComputeD_hkl(const int& h, const int& k, const int& l){
+	double dist = 0.;
+	for(unsigned int i=0;i<3;i++)
+		dist += ((h*a1_star[i]) + (k*a2_star[i]) + (l*a3_star[i])) * ((h*a1_star[i]) + (k*a2_star[i]) + (l*a3_star[i]));
+	dist = sqrt(dist);
+	return 1./dist;
+}
+
 void Crystal::read_params(){
 	//string fp;
 	//#ifdef FIXEDPARAMETERS
@@ -822,7 +946,7 @@ void Crystal::read_params(){
 	//string filename=fp+backslash+FixedParam_Filename;
 	//ifstream file(filename, ios::in);
 	ifstream file(FixedParam_Filename, ios::in);
-	size_t pos_tolOrthoBox, pos_tolOrthoBoxZ, pos_minBoxHeight, pos_minBoxAside, pos_shift, pos_nblc;
+	size_t pos_tolOrthoBox, pos_tolOrthoBoxZ, pos_minBoxHeight, pos_minBoxAside, pos_shift, pos_nblc, pos_max_hkl_search;
 	string buffer_s, line;
 	if(file){
 		while(file){
@@ -857,6 +981,12 @@ void Crystal::read_params(){
 				istringstream text(line);
 				text >> buffer_s >> CLsearch;
 			}
+			pos_max_hkl_search=line.find("MAX_HKL_SEARCH");
+			if(pos_max_hkl_search!=string::npos){
+				istringstream text(line);
+				text >> buffer_s >> max_hkl_search;
+			}
+
 		}
 		file.close();
 	}//else{
@@ -866,7 +996,7 @@ void Crystal::read_params(){
 }
 
 void Crystal::ReadProperties(vector<string> Properties){
-	size_t pos_tolOrthoBox, pos_tolOrthoBoxZ, pos_minBoxHeight, pos_minBoxAside, pos_shift, pos_nblc;
+	size_t pos_tolOrthoBox, pos_tolOrthoBoxZ, pos_minBoxHeight, pos_minBoxAside, pos_shift, pos_nblc, pos_max_hkl_search;
 	string buffer_s;
 	for(unsigned int i=0;i<Properties.size();i++){
 		pos_tolOrthoBox=Properties[i].find("TOL_ORTHO_BOX ");
@@ -898,6 +1028,11 @@ void Crystal::ReadProperties(vector<string> Properties){
 		if(pos_nblc!=string::npos){
 			istringstream text(Properties[i]);
 			text >> buffer_s >> CLsearch;
+		}
+		pos_max_hkl_search=Properties[i].find("MAX_HKL_SEARCH");
+		if(pos_max_hkl_search!=string::npos){
+			istringstream text(Properties[i]);
+			text >> buffer_s >> max_hkl_search;
 		}
 
 	}

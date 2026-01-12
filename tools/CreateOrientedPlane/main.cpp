@@ -43,44 +43,71 @@ int main(int argc, char *argv[])
 {
 	Displays Dis;
 	Dis.Logo();
-	if( argc != 6 && argc != 7 ){
-		cerr << "Usage: CreateOrientedPlane h k (i) l CrystalName(has to be defined in /data/Crystal/) OutputFilename" << endl;
+	if( argc != 6 && argc != 7 && argc != 9 && argc != 10 ){
+		cerr << "Usage: CreateOrientedPlane h k (i) l (h_x k_x (i_x) l_x) CrystalName(has to be defined in /data/Crystal/) OutputFilename" << endl;
 		cerr << "This executable will create an orthogonal cell with a z-oriented (hkl) plane" << endl;
+		cerr << "If h_x, k_x (i_x) and l_x parameters are provided, the (h_x k_x l_x) crystallographic plane will be oriented along the x axis. In this case the (hkl) and (hxkxlx) planes should be orthogonal" << endl;
+		cerr << "If h_x k_x and l_x are not provided (or if the two planes are not orthogonal) the crystal orientation along the x axis will be automatically computed" << endl;
 		cerr << "Index i should be only used for hexagonal crystals" << endl;
-		cerr << "The numerical parameters used for this construction can be tuned in the /data/FixedParameters/FixedParameters.dat file" << endl;
+		cerr << "The numerical parameters used for this construction can be tuned by editing a FixedParameters.ath file in the working directory" << endl;
 		return EXIT_FAILURE;
 	}
 	Dis.Printer_CreateOrientedPlane();
 	int h, k ,l, i;
+	int h_x(0), k_x(0), l_x(0), i_x;
 	string crystalType, filename;
-	if( argc == 6 ){
-		istringstream iss_h(argv[1]);
-		iss_h >> h;
-		istringstream iss_k(argv[2]);
-		iss_k >> k;
-		istringstream iss_l(argv[3]);
-		iss_l >> l;
-		crystalType=argv[4];
-		filename=argv[5];
-	}else{
-		istringstream iss_h(argv[1]);
-		iss_h >> h;
-		istringstream iss_k(argv[2]);
-		iss_k >> k;
-		istringstream iss_i(argv[3]);
+	unsigned int current_readind = 1;
+	// reading parameters
+	istringstream iss_h(argv[current_readind]);
+	iss_h >> h;
+	current_readind++;
+	istringstream iss_k(argv[current_readind]);
+	iss_k >> k;
+	current_readind++;
+	if( argc == 7 || argc == 10 ){
+		istringstream iss_i(argv[current_readind]);
 		iss_i >> i;
-		if( i != (-h-k) ) cout << "Warning, i index is different than -h-k, i will be considered as equal to " << -h-k << endl;
-		istringstream iss_l(argv[4]);
-		iss_l >> l;
-		crystalType=argv[5];
-		filename=argv[6];
+		current_readind++;
+		if( i != (-h-k) ) cout << "Warning, i index for plane along z axis is different than -h-k, i will be considered as equal to " << -h-k << endl;
 	}
+	istringstream iss_l(argv[current_readind]);
+	iss_l >> l;
+	current_readind++;
+	if( argc == 9 || argc == 10 ){
+		istringstream iss_h_x(argv[current_readind]);
+		iss_h_x >> h_x;
+		current_readind++;
+		istringstream iss_k_x(argv[current_readind]);
+		iss_k_x >> k_x;
+		current_readind++;
+		if( argc == 10 ){
+			istringstream iss_i_x(argv[current_readind]);
+			iss_i_x >> i_x;
+			current_readind++;
+			if( i_x != (-h_x-k_x) ) cout << "Warning, i index for plane along x axis is different than -h-k, i will be considered as equal to " << -h_x-k_x << endl;
+		}
+		istringstream iss_l_x(argv[current_readind]);
+		iss_l_x >> l_x;
+		current_readind++;
+	}
+	crystalType=argv[current_readind];
+	iss_l >> l;
+	current_readind++;
+	filename=argv[current_readind];
+	iss_l >> l;
+	current_readind++;
+
 	string i_str = "";
 	if( argc == 7 ) i_str = to_string(-h-k)+"_";
 	cout << "Creating orthogonal cell of " << crystalType << " crystal, with (" << h << "_" << k << "_" << i_str << l << ") plane normal aligned with z direction" << endl;
+	string i_x_str = "";
+	if( argc == 10 ){
+		i_x_str = to_string(-h_x-k_x)+"_";
+		cout << "and with (" << h_x << "_" << k_x << "_" << i_x_str << l_x << ") plane normal aligned with x direction" << endl;
+	}
 	cout << endl;
 	Crystal MyCrystal(crystalType);
-	MyCrystal.RotateCrystal(h,k,l);
+	MyCrystal.RotateCrystal(h,k,l,h_x,k_x,l_x);
 	MyCrystal.ConstructOrthogonalCell();
 	cout << "Building orthogonal cell required deforming the crystal such that:" << endl;
 	vector<vector<string>> arr_element = {

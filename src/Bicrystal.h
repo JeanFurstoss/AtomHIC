@@ -82,7 +82,7 @@ protected:
 	bool IsRotMatDefine = false;
 	bool AreGrainsDefined = false;
 	bool IsCrystal2 = false;
-	double xl1, xl2, yl1, yl2;
+	double xl1, xl2, yl1, yl2, zl1, zl2;
 	std::vector<double*> CSL;
 	std::vector<double*> NodesG1;
 	std::vector<double*> NodesG2;
@@ -106,6 +106,8 @@ protected:
 	//
 	// Parameters read from Fixed_Parameter.dat file
 	std::string FixedParam_Filename = "FixedParameters.ath";
+	unsigned int dupMaxFac = 10;
+	double maxVarL = 0.3;
 	bool FullGrains = true;
 	double theta_max_rot_ax_rat = 1.7e-2;
 	unsigned int MaxHKL_rot_angle_rat = 75;
@@ -125,8 +127,8 @@ public:
 	Bicrystal(const std::string& filename);
 	Bicrystal(const std::string& filename, const std::string CrystalName);
 	Bicrystal(const std::string& filename, const std::string NormalDir, const std::string CrystalName);
-	Bicrystal(const std::string& crystalName, int h_a, int k_a, int l_a, double theta, int h_p, int k_p, int l_p, bool rationalize, std::vector<std::string> Properties=std::vector<std::string>());// Constructor for bicrystal with plane GB with given misorientation and GB plane
-	Bicrystal(const std::string& crystalName, int h_a, int k_a, int l_a, double theta, int h_p, int k_p, int l_p, std::vector<int> FacetsType, unsigned int N_facet);// Constructor for bicrystal with facetted GB with given misorientation and GB plane and facet type
+	Bicrystal(const std::string& crystalName, int h_a, int k_a, int l_a, double theta, int h_p, int k_p, int l_p, bool rationalize, std::vector<std::string> Properties=std::vector<std::string>(), int h_px=0, int k_px=0, int l_px=0);// Constructor for bicrystal with plane GB with given misorientation and GB plane
+	Bicrystal(const std::string& crystalName, int h_a, int k_a, int l_a, double theta, int h_p, int k_p, int l_p, std::vector<int> FacetsType, double L_facet, std::vector<std::string> Properties=std::vector<std::string>(), int h_px=0, int k_px=0, int l_px=0);// Constructor for bicrystal with facetted GB with given misorientation and GB plane and facet type
 	Bicrystal(const std::string& crystalName, int h_a, int k_a, int l_a, double theta); // constructor using only misorientation freedom degree (bicrystallo analyzis)
 	// getters
 	ComputeAuxiliary *get_CA(){ return this->CA; }
@@ -143,8 +145,8 @@ public:
 	double* getCSL_Basis(){ return this->CSL_Basis; }
 	//
 	double* getDSC_Basis() { return this->DSC_Basis; }
-    bool getIsDSC_Basis() { return this->IsDSC_Basis; }
-    void printDSC();
+	bool getIsDSC_Basis() { return this->IsDSC_Basis; }
+	void printDSC();
 	// Accesses the DSC_Basis data structure and checks its validity, with a method to display its contents.
 	// methods
 	void read_params();
@@ -155,7 +157,7 @@ public:
         bool searchCSL(double *rot_ax, double theta, int *CSL_vec, unsigned int verbose=0);
 	void generateCSL();
 	void solve_DSC(const int *u, const unsigned int L, const double *B, double *DSC_Base, double tol);
-	void setOrientedCrystals(const std::string& crystalName, bool rationalize, std::vector<std::string> Properties=std::vector<std::string>()); // method initializing 2 crystals with a given misorientation relationship and plane
+	void setOrientedCrystals(const std::string& crystalName, bool rationalize, std::vector<std::string> Properties=std::vector<std::string>(), int h_px=0, int k_px=0, int l_px=0); // method initializing 2 crystals with a given misorientation relationship and plane
 	double RationalizeOri(int h_a, int k_a, int l_a, double theta, double *rot_ax, int *CSL_vec);// return the rotation angle corresponding to the closest rational GB and a known CSL vector due to this rationalization
 	void searchGBSize(const int h_p_func, const int k_p_func, const int l_p_func);
 	void printCSL(const std::string filename);
@@ -165,6 +167,7 @@ public:
 	void ShiftGrainsAlongUCInPlane(unsigned int n1, unsigned int n2, bool vacuum=false); 
 	void PasteGrains(AtomicSystem* grain1, AtomicSystem* grain2);
 	void ReadProperties(std::vector<std::string> Properties);
+	void ShowPossibleFacets(unsigned int max_hkl_u=2);
 	//changed name SampleGBComplexionDSC
 	// destructor
 	~Bicrystal();

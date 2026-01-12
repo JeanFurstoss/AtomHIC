@@ -176,7 +176,6 @@ AtomicSystem::AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double z
 			unsigned int id_s;
 			int cl_pos_n_i, cl_pos_n_j, cl_pos_n_k, id_notsep;
 			double xpos_n, ypos_n, zpos_n, xdiff, ydiff, zdiff, xpos_n_w, ypos_n_w, zpos_n_w;
-			unsigned int *cl_test = new unsigned int[3];
 			double tol = 1e-2;
 			// initialize the NotSepTag array
 			this->NotSepTag = new vector<int>[this->nbAtom];
@@ -430,7 +429,6 @@ AtomicSystem::AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double z
 				if( break_comp) break;
 				}
 			}
-			delete[] cl_test;
 		} // END DoNotSep case
 		if( count < this->nbAtom ){
 			count_box_fill++;
@@ -1139,16 +1137,18 @@ void AtomicSystem::ComputeNotSepList(){
 		cout << "The crystal does not have a DoNotSepare list, we then cannot compute the list for the atomic system" << endl;
 		return;
 	}else if( IsNotSepTag ){
-	       cout << "The DoNotSepare list is already computed for this system, it will then not be computed" << endl;
-	       return;
+		delete[] NotSepTag;
+	       //cout << "The DoNotSepare list is already computed for this system, it will then not be computed" << endl;
+	       //return;
 	}
 	this->NotSepTag = new vector<int>[this->nbAtom];
 	for(unsigned int i=0;i<nbAtom;i++) NotSepTag[i].push_back(0);
 	this->IsNotSepTag = true;
 	double rcut = MT->max_p(_MyCrystal->getALength(),3);
+	rcut *= 1.2;
 	searchNeighbours(rcut);
 	unsigned int DNS_size = _MyCrystal->getDoNotSep().size();
-	#pragma omp parallel for
+	//#pragma omp parallel for
 	for(unsigned int i=0;i<nbAtom;i++){
 		double xp, yp ,zp, xpos, ypos, zpos;
 		bool ToTreat = false;
@@ -1177,14 +1177,21 @@ void AtomicSystem::ComputeNotSepList(){
 				}
 			}
 			MT->sort(ToSort,0,2,ToSort);
-			if( (unsigned int) (ToSort.size()/2.) < nbNeigh[n] ){
-				cout << "Warning, not enough ions have been found to construct de DoNotSepare list, the cutoff should be increased" << endl;
-				continue;
-			}
-			for(unsigned int j=0;j<nbNeigh[n];j++){
-				NotSepTag[i][0]++;
-				NotSepTag[i].push_back((unsigned int) (ToSort[j*2+1]));
-				NotSepTag[(unsigned int) (ToSort[j*2+1])][0] = -1;
+			unsigned int currentneigh = ToSort.size()/2;
+			unsigned int j=0;
+			unsigned int nbneighstored = 0;
+			while( nbneighstored < nbNeigh[n] ){
+				if( j == currentneigh ){
+					cout << "Warning, not enough ions have been found to construct the DoNotSepare list, the cutoff should be increased" << endl;
+					break;
+				}
+				if( NotSepTag[(unsigned int) (ToSort[j*2+1])][0] != -1 ){
+					NotSepTag[i][0]++;
+					NotSepTag[i].push_back((unsigned int) (ToSort[j*2+1]));
+					NotSepTag[(unsigned int) (ToSort[j*2+1])][0] = -1;
+					nbneighstored++;
+				}
+				j++;
 			}
 		}
 	}

@@ -48,6 +48,7 @@ private:
 	double MinBoxHeight = 20.;
 	double MinBoxAside = 3.;
 	unsigned int CLsearch = 150;
+	int max_hkl_search = 10;
 	double shift_x = 0.;
 	double shift_y = 0.;
 	double shift_z = 0.;
@@ -56,6 +57,8 @@ private:
 	unsigned int MaxDup = 100;
 	double GBspace = 2.;
 	unsigned int FullGrains = 1;
+	unsigned int dupMaxFac = 10;
+	double maxVarL = 0.3;
 		// for CSL/DSC
 	double theta_max_rot_ax_rat = 1.7e-2;
 	unsigned int MaxHKL_rot_angle_rat = 75;
@@ -102,6 +105,7 @@ public:
 	void DisplayArray(const std::vector<std::vector<std::string>>& elements, const std::vector<std::vector<unsigned int>>& fusion, std::ofstream& filetoprint);
 	std::string center(const std::string& text, int width);
 	void DisplayGB(Crystal *Crystal1, Crystal *Crystal2);
+	void DisplayFacetedGB(Crystal *Crystal1, Crystal *Crystal2, double *DirFacet1, double *DirFacet2);
 	void DisplayOrthogonalCell(Crystal *Crystal);
 	void ProgressBar(unsigned int &Final, unsigned int &current);
 	// printers of the different fixed parameters of executables
@@ -116,6 +120,7 @@ public:
 	void Printer_BondOriParam();
 	void Printer_ComputeDescriptors_Steinhardt();
 	void Printer_CreateGB();
+	void Printer_CreateFacetGB();
 	void Printer_CreateOrientedPlane();
 	void Printer_DBScanClustering();
 	void Printer_FitAndSaveGMM();

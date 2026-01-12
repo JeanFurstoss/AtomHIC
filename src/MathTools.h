@@ -127,6 +127,8 @@ public:
 	void EigenDecomposition(std::vector<std::vector<double>> &Matrix, double *EigenValues, double *EigenVectors); // find eigenvalues and eigenvectors of Matrix and return them sorted from the highest to the lowest eigenvalue (power iterative method)
 	void GenerateCombinations(std::vector<int>& combination, int dim, int currentIndex, const int minValue, const int maxValue, std::vector<std::vector<int>>& results);
 	std::vector<std::vector<int>> GenerateNDCombinations(int dim, int minValue, int maxValue);
+	std::vector<std::vector<int>> GenerateHKLCombinations(int minHKL, int maxHKL);
+	int gcd3(int a, int b, int c);
 	~MathTools();
 };
 
