@@ -134,6 +134,7 @@ void GaussianMixtureModel::fitOptimalGMM(unsigned int &nbClust_min, unsigned int
 	}
 	
 	//pragma
+	#pragma omp parallel for
 	for(unsigned int n=0;n<nbRuns;n++){
 		cout << "Number of cluster = " << n+nbClust_min << endl;
 		MyGMMs[n]->fit();
@@ -396,7 +397,7 @@ void GaussianMixtureModel::Classify(){
         	ofstream writefile("StructureIndex.txt");
         	writefile << "Structures index used for the Gaussian Mixture Model structural analysis" << endl;
         	for(unsigned int l=0;l<nbLabel;l++) writefile << l << " " << Labels[l] << endl;
-        	writefile << nbLabel << " Not identified" << endl;
+        	writefile << nbLabel << " NotIdentified" << endl;
         	writefile.close();
 		cout << "The StructureIndex.txt file containing the names of the labels has been printed" << endl;
 	}
@@ -431,7 +432,7 @@ void GaussianMixtureModel::Classify(string filter_value){
 	if( IsLabelled[current_f] || IsRead ){
 		long double *LabelProb = new long double[nbLabel];
 		for(unsigned int j=0;j<current_nbDat;j++){
-			double sum = 0.;
+			long double sum = 0.;
 			for(unsigned int l=0;l<nbLabel;l++) LabelProb[l] = 0.;
 			for(unsigned int k=0;k<nbClust[current_f];k++) LabelProb[ClusterLabel[current_f][k]] += MLC(k,j);
 			for(unsigned int l=0;l<nbLabel;l++) sum += LabelProb[l];

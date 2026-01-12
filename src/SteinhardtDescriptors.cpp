@@ -230,7 +230,8 @@ void SteinhardtDescriptors::ComputeSteinhardtParameters_Mono(){
 					_Descriptors[i*l_sph+l_loop_st2-1] += norm(Qlm[i*lsph2 + l_loop_st2*lsph1 + (unsigned int) (m_loop_st2 + (int) l_sph)]);
 				}
 				_Descriptors[i*l_sph+l_loop_st2-1] *= 4.*M_PI/(2.*l_loop_st2+1.); 
-				_Descriptors[i*l_sph+l_loop_st2-1] /= pow(_MySystem->getNeighbours(i*(nbNMax+1)),2.);
+				//_Descriptors[i*l_sph+l_loop_st2-1] /= pow(_MySystem->getNeighbours(i*(nbNMax+1)),2.);
+				_Descriptors[i*l_sph+l_loop_st2-1] /= pow(Malpha[i*(nbNMax+1)],2.);
 				_Descriptors[i*l_sph+l_loop_st2-1] = sqrt(_Descriptors[i*l_sph+l_loop_st2-1]);
 			}
 		}
@@ -312,11 +313,11 @@ void SteinhardtDescriptors::AverageSteinhardtParameters_Mono(){
 		for(unsigned int l_loop_st2=1;l_loop_st2<l_sph+1;l_loop_st2++){
 			_Descriptors[i*l_sph+l_loop_st2-1] = 0.; 
 			for(int m_loop_st0=-l_loop_st2;m_loop_st0<(int) l_loop_st2+1;m_loop_st0++){
-				buffer_complex[l_loop_st2*lsph1 + (unsigned int) (m_loop_st0 + (int) l_sph)] = Qlm[i*lsph2 + l_loop_st2*lsph1 + (unsigned int) (m_loop_st0 + (int) l_sph)] / (double) _MySystem->getNeighbours(i*(nbNMax+1));
+				buffer_complex[l_loop_st2*lsph1 + (unsigned int) (m_loop_st0 + (int) l_sph)] = Qlm[i*lsph2 + l_loop_st2*lsph1 + (unsigned int) (m_loop_st0 + (int) l_sph)] / (double) Malpha[i*(nbNMax+1)];
 			}
 			for(unsigned int neigh=0;neigh<Malpha[i*(nbNMax+1)];neigh++){
 			       for(int m_loop_st1=-l_loop_st2;m_loop_st1<(int) l_loop_st2+1;m_loop_st1++){
-				       buffer_complex[l_loop_st2*lsph1 + (unsigned int) (m_loop_st1 + (int) l_sph)] += Qlm[Malpha[i*(nbNMax+1)+neigh+1]*lsph2 + l_loop_st2*lsph1 + (unsigned int) (m_loop_st1 + (int) l_sph)] / ((double) _MySystem->getNeighbours(Malpha[i*(nbNMax+1)+neigh+1]*(nbNMax+1)));
+				       buffer_complex[l_loop_st2*lsph1 + (unsigned int) (m_loop_st1 + (int) l_sph)] += Qlm[Malpha[i*(nbNMax+1)+neigh+1]*lsph2 + l_loop_st2*lsph1 + (unsigned int) (m_loop_st1 + (int) l_sph)] / ((double) Malpha[Malpha[i*(nbNMax+1)+neigh+1]*(nbNMax+1)]);
 			       }
 			}
 			for(int m_loop_st2=-l_loop_st2;m_loop_st2<(int) l_loop_st2+1;m_loop_st2++){
