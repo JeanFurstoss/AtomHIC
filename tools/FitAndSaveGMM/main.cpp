@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
 		cerr << "Softly labelled GMM (0) means that the GMM is fitted on all descriptors and labelled afterwards, meaning that eventually some labels migth not correspond to a GMM cluster" << endl;
 		cerr << "Strongly labelled GMM (1) means that a GMM is fitted for each label, which are gathered at the end to construct the final GMM, meaning that each label are described by almost one GMM cluster" << endl;
 		cerr << "Once fitted and labelled, the obtained GMM parameters will be stored in a database which could then be used to classify data using the ./GMMClassification executable" << endl;
-		cerr << "The fixed parameters used for fitting the GMM ML model can be tuned in a FixedParameters.ath file in the working directory, if this fileis not provided default values will be used" << endl;
+		Dis.Printer_FitAndSaveGMM();	
 		return EXIT_FAILURE;
 	}
 

@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
 		cerr << "If h_x, k_x (i_x) and l_x parameters are provided, the (h_x k_x l_x) crystallographic plane will be oriented along the x axis. In this case the (hkl) and (hxkxlx) planes should be orthogonal" << endl;
 		cerr << "If h_x k_x and l_x are not provided (or if the two planes are not orthogonal) the crystal orientation along the x axis will be automatically computed" << endl;
 		cerr << "Index i should be only used for hexagonal crystals" << endl;
-		cerr << "The numerical parameters used for this construction can be tuned by editing a FixedParameters.ath file in the working directory" << endl;
+		Dis.Printer_CreateOrientedPlane();
 		return EXIT_FAILURE;
 	}
 	Dis.Printer_CreateOrientedPlane();

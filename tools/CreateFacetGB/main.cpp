@@ -40,15 +40,24 @@
 
 using namespace std;
 
+// TODO haxegonal case
 int main(int argc, char *argv[])
 {
 	Displays Dis;
 	Dis.Logo();
 	if( argc != 19 && argc != 16 ){
-		cerr << "Usage: CreateGB h_RotAxis k_RotAxis l_RotAxis RotAngle(in degree) h_GBPlane k_GBPlane l_GBPlane hx_GBPlane kx_GBPlane lx_GBPlane h_facet1 k_facet1 l_facet1 h_facet2 k_facet2 l_facet2 Nfacet lCrystalName" << endl;
-		cerr << "This executable creates a faceted GB with two type of facets which have to have a null x normal plane component" << endl;
-		cerr << "warning here h_facet1(2) k_facet1(2) l_facet1(2) represent directions (and not plane normals)" << endl;
-		cerr << "Nfacet is an integer used to control the length of the facets" << endl;
+		cerr << "Usage: CreateFacetGB h_RotAxis k_RotAxis l_RotAxis RotAngle(in degree) h_GBPlane k_GBPlane l_GBPlane (hx_Plane kx_Plane lx_Plane) h_facet1 k_facet1 l_facet1 h_facet2 k_facet2 l_facet2 Lfacet CrystalName" << endl;
+		cerr << "This executable creates a faceted GB with two type of facets by providing the geometrical parameters of the GB (rotation axis and angle and GB plane normal)" << endl;
+		cerr << "h_GBPlane, k_GBPlane, l_GBPlane are the Miller indices of the GB plane in the crystal reference frame of the lower grain" << endl;
+		cerr << "The Miller indices of the facet planes (h_facet1, k_facet1, ..) are expressed in the crystal reference frame of the lower grain" << endl;
+		cerr << "Lfacet is the desired length of the first facet (the second facet length is automatically computed in order to respect periodic boundary conditions (PBC))" << endl;
+		cerr << "If the obtained facet length is too far from the provided one, the parameters MAX_VAR_FACET_LENGTh and MAX_DUP_FACET can be tuned" << endl;
+		cerr << "CrystalName correspond to the crystal in which the system will be created, this crystal should be defined in /data/Crystal/" << endl;
+		cerr << "If h_x, k_x and l_x parameters are provided, the (h_x k_x l_x) crystallographic plane of the lower grain will be oriented along the x axis. In this case the (hkl) and (hxkxlx) planes should be orthogonal" << endl;
+		cerr << "If h_x k_x and l_x are not provided (or if the two planes are not orthogonal) the crystal orientation along the x axis will be automatically computed" << endl << endl;
+		cerr << "If the provided facet types do not allows to create a system respecting PBC, the program will propose to compute the possible facet combination for the given GB" << endl;
+		cerr << "The corresponding Miller indices of the GB and facet plane in the reference frame of the upper grain will be automatically computed by the program (if it does not work the MAX_HKL_SEARCH parameter can be tuned)" << endl;
+		Dis.Printer_CreateFacetGB();
 		return EXIT_FAILURE;
 	}
 	Dis.Printer_CreateFacetGB();

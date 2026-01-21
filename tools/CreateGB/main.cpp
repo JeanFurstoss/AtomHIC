@@ -49,6 +49,7 @@ int main(int argc, char *argv[])
 		cerr << "1 => rationalize the GB (i.e. search the closest CSL GB to the provided parameters, in this case the fixed parameters for CSL calculation can be important, they are read from FixedParameters.ath file if exist if not defaults values are used)" << endl;
 		cerr << "0 => do not rationalize the GB" << endl;
 		cerr << "The program will return 4 dump files containing the GB system, the CSL lattice and the two grains (the two latters can be used to change shift between crystals)" << endl;
+		Dis.Printer_CreateGB();
 		return EXIT_FAILURE;
 	}
 	Dis.Printer_CreateGB();

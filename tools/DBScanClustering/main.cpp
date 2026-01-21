@@ -53,6 +53,7 @@ int main(int argc, char *argv[])
 		cerr << "The filtering type allows to consider different groups of atoms independently. It could be \"none\", \"element\" (should be defined in the atomic system or provided in a Type2Element.dat file), \"type\" (integer based) or an auxiliary property of the system " << endl;
 		cerr << "If FilteringType and VariableToCluster are not provided, the system will not be filtered (i.e. \"none\") and the variable to cluster will be the atomic position" << endl;
 		cerr << "This executable does not consider periodic boundary conditions even when the variable to cluster is the atomic position" << endl;
+		Dis.Printer_DBScanClustering();	
 		return EXIT_FAILURE;
 	}
 	Dis.Printer_DBScanClustering();	

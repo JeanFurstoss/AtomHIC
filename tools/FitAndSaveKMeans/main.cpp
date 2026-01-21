@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
 		cerr << "Softly labelled KMeans (0) means that the KMeans is fitted on all descriptors and labelled afterwards, meaning that eventually some labels migth not correspond to a KMeans cluster" << endl;
 		cerr << "Strongly labelled KMeans (1) means that a KMeans is fitted for each label, which are gathered at the end to construct the final KMeans, meaning that each label are described by almost one KMeans cluster" << endl;
 		cerr << "Once fitted and labelled, the obtained KMeans parameters will be stored in a database which could then be used to classify data using the ./KMeansClassification executable" << endl;
-		cerr << "The fixed parameters used for fitting the KMeans ML model can be tuned in a FixedParameters.ath file in the working directory, if this file is not provided default values will be used" << endl;
+		Dis.Printer_FitAndSaveKMeans();
 		return EXIT_FAILURE;
 	}
 

@@ -53,6 +53,7 @@ int main(int argc, char *argv[])
 		cerr << "Where ShapeFactorCSLBasis_2 = LargestCSLVector^2 / Product of the two other CSLVector" << endl;
 		cerr << "c1, c2, c3 are the three CSL basis vectors" << endl;
 		cerr << "The algorithm used for this calculation is based on a iterative procedure developped by Bonnet and Rolland 1975 and permitting to compute near-CSL for low symmetry crystals (for these type of crystals, the numerical parameters defined for CSL in /data/FixedParameters/FixedParameters.dat can be important)" << endl;
+		Dis.Printer_AnalyzeCSL();
 		return EXIT_FAILURE;
 	}
 	Dis.Printer_AnalyzeCSL();

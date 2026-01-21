@@ -337,12 +337,16 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 		exit(EXIT_FAILURE);
 	}
 	new_L_facet = nLcor * dfac2;
-	dupX1 *= dupSys;
-	dupX2 *= dupSys;
-	dupY1 *= dupSys;
-	dupY2 *= dupSys;
-	final_xbox *= dupSys;
-	final_ybox *= dupSys;
+	if( fabs(FacetJctDir[1]) > zero_num ){
+		final_xbox *= dupSys;
+		dupX1 *= dupSys;
+		dupX2 *= dupSys;
+	}
+	if( fabs(FacetJctDir[0]) > zero_num ){
+		final_ybox *= dupSys;
+		dupY1 *= dupSys;
+		dupY2 *= dupSys;
+	}
 
 	cout << "The provided facet length (" << L_facet << " A) has been replaced by " << new_L_facet << " A in order to respect PBC in GB plane and intereticular distances" << endl;
 	if( Nfacets < 2 ) cout << "If the difference between the provided facet length and the new one is too high, you can try to change the MIN_BOX_ASIDE parameter in a FixedParameters.ath file, to provide a system dimension closer to the one of the provided facet length" << endl;
@@ -350,7 +354,7 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	L_facet = new_L_facet;
 	double L_facet2 = -L_facet*l1[2]/l2[2];
 	double FacetLength;
-        if( FacetJctDir[0] < zero_num ) FacetLength = final_ybox;
+        if( fabs(FacetJctDir[0]) < zero_num ) FacetLength = final_ybox;
 	else FacetLength = final_xbox/cos(atan(FacetJctDir[1]/FacetJctDir[0]));
 	if( fabs(round(L_facet/dfac2)-(L_facet/dfac2)) > 1e-5 ) cout << "WARNING !! The length of facet 1 is not a multiple of the reticular distance of facet 2, some issues could occur !" << endl;
 	if( fabs(round(L_facet2/dfac1)-(L_facet2/dfac1)) > 1e-5 ) cout << "WARNING !! The length of facet 2 is not a multiple of the reticular distance of facet 1, some issues could occur !" << endl;
@@ -423,7 +427,7 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	double *VertPlaneEq = new double[NbPlanes];
 	double VertPlaneSlope;
 	bool xpar = false;
-	if( FacetJctDir[0] > zero_num ) VertPlaneSlope = FacetJctDir[1]/FacetJctDir[0];
+	if( fabs(FacetJctDir[0]) > zero_num ) VertPlaneSlope = FacetJctDir[1]/FacetJctDir[0];
 	else{
 		VertPlaneSlope = 0.;
 		xpar = true;
