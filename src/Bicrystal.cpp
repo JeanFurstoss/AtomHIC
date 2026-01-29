@@ -580,24 +580,10 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 		trueNbAt2 = at_count-trueNbAt1;
 	}else{
 		// do not sep case
-		_MyCrystal->getOrientedSystem()->ComputeNotSepList();
-		_MyCrystal2->getOrientedSystem()->ComputeNotSepList();
+		//_MyCrystal->getOrientedSystem()->ComputeNotSepList(); // no need to compute the list because the creation of the GB has been done
+		//_MyCrystal2->getOrientedSystem()->ComputeNotSepList();
 		vector<int>* NotSepTag1 = _MyCrystal->getOrientedSystem()->getNotSepTag();
 		vector<int>* NotSepTag2 = _MyCrystal2->getOrientedSystem()->getNotSepTag();
-		for(unsigned int n1=0;n1<nbAtom1;n1++){
-			for(unsigned int n2=0;n2<nbAtom1;n2++){
-				if( n1 != n2 && NotSepTag1[n1][0] > 0 && NotSepTag1[n2][0] > 0 ){
-					for(unsigned int n1_1=0;n1_1<NotSepTag1[n1][0];n1_1++){
-						for(unsigned int n2_2=0;n2_2<NotSepTag1[n2][0];n2_2++){
-							if( NotSepTag1[n1][n1_1+1] == NotSepTag1[n2][n2_2+1] ){
-								cout << "ions stored twice !!" << endl;
-							}
-						}
-					}
-				}
-			}
-		}
-		cout << "END" << endl;
 		for(unsigned int i=0;i<dupX1;i++){
 			for(unsigned int j=0;j<dupY1;j++){
 				for(unsigned int k=0;k<zdup1;k++){

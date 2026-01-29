@@ -35,6 +35,7 @@
 #include "MyStructs.h"
 #include <vector>
 #include <complex>
+#include <unordered_set>
 
 class ATOMHIC_EXPORT MathTools {
 protected:
@@ -126,6 +127,7 @@ public:
 	void EigenDecomposition(double *Matrix, unsigned int dim, double *EigenValues, double *EigenVectors); // find eigenvalues and eigenvectors of Matrix and return them sorted from the highest to the lowest eigenvalue (power iterative method)
 	void EigenDecomposition(std::vector<std::vector<double>> &Matrix, double *EigenValues, double *EigenVectors); // find eigenvalues and eigenvectors of Matrix and return them sorted from the highest to the lowest eigenvalue (power iterative method)
 	void GenerateCombinations(std::vector<int>& combination, int dim, int currentIndex, const int minValue, const int maxValue, std::vector<std::vector<int>>& results);
+	void GenerateCombinationsFromList(const std::vector<std::vector<unsigned int>>& A, unsigned int id1, std::vector<unsigned int>& current, std::unordered_set<unsigned int>& usedId2, std::vector<std::vector<unsigned int>>& B);
 	std::vector<std::vector<int>> GenerateNDCombinations(int dim, int minValue, int maxValue);
 	std::vector<std::vector<int>> GenerateHKLCombinations(int minHKL, int maxHKL);
 	int gcd3(int a, int b, int c);

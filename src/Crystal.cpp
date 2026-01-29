@@ -34,6 +34,7 @@
 #include <sstream>
 #include "MathTools.h"
 #include <cmath>
+#include <unordered_set>
 
 using namespace std;
 
@@ -77,10 +78,10 @@ Crystal::Crystal(const string& crystalName){
 	this->alength[0] = sqrt(pow(this->a1[0],2.)+pow(this->a1[1],2.)+pow(this->a1[2],2.));
 	this->alength[1] = sqrt(pow(this->a2[0],2.)+pow(this->a2[1],2.)+pow(this->a2[2],2.));
 	this->alength[2] = sqrt(pow(this->a3[0],2.)+pow(this->a3[1],2.)+pow(this->a3[2],2.));
+	computeStoich();
 	if( this->IsDoNotSep == true ) ConstructNotSepList();
 	if( this->IsMolId == true ) ConstructNotSepListFromMolId();
 	computeReciproqual();
-	computeStoich();
 	for(unsigned int i=0;i<this->nbAtomType;i++){
 		if( this->NbAtomSite[i] > 1 ){
 			this->IsMultisite = true;
@@ -261,12 +262,41 @@ void Crystal::RotateCrystal(const double *RotMat){
 	computeReciproqual();
 }
 
-
 void Crystal::ConstructNotSepList(){
 	if( IsMolId ){
 		cout << "Warning the DONOTSEPARE tag is used in addition with molecule id (atom_style full) in Crystal " << name << ", the molecule has the priority over the DONOTSEPARE tag which is thus ignored";
 		return;
 	}
+	// verify that the provided DoNotSepare tag allows to respect the stoichiometry of the crystal (for instance 2 4 3 and 2 3 1 does not work for Mg2SiO4 because it will lead to Mg3SiO4 stoich)
+	for(unsigned int t=0;t<this->nbAtomType;t++){
+		unsigned int count = 0;
+		for(unsigned int j=0;j<this->DoNotSep.size();j++){
+			if( AtomType_uint[t] == DoNotSep[j][2] ){
+				unsigned int current_t2;
+				bool t2found = false;
+				for(unsigned int t2=0;t2<this->nbAtomType;t2++){
+					if( AtomType_uint[t2] == DoNotSep[j][0] ){
+						current_t2 = t2;
+						t2found = true;
+						break;
+					}
+				}
+				if( !t2found ){
+					cerr << "Issue when searching atom type for constructing DoNotSep list of the current crystal" << endl;
+					exit(EXIT_FAILURE);
+				}
+				count += Stoichiometry[current_t2]*DoNotSep[j][1];
+			}
+		}
+		if( count > Stoichiometry[t] ){
+			cerr << "The provided DoNotSepare informations in crystal \"" << name << "\" cannot be used as they imply to break the stoichiometry of the crystal" << endl;
+		        cerr << "Please correct the DONOTSEPARE tag in /data/Crystals/" << name << ".ath file" << endl;
+			cerr << "The current issue is coming from instruction for storing neighboring " << AtomType[t] << " atoms" << endl;
+			cerr << "Aborting calculation" << endl;
+			exit(EXIT_FAILURE);
+		}
+	}
+		
 	// construct full neighbor list in a large cutoff radius
 	double arr[3] = {this->alength[0], this->alength[1], this->alength[2]};
 	double rc_squared = pow(this->MT->max(arr,3),2.);
@@ -276,6 +306,14 @@ void Crystal::ConstructNotSepList(){
 	for(unsigned int i=0;i<this->nbAtom;i++){
 		this->NotSepList.push_back(vector<int> ());
 		buffer_vector_d.push_back(vector<double> ());
+		bool Continue = true;
+		for(unsigned int j=0;j<this->DoNotSep.size();j++){
+			if( DoNotSep[j][0] == this->Motif[i].type_uint ){
+				Continue = false;
+				break;
+			}
+		}
+		if( Continue ) continue;
 		for(int xcl=-cl;xcl<cl+1;xcl++){
 			for(int ycl=-cl;ycl<cl+1;ycl++){
 				for(int zcl=-cl;zcl<cl+1;zcl++){
@@ -296,24 +334,39 @@ void Crystal::ConstructNotSepList(){
 			}
 		}
 	}
+
+	for(unsigned int i=0;i<this->nbAtom;i++)
+		this->MT->sort(buffer_vector_d[i], 0, 5, buffer_vector_d[i]);
+
+	// We should use an ion of the motif only once (independament of the CL) in order to generate more compact structures
+	// search if the current crystal is degenerated (i.e. if it exists multiple possible combination of N first neighbours having the same distances) and construct the PossibleShuffling array
+	bool degenerated = false;
+	vector<vector<unsigned int>> DegeneratedAtom(nbAtom); // DegeneratedAtom[i][j] = index of the jth atom which could be associated with the neighbour having index i
 	unsigned int count;
 	bool Continue;
 	for(unsigned int i=0;i<this->nbAtom;i++){
-		this->MT->sort(buffer_vector_d[i], 0, 5, buffer_vector_d[i]);
 		for(unsigned int j=0;j<this->DoNotSep.size();j++){
 			if( DoNotSep[j][0] == this->Motif[i].type_uint ){
 				count = 0;
 				for(unsigned int n=0;n<buffer_vector_d[i].size()/5;n++){
 					if( count == this->DoNotSep[j][1] ) break;
 					else if( this->Motif[(int) buffer_vector_d[i][n*5+1]].type_uint == DoNotSep[j][2] ){
-						// verify that this atom has been stored before
+						// verify that this atom has not been stored before
 						Continue = false;
 						for(unsigned int s_1=0;s_1<NotSepList.size();s_1++){
 							for(unsigned int s_2=0;s_2<NotSepList[s_1].size()/4;s_2++){
-								// Case where all the motif is not necessarily get
-								if( round(buffer_vector_d[i][n*5+1]) == NotSepList[s_1][s_2*4] && round(buffer_vector_d[i][n*5+2]) == NotSepList[s_1][s_2*4+1] && round(buffer_vector_d[i][n*5+3]) == NotSepList[s_1][s_2*4+2] && round(buffer_vector_d[i][n*5+4]) == NotSepList[s_1][s_2*4+3] ){
-								// Case to have the all motif
-								//if( round(buffer_vector_d[i][n*5+1]) == NotSepList[s_1][s_2*4] ){
+								if( fabs(round(buffer_vector_d[i][n*5+1])-NotSepList[s_1][s_2*4]) < 1e-9 ){
+									// This atom has already been stored before => degenerated case 
+									degenerated = true;
+									unsigned int current_neighid = (unsigned int) buffer_vector_d[i][n*5+1];
+									bool already_1 = false;
+									bool already_2 = false;
+									for(unsigned int ne=0;ne<DegeneratedAtom[current_neighid].size();ne++){
+										if( DegeneratedAtom[current_neighid][ne] == s_1 ) already_1 = true;
+										if( DegeneratedAtom[current_neighid][ne] == i ) already_2 = true;
+									}
+									if( !already_1 ) DegeneratedAtom[current_neighid].push_back(s_1);
+									if( !already_2 ) DegeneratedAtom[current_neighid].push_back(i);
 									Continue = true;
 									break;
 								}
@@ -328,8 +381,138 @@ void Crystal::ConstructNotSepList(){
 						NotSepList[i].push_back(round(buffer_vector_d[i][n*5+4]));
 					}
 				}
+				if( count != DoNotSep[j][1] ) cout << "Warning the crystal DoNotSep list has not been successfully computed !" << endl;
 			}
 		}
+	}
+	if( degenerated ){
+		// Compute the possible combination of degenerated neighbours
+		vector<vector<unsigned int>> PossibleCombs; // PossibleCombs[i][k*2] = id of neighbour for combination i and kth choice, [k*2+1] = id of atom
+    		vector<unsigned int> current;
+    		unordered_set<unsigned int> usedId2;
+    		MT->GenerateCombinationsFromList(DegeneratedAtom, 0, current, usedId2, PossibleCombs);
+    		
+		double current_d_score;
+		double min_d_score = 1.e6;
+		unsigned int opt_comb;
+		for(unsigned int ne1=0;ne1<PossibleCombs.size();ne1++){
+			// initialize array and d_score
+			vector<unsigned int> AlreadyStored(nbAtom,0);
+			for(unsigned int i=0;i<nbAtom;i++) NotSepList[i].clear();
+			current_d_score = 0.;
+			// Assign neighbours to atoms for the current combination
+			for(unsigned int ne2=0;ne2<PossibleCombs[ne1].size()/2;ne2++){
+				unsigned int current_n_ind = PossibleCombs[ne1][ne2*2];
+				unsigned int current_ind = PossibleCombs[ne1][ne2*2+1];
+				AlreadyStored[current_n_ind] = 1;
+				unsigned int current_index_in_buf;
+				for(unsigned int i=0;i<buffer_vector_d[current_ind].size()/5;i++){
+					if( (unsigned int) buffer_vector_d[current_ind][i*5+1] == current_n_ind ){
+						current_index_in_buf = i;
+						break;
+					}
+				}
+				current_d_score += buffer_vector_d[current_ind][current_index_in_buf*5];
+				NotSepList[current_ind].push_back(round(buffer_vector_d[current_ind][current_index_in_buf*5+1]));
+				NotSepList[current_ind].push_back(round(buffer_vector_d[current_ind][current_index_in_buf*5+2]));
+				NotSepList[current_ind].push_back(round(buffer_vector_d[current_ind][current_index_in_buf*5+3]));
+				NotSepList[current_ind].push_back(round(buffer_vector_d[current_ind][current_index_in_buf*5+4]));
+			}
+			// Assign the rest of neighbours/atoms
+			for(unsigned int i=0;i<this->nbAtom;i++){
+				for(unsigned int j=0;j<this->DoNotSep.size();j++){
+					if( DoNotSep[j][0] == this->Motif[i].type_uint ){
+						count = 0;
+						// search number of neighbour with this typr already stored
+						for(unsigned int n=0;n<NotSepList[i].size()/4;n++){
+							unsigned int current_neighid = (unsigned int) NotSepList[i][n*4];
+							if( this->Motif[current_neighid].type_uint == DoNotSep[j][2] ) count++;
+						}
+						if( count == this->DoNotSep[j][1] ) continue;
+						if( count > this->DoNotSep[j][1] ){
+							cerr << "Warning something went wrong when computing DoNotSep list in crystal" << endl;
+							exit(EXIT_FAILURE);
+						}
+						for(unsigned int n=0;n<buffer_vector_d[i].size()/5;n++){
+							unsigned int current_neighid = (unsigned int) buffer_vector_d[i][n*5+1];
+							if( count == this->DoNotSep[j][1] ) break;
+							else if( this->Motif[current_neighid].type_uint == DoNotSep[j][2] && AlreadyStored[current_neighid] == 0 ){
+								AlreadyStored[current_neighid] = 1;
+								current_d_score += buffer_vector_d[i][n*5];
+								NotSepList[i].push_back(round(buffer_vector_d[i][n*5+1]));
+								NotSepList[i].push_back(round(buffer_vector_d[i][n*5+2]));
+								NotSepList[i].push_back(round(buffer_vector_d[i][n*5+3]));
+								NotSepList[i].push_back(round(buffer_vector_d[i][n*5+4]));
+								count++;
+							}
+						}
+						if( count != DoNotSep[j][1] ) cout << "Warning the crystal DoNotSep list has not been successfully computed !" << endl;
+					}
+				}
+			}
+			if( current_d_score < min_d_score ){
+				opt_comb = ne1;
+				min_d_score = current_d_score;
+			}
+		}
+		
+		// Store DoNotSep list with the optimal combination
+		vector<unsigned int> AlreadyStored(nbAtom,0);
+		for(unsigned int i=0;i<nbAtom;i++) NotSepList[i].clear();
+		current_d_score = 0.;
+		// Assign neighbours to atoms for the current combination
+		for(unsigned int ne2=0;ne2<PossibleCombs[opt_comb].size()/2;ne2++){
+			unsigned int current_n_ind = PossibleCombs[opt_comb][ne2*2];
+			unsigned int current_ind = PossibleCombs[opt_comb][ne2*2+1];
+			AlreadyStored[current_n_ind] = 1;
+			unsigned int current_index_in_buf;
+			for(unsigned int i=0;i<buffer_vector_d[current_ind].size()/5;i++){
+				if( (unsigned int) buffer_vector_d[current_ind][i*5+1] == current_n_ind ){
+					current_index_in_buf = i;
+					break;
+				}
+			}
+			current_d_score += buffer_vector_d[current_ind][current_index_in_buf*5];
+			NotSepList[current_ind].push_back(round(buffer_vector_d[current_ind][current_index_in_buf*5+1]));
+			NotSepList[current_ind].push_back(round(buffer_vector_d[current_ind][current_index_in_buf*5+2]));
+			NotSepList[current_ind].push_back(round(buffer_vector_d[current_ind][current_index_in_buf*5+3]));
+			NotSepList[current_ind].push_back(round(buffer_vector_d[current_ind][current_index_in_buf*5+4]));
+		}
+		// Assign the rest of neighbours/atoms
+		for(unsigned int i=0;i<this->nbAtom;i++){
+			for(unsigned int j=0;j<this->DoNotSep.size();j++){
+				if( DoNotSep[j][0] == this->Motif[i].type_uint ){
+					count = 0;
+					// search number of neighbour with this typr already stored
+					for(unsigned int n=0;n<NotSepList[i].size()/4;n++){
+						unsigned int current_neighid = (unsigned int) NotSepList[i][n*4];
+						if( this->Motif[current_neighid].type_uint == DoNotSep[j][2] ) count++;
+					}
+					if( count == this->DoNotSep[j][1] ) continue;
+					if( count > this->DoNotSep[j][1] ){
+						cerr << "Warning something went wrong when computing DoNotSep list in crystal" << endl;
+						exit(EXIT_FAILURE);
+					}
+					for(unsigned int n=0;n<buffer_vector_d[i].size()/5;n++){
+						unsigned int current_neighid = (unsigned int) buffer_vector_d[i][n*5+1];
+						if( count == this->DoNotSep[j][1] ) break;
+						else if( this->Motif[current_neighid].type_uint == DoNotSep[j][2] && AlreadyStored[current_neighid] == 0 ){
+							AlreadyStored[current_neighid] = 1;
+							current_d_score += buffer_vector_d[i][n*5];
+							NotSepList[i].push_back(round(buffer_vector_d[i][n*5+1]));
+							NotSepList[i].push_back(round(buffer_vector_d[i][n*5+2]));
+							NotSepList[i].push_back(round(buffer_vector_d[i][n*5+3]));
+							NotSepList[i].push_back(round(buffer_vector_d[i][n*5+4]));
+							count++;
+						}
+					}
+					if( count != DoNotSep[j][1] ) cout << "Warning the crystal DoNotSep list has not been successfully computed !" << endl;
+				}
+			}
+		}
+		if( fabs(current_d_score-min_d_score) > 1e-9 ) cout << "Warning something went wrong" << endl;
+
+
 	}
 }
 

@@ -1191,6 +1191,32 @@ vector<vector<int>> MathTools::GenerateNDCombinations(int dim, int minValue, int
     return results;
 }
 
+void MathTools::GenerateCombinationsFromList(const vector<vector<unsigned int>>& A, unsigned int id1, vector<unsigned int>& current, unordered_set<unsigned int>& usedId2, vector<vector<unsigned int>>& B){
+	// If we processed all id1, store the combination
+	if(id1 == A.size()){
+		B.push_back(current);
+		return;
+	}
+	
+	GenerateCombinationsFromList(A, id1 + 1, current, usedId2, B);
+	
+	for(unsigned int id2 : A[id1]){
+		if(usedId2.count(id2) == 0){
+			// Choose (id1, id2)
+			current.push_back(id1);
+			current.push_back(id2);
+			usedId2.insert(id2);
+			
+			GenerateCombinationsFromList(A, id1 + 1, current, usedId2, B);
+			
+			// Backtrack
+			usedId2.erase(id2);
+			current.pop_back();
+			current.pop_back();
+		}
+	}
+}
+
 int MathTools::gcd3(int a, int b, int c){
 	return std::gcd(std::gcd(abs(a), abs(b)), abs(c));
 }

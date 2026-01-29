@@ -93,7 +93,7 @@ private:
 	bool IsDoNotSep = false;
 	double *rot_mat_total; // rotation matrix used to pass from the database oriented crystal to the current orientation
 	double *TiltTrans_xyz; // transformation matrix used to construct oriented systems
-        unsigned int *Stoichiometry;
+        unsigned int *Stoichiometry; // Stoichiometry[t] = number of atom in the motif having type uint AtomType_uint[t]
 	bool IsReferenceBondOriParam = false;
 	std::vector<double> *ReferenceBondOriParam; // ReferenceBondOriParam[t][s] = reference bond orientational parameter (used for searching atom site and computing order parameter of multisite and non centrosymmetric crystal) of atom type t and crystallographic site s
 	std::vector<std::string> BondOriParamProperties;

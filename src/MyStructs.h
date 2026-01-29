@@ -38,7 +38,7 @@ struct Position{
 };
 
 struct Atom{
-	unsigned int type_uint;
+	unsigned int type_uint; // unsigned int type of atom (one-based)
 	Position pos;
 };
 

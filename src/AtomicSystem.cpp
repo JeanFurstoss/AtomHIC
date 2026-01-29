@@ -1137,9 +1137,9 @@ void AtomicSystem::ComputeNotSepList(){
 		cout << "The crystal does not have a DoNotSepare list, we then cannot compute the list for the atomic system" << endl;
 		return;
 	}else if( IsNotSepTag ){
-		delete[] NotSepTag;
-	       //cout << "The DoNotSepare list is already computed for this system, it will then not be computed" << endl;
-	       //return;
+		//delete[] NotSepTag;
+	       cout << "The DoNotSepare list is already computed for this system, it will then not be computed" << endl;
+	       return;
 	}
 	this->NotSepTag = new vector<int>[this->nbAtom];
 	for(unsigned int i=0;i<nbAtom;i++) NotSepTag[i].push_back(0);
