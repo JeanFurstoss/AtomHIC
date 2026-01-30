@@ -2749,7 +2749,8 @@ void AtomicSystem::print_cfg(const string& filename){
 void AtomicSystem::printSystem_aux(const string& filename, const string& AuxName){
 	vector<string> AuxNames_v;
 	string buffer;
-	istringstream names(AuxName);
+	string AuxName_a = AuxProp2Print+AuxName;
+	istringstream names(AuxName_a);
 	while( getline(names, buffer, ' ') ){
 		AuxNames_v.push_back(buffer);
 	}
@@ -2865,29 +2866,28 @@ void AtomicSystem::printSystem_aux(const string& filename, const string& AuxName
 }
 
 void AtomicSystem::read_params_atsys(){
-	string fp;
-	#ifdef FIXEDPARAMETERS
-	fp = FIXEDPARAMETERS;
-	#endif
-	string backslash="/";
-	string filename=fp+backslash+FixedParam_Filename;
-	ifstream file(filename, ios::in);
-	size_t pos_rcut, pos_lsph;
+	//string fp;
+	//#ifdef FIXEDPARAMETERS
+	//fp = FIXEDPARAMETERS;
+	//#endif
+	//string backslash="/";
+	//string filename=fp+backslash+FixedParam_Filename;
+	//ifstream file(filename, ios::in);
+	ifstream file(FixedParam_Filename, ios::in);
+	size_t pos_auxprop;
 	string buffer_s, line;
 	if(file){
 		while(file){
 			getline(file,line);
-			// TODO no need for the moment, maybe add other things in FixedParameters.dat
-			//pos_rcut=line.find("RCUT_NEIGHBOURS ");
-			//if(pos_rcut!=string::npos){
-			//	istringstream text(line);
-			//	text >> buffer_s >> this->r_cut_n;
-			//}
-			//pos_lsph=line.find("L_SPH_ST ");
-			//if(pos_lsph!=string::npos){
-			//	istringstream text(line);
-			//	text >> buffer_s >> this->l_sph_st;
-			//}
+			pos_auxprop=line.find("AUX_PROPERTIES_TO_PRINT ");
+			if(pos_auxprop!=string::npos){
+				istringstream text(line);
+				text >> buffer_s;
+				while( text >> buffer_s ){
+					if( buffer_s == "//" ) break;
+					AuxProp2Print += buffer_s+" ";
+				}
+			}
 		}
 	}
 	//else{

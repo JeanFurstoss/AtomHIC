@@ -60,7 +60,7 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	Dis.Printer_NoFixedParams();
+	Dis.Printer_OnlyAuxProp();
 
 	if( argc == 4 ){	
 		string InputFilename = argv[1];

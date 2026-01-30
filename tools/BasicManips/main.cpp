@@ -63,7 +63,7 @@ int main(int argc, char *argv[])
 		iss_np >> nmerge;
 	}
 	if( argc != 7 && argc != 3 && argc != nmerge+5 ) ExecMsg();
-	Dis.Printer_NoFixedParams();
+	Dis.Printer_OnlyAuxProp();
 
 	if( argc == 7 && firstarg == "-duplicate" ){
 		AtomicSystem AtSys(argv[2]);

@@ -42,6 +42,8 @@ private:
 	std::chrono::high_resolution_clock::time_point time_beg;
 	// all fixed parameters
 	std::vector<std::string> FixedParameters;
+		// for atomic system
+	std::string AuxProp2Print = "";
 		// for crystal 
 	double TolOrthoBox = 0.25;
 	double TolOrthoBoxZ = 0.25;
@@ -115,6 +117,7 @@ public:
 	void ReadCurrentFixedParams(); // read the FixedParameters.ath file if it exists in the working dir and store the values
 	void ReadDatabaseFixedParams(); // read the FixedParameters.ath file in /data/FixedParameters/ 
 	void PrintFixedParameters();
+	void Printer_OnlyAuxProp();
 	void Printer_AnalyzeCSL();
 	void Printer_NoFixedParams();
 	void Printer_BondOriParam();

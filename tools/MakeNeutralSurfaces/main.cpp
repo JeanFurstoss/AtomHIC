@@ -52,7 +52,7 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 	
-	Dis.Printer_NoFixedParams();
+	Dis.Printer_OnlyAuxProp();
 	
 	string InputFilename = argv[1];
 	string OutputFilename, CrystalName;

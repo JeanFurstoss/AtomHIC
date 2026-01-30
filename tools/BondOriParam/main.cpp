@@ -53,7 +53,7 @@ int main(int argc, char *argv[])
 		CrystalType = argv[2];
 		outfilename = argv[3];
 		Crystal MyCrystal(CrystalType);
-		if( MyCrystal.getIsReferenceBondOriParam() ) Dis.Printer_NoFixedParams();
+		if( MyCrystal.getIsReferenceBondOriParam() ) Dis.Printer_OnlyAuxProp();
 		else Dis.Printer_BondOriParam();
 	}else if( argc == 3 ){
 		InputFilename = argv[1];

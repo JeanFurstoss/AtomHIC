@@ -115,7 +115,8 @@ protected:
 	std::vector<std::string*> density_name; // auxiliary atom properties => density_name[i*2] = auxiliary property used to compute density, density_name[i*2+1] = direction along which the density has been computed
 	std::string File_Heading; // head of lmp printed file
 	// Parameters read from Fixed_Parameter.dat file
-	std::string FixedParam_Filename = "Fixed_Parameters.dat";
+	std::string FixedParam_Filename = "FixedParameters.ath";
+	std::string AuxProp2Print = "";
 	double r_cut_n;
 	double current_rc_neigh;
 	int l_sph_st;

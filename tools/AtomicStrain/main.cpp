@@ -63,7 +63,7 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 	
-	Dis.Printer_NoFixedParams();
+	Dis.Printer_OnlyAuxProp();
 	AtomicSystem ReferenceSystem(ReferenceFilename);
 	ComputeAuxiliary CA(&ReferenceSystem);
 

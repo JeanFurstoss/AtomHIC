@@ -55,7 +55,7 @@ int main(int argc, char *argv[])
 		cerr << "The program will return the D2Min value according to the formulae in Delbecq et al. 2023" << endl;
 		return EXIT_FAILURE;
 	}
-	Dis.Printer_NoFixedParams();
+	Dis.Printer_OnlyAuxProp();
 	
 	AtomicSystem ReferenceSystem(ReferenceFilename);
 	ComputeAuxiliary CA(&ReferenceSystem);

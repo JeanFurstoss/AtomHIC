@@ -474,6 +474,8 @@ void Displays::ProgressBar(unsigned int &Final, unsigned int &current){
 void Displays::ReadFixedParams(string filename){
 	ifstream file(filename, ios::in);
 	string buffer_s, line;
+	// atomic systems
+	size_t pos_auxprop;
 	// crystal
 	size_t pos_tolOrthoBox, pos_tolOrthoBoxZ, pos_minBoxHeight, pos_minBoxAside, pos_shift, pos_nblc, pos_max_hkl_search;
 	// bicrystals and CSL/DSC
@@ -493,9 +495,24 @@ void Displays::ReadFixedParams(string filename){
 	if(file){
 		while(file){
 			getline(file,line);
+			// atomic system 
+			pos_auxprop=line.find("AUX_PROPERTIES_TO_PRINT ");
+			if(pos_auxprop!=string::npos){
+				FixedParameters.push_back("\t *** Parameters related to atomic systems (list of atom with some properies in a simulation cell): ***");
+				FixedParameters.push_back("");
+				istringstream text(line);
+				text >> buffer_s;
+				while( text >> buffer_s ){
+					if( buffer_s == "//" ) break;
+					AuxProp2Print += buffer_s+" ";
+				}
+				FixedParameters.push_back(line);
+			}
+
 			// crystal
 			pos_tolOrthoBox=line.find("TOL_ORTHO_BOX ");
 			if(pos_tolOrthoBox!=string::npos){
+				FixedParameters.push_back("");
 				FixedParameters.push_back("\t *** Parameters related to crystal (construction of orthogonal simulation cells): ***");
 				FixedParameters.push_back("");
 				istringstream text(line);
@@ -799,7 +816,7 @@ void Displays::PrintFixedParameters(){
 }
 
 void Displays::PrintHeadExecMsg(){
-	cout << "List of fixed parameter used by this executable:" << endl;
+	cout << "List of fixed parameters used by this executable:" << endl;
 }
 
 void Displays::PrintFootExecMsg(){
@@ -826,6 +843,7 @@ void Displays::Printer_NoFixedParams(){
 void Displays::Printer_BondOriParam(){
 	ReadCurrentFixedParams();
 	PrintHeadExecMsg();
+	cout << "\t AUX_PROPERTIES_TO_PRINT " << AuxProp2Print << endl;
 	cout << "\t STEINHARDT_DESCRIPTORS_L_SPH " << l_sph << endl;
 	cout << "\t STEINHARDT_DESCRIPTORS_STYLE " << SteinhardtStyle << endl;
 	PrintFootExecMsg();
@@ -834,6 +852,7 @@ void Displays::Printer_BondOriParam(){
 void Displays::Printer_ComputeDescriptors_Steinhardt(){
 	ReadCurrentFixedParams();
 	PrintHeadExecMsg();
+	cout << "\t AUX_PROPERTIES_TO_PRINT " << AuxProp2Print << endl;
 	cout << "\t STEINHARDT_DESCRIPTORS_MODE " << mode << endl;
 	cout << "\t STEINHARDT_DESCRIPTORS_RCUT " << rc << endl;
 	cout << "\t STEINHARDT_DESCRIPTORS_L_SPH " << l_sph << endl;
@@ -905,6 +924,7 @@ void Displays::Printer_CreateOrientedPlane(){
 void Displays::Printer_DBScanClustering(){
 	ReadCurrentFixedParams();
 	PrintHeadExecMsg();
+	cout << "\t AUX_PROPERTIES_TO_PRINT " << AuxProp2Print << endl;
 	cout << "\t DBSCAN_NB_MAX_CLUSTER " << nbClustMax_DBScan << endl;
 	cout << "\t DBSCAN_EPS " << eps_meth << endl;
 	cout << "\t DBSCAN_MINPTS " << minPts_meth << endl;
@@ -963,3 +983,9 @@ void Displays::Printer_SampleGB_GammaSurface(){
 }
 
 
+void Displays::Printer_OnlyAuxProp(){
+	ReadCurrentFixedParams();
+	PrintHeadExecMsg();
+	cout << "\t AUX_PROPERTIES_TO_PRINT " << AuxProp2Print << endl;
+	PrintFootExecMsg();
+}

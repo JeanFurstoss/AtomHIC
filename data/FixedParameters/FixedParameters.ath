@@ -1,5 +1,8 @@
 // This file contains the different global variables used by the programm
 
+// Printing atomic systems
+AUX_PROPERTIES_TO_PRINT // name of auxiliary properties present in a read atomic system to be printed in a output file (not applicable for all executables but for instance for ComputeDescriptors or BondOriParam) For example setting: "AUX_PROPERTIES_TO_PRINT c_pe Velocities Steinhardt" when using ./BondOriParam MySystem.cfg MySystemWithBondOrder.cfg will print in addition to the bond orientational parameter the auxiliary properties c_pe, Velocities and Steinhardt if they exist in MySystem.cfg (default empty)
+
 // Parameters for constructing crystals and bicrystals
 TOL_ORTHO_BOX 0.25 // tolerance (in A) for searching orthogonal box with inclined crystal cell vectors (default 0.25)
 TOL_ORTHO_BOX_Z 0.25 // tolerance (in A) for searching orthogonal box with inclined crystal cell vectors in Z direction (default 0.25)
