@@ -188,7 +188,7 @@ int main(int argc, char *argv[])
 			cout << "Warning from the provided dy value ny is null => ny has been set equal to 1" << endl;
 			ny = 1;
 		}
-		if( nz < 1 ){
+		if( nz < 1 && SampMode != "InPlane" ){
 			cout << "Warning from the provided dz value nz is null => nz has been set equal to 1" << endl;
 			nz = 1;
 		}

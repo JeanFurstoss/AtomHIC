@@ -43,7 +43,7 @@ int main(int argc, char *argv[])
 {
 	Displays Dis;
 	Dis.Logo();
-	if( argc != 6 && argc != 7 && argc != 9 && argc != 10 ){
+	if( argc != 6 && argc != 7 && argc != 9 && argc != 11 ){
 		cerr << "Usage: CreateOrientedPlane h k (i) l (h_x k_x (i_x) l_x) CrystalName(has to be defined in /data/Crystal/) OutputFilename" << endl;
 		cerr << "This executable will create an orthogonal cell with a z-oriented (hkl) plane" << endl;
 		cerr << "If h_x, k_x (i_x) and l_x parameters are provided, the (h_x k_x l_x) crystallographic plane will be oriented along the x axis. In this case the (hkl) and (hxkxlx) planes should be orthogonal" << endl;
@@ -64,7 +64,7 @@ int main(int argc, char *argv[])
 	istringstream iss_k(argv[current_readind]);
 	iss_k >> k;
 	current_readind++;
-	if( argc == 7 || argc == 10 ){
+	if( argc == 7 || argc == 11 ){
 		istringstream iss_i(argv[current_readind]);
 		iss_i >> i;
 		current_readind++;
@@ -73,14 +73,14 @@ int main(int argc, char *argv[])
 	istringstream iss_l(argv[current_readind]);
 	iss_l >> l;
 	current_readind++;
-	if( argc == 9 || argc == 10 ){
+	if( argc == 9 || argc == 11 ){
 		istringstream iss_h_x(argv[current_readind]);
 		iss_h_x >> h_x;
 		current_readind++;
 		istringstream iss_k_x(argv[current_readind]);
 		iss_k_x >> k_x;
 		current_readind++;
-		if( argc == 10 ){
+		if( argc == 11 ){
 			istringstream iss_i_x(argv[current_readind]);
 			iss_i_x >> i_x;
 			current_readind++;
@@ -101,7 +101,7 @@ int main(int argc, char *argv[])
 	if( argc == 7 ) i_str = to_string(-h-k)+"_";
 	cout << "Creating orthogonal cell of " << crystalType << " crystal, with (" << h << "_" << k << "_" << i_str << l << ") plane normal aligned with z direction" << endl;
 	string i_x_str = "";
-	if( argc == 10 ){
+	if( argc == 11 ){
 		i_x_str = to_string(-h_x-k_x)+"_";
 		cout << "and with (" << h_x << "_" << k_x << "_" << i_x_str << l_x << ") plane normal aligned with x direction" << endl;
 	}
