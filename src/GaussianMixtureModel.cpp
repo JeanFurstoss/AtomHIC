@@ -631,6 +631,7 @@ void GaussianMixtureModel::PrintToDatabase(const string &name_of_database){
 		if( IsRead ) full_filename=Labels[l]+ext;
 		else full_filename=_MyDescriptors->getLabels(l)+ext;
 		ofstream writefile(path2base+full_filename);
+		writefile << setprecision(17);
 		if( IsRead ){
 			writefile << "DESCRIPTOR_NAME " << DescriptorName << endl;
 			writefile << "FILTER_TYPE " << FilteringType << endl;
@@ -870,6 +871,19 @@ void GaussianMixtureModel::ReadModelParamFromDatabase(const string &name_of_data
 			}else{
 				cerr << "The file " << Labels[l] << ".ath cannot be openned" << endl;
 				exit(EXIT_FAILURE);
+			}
+		}
+		// project covariances on SPD matrix because round from file writing can cause deviation to SPD leading to nan determinant
+		for(unsigned int f=0;f<nbFilter;f++){
+			for(unsigned int k=0;k<nbClust[f];k++){
+				MatrixXd tempmat(dim,dim);
+				for(unsigned int d1=0;d1<dim;d1++)
+					for(unsigned int d2=0;d2<dim;d2++) tempmat(d1,d2) = V[f][k][d1*dim+d2];
+				SelfAdjointEigenSolver<MatrixXd> es(tempmat);
+				VectorXd evals = es.eigenvalues().cwiseMax(1e-12);
+				tempmat = es.eigenvectors() * evals.asDiagonal() * es.eigenvectors().transpose();
+				for(unsigned int d1=0;d1<dim;d1++)
+					for(unsigned int d2=0;d2<dim;d2++) V[f][k][d1*dim+d2] = tempmat(d1,d2);
 			}
 		}
 		// initialize GMMTools

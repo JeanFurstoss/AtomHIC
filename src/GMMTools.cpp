@@ -110,6 +110,7 @@ void GMMTools::setGMMVariables(vector<double> &weights, vector<vector<double>> &
 		_V.block(k * _dim, 0, _dim, _dim) = tempmat;
 		_V_ldlt[k] = tempmat.ldlt();
 		_det_V[k] = _V_ldlt[k].vectorD().array().log().sum();
+		if( _det_V[k] != _det_V[k] ) cerr << "Covariance matrix is not semi positive definite, aborting calculation" << endl;
 	}
 
 }
