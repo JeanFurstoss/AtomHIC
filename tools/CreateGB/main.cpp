@@ -42,12 +42,16 @@ int main(int argc, char *argv[])
 {
 	Displays Dis;
 	Dis.Logo();
-	if( argc != 10 && argc != 12 ){
-		cerr << "Usage: CreateGB h_RotAxis k_RotAxis (i_RotAxis) l_RotAxis RotAngle(in degree) h_GBPlane k_GBPlane (i_GBPlane) l_GBPlane CrystalName(has to be defined in /data/Crystal/) Rationalize" << endl;
+	unsigned int vacuum = 0;
+	if( argc != 10 && argc != 12 && argc != 11 && argc != 13 ){
+		cerr << "Usage: CreateGB h_RotAxis k_RotAxis (i_RotAxis) l_RotAxis RotAngle(in degree) h_GBPlane k_GBPlane (i_GBPlane) l_GBPlane CrystalName(has to be defined in /data/Crystal/) Rationalize (Vacuum)" << endl;
 		cerr << "The i Miller indexes (for rotation axis and GB plane) should only be used if the crystal is hexagonal" << endl;
-		cerr << "Rationalize can be either 0 or 1" << endl;
+		cerr << "Rationalize can be either 0 or 1:" << endl;
 		cerr << "1 => rationalize the GB (i.e. search the closest CSL GB to the provided parameters, in this case the fixed parameters for CSL calculation can be important, they are read from FixedParameters.ath file if exist if not defaults values are used)" << endl;
 		cerr << "0 => do not rationalize the GB" << endl;
+		cerr << "Vacuum is an optionnal parameter which can be either 0 or 1 (with default value 0):" << endl;
+		cerr << "1 => add vacuum above and below the GB system and also print Grain1 and Grain2 with and without vacuum (creating free surfaces)" << endl;
+		cerr << "0 => do not add any vacuum, all systems do not contain free surfaces" << endl;
 		cerr << "The program will return 4 dump files containing the GB system, the CSL lattice and the two grains (the two latters can be used to change shift between crystals)" << endl;
 		Dis.Printer_CreateGB();
 		return EXIT_FAILURE;
@@ -58,7 +62,7 @@ int main(int argc, char *argv[])
 	unsigned int rat;
 	bool rat_b;
 	string crystalName;
-	if( argc == 10 ){
+	if( argc == 10 || argc == 11 ){
 		istringstream iss_ha(argv[1]);
 		iss_ha >> h_a;
 		istringstream iss_ka(argv[2]);
@@ -80,6 +84,10 @@ int main(int argc, char *argv[])
 		iss_rat >> rat;
 		if( rat == 0 ) rat_b = false;
 		else rat_b = true;
+		if( argc == 11 ){
+			istringstream iss_vac(argv[10]);
+			iss_vac >> vacuum;
+		}
 	}else{
 		int i_a, i_p;
 		istringstream iss_ha(argv[1]);
@@ -109,13 +117,25 @@ int main(int argc, char *argv[])
 		iss_rat >> rat;
 		if( rat == 0 ) rat_b = false;
 		else rat_b = true;
+		if( argc == 13 ){
+			istringstream iss_vac(argv[12]);
+			iss_vac >> vacuum;
+		}
 	}
 	Bicrystal MyGB(crystalName,h_a,k_a,l_a,theta,h_p,k_p,l_p,rat_b);
 
+	if( vacuum == 1 ){
+		double fac_vacuum = 1.5;
+		double zero = 0.;
+		double shift_z = MyGB.getH3()[2] * ((fac_vacuum-1.)/2.);
+		MyGB.getH3()[2] *= fac_vacuum;
+		MyGB.ApplyShift(zero,zero,shift_z);
+	}
 
 	MyGB.print_lmp("GB.lmp");
 	MyGB.printCSL("CSL.lmp");
-	MyGB.print_Grains();
+	if( vacuum == 1 ) MyGB.print_Grains(true);
+	else MyGB.print_Grains();
 	Dis.ExecutionTime();	
 	return 0;
 }
