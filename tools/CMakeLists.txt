@@ -38,6 +38,7 @@ add_subdirectory(FitAndSaveKMeans)
 add_subdirectory(GMMClassification)
 add_subdirectory(KMeansClassification)
 add_subdirectory(DBScanClustering)
+add_subdirectory(GenerateYAML4ACE)
 # add other subdirectories of new generic tool here
 
 # other tools
