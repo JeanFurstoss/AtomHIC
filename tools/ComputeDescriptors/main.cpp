@@ -79,12 +79,8 @@ int main(int argc, char *argv[])
 		// Compute the descriptor
 		ACEDescriptors MyDescriptors(&MySystem,yaml_input_filename);
 		// Set the auxiliary property
-		cout << "After des" << endl;
 		MySystem.setAux_vec(MyDescriptors.getDescriptors(),MyDescriptors.getDim(),DescriptorName);
-		cout << "After set" << endl;
-	MySystem.printSystem_aux(OutputFilename,DescriptorName);
-		cout << "After print" << endl;
-		//// Print descriptor parameters
+		// Print descriptor parameters
 		//ofstream writefile("DescriptorProperties.ath");
 		//MyDescriptors.printDescriptorsPropToDatabase(writefile);
 		//writefile.close();
