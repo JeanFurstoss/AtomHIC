@@ -43,8 +43,11 @@ ACEDescriptors::ACEDescriptors(AtomicSystem *_MySystem, string _yaml_filename):D
 void ACEDescriptors::ComputeDescriptors(){
 	BBasisConfiguration MyBBasisConf;
 	MyBBasisConf.load(yaml_filename,true);
+	MyBBasisConf.is_sort_functions = false;
+
 	MyACEBBase = new ACEBBasisSet(MyBBasisConf);
 
+	
 	// Init pace arrays	
 	A.init(MyACEBBase->nelements, MyACEBBase->nradmax + 1, MyACEBBase->lmax + 1, "A");
 	A_rank1.init(MyACEBBase->nelements, MyACEBBase->nradbase, "A_rank1");
@@ -81,11 +84,12 @@ void ACEDescriptors::ComputeDescriptors(){
 		unsigned int current_dim = MyACEBBase->total_basis_size_rank1[mu_i];
     		const SHORT_INT_TYPE total_basis_size = MyACEBBase->total_basis_size[mu_i];
 		cout << "For " << _MySystem->getAtomType(i) << " rank1 size = " << current_dim << ", rankN size = " << total_basis_size;
-		auto basis = MyACEBBase->basis[mu_i];
-		for (unsigned int func_ind = 0; func_ind < total_basis_size; ++func_ind) {
-        		auto func = &basis[func_ind];
-			current_dim += func->num_ms_combs;
-		}
+		current_dim += total_basis_size;
+		//auto basis = MyACEBBase->basis[mu_i];
+		//for (unsigned int func_ind = 0; func_ind < total_basis_size; ++func_ind) {
+        	//	auto func = &basis[func_ind];
+		//	current_dim += func->num_ms_combs;
+		//}
 		if( max_dim < current_dim )
 			max_dim = current_dim;
 		cout << ", leading to " << current_dim << "-dimension ACE descriptors";
@@ -164,18 +168,22 @@ void ACEDescriptors::ComputeDescriptors(){
 				// for rank > 1
 				for(unsigned int n=0;n<nradiali;n++){
 					auto &A_lm = A(mu_j, n);
+					//if( i == 0 )
+					//	cout << "N = " << n << ", fr =";
 					for(unsigned int l=0;l<=lmaxi;l++){
 						R = fr(n, l);
-						
+						//if( i == 0 ) cout << " " << R;
 						for(unsigned int m=0;m<=l;m++){
 							Y = ylm(l, m);
 							A_lm(l, m) += R * Y; //accumulation sum over neighbours
 						}
 					}
+					//if( i == 0 ) cout << endl;
 				}
 			}
 		} //end loop over neighbours
-		for(unsigned int mu_j=0;mu_j<nbAtomType;mu_j++){
+		for(unsigned int mu_j_b=0;mu_j_b<nbAtomType;mu_j_b++){
+			unsigned int mu_j = elem2pace[mu_j_b];
 			for(unsigned int n=0;n<nradiali;n++){
 				auto &A_lm = A(mu_j, n);
 				for(unsigned int l=0;l<=lmaxi;l++){
@@ -192,7 +200,7 @@ void ACEDescriptors::ComputeDescriptors(){
 		for(unsigned int n=0;n<total_basis_size_rank1;n++){
 			auto func = &basis_rank1[n];
 			_Descriptors[i*dim+count_dim] = A_rank1(func->mus[0], func->ns[0] - 1);
-			if( count_dim == dim ) cout << "ISSUE !" << endl;
+			//if( count_dim == dim ) cout << "ISSUE !" << endl;
 			count_dim++;
 		}
 
@@ -205,6 +213,16 @@ void ACEDescriptors::ComputeDescriptors(){
 			int *mus = func->mus;
 			short int *ns = func->ns;
 			short int *ls = func->ls;
+			//if( i == 0 ){
+			//	cout << "FUNCIND = " << func_ind << endl;
+			//	cout << "Rank " << r << endl;
+			//	cout << "ns : ";
+			//	for(unsigned int t=0;t<rank;t++) cout << ns[t] << " ";
+			//	cout << ", ls : ";
+			//	for(unsigned int t=0;t<rank;t++) cout << ls[t] << " ";
+			//	cout << endl;
+			//}
+			_Descriptors[i*dim+count_dim] = 0.;
 			
 			//loop over {ms} combinations in sum
 			for(unsigned int ms_ind=0;ms_ind<func->num_ms_combs;++ms_ind){
@@ -224,10 +242,22 @@ void ACEDescriptors::ComputeDescriptors(){
 				}
 				
 				B = A_forward_prod(t);
-				_Descriptors[i*dim+count_dim] = B.real;
-				if( count_dim == dim ) cout << "ISSUE !" << endl;
-				count_dim++; 
-			}
+				_Descriptors[i*dim+count_dim] += B.real_part_product(func->gen_cgs[ms_ind]);
+			} // end loop on ms comb
+			//if( i == 0 ){
+			//	bool already = false;
+			//	unsigned int test = 0;
+			//	for(test=0;test<count_dim;test++){
+			//		if( fabs(_Descriptors[i*dim+count_dim]-_Descriptors[i*dim+test]) < 1.e-8 ){
+			//			already = true;
+			//			break;
+			//		}
+			//	}
+			//	if( already ){
+			//		cout << "Same descriptor (" << count_dim << ") than dim = " << test << " descriptor" << endl;
+			//	}
+			//}
+			count_dim++; 
 		} // end loop on total basis size
 	} // end loop on atoms
 
