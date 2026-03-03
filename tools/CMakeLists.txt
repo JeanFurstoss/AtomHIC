@@ -42,6 +42,7 @@ add_subdirectory(DBScanClustering)
 add_subdirectory(SampleGBShiftDoF)
 add_subdirectory(MakeNeutralSurfaces)
 add_subdirectory(DisplayFixedParameters)
+add_subdirectory(GenerateYAML4ACE)
 # add other subdirectories of new generic tool here
 
 # other tools
