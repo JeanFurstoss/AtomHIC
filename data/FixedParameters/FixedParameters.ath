@@ -27,7 +27,7 @@ TOL_CSL_INTEGER 1e-2 // tolerance for an element of U (CSL matrix) to be an inte
 TOL_ALIGNMENT_CSL 1e-1 // tolerance (in degree) to know if one of the CSL vector is aligned with the rotation axis (defaults 0.1) 
 
 // Parameters for descriptors and machine learning
-DESCRIPTORS_FILTERING_TYPE none // could be none, type element or one of the auxiliary properties of the atomic system read, this parameter is only used for training of ML models (default none)
+DESCRIPTORS_FILTERING_TYPE element // could be none, type element or one of the auxiliary properties of the atomic system read, this parameter is only used for training of ML models (default element)
 ML_RATIO_TEST_TRAIN 0.1 // Ratio of the machine learning training dataset used to test the model (default 0.1)
 
 // Parameters for Steinhardt descriptors

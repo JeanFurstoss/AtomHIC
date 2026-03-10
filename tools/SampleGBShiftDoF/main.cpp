@@ -50,7 +50,7 @@ void ExecMsg(){
 	cerr << "For the two last modes (DSC or CSL) the nz parameter must be provided (as the sampling is performed in 3D)" << endl << endl;
 	cerr << "DiscretizationMode can be \"NbPts\" or \"Distance\":" << endl;
 	cerr << "\t - NbPts => nx, ny (nz) specify the number of shifts (sampling points) along each of the two (or three) sampled vectors" << endl;
-	cerr << "\t - Density =>  nx, ny (nz) specify the distances between two shifts in each direction (then the number of shifts will be computed from these distances)" << endl << endl;
+	cerr << "\t - Distance =>  nx, ny (nz) specify the distances between two shifts in each direction (then the number of shifts will be computed from these distances)" << endl << endl;
 	cerr << "The i Miller indexes (for rotation axis and GB plane) should only be used if the crystal is hexagonal" << endl;
 	cerr << "Rationalize can be either 0 or 1" << endl;
 	cerr << "1 => rationalize the GB (i.e. search the closest CSL GB to the provided parameters, in this case the fixed parameters for CSL calculation can be important, they are read from FixedParameters.ath file if exist if not defaults values are used)" << endl;

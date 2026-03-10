@@ -88,6 +88,8 @@ void MachineLearningModel::setDescriptors(Descriptors *D){
 	nbDatMax = _MyDescriptors->getNbDatMax();
 	buffer_vec_1_dim = new double[dim];
 	buffer_vec_2_dim = new double[dim];
+	DescriptorName = _MyDescriptors->getName();
+	DescriptorProperties = _MyDescriptors->getProperties();
 	this->IsDescriptor = true;
 }
 
@@ -299,6 +301,45 @@ void MachineLearningModel::setLabelOrder(vector<string> &label_order){
 		}
 	}
 	delete[] corarr_l;
+}
+
+void MachineLearningModel::PrintToDatabase(const string &path2base){
+	if( DescriptorName == "ACE" ){ // remove path from the yaml file and copy the file in the corresponding ML database dir
+		string yaml_filename;
+		size_t pos_yaml;
+		string buffer_s1, buffer_s2;
+		for(unsigned int s=0;s<DescriptorProperties.size();s++){
+			pos_yaml=DescriptorProperties[s].find("NAME_OF_YAML_INPUT");
+			if( pos_yaml!=string::npos ){
+				istringstream text(DescriptorProperties[s]);
+				text >> buffer_s1 >> buffer_s2;
+				std::filesystem::path pf = buffer_s2;
+				yaml_filename = pf.filename();
+				string fullfilename=path2base+yaml_filename; 
+				string copy="cp "+buffer_s2+" "+fullfilename;
+				if( system(copy.c_str()) ) cout << "Warning the input yaml file for ACE descriptors has not been successfuly copied to the database !" << endl;
+				else cout << buffer_s2 << " successfuly copied to AtomHIC database" << endl;
+				DescriptorProperties[s] = "NAME_OF_YAML_INPUT "+yaml_filename;
+			}
+		}
+		_MyDescriptors->readProperties(DescriptorProperties);
+	}	
+
+}
+
+void MachineLearningModel::ReadModelParamFromDatabase(const std::string &path2base){
+	if( DescriptorName == "ACE" ){
+		size_t pos_yaml;
+		string buffer_s1, buffer_s2;
+		for(unsigned int s=0;s<DescriptorProperties.size();s++){
+			pos_yaml=DescriptorProperties[s].find("NAME_OF_YAML_INPUT");
+			if( pos_yaml!=string::npos ){
+				istringstream text(DescriptorProperties[s]);
+				text >> buffer_s1 >> buffer_s2;
+				DescriptorProperties[s] = "NAME_OF_YAML_INPUT "+path2base+buffer_s2;
+			}
+		}
+	}	
 }
 
 MachineLearningModel::~MachineLearningModel(){

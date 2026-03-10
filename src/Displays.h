@@ -70,7 +70,7 @@ private:
 	double tolAlignment_CSL = 0.1;
        		// for ML and descriptors
 	double RatioTestTrain = 0.1;
-	std::string FilteringType = "none";
+	std::string FilteringType = "element";
 		// Steinhardt descriptors
 	std::string mode = "Full";
 	double rc = 5.;

@@ -599,6 +599,8 @@ void GaussianMixtureModel::PrintToDatabase(const string &name_of_database){
 
 	string path2base = getDatabasePath(name_of_database);	
 
+	MachineLearningModel::PrintToDatabase(path2base); // in case of ACE descriptors remove path and paste yaml file
+	
 	if( !IsRead ){
 		ofstream writefile_train(path2base+"labelling.out");
 		writefile_train << "Confusion matrix after labelling of the GMM:" << endl;
@@ -893,6 +895,7 @@ void GaussianMixtureModel::ReadModelParamFromDatabase(const string &name_of_data
 		cerr << "The database environment \"" << path2base << "\" cannot be openned, aborting" << endl;
 		exit(EXIT_FAILURE);
 	}
+	MachineLearningModel::ReadModelParamFromDatabase(path2base);
 	cout << path2base << " GMM model successfully read !" << endl;
 }
 

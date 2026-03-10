@@ -96,7 +96,8 @@ public:
 	std::string getMLDatabasePath();
 	std::string getDatabasePath(const std::string &name_of_database);
 	void ChangeFilterIndex();
-	//void ReadModelParamFromDatabase(); // TODO implement base fonction here
+	void ReadModelParamFromDatabase(const std::string &path2base); 
+	void PrintToDatabase(const std::string &path2base);
 	void Classify();
 	void PrintClassifiedData(std::string filename);
 	void readFixedParams();

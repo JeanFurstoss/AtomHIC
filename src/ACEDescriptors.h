@@ -46,27 +46,21 @@
 class ATOMHIC_EXPORT ACEDescriptors : public Descriptors {
 private:
 	// Properties of ACE descriptors
-	double rc; // cutoff radius for neighbor research
-	int l_sph; // harmonic degree
 	std::string yaml_filename;
 	ACEBBasisSet *MyACEBBase;
-	    Array2D<DOUBLE_TYPE> A_rank1 = Array2D<DOUBLE_TYPE>(
-            "A_rank1"); ///< 2D-array for storing A's for rank=1, shape: A(mu_j,n)
-    Array4DLM<ACEComplex> A = Array4DLM<ACEComplex>(
-            "A"); ///< 4D array with (l,m) last indices  for storing A's for rank>1: A(mu_j, n, l, m)
-    double Y00 = 1.;
+	Array2D<DOUBLE_TYPE> A_rank1 = Array2D<DOUBLE_TYPE>("A_rank1"); ///< 2D-array for storing A's for rank=1, shape: A(mu_j,n)
+	Array4DLM<ACEComplex> A = Array4DLM<ACEComplex>("A"); ///< 4D array with (l,m) last indices  for storing A's for rank>1: A(mu_j, n, l, m)
+	double Y00 = 1.;
 	//BBasisConfiguration MyBBasisConf;
-	// from what I understood, we need to provide:
-	// 0. mu the number of chemical species 
-	// 1. R the rank of the expansion (R-body interaction)
-	// 2. lmax the maximum angular momentum (degree of the spherical harmonics)
-	// 3. nmax the number of radial functions
-	// => this should gives N basis functions (descriptors) with N = ??
 public:
 	// constructors
 	ACEDescriptors(AtomicSystem *_MySystem, std::string _yaml_filename);
+	ACEDescriptors(AtomicSystem *_MySystem, std::vector<std::string> _Properties);
 	// methods
 	void ComputeDescriptors();
+	void printDescriptorsPropToDatabase(std::ofstream &writefile);
+	void setProperties();
+	void readProperties(std::vector<std::string> _Properties);
 
 	// destructor
 	~ACEDescriptors();

@@ -1,0 +1,104 @@
+# file generated using ./GenerateYAML4ACE 1 "Au" 5 5  10 4 2 2 1  2 2 1 1  1 1  
+global:
+  DeltaSplineBins: 0.001
+species:
+  - speciesblock: Au 
+    ndensityi: 0
+    npoti: 
+    parameters: []
+    nradmaxi: 4
+    lmaxi: 2
+    rcutij: 5
+    dcutij: 0.01 # does not impact values of descriptors
+    nradbaseij: 10
+    radbase: SBessel
+    radparameters: [1.] # does not impact values of descriptors
+    radcoefficients: [[[1., 0., 0., 0., 0., 0., 0., 0., 0., 0.], [1., 0., 0., 0., 0., 0., 0., 0., 0., 0.], [1., 0., 0., 0., 0., 0., 0., 0., 0., 0.]], [[0., 1., 0., 0., 0., 0., 0., 0., 0., 0.], [0., 1., 0., 0., 0., 0., 0., 0., 0., 0.], [0., 1., 0., 0., 0., 0., 0., 0., 0., 0.]], [[0., 0., 1., 0., 0., 0., 0., 0., 0., 0.], [0., 0., 1., 0., 0., 0., 0., 0., 0., 0.], [0., 0., 1., 0., 0., 0., 0., 0., 0., 0.]], [[0., 0., 0., 1., 0., 0., 0., 0., 0., 0.], [0., 0., 0., 1., 0., 0., 0., 0., 0., 0.], [0., 0., 0., 1., 0., 0., 0., 0., 0., 0.]]]
+    nbody:
+      - {type: Au Au, nr: [1], nl: [0]}
+      - {type: Au Au, nr: [2], nl: [0]}
+      - {type: Au Au, nr: [3], nl: [0]}
+      - {type: Au Au, nr: [4], nl: [0]}
+      - {type: Au Au, nr: [5], nl: [0]}
+      - {type: Au Au, nr: [6], nl: [0]}
+      - {type: Au Au, nr: [7], nl: [0]}
+      - {type: Au Au, nr: [8], nl: [0]}
+      - {type: Au Au, nr: [9], nl: [0]}
+      - {type: Au Au, nr: [10], nl: [0]}
+      - {type: Au Au Au, nr: [1, 1], nl: [0, 0]}
+      - {type: Au Au Au, nr: [1, 1], nl: [1, 1]}
+      - {type: Au Au Au, nr: [1, 1], nl: [2, 2]}
+      - {type: Au Au Au, nr: [1, 2], nl: [0, 0]}
+      - {type: Au Au Au, nr: [1, 2], nl: [1, 1]}
+      - {type: Au Au Au, nr: [1, 2], nl: [2, 2]}
+      - {type: Au Au Au, nr: [1, 3], nl: [0, 0]}
+      - {type: Au Au Au, nr: [1, 3], nl: [1, 1]}
+      - {type: Au Au Au, nr: [1, 3], nl: [2, 2]}
+      - {type: Au Au Au, nr: [1, 4], nl: [0, 0]}
+      - {type: Au Au Au, nr: [1, 4], nl: [1, 1]}
+      - {type: Au Au Au, nr: [1, 4], nl: [2, 2]}
+      - {type: Au Au Au, nr: [2, 2], nl: [0, 0]}
+      - {type: Au Au Au, nr: [2, 2], nl: [1, 1]}
+      - {type: Au Au Au, nr: [2, 2], nl: [2, 2]}
+      - {type: Au Au Au, nr: [2, 3], nl: [0, 0]}
+      - {type: Au Au Au, nr: [2, 3], nl: [1, 1]}
+      - {type: Au Au Au, nr: [2, 3], nl: [2, 2]}
+      - {type: Au Au Au, nr: [2, 4], nl: [0, 0]}
+      - {type: Au Au Au, nr: [2, 4], nl: [1, 1]}
+      - {type: Au Au Au, nr: [2, 4], nl: [2, 2]}
+      - {type: Au Au Au, nr: [3, 3], nl: [0, 0]}
+      - {type: Au Au Au, nr: [3, 3], nl: [1, 1]}
+      - {type: Au Au Au, nr: [3, 3], nl: [2, 2]}
+      - {type: Au Au Au, nr: [3, 4], nl: [0, 0]}
+      - {type: Au Au Au, nr: [3, 4], nl: [1, 1]}
+      - {type: Au Au Au, nr: [3, 4], nl: [2, 2]}
+      - {type: Au Au Au, nr: [4, 4], nl: [0, 0]}
+      - {type: Au Au Au, nr: [4, 4], nl: [1, 1]}
+      - {type: Au Au Au, nr: [4, 4], nl: [2, 2]}
+      - {type: Au Au Au Au, nr: [1, 1, 1], nl: [0, 0, 0], lint: [0]}
+      - {type: Au Au Au Au, nr: [1, 1, 1], nl: [0, 1, 1], lint: [1]}
+      - {type: Au Au Au Au, nr: [1, 1, 1], nl: [0, 2, 2], lint: [2]}
+      - {type: Au Au Au Au, nr: [1, 1, 1], nl: [1, 1, 2], lint: [2]}
+      - {type: Au Au Au Au, nr: [1, 1, 1], nl: [2, 2, 2], lint: [2]}
+      - {type: Au Au Au Au, nr: [1, 1, 2], nl: [0, 0, 0], lint: [0]}
+      - {type: Au Au Au Au, nr: [1, 1, 2], nl: [0, 1, 1], lint: [1]}
+      - {type: Au Au Au Au, nr: [1, 1, 2], nl: [0, 2, 2], lint: [2]}
+      - {type: Au Au Au Au, nr: [1, 1, 2], nl: [1, 1, 0], lint: [0]}
+      - {type: Au Au Au Au, nr: [1, 1, 2], nl: [1, 1, 2], lint: [2]}
+      - {type: Au Au Au Au, nr: [1, 1, 2], nl: [1, 2, 1], lint: [1]}
+      - {type: Au Au Au Au, nr: [1, 1, 2], nl: [2, 2, 0], lint: [0]}
+      - {type: Au Au Au Au, nr: [1, 1, 2], nl: [2, 2, 2], lint: [2]}
+      - {type: Au Au Au Au, nr: [1, 2, 2], nl: [0, 0, 0], lint: [0]}
+      - {type: Au Au Au Au, nr: [1, 2, 2], nl: [0, 1, 1], lint: [1]}
+      - {type: Au Au Au Au, nr: [1, 2, 2], nl: [0, 2, 2], lint: [2]}
+      - {type: Au Au Au Au, nr: [1, 2, 2], nl: [1, 1, 0], lint: [0]}
+      - {type: Au Au Au Au, nr: [1, 2, 2], nl: [1, 1, 2], lint: [2]}
+      - {type: Au Au Au Au, nr: [1, 2, 2], nl: [2, 2, 0], lint: [0]}
+      - {type: Au Au Au Au, nr: [1, 2, 2], nl: [2, 2, 2], lint: [2]}
+      - {type: Au Au Au Au, nr: [2, 2, 2], nl: [0, 0, 0], lint: [0]}
+      - {type: Au Au Au Au, nr: [2, 2, 2], nl: [0, 1, 1], lint: [1]}
+      - {type: Au Au Au Au, nr: [2, 2, 2], nl: [0, 2, 2], lint: [2]}
+      - {type: Au Au Au Au, nr: [2, 2, 2], nl: [1, 1, 2], lint: [2]}
+      - {type: Au Au Au Au, nr: [2, 2, 2], nl: [2, 2, 2], lint: [2]}
+      - {type: Au Au Au Au Au, nr: [1, 1, 1, 1], nl: [0, 0, 0, 0], lint: [0, 0]}
+      - {type: Au Au Au Au Au, nr: [1, 1, 1, 1], nl: [0, 0, 1, 1], lint: [0, 0]}
+      - {type: Au Au Au Au Au, nr: [1, 1, 1, 1], nl: [1, 1, 1, 1], lint: [0, 0]}
+      - {type: Au Au Au Au Au, nr: [1, 1, 1, 2], nl: [0, 0, 0, 0], lint: [0, 0]}
+      - {type: Au Au Au Au Au, nr: [1, 1, 1, 2], nl: [0, 0, 1, 1], lint: [0, 0]}
+      - {type: Au Au Au Au Au, nr: [1, 1, 1, 2], nl: [0, 1, 1, 0], lint: [1, 1]}
+      - {type: Au Au Au Au Au, nr: [1, 1, 1, 2], nl: [1, 1, 1, 1], lint: [0, 0]}
+      - {type: Au Au Au Au Au, nr: [1, 1, 2, 2], nl: [0, 0, 0, 0], lint: [0, 0]}
+      - {type: Au Au Au Au Au, nr: [1, 1, 2, 2], nl: [0, 0, 1, 1], lint: [0, 0]}
+      - {type: Au Au Au Au Au, nr: [1, 1, 2, 2], nl: [0, 1, 0, 1], lint: [1, 1]}
+      - {type: Au Au Au Au Au, nr: [1, 1, 2, 2], nl: [1, 1, 0, 0], lint: [0, 0]}
+      - {type: Au Au Au Au Au, nr: [1, 1, 2, 2], nl: [1, 1, 1, 1], lint: [0, 0]}
+      - {type: Au Au Au Au Au, nr: [1, 2, 2, 2], nl: [0, 0, 0, 0], lint: [0, 0]}
+      - {type: Au Au Au Au Au, nr: [1, 2, 2, 2], nl: [0, 0, 1, 1], lint: [0, 0]}
+      - {type: Au Au Au Au Au, nr: [1, 2, 2, 2], nl: [1, 0, 0, 1], lint: [1, 1]}
+      - {type: Au Au Au Au Au, nr: [1, 2, 2, 2], nl: [1, 1, 1, 1], lint: [0, 0]}
+      - {type: Au Au Au Au Au, nr: [2, 2, 2, 2], nl: [0, 0, 0, 0], lint: [0, 0]}
+      - {type: Au Au Au Au Au, nr: [2, 2, 2, 2], nl: [0, 0, 1, 1], lint: [0, 0]}
+      - {type: Au Au Au Au Au, nr: [2, 2, 2, 2], nl: [1, 1, 1, 1], lint: [0, 0]}
+      - {type: Au Au Au Au Au Au, nr: [1, 1, 1, 1, 1], nl: [0, 0, 0, 0, 0], lint: [0, 0, 0]}
+      - {type: Au Au Au Au Au Au, nr: [1, 1, 1, 1, 1], nl: [0, 0, 0, 1, 1], lint: [0, 1, 1]}
+      - {type: Au Au Au Au Au Au, nr: [1, 1, 1, 1, 1], nl: [0, 1, 1, 1, 1], lint: [1, 0, 1]}

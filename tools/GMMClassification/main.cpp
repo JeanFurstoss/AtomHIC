@@ -35,6 +35,7 @@
 #include <string>
 #include "Descriptors.h"
 #include "SteinhardtDescriptors.h"
+#include "ACEDescriptors.h"
 #include "GaussianMixtureModel.h"
 #include "AtomicSystem.h"
 #include <Displays.h>
@@ -45,11 +46,13 @@ int main(int argc, char *argv[])
 {
 	Displays Dis;
 	Dis.Logo();
-	if( argc < 4 ){
-		cerr << "Usage: ./GMMClassification InputFilename (NameOfDescriptor) NameOfDatabase OutputFilename" << endl;
-		cerr << "InputFilename could be an atomic system or a file directly containing the descriptor values, in the latter case NameOfDescriptor argument should not be used" << endl;
+	if( argc < 5 ){
+		cerr << "Usage: ./GMMClassification InputFilename (NameOfDescriptor) NameOfDatabase OutputFilename OutputDescriptorsOrNot" << endl;
+		cerr << "InputFilename could be an atomic system containing or not the descriptor values. If the atomic system contains the descriptors values the name of the auxiliary properties corresponding to the descriptors could be provided as the NameOfDescriptor argument" << endl;
+		cerr << "InputFilename could also be a simple file containing the descriptors value" << endl;
 		cerr << "The argument NameOfDatabse should be a directory in /data/MachineLearningModels/GaussianMixtureModel/ which could be generated using the ./FitAndSaveGMM executable" << endl;
-		cerr << "In the case of an atomic system the obtained output file contains, the computed descriptors if the descriptors are not provided, the index of the labels (Struct[1]) and the maximum likelihood classifier (Struct[2])" << endl;
+		cerr << "In the case of an atomic system the obtained output file contains the index of the labels (Struct[1]) and the maximum likelihood classifier (Struct[2])" << endl;
+		cerr << "If OutputDescriptorsOrNot = 0 the descriptors wont be printed in the output file name, if OutputDescriptorsOrNot = 1 the descriptors will be printed in addition with Struct[1] and Struct[2]" << endl;
 		cerr << "In the case of a simple file, the descriptors are simply printed again as well as Struct[1] and Struct[2]" << endl;
 		GaussianMixtureModel GMM;
 		vector<string> basis = GMM.getAvailableDatabases();
@@ -62,10 +65,13 @@ int main(int argc, char *argv[])
 
 	Dis.Printer_OnlyAuxProp();
 
-	if( argc == 4 ){	
+	unsigned int outdes;
+	if( argc == 5 ){	
 		string InputFilename = argv[1];
 		string DatabaseFilename = argv[2];
 		string OutputFilename = argv[3];
+		istringstream iss_o(argv[4]);
+		iss_o >> outdes;
 		GaussianMixtureModel GMM;
 		GMM.ReadModelParamFromDatabase(DatabaseFilename);
 		AtomicSystem MySystem;
@@ -83,9 +89,21 @@ int main(int argc, char *argv[])
 				SteinhardtDescriptors MyDescriptors(&MySystem,GMM.getDescriptorProperties());
 				GMM.setDescriptors(&MyDescriptors);
 				GMM.Classify();
-				MySystem.setAux_vec(MyDescriptors.getDescriptors(),MyDescriptors.getDim(),"Steinhardt");
 				MySystem.setAux_vec(GMM.getClassificator(),2,"Struct");
-				MySystem.printSystem_aux(OutputFilename,"Steinhardt Struct");
+				if( outdes == 1 ){
+					MySystem.setAux_vec(MyDescriptors.getDescriptors(),MyDescriptors.getDim(),DescriptorName);
+					MySystem.printSystem_aux(OutputFilename,DescriptorName+" Struct");
+				}else MySystem.printSystem_aux(OutputFilename,"Struct");
+				return 0;
+			}else if( DescriptorName == "ACE" ){
+				ACEDescriptors MyDescriptors(&MySystem,GMM.getDescriptorProperties());
+				GMM.setDescriptors(&MyDescriptors);
+				GMM.Classify();
+				MySystem.setAux_vec(GMM.getClassificator(),2,"Struct");
+				if( outdes == 1 ){
+					MySystem.setAux_vec(MyDescriptors.getDescriptors(),MyDescriptors.getDim(),DescriptorName);
+					MySystem.printSystem_aux(OutputFilename,DescriptorName+" Struct");
+				}else MySystem.printSystem_aux(OutputFilename,"Struct");
 				return 0;
 			}else{ // other developped descriptors could be put here
 				cerr << "The descriptor name does not correspond to a descriptor that AtomHIC can compute, aborting" << endl;
@@ -114,7 +132,8 @@ int main(int argc, char *argv[])
 		GMM.setDescriptors(&MyDescriptors);
 		GMM.Classify();
 		MySystem.setAux_vec(GMM.getClassificator(),2,"Struct");
-		MySystem.printSystem_aux(OutputFilename,"Struct");
+		if( outdes == 0 ) MySystem.printSystem_aux(OutputFilename,"Struct");
+		else MySystem.printSystem_aux(OutputFilename,DescriptorName+" Struct");
 	}
 	Dis.ExecutionTime();	
 	return 0;

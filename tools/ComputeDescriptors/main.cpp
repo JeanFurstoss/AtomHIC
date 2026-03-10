@@ -43,11 +43,11 @@ int main(int argc, char *argv[])
 {
 	Displays Dis;
 	Dis.Logo();
-	if( argc < 3 ){
+	if( argc < 4 ){
 		cerr << "Usage: ./ComputeDescriptors AtomicInputFilename NameOfDescriptor (yaml_input_filename) OutputFilename" << endl;
 		cerr << "The descriptor properties will be read from /data/FixedParameters/FixedParameters.dat" << endl;
 		cerr << "In addition to the output atomic file, this executable will generate a DescriptorProperties.ath file containing the descriptors properties and which can be used for fitting a ML for instance" << endl;
-		cerr << "The yaml_input filename shoudl be used only for ACE descriptors" << endl;
+		cerr << "The yaml_input_filename shoudl be used only for ACE descriptors (it could be the name of the yaml file if it is in the working directory or the relative or absolute path to it if the file is not in the working directory)" << endl;
 		cerr << "Available descriptors : " << endl;
 		cerr << "\t - Steinhardt" << endl;
 		cerr << "\t - ACE (uses PACE implementation Lysogorskiy et al. 2021)" << endl;
@@ -78,14 +78,16 @@ int main(int argc, char *argv[])
 		writefile.close();
 		cout << "DescriptorProperties.ath file successfully writted" << endl;
 	}else if( DescriptorName == "ACE" ){
+		Dis.Printer_OnlyAuxProp();
 		// Compute the descriptor
 		ACEDescriptors MyDescriptors(&MySystem,yaml_input_filename);
 		// Set the auxiliary property
 		MySystem.setAux_vec(MyDescriptors.getDescriptors(),MyDescriptors.getDim(),DescriptorName);
 		// Print descriptor parameters
-		//ofstream writefile("DescriptorProperties.ath");
-		//MyDescriptors.printDescriptorsPropToDatabase(writefile);
-		//writefile.close();
+		ofstream writefile("DescriptorProperties.ath");
+		MyDescriptors.printDescriptorsPropToDatabase(writefile);
+		writefile.close();
+		cout << "DescriptorProperties.ath file successfully writted" << endl;
 	}else{ // other developped descriptors could be put here
 		cerr << "The descriptor name does not correspond to a descriptor that AtomHIC can compute, aborting" << endl;
 		return EXIT_FAILURE;

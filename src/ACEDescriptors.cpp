@@ -40,6 +40,12 @@ ACEDescriptors::ACEDescriptors(AtomicSystem *_MySystem, string _yaml_filename):D
 	ComputeDescriptors();
 }
 
+ACEDescriptors::ACEDescriptors(AtomicSystem *_MySystem, vector<string> _Properties):Descriptors(_MySystem, _Properties){
+	this->name = "ACE";
+	readProperties(_Properties);
+	ComputeDescriptors();
+}
+
 void ACEDescriptors::ComputeDescriptors(){
 	BBasisConfiguration MyBBasisConf;
 	MyBBasisConf.load(yaml_filename,true);
@@ -83,7 +89,7 @@ void ACEDescriptors::ComputeDescriptors(){
 		unsigned int mu_i = elem2pace[i];
 		unsigned int current_dim = MyACEBBase->total_basis_size_rank1[mu_i];
     		const SHORT_INT_TYPE total_basis_size = MyACEBBase->total_basis_size[mu_i];
-		cout << "For " << _MySystem->getAtomType(i) << " rank1 size = " << current_dim << ", rankN size = " << total_basis_size;
+		//cout << "For " << _MySystem->getAtomType(i) << " rank1 size = " << current_dim << ", rankN size = " << total_basis_size;
 		current_dim += total_basis_size;
 		//auto basis = MyACEBBase->basis[mu_i];
 		//for (unsigned int func_ind = 0; func_ind < total_basis_size; ++func_ind) {
@@ -92,10 +98,10 @@ void ACEDescriptors::ComputeDescriptors(){
 		//}
 		if( max_dim < current_dim )
 			max_dim = current_dim;
-		cout << ", leading to " << current_dim << "-dimension ACE descriptors";
+		//cout << ", leading to " << current_dim << "-dimension ACE descriptors";
 		for(unsigned int j=i;j<nbAtomType;j++){
 			unsigned int mu_j = elem2pace[j];
-			cout << ", cutoff with " << _MySystem->getAtomType(j) << " = " << MyACEBBase->radial_functions->cut(mu_i,mu_j);
+			//cout << ", cutoff with " << _MySystem->getAtomType(j) << " = " << MyACEBBase->radial_functions->cut(mu_i,mu_j);
 			if( max_cutoff < MyACEBBase->radial_functions->cut(mu_i,mu_j) )
 				max_cutoff = MyACEBBase->radial_functions->cut(mu_i,mu_j);
 		}
@@ -114,7 +120,8 @@ void ACEDescriptors::ComputeDescriptors(){
 	}
 
 	unsigned int nbNMax = _MySystem->getNbMaxN();
-   
+  	
+        cout << "Computing ACE descriptors .. ";	
         // The following mainly comes from the compute_atom() function of the ACEBEvaluator (l.102 ace/ace_b_evaluator.cpp)	
 	for(unsigned int i=0;i<nbDatTot;i++){ // parallelize ?
 		unsigned int count_dim = 0;
@@ -263,8 +270,30 @@ void ACEDescriptors::ComputeDescriptors(){
 
 	delete MyACEBBase;
 	delete[] elem2pace;
+	cout << "done" << endl;
 }
 
+void ACEDescriptors::readProperties(vector<string> _Properties){
+	Descriptors::readProperties(_Properties);
+	size_t pos_yaml;
+	string buffer_s, line;
+	for(unsigned int s=0;s<_Properties.size();s++){
+		pos_yaml=_Properties[s].find("NAME_OF_YAML_INPUT");
+		if( pos_yaml!=string::npos ){
+			istringstream text(_Properties[s]);
+			text >> buffer_s >> yaml_filename;
+		}
+	}
+}
+
+void ACEDescriptors::setProperties(){
+	Properties.push_back("NAME_OF_YAML_INPUT "+yaml_filename);
+}
+
+void ACEDescriptors::printDescriptorsPropToDatabase(ofstream &writefile){
+	setProperties();
+	Descriptors::printDescriptorsPropToDatabase(writefile);
+}
 
 ACEDescriptors::~ACEDescriptors(){
 }

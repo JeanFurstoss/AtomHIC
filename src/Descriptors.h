@@ -113,7 +113,7 @@ protected:
 	unsigned int nbMaxFilter = 100; // only used for warning
 	
 	std::string FixedParam_Filename = "FixedParameters.ath";
-	std::string FilteringType = "none";
+	std::string FilteringType = "element";
 
 public:
 	// constructors
@@ -153,6 +153,8 @@ public:
 	unsigned int getLabelsSize(const unsigned int &f, unsigned int &l){ return LabelsSize[f*Labels.size()+l]; }
 	unsigned int getNbLabels(){ return Labels.size(); }
 	std::string getLabels(const unsigned int &l){ return Labels[l]; }
+	std::string getName(){ return name; }
+	std::vector<std::string> getProperties(){ return Properties; }
 	unsigned int getNbDatMaxLabel(){ return nbDatMaxLabel; }
 	unsigned int getLabelIndex(const unsigned int &f){ return LabelIndex[f]; }
 	unsigned int getDim(){ return dim; }
