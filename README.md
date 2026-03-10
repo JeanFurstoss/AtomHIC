@@ -30,12 +30,13 @@ This library is intended to be further developed in the future by, among others,
 ## Table of contents
 
 1. [Prerequisite](#prerequisites)
-2. [Compilation and execution](#compilation-and-execution)
-3. [Main features](#main-features)
-4. [Citations](#citations)
-5. [Code structure](#code-structure)
-6. [Bugs and further developments](#bugs-and-further-developments)
-7. [License](#license)
+2. [Compilation](#compilation)
+3. [Using executables](#using-executables)
+4. [Main features](#main-features)
+5. [Citations](#citations)
+6. [Code structure](#code-structure)
+7. [Bugs and further developments](#bugs-and-further-developments)
+8. [License](#license)
 
 ---
 
@@ -46,7 +47,7 @@ This library is intended to be further developed in the future by, among others,
 - C++ compiler, [gcc](https://gcc.gnu.org/) (version >= 8)
 - [OpenMP](https://www.openmp.org/) (optional)
 
-## Compilation and execution
+## Compilation
 
 Download and compile the AtomHIC repository:
 
@@ -65,13 +66,27 @@ ctest
 ```
 in the build directory and verify that 100% of tests pass
 
-All executables are build in the /build/bin/ directory  
-To use them just type path_to_bin/NameOfExecutable (a short description of each executable and required arguments will then be printed)  
 Some part of the code are parallelized using openmp, to benefit for this, use: 
 ```bash
 export OMP_NUM_THREADS="number of thread you want to use"
 ```
 , before using the wanted executable  
+
+## Using executables
+
+All executables are build in the /build/bin/ directory  
+
+**1. Executables arguments**
+
+To use them just type path_to_bin/NameOfExecutable. When executed without any argument, each executable is printing a short description of the operations realized by the program and the arguments required.
+
+**2. Fixed parameters**
+
+In addition to the provided arguments, the executables use some fixed parameters (e.g. minimum box size when creating bicrystalline systems). The parameters used by each executable are displayed at the begining of the execution with their current values.
+
+All of the fixed parameters used by the AtomHIC library can be displayed using the DisplayFixedParameters executables which will also show the default values associated with these parameters. 
+
+To change the values of these parameters, just create a FixedParameters.ath file in the working directory and write the name of corresponding parameter followed by its value. The program will read this file at the begining of the execution and then affect the value to the parameter. If a parameter is not present in the FixedParameters.ath file or if a FixedParameters.ath file does not exist in the working directory, the values of the parameters will simply be the default values.
 
 ## Main features
 
@@ -88,6 +103,16 @@ Once the crystal is present in the database, one can create any GB from the exec
 will create the closest rational forsterite (Mg2SiO4) GB to a 60° misoriented around [100] axis and with a (011) GB plane such that:
 
 ![figureGB](/doc/GB_And_BondOriParam/figureGB.png)
+
+Systems containing faceted GB can also be created using the CreateFacetGB executable. For instance,
+```bash
+./CreateFacetGB 1 1 1 60 1 1 1  1 1 0  0 0 1  70 Gold
+```
+
+will create a coherent twin boundary ([111]60°(111) GB) faceted using (110) and (001) GB plane with a facet length of approximately 70A using FCC gold crystal such that:
+
+![figurefacetGB](/doc/GB_And_BondOriParam/figurefacetGB.png)
+
 
 **2. Compute bond orientational parameter**
 
@@ -115,8 +140,19 @@ For the moment, the AtomHIC library provides the following SGMA databases:
 To make the structural analysis with SGMA of a given dump file, just use:
 
 ```bash
-./GMMClassification DumpFilename NameOfDatabase OutputFilename 
+./GMMClassification DumpFilename NameOfDatabase OutputFilename OutputDescriptorsOrNot
 ```
+
+For instance, when performing the structural analysis of the lower grain of the faceted gold GB shown above using:
+
+```bash
+./GMMClassification Grain1.lmp GoldSurfaces Grain1_analyzed.cfg 0
+```
+
+we obtain the following result:
+
+![figure_AnaGB](/doc/FitGMM/FacetGB.png)
+
 
 ## Code structure
 
