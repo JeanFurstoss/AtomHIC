@@ -1,13 +1,8 @@
 //**********************************************************************************
-//*   ACEDescriptors.h                                                             *
+//*   AtomicSystemTrajectory.h                                                     *
 //**********************************************************************************
-//* This file contains the declaration of the ACEDescriptors class (herited from   *
-//* Descriptors) and allowing to compute atomic cluster expansion descriptors      *
-//* This implementation uses the PACE (performant implementation of atomic cluster *
-//* expansion) as implemented in LAMMPS and based on the work of Lysogorskiy et al.*
-//* 2021									   *
-//* The implementation is mainly based on the compute_atom method of the 	   *
-//* ACEBEvaluator (l.102 ace/ace_b_evaluator.cpp) in ML-PACE			   *
+//* This file contains the declaration of the AtomicSystemTrajectory class         *
+//* It allows to read and treat atomic system trajectories such as .lammpstrj files*
 //**********************************************************************************
 //* (C) Jan 2025 - Jean Furstoss                                                   *
 //*     Université de Poitiers, Institut PPRIME                                    *
@@ -33,37 +28,38 @@
 //**********************************************************************************
 
 
-#ifndef ACEDESCRIPTORS_H
-#define ACEDESCRIPTORS_H
+#ifndef ATOMICSYSTEMTRAJECTORY_H
+#define ATOMICSYSTEMTRAJECTORY_H
 
 #include "AtomHicExport.h"
 #include "AtomicSystem.h"
+#include "Bicrystal.h"
 #include "MathTools.h"
 #include <string>
-#include "Descriptors.h"
-#include "ML-PACE/ace/ace_b_basis.h"
+#include <vector>
 
-class ATOMHIC_EXPORT ACEDescriptors : public Descriptors {
+class ATOMHIC_EXPORT AtomicSystemTrajectory {
 private:
-	// Properties of ACE descriptors
-	std::string yaml_filename;
-	ACEBBasisSet *MyACEBBase;
-	Array2D<DOUBLE_TYPE> A_rank1 = Array2D<DOUBLE_TYPE>("A_rank1"); ///< 2D-array for storing A's for rank=1, shape: A(mu_j,n)
-	Array4DLM<ACEComplex> A = Array4DLM<ACEComplex>("A"); ///< 4D array with (l,m) last indices  for storing A's for rank>1: A(mu_j, n, l, m)
-	double Y00 = 1.;
-	//BBasisConfiguration MyBBasisConf;
+	// Properties
+	std::string input_filename;
+	bool IsTraj = false;
+	std::vector<AtomicSystem*> AtSysList;
+	std::vector<Bicrystal*> BicrystalList;
+	unsigned int nbSys = 0;
+	std::vector<unsigned int> timesteps;
 public:
 	// constructors
-	ACEDescriptors(AtomicSystem *_MySystem, std::string _yaml_filename);
-	ACEDescriptors(AtomicSystem *_MySystem, std::vector<std::string> _Properties);
+	AtomicSystemTrajectory();
 	// methods
-	void ComputeDescriptors();
-	void printDescriptorsPropToDatabase(std::ofstream &writefile);
-	void setProperties();
-	void readProperties(std::vector<std::string> _Properties);
-
+	bool SearchIsTrajectory(const std::string &_input_filename);
+	void setAtomicSystemList(const std::string &_input_filename);
+	void printSystem_aux(const std::string& filename, const std::string& AuxId);
+	// getters
+	unsigned int getNbSys(){ return nbSys; }
+	unsigned int getTimestep(const unsigned int &i){ return timesteps[i]; }
+	AtomicSystem* getAtomicSystem(const unsigned int &i){ return AtSysList[i]; } 
 	// destructor
-	~ACEDescriptors();
+	~AtomicSystemTrajectory();
 	
 };
 

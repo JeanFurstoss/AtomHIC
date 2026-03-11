@@ -522,15 +522,15 @@ void AtomicSystem::AtomListConstructor(Atom *AtomList, unsigned int nbAtom, Crys
 }
 
 // Constructor using the filename of an atomic file (.cfg, .lmp, .xsf,..)
-AtomicSystem::AtomicSystem(const string& filename){
+AtomicSystem::AtomicSystem(const string& filename, const int &_timestep){
 	Dis = new Displays;
-	if( !FilenameConstructor(filename) ){
-		cerr << "Maybe try to change its format using atomsk or generate it with AtomHic (supported format lmp, cfg)" << endl;
+	if( !FilenameConstructor(filename, _timestep) ){
+		cerr << "Maybe try to change its format using atomsk or generate it with AtomHic (supported format lmp, cfg, lammpstrj)" << endl;
 		exit(EXIT_FAILURE);
 	}
 }
 
-bool AtomicSystem::FilenameConstructor(const string& filename){
+bool AtomicSystem::FilenameConstructor(const string& filename, const int &_timestep){
 	if( FilenameConstructed ){
 		delete[] AtomType;
 		delete[] AtomMass;
@@ -571,7 +571,7 @@ bool AtomicSystem::FilenameConstructor(const string& filename){
 	this->G3 = new double[3];
 	this->IsG = true;
 
-	if( !ReadAtomicFile(filename) ){
+	if( !ReadAtomicFile(filename,_timestep) ){
 		cout << "The atomic file readers cannot read the given file." << endl;
 		IsAtomListMine = false;
 		return false;
@@ -870,12 +870,13 @@ AtomicSystem::AtomicSystem(AtomicSystem *AtSys, unsigned int &nbSys, std::string
 
 }
 
-bool AtomicSystem::ReadAtomicFile(const string &filename){
+bool AtomicSystem::ReadAtomicFile(const string &filename, const int &_timestep){
 	string ext=filename.substr(filename.find_last_of(".") + 1);
-	cout << "Reading " << filename << " file..";
+	if( _timestep == -1 ) cout << "Reading " << filename << " file..";
+	else cout << "Timestep " << _timestep;
 	if( ext == "lmp" ){
 		if( !this->read_lmp_file(filename) ){
-			if( !this->read_cfg_file(filename) ){
+			if( !this->read_cfg_file(filename,_timestep) ){
 				if( !this->read_other_cfg(filename) ){
 					return false;
 				}else{
@@ -891,7 +892,7 @@ bool AtomicSystem::ReadAtomicFile(const string &filename){
 				return true;
 		}
 	}else{
-		if( !this->read_cfg_file(filename) ){
+		if( !this->read_cfg_file(filename,_timestep) ){
 			if( !this->read_other_cfg(filename) ){
 				if( !this->read_lmp_file(filename) ){
 					return false;
@@ -2342,13 +2343,13 @@ bool AtomicSystem::read_other_cfg(const string& filename){
 	}
 }
 
-bool AtomicSystem::read_cfg_file(const string& filename){
+bool AtomicSystem::read_cfg_file(const string& filename,const int &_timestep){
 	ifstream file(filename, ios::in);
 	unsigned int ReadOk(0);
 	unsigned int NbAtRead = 0;
 	if(file){
 		unsigned int hi_number_uint = std::numeric_limits<unsigned int>::max() - 5e8; // 5e8 is now the maximum number of atoms
-		unsigned int line_dt(hi_number_uint), line_At(hi_number_uint), line_H(hi_number_uint), line_at(hi_number_uint), buffer_uint, buffer_uint_1, count_H(0), count(0), nbAux(0), aux_count;
+		unsigned int line_dt(hi_number_uint), line_At(hi_number_uint), line_H(hi_number_uint), line_at(hi_number_uint), final_line(hi_number_uint), buffer_uint, buffer_uint_1, count_H(0), count(0), nbAux(0), aux_count;
 		size_t pos_dt, pos_At, pos_H, pos_charge, pos_at, pos_aux_vec, pos_elem, pos_typeuint, pos_id;
 		double buffer_1, buffer_2, buffer_3, buffer_4, buffer_5;
 		double xlo,xhi,ylo,yhi,zlo,zhi;
@@ -2356,6 +2357,8 @@ bool AtomicSystem::read_cfg_file(const string& filename){
 		bool other_cfg = false, IsReducedCoords = false;
 		bool IsType_uint = false;
 		bool IsId = false;
+		bool GoodTimestep = true;
+		if( _timestep != -1 ) GoodTimestep = false;
 		unsigned int nbAux_norm=3;
 		vector<string> befAuxNames;
 		nbAtomType = 0;
@@ -2368,12 +2371,13 @@ bool AtomicSystem::read_cfg_file(const string& filename){
 				istringstream text(line);
 				text >> buffer_1;
 			       	this->timestep = buffer_1;
+				if( !GoodTimestep && _timestep == (int) timestep ) GoodTimestep = true;
 			}
 
 			// find number of atom
 			pos_At=line.find("NUMBER OF ATOMS");
 			if( pos_At!=string::npos ) line_At = count;
-			if( count == line_At+1 ){
+			if( count == line_At+1 && GoodTimestep ){
 				istringstream text(line);
 				text >> buffer_uint;
 			       	this->nbAtom = buffer_uint;
@@ -2383,7 +2387,7 @@ bool AtomicSystem::read_cfg_file(const string& filename){
 
 			// find box vectors
 			pos_H=line.find("BOX BOUNDS");
-			if( pos_H!=string::npos ){
+			if( pos_H!=string::npos && GoodTimestep ){
 				line_H = count;
 				istringstream text2(line);
 				unsigned int nbCol = 0;
@@ -2395,7 +2399,7 @@ bool AtomicSystem::read_cfg_file(const string& filename){
 				if( nbCol > 6 )	this->IsTilted = true;
 				ReadOk++;
 			}
-			if( IsTilted && count > line_H && count < line_H+4 ){
+			if( IsTilted && count > line_H && count < line_H+4 && GoodTimestep ){
 				istringstream text(line);
 				text >> buffer_1 >> buffer_2 >> buffer_3;
 				if( count_H == 0 ){
@@ -2417,7 +2421,7 @@ bool AtomicSystem::read_cfg_file(const string& filename){
 				this->H2[1] = yhi-ylo+this->MT->min(arr_2,2)-this->MT->max(arr_2,2);
 				}
 				count_H += 1;
-			}else if( !IsTilted && count > line_H && count < line_H+4 ){
+			}else if( !IsTilted && count > line_H && count < line_H+4 && GoodTimestep ){
 				istringstream text(line);
 				text >> buffer_1 >> buffer_2;
 				if( count_H == 0 ){
@@ -2438,28 +2442,28 @@ bool AtomicSystem::read_cfg_file(const string& filename){
 
 			// search if atom are charged
 			pos_charge=line.find(" q");
-			if( pos_charge!=string::npos){
+			if( pos_charge!=string::npos && GoodTimestep ){
 				this->IsCharge = true;
 				nbAux_norm += 1;
 			}
 			pos_elem=line.find(" element");
-			if( pos_elem!=string::npos){
+			if( pos_elem!=string::npos && GoodTimestep ){
 				IsElem = true;
 				nbAux_norm += 1;
 			}
 			pos_typeuint=line.find(" type");
-			if( pos_typeuint!=string::npos){
+			if( pos_typeuint!=string::npos && GoodTimestep ){
 				IsType_uint = true;
 				nbAux_norm += 1;
 			}
 			pos_id=line.find(" id");
-			if( pos_id!=string::npos){
+			if( pos_id!=string::npos && GoodTimestep ){
 				IsId = true;
 				nbAux_norm += 1;
 			}
 			// find and get atom positions
 			pos_at=line.find("ITEM: ATOMS");
-			if( pos_at!=string::npos ){
+			if( pos_at!=string::npos && GoodTimestep ){
 				ReadOk++;
 				istringstream text(line);
 				text >> buffer_s >> buffer_s;
@@ -2515,8 +2519,9 @@ bool AtomicSystem::read_cfg_file(const string& filename){
 				for(unsigned int au=0;au<Aux_name.size();au++) this->Aux.push_back(new double[this->nbAtom*Aux_size[au]]);
 				line_at = count;
 				nbAux -= nbAux_norm;
+				final_line = line_at+1+this->nbAtom;
 			}
-			if( count > line_at  && count < line_at+1+this->nbAtom ){
+			if( count > line_at  && count < final_line && GoodTimestep ){
 				istringstream text(line);
 				for(unsigned int bs=0;bs<befAuxNames.size();bs++){
 					if( befAuxNames[bs] == "id" ) text >> buffer_uint;
@@ -2548,6 +2553,10 @@ bool AtomicSystem::read_cfg_file(const string& filename){
 							}
 						}
 						if( !elem_already_stored ){
+							if( nbAtomType >= MaxAtomType-1 ){
+								cerr << "Number of atom type exceed maximum number of ato type allowed" << endl;
+								exit(EXIT_FAILURE);
+							}
 							AtomType[nbAtomType] = buffer_s;
 							nbAtomType += 1;
 							this->AtomList[NbAtRead].type_uint = nbAtomType;
@@ -2557,7 +2566,13 @@ bool AtomicSystem::read_cfg_file(const string& filename){
 					}
 				}else{
 					this->AtomList[NbAtRead].type_uint = buffer_uint_1;
-					if( IsElem ) this->AtomType[buffer_uint_1-1] = buffer_s;
+					if( IsElem ){
+						if( buffer_uint_1 >= MaxAtomType ){
+							cerr << "Number of atom type exceed maximum number of ato type allowed" << endl;
+							exit(EXIT_FAILURE);
+						}
+						this->AtomType[buffer_uint_1-1] = buffer_s;
+					}
 				}
 				if( IsCharge ) this->AtomCharge[AtomList[NbAtRead].type_uint-1] = buffer_4;
 				if(nbAux>0){
@@ -2568,6 +2583,7 @@ bool AtomicSystem::read_cfg_file(const string& filename){
 				++NbAtRead;
 			}
 			count += 1;
+			if( count >= final_line && GoodTimestep ) break;
 		}
 		file.close();
 		if( ReadOk != 3 ) return false;
@@ -2746,7 +2762,7 @@ void AtomicSystem::print_cfg(const string& filename){
 	cout << "File " << filename << " successfully writted ! (" << SystemCharacteristics(true) << ")" << endl;
 }
 
-void AtomicSystem::printSystem_aux(const string& filename, const string& AuxName){
+void AtomicSystem::printSystem_aux(const string& filename, const string& AuxName, bool append){
 	vector<string> AuxNames_v;
 	string buffer;
 	string AuxName_a = AuxProp2Print+AuxName;
@@ -2767,7 +2783,10 @@ void AtomicSystem::printSystem_aux(const string& filename, const string& AuxName
 		if( aux_find == false ) cout << "The auxiliary property \"" << AuxNames_v[j] << "\" has not been found" << endl;
 	}
 	
-	ofstream writefile(filename);
+	ofstream writefile;
+	if( append ) writefile.open(filename, ios_base::app);
+	else writefile.open(filename);
+
 	writefile << "ITEM: TIMESTEP\n" << (int) this->timestep << "\nITEM: NUMBER OF ATOMS\n" << this->nbAtom << "\nITEM: ";
 	if( IsTilted ){
 		// compute the cell vectors
@@ -2859,7 +2878,9 @@ void AtomicSystem::printSystem_aux(const string& filename, const string& AuxName
 		}
 	}
 	writefile.close();
-	cout << "File " << filename << " successfully writted ! (" << SystemCharacteristics(true);
+	if( append ) cout << "timestep " << timestep;
+	else cout << "File " << filename;
+        cout << " successfully writted ! (" << SystemCharacteristics(true);
 	cout << ", auxiliary properties :";
         for(unsigned int i=0;i<AuxId.size();i++) cout << " " << this->Aux_name[AuxId[i]] << " - " << Aux_size[AuxId[i]] << " dim -";
 	cout << ")" << endl;

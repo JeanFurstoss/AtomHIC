@@ -123,13 +123,13 @@ protected:
 public:
 	AtomicSystem();
 	AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double zhi, std::vector<int> cl_box); // construct atomic system from crystal and cell size
-	AtomicSystem(const std::string& filename); // construct AtomicSystem by reading file
+	AtomicSystem(const std::string& filename, const int &_timestep=-1); // construct AtomicSystem by reading file
 	AtomicSystem(AtomicSystem *AtSys, unsigned int &nbSys, std::string &dir); // construct AtomicSystem with multiple AtomicSystems by merging along a given direction (to be used for replacing bicrystal construction in addition with the new duplicate method)
 	AtomicSystem(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3); // construct AtomicSystem giving AtomList and cell vectors 
 	AtomicSystem(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3, unsigned int *MolId); // construct AtomicSystem giving AtomList and cell vectors 
 	AtomicSystem(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3, unsigned int *MolId, unsigned int nbBonds, unsigned int nbBondType, unsigned int *Bonds, unsigned int *BondType); // construct AtomicSystem giving AtomList and cell vectors 
 	AtomicSystem(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3, unsigned int *MolId, unsigned int nbBonds, unsigned int nbBondType, unsigned int *Bonds, unsigned int *BondType, unsigned int nbAngles, unsigned int nbAngleType, unsigned int *Angles, unsigned int *AngleType); // construct AtomicSystem giving AtomList and cell vectors 
-	bool FilenameConstructor(const std::string& filename);
+	bool FilenameConstructor(const std::string& filename, const int &_timestep=-1);
 	void AtomListConstructor(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3); // construct AtomicSystem giving AtomList and cell vectors
 	// getters
 	std::string getAtomType(const unsigned int i){ return this->AtomType[i]; };
@@ -196,14 +196,14 @@ public:
 	void UpdateTypes2Crystal();
 	void read_params_atsys();
 	void computeInverseCellVec();
-	bool ReadAtomicFile(const std::string& filename);
+	bool ReadAtomicFile(const std::string& filename, const int &_timestep=-1);
 	bool read_lmp_file(const std::string& filename);
-	bool read_cfg_file(const std::string& filename);
+	bool read_cfg_file(const std::string& filename, const int &_timestep=-1);
 	bool read_other_cfg(const std::string& filename);
 	void printSystem(const std::string& filename); // print a file containing atom type, charge, masse and position
 	void print_lmp(const std::string& filename);
 	void print_cfg(const std::string& filename);
-	void printSystem_aux(const std::string& filename, const std::string& AuxId);
+	void printSystem_aux(const std::string& filename, const std::string& AuxId, bool append=false);
 	std::string SystemCharacteristics(bool cfg=false);
 	unsigned int searchNeighbours(const double& rc); // return nbNMax which is crucial for findings neighbours from the list
 	unsigned int searchNeighbours_restricted(const double& rc, const std::vector<unsigned int> & IndexToSearch, const std::vector<unsigned int> & IndexForSearch); // return nbNMax which is crucial for findings neighbours from the list
@@ -216,11 +216,6 @@ public:
 	Position getWrappedPosition(unsigned int &i) const { return this->WrappedPos[i]; }
 	void ComputePeriodicArr();
 	Atom& getAtomRef(unsigned int &i) { return this->AtomList[i]; }
-	//
-	//void ApplyShift(const double &shift_x, const double &shift_y, const double &shift_z);
-	//Position getWrappedPosition(unsigned int i) const { return this->WrappedPos[i];}
-	//Atom& getAtomRef(unsigned int i) { return this->AtomList[i];}
-	
 	//
 	void deleteNeighList(){
 		if( this->IsNeighbours ){

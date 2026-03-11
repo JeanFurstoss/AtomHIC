@@ -29,6 +29,7 @@
 //**********************************************************************************
 
 #include <AtomicSystem.h>
+#include <AtomicSystemTrajectory.h>
 #include <ComputeAuxiliary.h>
 #include <Crystal.h>
 #include <stdlib.h>
@@ -68,12 +69,34 @@ int main(int argc, char *argv[])
 		cerr << "More details on the computation of this order parameter can be found in Furstoss et al. (2024) Comp. Mat. Science." << endl;
 		return EXIT_FAILURE;
 	}
-	AtomicSystem MySystem(InputFilename);
-	if( argc == 4 ) MySystem.setCrystal(CrystalType);
-	ComputeAuxiliary CA(&MySystem);
-	MySystem.setAux(CA.BondOrientationalParameter(), "BondOriParam");
-	MySystem.printSystem_aux(outfilename, "BondOriParam");
+
+	AtomicSystemTrajectory MyTraj;
+	AtomicSystem *MySystem;
+
+	unsigned int nbSys = 1;
+	if( MyTraj.SearchIsTrajectory(InputFilename) ){
+		MyTraj.setAtomicSystemList(InputFilename);
+		nbSys = MyTraj.getNbSys();
+	}
+
+	for(unsigned int i=0;i<nbSys;i++){
+		if( nbSys == 1 ) MySystem = new AtomicSystem(InputFilename);
+		else{
+			cout << "Treating timestep " << MyTraj.getTimestep(i) << endl;
+			MySystem = MyTraj.getAtomicSystem(i);
+		}
+
+		if( argc == 4 ) MySystem->setCrystal(CrystalType);
+		ComputeAuxiliary CA(MySystem);
+		MySystem->setAux(CA.BondOrientationalParameter(), "BondOriParam");
+	}
 	
+	if( nbSys == 1 ){
+		MySystem->printSystem_aux(outfilename,"BondOriParam");
+		delete MySystem;
+	}else
+		MyTraj.printSystem_aux(outfilename,"BondOriParam");
+
 	Dis.ExecutionTime();	
 	return 0;
 }

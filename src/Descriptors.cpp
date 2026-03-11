@@ -38,18 +38,18 @@
 using namespace std;
 
 
-Descriptors::Descriptors(AtomicSystem *_MySystem):_MySystem(_MySystem){
+Descriptors::Descriptors(AtomicSystem *_MySystem):MySystem(_MySystem){
 	readFixedParams();
 	MT = new MathTools();
 	nbDatTot = _MySystem->getNbAtom();
-	ConstructFilterIndexArray(_MySystem);
+	ConstructFilterIndexArray();
 }
 
-Descriptors::Descriptors(AtomicSystem *_MySystem, string DescriptorName, string _FilteringType):_MySystem(_MySystem){
+Descriptors::Descriptors(AtomicSystem *_MySystem, string DescriptorName, string _FilteringType):MySystem(_MySystem){
 	FilteringType = _FilteringType;
 	MT = new MathTools();
 	nbDatTot = _MySystem->getNbAtom();
-	ConstructFilterIndexArray(_MySystem);
+	ConstructFilterIndexArray();
 	if( DescriptorName == "Position" ){
 		dim = 3;
 		ConstructDescriptorFromAtomicPosition();
@@ -66,12 +66,12 @@ Descriptors::Descriptors(AtomicSystem *_MySystem, string DescriptorName, string 
 	}
 }
 
-Descriptors::Descriptors(AtomicSystem *_MySystem, vector<string> _Properties):_MySystem(_MySystem){
+Descriptors::Descriptors(AtomicSystem *_MySystem, vector<string> _Properties):MySystem(_MySystem){
 	readFixedParams(); // read fixed parameters before in order to have all values initialized even if some are missing in _Properties
 	readProperties(_Properties);
 	MT = new MathTools();
 	nbDatTot = _MySystem->getNbAtom();
-	ConstructFilterIndexArray(_MySystem);
+	ConstructFilterIndexArray();
 }
 
 Descriptors::Descriptors(double *Descriptors, unsigned int nbdat, unsigned int dim){
@@ -112,12 +112,13 @@ void Descriptors::ConstructLabelIndexArray(){
 	delete[] count_dat;
 }
 
-void Descriptors::ConstructFilterIndexArray(AtomicSystem *_MySystem){
+void Descriptors::ConstructFilterIndexArray(){
 	FilterValue.clear();
+	unsigned int zero(0);
 	if( FilteringType == "none" ){
 		nbFilter = 1;
 		FilterValue.push_back("none");
-		nbDat.push_back(_MySystem->getNbAtom());
+		nbDat.push_back(MySystem->getNbAtom());
 		nbDatMax = nbDat[0];
 		nbDatTot = nbDat[0];
 		FilterIndex = new unsigned int[nbDat[0]];
@@ -127,10 +128,10 @@ void Descriptors::ConstructFilterIndexArray(AtomicSystem *_MySystem){
 			DescriptorFilter[i] = 0;
 		}
 	}else if( FilteringType == "element" || FilteringType == "type" ){
-		nbFilter = _MySystem->getNbAtomType();
+		nbFilter = MySystem->getNbAtomType();
 		for(unsigned int f=0;f<nbFilter;f++) FilterValue.push_back("");
 		if( nbFilter > nbMaxFilter ) cout << "Warning there is " << nbFilter << " different filters, which is a lot" << endl;
-		if( _MySystem->getAtomType(0) == "" ){
+		if( MySystem->getAtomType(zero) == "" ){
 			vector<unsigned int> type_t2e;
 			vector<string> element_t2e;
 			unsigned int buffer_i;
@@ -162,25 +163,25 @@ void Descriptors::ConstructFilterIndexArray(AtomicSystem *_MySystem){
 		}else{
 			for(unsigned int f=0;f<nbFilter;f++){
 				nbDat.push_back(0);
-				FilterValue[f] = _MySystem->getAtomType(f);
+				FilterValue[f] = MySystem->getAtomType(f);
 			}
 			FilteringType = "element";
 		}
-		for(unsigned int i=0;i<nbDatTot;i++) nbDat[_MySystem->getAtom(i).type_uint-1]++; 
+		for(unsigned int i=0;i<nbDatTot;i++) nbDat[MySystem->getAtom(i).type_uint-1]++; 
 		nbDatMax = MT->max_vec(nbDat);
 		FilterIndex = new unsigned int[nbDatMax*nbFilter];
 		DescriptorFilter = new unsigned int[nbDatTot];
 		for(unsigned int f=0;f<nbFilter;f++) nbDat[f] = 0;
 		unsigned int current_f;
 		for(unsigned int i=0;i<nbDatTot;i++){
-			current_f = _MySystem->getAtom(i).type_uint-1; // TODO modify here when changing the thing with type_uint
+			current_f = MySystem->getAtom(i).type_uint-1; // TODO modify here when changing the thing with type_uint
 			FilterIndex[current_f*nbDatMax+nbDat[current_f]] = i;
 			DescriptorFilter[i] = current_f;
 			nbDat[current_f]++;
 		}
 	}else{
 		unsigned int aux_size_filter, aux_id_filter;
-		aux_id_filter = _MySystem->getAuxIdAndSize(FilteringType,aux_size_filter);
+		aux_id_filter = MySystem->getAuxIdAndSize(FilteringType,aux_size_filter);
 		if( aux_size_filter == 0 ){
 			cerr << "The fitlering type \"" << FilteringType << "\" cannot be found in the auxiliary properties of the atomic system, aborting" << endl;
 			exit(EXIT_FAILURE);
@@ -191,7 +192,7 @@ void Descriptors::ConstructFilterIndexArray(AtomicSystem *_MySystem){
 		for(unsigned int i=0;i<nbDatTot;i++){
 			bool already = false;
 			for(unsigned int f=0;f<FilterValue.size();f++){
-				if( to_string(_MySystem->getAux(aux_id_filter)[i]) == FilterValue[f] ){
+				if( to_string(MySystem->getAux(aux_id_filter)[i]) == FilterValue[f] ){
 					nbDat[f]++;
 					already = true;
 					break;
@@ -199,7 +200,7 @@ void Descriptors::ConstructFilterIndexArray(AtomicSystem *_MySystem){
 			}
 			if( !already ){
 				nbDat.push_back(1);
-				FilterValue.push_back(to_string(_MySystem->getAux(aux_id_filter)[i]));
+				FilterValue.push_back(to_string(MySystem->getAux(aux_id_filter)[i]));
 			}
 		}
 		nbFilter = FilterValue.size();
@@ -211,7 +212,7 @@ void Descriptors::ConstructFilterIndexArray(AtomicSystem *_MySystem){
 		unsigned int current_f;
 		for(unsigned int i=0;i<nbDatTot;i++){
 			for(unsigned int f=0;f<FilterValue.size();f++){
-				if( to_string(_MySystem->getAux(aux_id_filter)[i]) == FilterValue[f] ){
+				if( to_string(MySystem->getAux(aux_id_filter)[i]) == FilterValue[f] ){
 					FilterIndex[f*nbDatMax+nbDat[f]] = i;
 					DescriptorFilter[i] = f;
 					nbDat[f]++;
@@ -696,9 +697,9 @@ void Descriptors::ConstructDescriptorFromAtomicPosition(){
 	// TODO better thing when struct Atom has changed (i.e. not a copy)
 	_Descriptors = new double[dim*nbDatTot];
 	for(unsigned int i=0;i<nbDatTot;i++){
-		_Descriptors[i*3] = _MySystem->getAtom(i).pos.x;
-		_Descriptors[i*3+1] = _MySystem->getAtom(i).pos.y;
-		_Descriptors[i*3+2] = _MySystem->getAtom(i).pos.z;
+		_Descriptors[i*3] = MySystem->getAtom(i).pos.x;
+		_Descriptors[i*3+1] = MySystem->getAtom(i).pos.y;
+		_Descriptors[i*3+2] = MySystem->getAtom(i).pos.z;
 	}
 }
 

@@ -37,6 +37,7 @@ using namespace std;
 SteinhardtDescriptors::SteinhardtDescriptors(AtomicSystem *_MySystem):Descriptors(_MySystem){
 	this->name = "Steinhardt";
 	readFixedParams();
+	setProperties();
 	InitializeArrays();
 	ComputeDescriptors();
 }
@@ -44,16 +45,17 @@ SteinhardtDescriptors::SteinhardtDescriptors(AtomicSystem *_MySystem):Descriptor
 SteinhardtDescriptors::SteinhardtDescriptors(AtomicSystem *_MySystem, vector<string> _Properties):Descriptors(_MySystem,_Properties){
 	this->name = "Steinhardt";
 	readProperties(_Properties);
+	setProperties();
 	InitializeArrays();
 	ComputeDescriptors();
 }
 
 void SteinhardtDescriptors::InitializeArrays(){
 	// if neighbours have not been searched perform the research
-	if( !_MySystem->getIsNeighbours() || _MySystem->get_current_rc() != rc ){
-		_MySystem->searchNeighbours(rc);
+	if( !MySystem->getIsNeighbours() || MySystem->get_current_rc() != rc ){
+		MySystem->searchNeighbours(rc);
 	}
-	nbNMax = _MySystem->getNbMaxN();
+	nbNMax = MySystem->getNbMaxN();
 	if( mode == "OneL" ){
 		dim = 1;
 		_Descriptors = new double[nbDatTot];
@@ -119,20 +121,20 @@ void SteinhardtDescriptors::ComputeBondOriParam(){
 	VectorXd Calpha_e(nbDatTot);
 	#pragma omp parallel for
 	for(unsigned int i=0;i<nbDatTot;i++){
-		double xpos = _MySystem->getWrappedPos(i).x;
-		double ypos = _MySystem->getWrappedPos(i).y;
-		double zpos = _MySystem->getWrappedPos(i).z;
+		double xpos = MySystem->getWrappedPos(i).x;
+		double ypos = MySystem->getWrappedPos(i).y;
+		double zpos = MySystem->getWrappedPos(i).z;
 		Malpha[i*(nbNMax+1)] = 0; 
 		Calpha[i] = 0; 
-		for(unsigned int j_loop=0;j_loop<_MySystem->getNeighbours(i*(nbNMax+1));j_loop++){
-			unsigned int id = _MySystem->getNeighbours(i*(nbNMax+1)+j_loop+1);
+		for(unsigned int j_loop=0;j_loop<MySystem->getNeighbours(i*(nbNMax+1));j_loop++){
+			unsigned int id = MySystem->getNeighbours(i*(nbNMax+1)+j_loop+1);
 			unsigned int ind1 = i*nbNMax*3+j_loop*3;
 			unsigned int ind2 = ind1+1;
 			unsigned int ind3 = ind2+1;
 			// get distance vector
-			double xp = _MySystem->getWrappedPos(id).x+_MySystem->getCLNeighbours(ind1)*_MySystem->getH1()[0]+_MySystem->getCLNeighbours(ind2)*_MySystem->getH2()[0]+_MySystem->getCLNeighbours(ind3)*_MySystem->getH3()[0]-xpos;
-			double yp = _MySystem->getWrappedPos(id).y+_MySystem->getCLNeighbours(ind1)*_MySystem->getH1()[1]+_MySystem->getCLNeighbours(ind2)*_MySystem->getH2()[1]+_MySystem->getCLNeighbours(ind3)*_MySystem->getH3()[1]-ypos;
-			double zp = _MySystem->getWrappedPos(id).z+_MySystem->getCLNeighbours(ind1)*_MySystem->getH1()[2]+_MySystem->getCLNeighbours(ind2)*_MySystem->getH2()[2]+_MySystem->getCLNeighbours(ind3)*_MySystem->getH3()[2]-zpos;
+			double xp = MySystem->getWrappedPos(id).x+MySystem->getCLNeighbours(ind1)*MySystem->getH1()[0]+MySystem->getCLNeighbours(ind2)*MySystem->getH2()[0]+MySystem->getCLNeighbours(ind3)*MySystem->getH3()[0]-xpos;
+			double yp = MySystem->getWrappedPos(id).y+MySystem->getCLNeighbours(ind1)*MySystem->getH1()[1]+MySystem->getCLNeighbours(ind2)*MySystem->getH2()[1]+MySystem->getCLNeighbours(ind3)*MySystem->getH3()[1]-ypos;
+			double zp = MySystem->getWrappedPos(id).z+MySystem->getCLNeighbours(ind1)*MySystem->getH1()[2]+MySystem->getCLNeighbours(ind2)*MySystem->getH2()[2]+MySystem->getCLNeighbours(ind3)*MySystem->getH3()[2]-zpos;
 			// compute colatitude and longitudinal angles
 			double colat = acos(zp/sqrt(pow(xp,2.)+pow(yp,2.)+pow(zp,2.)));
 			double longit;
@@ -145,7 +147,7 @@ void SteinhardtDescriptors::ComputeBondOriParam(){
 			// compute spherical harmonics
 			for(int l_loop=-l_sph;l_loop<l_sph+1;l_loop++) Qlm[i*(l_sph*2+1)+l_loop+l_sph] += sh::EvalSH(l_sph, l_loop, longit, colat);
 			// Store the neighbour index into Malpha if it is of the same specy
-			if( _MySystem->getAtom(i).type_uint == _MySystem->getAtom(id).type_uint ){
+			if( MySystem->getAtom(i).type_uint == MySystem->getAtom(id).type_uint ){
 				Malpha[i*(nbNMax+1)] += 1;
 				Malpha[i*(nbNMax+1)+Malpha[i*(nbNMax+1)]] = id;
 			}
@@ -185,20 +187,20 @@ void SteinhardtDescriptors::ComputeSteinhardtParameters_Mono(){
 			cout << "\r[" << string(bar_length*prog,'X') << string(bar_length*(1-prog),'-') << "] " << setprecision(3) << 100*prog << "%";
 			count_t++;
 		}
-		double xpos = _MySystem->getWrappedPos(i).x;
-		double ypos = _MySystem->getWrappedPos(i).y;
-		double zpos = _MySystem->getWrappedPos(i).z;
+		double xpos = MySystem->getWrappedPos(i).x;
+		double ypos = MySystem->getWrappedPos(i).y;
+		double zpos = MySystem->getWrappedPos(i).z;
 		Malpha[i*(nbNMax+1)] = 0; 
-		for(unsigned int j_loop=0;j_loop<_MySystem->getNeighbours(i*(nbNMax+1));j_loop++){
-			unsigned int id = _MySystem->getNeighbours(i*(nbNMax+1)+j_loop+1);
-			if( _MySystem->getAtom(i).type_uint == _MySystem->getAtom(id).type_uint ){
+		for(unsigned int j_loop=0;j_loop<MySystem->getNeighbours(i*(nbNMax+1));j_loop++){
+			unsigned int id = MySystem->getNeighbours(i*(nbNMax+1)+j_loop+1);
+			if( MySystem->getAtom(i).type_uint == MySystem->getAtom(id).type_uint ){
 				// get distance vector
 				unsigned int ind1 = i*nbNMax*3+j_loop*3;
 				unsigned int ind2 = ind1+1;
 				unsigned int ind3 = ind2+1;
-				double xp = _MySystem->getWrappedPos(id).x+_MySystem->getCLNeighbours(ind1)*_MySystem->getH1()[0]+_MySystem->getCLNeighbours(ind2)*_MySystem->getH2()[0]+_MySystem->getCLNeighbours(ind3)*_MySystem->getH3()[0]-xpos;
-				double yp = _MySystem->getWrappedPos(id).y+_MySystem->getCLNeighbours(ind1)*_MySystem->getH1()[1]+_MySystem->getCLNeighbours(ind2)*_MySystem->getH2()[1]+_MySystem->getCLNeighbours(ind3)*_MySystem->getH3()[1]-ypos;
-				double zp = _MySystem->getWrappedPos(id).z+_MySystem->getCLNeighbours(ind1)*_MySystem->getH1()[2]+_MySystem->getCLNeighbours(ind2)*_MySystem->getH2()[2]+_MySystem->getCLNeighbours(ind3)*_MySystem->getH3()[2]-zpos;
+				double xp = MySystem->getWrappedPos(id).x+MySystem->getCLNeighbours(ind1)*MySystem->getH1()[0]+MySystem->getCLNeighbours(ind2)*MySystem->getH2()[0]+MySystem->getCLNeighbours(ind3)*MySystem->getH3()[0]-xpos;
+				double yp = MySystem->getWrappedPos(id).y+MySystem->getCLNeighbours(ind1)*MySystem->getH1()[1]+MySystem->getCLNeighbours(ind2)*MySystem->getH2()[1]+MySystem->getCLNeighbours(ind3)*MySystem->getH3()[1]-ypos;
+				double zp = MySystem->getWrappedPos(id).z+MySystem->getCLNeighbours(ind1)*MySystem->getH1()[2]+MySystem->getCLNeighbours(ind2)*MySystem->getH2()[2]+MySystem->getCLNeighbours(ind3)*MySystem->getH3()[2]-zpos;
 				// compute colatitude and longitudinal angles
 				double colat = acos(zp/sqrt(pow(xp,2.)+pow(yp,2.)+pow(zp,2.)));
 				double longit;
@@ -230,7 +232,7 @@ void SteinhardtDescriptors::ComputeSteinhardtParameters_Mono(){
 					_Descriptors[i*l_sph+l_loop_st2-1] += norm(Qlm[i*lsph2 + l_loop_st2*lsph1 + (unsigned int) (m_loop_st2 + (int) l_sph)]);
 				}
 				_Descriptors[i*l_sph+l_loop_st2-1] *= 4.*M_PI/(2.*l_loop_st2+1.); 
-				//_Descriptors[i*l_sph+l_loop_st2-1] /= pow(_MySystem->getNeighbours(i*(nbNMax+1)),2.);
+				//_Descriptors[i*l_sph+l_loop_st2-1] /= pow(MySystem->getNeighbours(i*(nbNMax+1)),2.);
 				_Descriptors[i*l_sph+l_loop_st2-1] /= pow(Malpha[i*(nbNMax+1)],2.);
 				_Descriptors[i*l_sph+l_loop_st2-1] = sqrt(_Descriptors[i*l_sph+l_loop_st2-1]);
 			}
@@ -251,19 +253,19 @@ void SteinhardtDescriptors::ComputeSteinhardtParameters_Multi(){
 			cout << "\r[" << string(bar_length*prog,'X') << string(bar_length*(1-prog),'-') << "] " << setprecision(3) << 100*prog << "%";
 			count_t++;
 		}
-		double xpos = _MySystem->getWrappedPos(i).x;
-		double ypos = _MySystem->getWrappedPos(i).y;
-		double zpos = _MySystem->getWrappedPos(i).z;
+		double xpos = MySystem->getWrappedPos(i).x;
+		double ypos = MySystem->getWrappedPos(i).y;
+		double zpos = MySystem->getWrappedPos(i).z;
 		Malpha[i*(nbNMax+1)] = 0; 
-		for(unsigned int j_loop=0;j_loop<_MySystem->getNeighbours(i*(nbNMax+1));j_loop++){
+		for(unsigned int j_loop=0;j_loop<MySystem->getNeighbours(i*(nbNMax+1));j_loop++){
 			// get distance vector
-			unsigned int id = _MySystem->getNeighbours(i*(nbNMax+1)+j_loop+1);
+			unsigned int id = MySystem->getNeighbours(i*(nbNMax+1)+j_loop+1);
 			unsigned int ind1 = i*nbNMax*3+j_loop*3;
 			unsigned int ind2 = ind1+1;
 			unsigned int ind3 = ind2+1;
-			double xp = _MySystem->getWrappedPos(id).x+_MySystem->getCLNeighbours(ind1)*_MySystem->getH1()[0]+_MySystem->getCLNeighbours(ind2)*_MySystem->getH2()[0]+_MySystem->getCLNeighbours(ind3)*_MySystem->getH3()[0]-xpos;
-			double yp = _MySystem->getWrappedPos(id).y+_MySystem->getCLNeighbours(ind1)*_MySystem->getH1()[1]+_MySystem->getCLNeighbours(ind2)*_MySystem->getH2()[1]+_MySystem->getCLNeighbours(ind3)*_MySystem->getH3()[1]-ypos;
-			double zp = _MySystem->getWrappedPos(id).z+_MySystem->getCLNeighbours(ind1)*_MySystem->getH1()[2]+_MySystem->getCLNeighbours(ind2)*_MySystem->getH2()[2]+_MySystem->getCLNeighbours(ind3)*_MySystem->getH3()[2]-zpos;
+			double xp = MySystem->getWrappedPos(id).x+MySystem->getCLNeighbours(ind1)*MySystem->getH1()[0]+MySystem->getCLNeighbours(ind2)*MySystem->getH2()[0]+MySystem->getCLNeighbours(ind3)*MySystem->getH3()[0]-xpos;
+			double yp = MySystem->getWrappedPos(id).y+MySystem->getCLNeighbours(ind1)*MySystem->getH1()[1]+MySystem->getCLNeighbours(ind2)*MySystem->getH2()[1]+MySystem->getCLNeighbours(ind3)*MySystem->getH3()[1]-ypos;
+			double zp = MySystem->getWrappedPos(id).z+MySystem->getCLNeighbours(ind1)*MySystem->getH1()[2]+MySystem->getCLNeighbours(ind2)*MySystem->getH2()[2]+MySystem->getCLNeighbours(ind3)*MySystem->getH3()[2]-zpos;
 			// compute colatitude and longitudinal angles
 			double colat = acos(zp/sqrt(pow(xp,2.)+pow(yp,2.)+pow(zp,2.)));
 			double longit;
@@ -281,7 +283,7 @@ void SteinhardtDescriptors::ComputeSteinhardtParameters_Multi(){
 				}
 			}
 			// Store the neighbour index into Malpha if it is of the same specy
-			if( _MySystem->getAtom(i).type_uint == _MySystem->getAtom(id).type_uint ){
+			if( MySystem->getAtom(i).type_uint == MySystem->getAtom(id).type_uint ){
 				Malpha[i*(nbNMax+1)] += 1;
 				Malpha[i*(nbNMax+1)+Malpha[i*(nbNMax+1)]] = id;
 			}
@@ -296,7 +298,7 @@ void SteinhardtDescriptors::ComputeSteinhardtParameters_Multi(){
 					_Descriptors[i*l_sph+l_loop_st2-1] += norm(Qlm[i*lsph2 + l_loop_st2*lsph1 + (unsigned int) (m_loop_st2 + (int) l_sph)]);
 				}
 				_Descriptors[i*l_sph+l_loop_st2-1] *= 4.*M_PI/(2.*l_loop_st2+1.); 
-				_Descriptors[i*l_sph+l_loop_st2-1] /= pow(_MySystem->getNeighbours(i*(nbNMax+1)),2.);
+				_Descriptors[i*l_sph+l_loop_st2-1] /= pow(MySystem->getNeighbours(i*(nbNMax+1)),2.);
 				_Descriptors[i*l_sph+l_loop_st2-1] = sqrt(_Descriptors[i*l_sph+l_loop_st2-1]);
 			}
 		}
@@ -339,18 +341,18 @@ void SteinhardtDescriptors::AverageSteinhardtParameters_Multi(){
 		for(unsigned int l_loop_st2=1;l_loop_st2<l_sph+1;l_loop_st2++){
 			_Descriptors[i*l_sph+l_loop_st2-1] = 0.; 
 			for(int m_loop_st0=-l_loop_st2;m_loop_st0<(int) l_loop_st2+1;m_loop_st0++){
-				buffer_complex[l_loop_st2*lsph1 + (unsigned int) (m_loop_st0 + (int) l_sph)] = Qlm[i*lsph2 + l_loop_st2*lsph1 + (unsigned int) (m_loop_st0 + (int) l_sph)] / (double) _MySystem->getNeighbours(i*(nbNMax+1));
+				buffer_complex[l_loop_st2*lsph1 + (unsigned int) (m_loop_st0 + (int) l_sph)] = Qlm[i*lsph2 + l_loop_st2*lsph1 + (unsigned int) (m_loop_st0 + (int) l_sph)] / (double) MySystem->getNeighbours(i*(nbNMax+1));
 			}
-			for(unsigned int neigh=0;neigh<_MySystem->getNeighbours(i*(nbNMax+1));neigh++){
+			for(unsigned int neigh=0;neigh<MySystem->getNeighbours(i*(nbNMax+1));neigh++){
 			       for(int m_loop_st1=-l_loop_st2;m_loop_st1<(int) l_loop_st2+1;m_loop_st1++){
-				       buffer_complex[l_loop_st2*lsph1 + (unsigned int) (m_loop_st1 + (int) l_sph)] += Qlm[_MySystem->getNeighbours(i*(nbNMax+1)+neigh+1)*lsph2 + l_loop_st2*lsph1 + (unsigned int) (m_loop_st1 + (int) l_sph)] / ((double) _MySystem->getNeighbours(_MySystem->getNeighbours(i*(nbNMax+1)+neigh+1)*(nbNMax+1)));
+				       buffer_complex[l_loop_st2*lsph1 + (unsigned int) (m_loop_st1 + (int) l_sph)] += Qlm[MySystem->getNeighbours(i*(nbNMax+1)+neigh+1)*lsph2 + l_loop_st2*lsph1 + (unsigned int) (m_loop_st1 + (int) l_sph)] / ((double) MySystem->getNeighbours(MySystem->getNeighbours(i*(nbNMax+1)+neigh+1)*(nbNMax+1)));
 			       }
 			}
 			for(int m_loop_st2=-l_loop_st2;m_loop_st2<(int) l_loop_st2+1;m_loop_st2++){
 				_Descriptors[i*l_sph+l_loop_st2-1] += norm(buffer_complex[l_loop_st2*lsph1 + (unsigned int) (m_loop_st2 + (int) l_sph)]);
 			}
 			_Descriptors[i*l_sph+l_loop_st2-1] *= 4.*M_PI/((2.*l_loop_st2)+1.); 
-			_Descriptors[i*l_sph+l_loop_st2-1] /= pow(1+_MySystem->getNeighbours(i*(nbNMax+1)),2.);
+			_Descriptors[i*l_sph+l_loop_st2-1] /= pow(1+MySystem->getNeighbours(i*(nbNMax+1)),2.);
 			_Descriptors[i*l_sph+l_loop_st2-1] = sqrt(_Descriptors[i*l_sph+l_loop_st2-1]);
 		}
 	}

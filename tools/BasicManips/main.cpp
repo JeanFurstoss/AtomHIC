@@ -31,6 +31,7 @@
 //**********************************************************************************
 
 #include <AtomicSystem.h>
+#include <AtomicSystemTrajectory.h>
 #include <stdlib.h>
 #include <iostream>
 #include <sstream>
@@ -65,7 +66,13 @@ int main(int argc, char *argv[])
 	if( argc != 7 && argc != 3 && argc != nmerge+5 ) ExecMsg();
 	Dis.Printer_OnlyAuxProp();
 
+	AtomicSystemTrajectory MyTraj;
+	
 	if( argc == 7 && firstarg == "-duplicate" ){
+		if( MyTraj.SearchIsTrajectory(argv[2]) ){
+			cerr << "The use of trajectory files (.lammpstrj) has not been implemented in this executable" << endl;
+			exit(EXIT_FAILURE);
+		}
 		AtomicSystem AtSys(argv[2]);
 		unsigned int nx,ny,nz;
 		istringstream iss_nx(argv[3]);
@@ -77,6 +84,10 @@ int main(int argc, char *argv[])
 		AtSys.duplicate(nx,ny,nz);
 		AtSys.printSystem(argv[6]);
 	}else if( argc == 7 && firstarg == "-shift" ){
+		if( MyTraj.SearchIsTrajectory(argv[2]) ){
+			cerr << "The use of trajectory files (.lammpstrj) has not been implemented in this executable" << endl;
+			exit(EXIT_FAILURE);
+		}
 		AtomicSystem AtSys(argv[2]);
 		double sx,sy,sz;
 		istringstream iss_sx(argv[3]);
@@ -88,6 +99,12 @@ int main(int argc, char *argv[])
 		AtSys.ApplyShift(sx,sy,sz);
 		AtSys.printSystem(argv[6]);
 	}else if( firstarg == "-merge" ){
+		for(unsigned int n=0;n<nmerge;n++){
+			if( MyTraj.SearchIsTrajectory(argv[n+4]) ){
+				cerr << "The use of trajectory files (.lammpstrj) has not been implemented in this executable" << endl;
+				exit(EXIT_FAILURE);
+			}
+		}
 		AtomicSystem *AtSys = new AtomicSystem[nmerge];
 		string mergedir = argv[2];
 		for(unsigned int n=0;n<nmerge;n++) AtSys[n].FilenameConstructor(argv[n+4]);
@@ -95,6 +112,10 @@ int main(int argc, char *argv[])
 		newAtSys.printSystem(argv[nmerge+4]);
 		delete[] AtSys;
 	}else if( argc == 3 ){
+		if( MyTraj.SearchIsTrajectory(argv[2]) ){
+			cerr << "The use of trajectory files (.lammpstrj) has not been implemented in this executable" << endl;
+			exit(EXIT_FAILURE);
+		}
 		AtomicSystem AtSys(argv[1]);
 		AtSys.printSystem(argv[2]);
 	}else ExecMsg();

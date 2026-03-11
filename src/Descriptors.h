@@ -62,7 +62,7 @@ protected:
 	Displays Dis;
 	std::string name = "none";
 	std::vector<std::string> Properties; // Descriptor properties could be set from DescriptorProperties.ath file when reading labelled data or from MachineLearning database reading or when computed by the setProperties() method
-	AtomicSystem *_MySystem;
+	AtomicSystem *MySystem;
 	MathTools *MT;
 	unsigned int dim; // dimension of descriptors
 	std::vector<unsigned int> nbDat; // nbDat[f] number of data with filter f
@@ -128,7 +128,7 @@ public:
 	void setProperties(){};
 	void ComputeDescriptors(){};
 	void readFixedParams();
-	void ConstructFilterIndexArray(AtomicSystem *_MySystem);
+	void ConstructFilterIndexArray();
 	void ConstructLabelIndexArray();
 	void ConstructDescriptorFromAtomicPosition();
 	void searchNeighbours(double rc, std::string filter_val, std::string distFunc="Euclidian");
@@ -169,7 +169,7 @@ public:
 	bool getIsNeighbours(std::string filter_name);
 	double get_current_rc(std::string filter_name);
 	// destructor
-	~Descriptors();
+	virtual ~Descriptors();
 	
 };
 

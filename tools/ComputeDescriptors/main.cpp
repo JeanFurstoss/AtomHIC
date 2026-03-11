@@ -27,6 +27,7 @@
 //*	- modify the code when other descriptors are implemented         	   *
 //**********************************************************************************
 
+#include <AtomicSystemTrajectory.h>
 #include <AtomicSystem.h>
 #include <SteinhardtDescriptors.h>
 #include <ACEDescriptors.h>
@@ -36,6 +37,7 @@
 #include <string>
 #include <chrono>
 #include <Displays.h>
+#include <vector>
 
 using namespace std;
 
@@ -64,36 +66,60 @@ int main(int argc, char *argv[])
 		OutputFilename = argv[4];
 	}
 
-	AtomicSystem MySystem(InputFilename);
+	if( DescriptorName == "Steinhardt" ) Dis.Printer_ComputeDescriptors_Steinhardt();
+	else if( DescriptorName == "ACE" ) Dis.Printer_OnlyAuxProp();
 
-	if( DescriptorName == "Steinhardt" ){
-		Dis.Printer_ComputeDescriptors_Steinhardt();
-		// Compute the descriptor
-		SteinhardtDescriptors MyDescriptors(&MySystem);
-		// Set the auxiliary property
-		MySystem.setAux_vec(MyDescriptors.getDescriptors(),MyDescriptors.getDim(),DescriptorName);
-		// Print descriptor parameters
-		ofstream writefile("DescriptorProperties.ath");
-		MyDescriptors.printDescriptorsPropToDatabase(writefile);
-		writefile.close();
-		cout << "DescriptorProperties.ath file successfully writted" << endl;
-	}else if( DescriptorName == "ACE" ){
-		Dis.Printer_OnlyAuxProp();
-		// Compute the descriptor
-		ACEDescriptors MyDescriptors(&MySystem,yaml_input_filename);
-		// Set the auxiliary property
-		MySystem.setAux_vec(MyDescriptors.getDescriptors(),MyDescriptors.getDim(),DescriptorName);
-		// Print descriptor parameters
-		ofstream writefile("DescriptorProperties.ath");
-		MyDescriptors.printDescriptorsPropToDatabase(writefile);
-		writefile.close();
-		cout << "DescriptorProperties.ath file successfully writted" << endl;
-	}else{ // other developped descriptors could be put here
-		cerr << "The descriptor name does not correspond to a descriptor that AtomHIC can compute, aborting" << endl;
-		return EXIT_FAILURE;
+	Descriptors *MyDescriptors;
+
+	AtomicSystemTrajectory MyTraj;
+	AtomicSystem *MySystem;
+	
+	unsigned int nbSys = 1;
+	if( MyTraj.SearchIsTrajectory(InputFilename) ){
+		MyTraj.setAtomicSystemList(InputFilename);
+		nbSys = MyTraj.getNbSys();
 	}
 
-	MySystem.printSystem_aux(OutputFilename,DescriptorName);
+	for(unsigned int i=0;i<nbSys;i++){
+		if( nbSys == 1 ) MySystem = new AtomicSystem(InputFilename);
+		else{
+			cout << "Treating timestep " << MyTraj.getTimestep(i) << endl;
+			MySystem = MyTraj.getAtomicSystem(i);
+		}
+
+		if( DescriptorName == "Steinhardt" )
+			MyDescriptors = new SteinhardtDescriptors(MySystem);
+		else if( DescriptorName == "ACE" )
+			MyDescriptors = new ACEDescriptors(MySystem,yaml_input_filename);
+		else{ // other developped descriptors could be put here
+			delete MyDescriptors;
+			if( nbSys == 1 ) delete MySystem;
+			cerr << "The descriptor name does not correspond to a descriptor that AtomHIC can compute, aborting" << endl;
+			return EXIT_FAILURE;
+		}
+		// Set the auxiliary property
+		MySystem->setAux_vec(MyDescriptors->getDescriptors(),MyDescriptors->getDim(),DescriptorName);
+		cout << endl;
+
+		// free memory
+		if( i != nbSys-1 ) delete MyDescriptors;
+	}
+
+	// Print descriptor parameters
+	ofstream writefile("DescriptorProperties.ath");
+	MyDescriptors->printDescriptorsPropToDatabase(writefile);
+	writefile.close();
+	cout << "DescriptorProperties.ath file successfully writted" << endl;
+	
+	if( nbSys == 1 ){
+		MySystem->printSystem_aux(OutputFilename,DescriptorName);
+		delete MySystem;
+	}else
+		MyTraj.printSystem_aux(OutputFilename,DescriptorName);
+
+	// free memory
+	delete MyDescriptors;
+
 	Dis.ExecutionTime();	
 	return 0;
 }

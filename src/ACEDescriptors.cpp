@@ -37,12 +37,14 @@ using namespace std;
 
 ACEDescriptors::ACEDescriptors(AtomicSystem *_MySystem, string _yaml_filename):Descriptors(_MySystem), yaml_filename(_yaml_filename){
 	this->name = "ACE";
+	setProperties();
 	ComputeDescriptors();
 }
 
 ACEDescriptors::ACEDescriptors(AtomicSystem *_MySystem, vector<string> _Properties):Descriptors(_MySystem, _Properties){
 	this->name = "ACE";
 	readProperties(_Properties);
+	setProperties();
 	ComputeDescriptors();
 }
 
@@ -58,19 +60,19 @@ void ACEDescriptors::ComputeDescriptors(){
 	A.init(MyACEBBase->nelements, MyACEBBase->nradmax + 1, MyACEBBase->lmax + 1, "A");
 	A_rank1.init(MyACEBBase->nelements, MyACEBBase->nradbase, "A_rank1");
 	
-	unsigned int nbAtomType = _MySystem->getNbAtomType();
+	unsigned int nbAtomType = MySystem->getNbAtomType();
 	unsigned int *elem2pace = new unsigned int[nbAtomType];
 	for(unsigned int i=0;i<nbAtomType;i++){
 		bool found = false;
 		for(unsigned int p=0;p<MyACEBBase->nelements;p++){
-			if( MyACEBBase->elements_name[p] == _MySystem->getAtomType(i) ){
+			if( MyACEBBase->elements_name[p] == MySystem->getAtomType(i) ){
 				elem2pace[i] = p;
 				found = true;
 				break;
 			}
 		}
 		if( !found ){
-			cerr << "The element \"" << _MySystem->getAtomType(i) << "\" of the provided atomic systems was not found either in the ACE yaml file" << endl;
+			cerr << "The element \"" << MySystem->getAtomType(i) << "\" of the provided atomic systems was not found either in the ACE yaml file" << endl;
 			exit(EXIT_FAILURE);
 		}
 	}
@@ -89,7 +91,7 @@ void ACEDescriptors::ComputeDescriptors(){
 		unsigned int mu_i = elem2pace[i];
 		unsigned int current_dim = MyACEBBase->total_basis_size_rank1[mu_i];
     		const SHORT_INT_TYPE total_basis_size = MyACEBBase->total_basis_size[mu_i];
-		//cout << "For " << _MySystem->getAtomType(i) << " rank1 size = " << current_dim << ", rankN size = " << total_basis_size;
+		//cout << "For " << MySystem->getAtomType(i) << " rank1 size = " << current_dim << ", rankN size = " << total_basis_size;
 		current_dim += total_basis_size;
 		//auto basis = MyACEBBase->basis[mu_i];
 		//for (unsigned int func_ind = 0; func_ind < total_basis_size; ++func_ind) {
@@ -101,7 +103,7 @@ void ACEDescriptors::ComputeDescriptors(){
 		//cout << ", leading to " << current_dim << "-dimension ACE descriptors";
 		for(unsigned int j=i;j<nbAtomType;j++){
 			unsigned int mu_j = elem2pace[j];
-			//cout << ", cutoff with " << _MySystem->getAtomType(j) << " = " << MyACEBBase->radial_functions->cut(mu_i,mu_j);
+			//cout << ", cutoff with " << MySystem->getAtomType(j) << " = " << MyACEBBase->radial_functions->cut(mu_i,mu_j);
 			if( max_cutoff < MyACEBBase->radial_functions->cut(mu_i,mu_j) )
 				max_cutoff = MyACEBBase->radial_functions->cut(mu_i,mu_j);
 		}
@@ -115,11 +117,11 @@ void ACEDescriptors::ComputeDescriptors(){
 		for(unsigned int d=0;d<dim;d++) _Descriptors[i*dim+d] = 0.;
 
 	// search neighbours
-	if( !_MySystem->getIsNeighbours() || _MySystem->get_current_rc() != max_cutoff ){
-		_MySystem->searchNeighbours(max_cutoff);
+	if( !MySystem->getIsNeighbours() || MySystem->get_current_rc() != max_cutoff ){
+		MySystem->searchNeighbours(max_cutoff);
 	}
 
-	unsigned int nbNMax = _MySystem->getNbMaxN();
+	unsigned int nbNMax = MySystem->getNbMaxN();
   	
         cout << "Computing ACE descriptors .. ";	
         // The following mainly comes from the compute_atom() function of the ACEBEvaluator (l.102 ace/ace_b_evaluator.cpp)	
@@ -137,25 +139,25 @@ void ACEDescriptors::ComputeDescriptors(){
 		ACEComplex Y{0};
 		double R;
 
-		double xpos = _MySystem->getWrappedPos(i).x;
-		double ypos = _MySystem->getWrappedPos(i).y;
-		double zpos = _MySystem->getWrappedPos(i).z;
-		unsigned int mu_i = elem2pace[_MySystem->getAtom(i).type_uint-1];
+		double xpos = MySystem->getWrappedPos(i).x;
+		double ypos = MySystem->getWrappedPos(i).y;
+		double zpos = MySystem->getWrappedPos(i).z;
+		unsigned int mu_i = elem2pace[MySystem->getAtom(i).type_uint-1];
 		const SHORT_INT_TYPE total_basis_size = MyACEBBase->total_basis_size[mu_i];
 		const SHORT_INT_TYPE total_basis_size_rank1 = MyACEBBase->total_basis_size_rank1[mu_i];
 		//ALGORITHM 1: Atomic base A
-		for(unsigned int j_loop=0;j_loop<_MySystem->getNeighbours(i*(nbNMax+1));j_loop++){
-			unsigned int id = _MySystem->getNeighbours(i*(nbNMax+1)+j_loop+1);
+		for(unsigned int j_loop=0;j_loop<MySystem->getNeighbours(i*(nbNMax+1));j_loop++){
+			unsigned int id = MySystem->getNeighbours(i*(nbNMax+1)+j_loop+1);
 			unsigned int ind1 = i*nbNMax*3+j_loop*3;
 			unsigned int ind2 = ind1+1;
 			unsigned int ind3 = ind2+1;
 			// get distance vector
-			double xp = _MySystem->getWrappedPos(id).x+_MySystem->getCLNeighbours(ind1)*_MySystem->getH1()[0]+_MySystem->getCLNeighbours(ind2)*_MySystem->getH2()[0]+_MySystem->getCLNeighbours(ind3)*_MySystem->getH3()[0]-xpos;
-			double yp = _MySystem->getWrappedPos(id).y+_MySystem->getCLNeighbours(ind1)*_MySystem->getH1()[1]+_MySystem->getCLNeighbours(ind2)*_MySystem->getH2()[1]+_MySystem->getCLNeighbours(ind3)*_MySystem->getH3()[1]-ypos;
-			double zp = _MySystem->getWrappedPos(id).z+_MySystem->getCLNeighbours(ind1)*_MySystem->getH1()[2]+_MySystem->getCLNeighbours(ind2)*_MySystem->getH2()[2]+_MySystem->getCLNeighbours(ind3)*_MySystem->getH3()[2]-zpos;
+			double xp = MySystem->getWrappedPos(id).x+MySystem->getCLNeighbours(ind1)*MySystem->getH1()[0]+MySystem->getCLNeighbours(ind2)*MySystem->getH2()[0]+MySystem->getCLNeighbours(ind3)*MySystem->getH3()[0]-xpos;
+			double yp = MySystem->getWrappedPos(id).y+MySystem->getCLNeighbours(ind1)*MySystem->getH1()[1]+MySystem->getCLNeighbours(ind2)*MySystem->getH2()[1]+MySystem->getCLNeighbours(ind3)*MySystem->getH3()[1]-ypos;
+			double zp = MySystem->getWrappedPos(id).z+MySystem->getCLNeighbours(ind1)*MySystem->getH1()[2]+MySystem->getCLNeighbours(ind2)*MySystem->getH2()[2]+MySystem->getCLNeighbours(ind3)*MySystem->getH3()[2]-zpos;
 
 			double r_norm = sqrt(xp*xp + yp*yp + zp*zp);
-			unsigned int mu_j = elem2pace[_MySystem->getAtom(id).type_uint-1];
+			unsigned int mu_j = elem2pace[MySystem->getAtom(id).type_uint-1];
 			double current_cutoff = MyACEBBase->radial_functions->cut(mu_i,mu_j);
 			if( r_norm < current_cutoff ){
 				xp /= r_norm;
