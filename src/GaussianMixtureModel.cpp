@@ -583,6 +583,52 @@ void GaussianMixtureModel::PrintModelParams(string filename, vector<string> labe
 	}
 	writefile.close();
 }
+
+void GaussianMixtureModel::PrintModelParams(string filename, vector<string> label_order, vector<string> filter_order){
+	ofstream writefile(filename);
+	for(unsigned int lo=0;lo<label_order.size();lo++){
+		for(unsigned int l=0;l<nbLabel;l++){
+			if( label_order[lo] == _MyDescriptors->getLabels(l) ){
+				writefile << "For label " << _MyDescriptors->getLabels(l) << endl;
+				for(unsigned int fo=0;fo<filter_order.size();fo++){
+					for(unsigned int f=0;f<nbFilter;f++){
+						if( filter_order[fo] == _MyDescriptors->getFilterValue(f) ){
+							if( IsRead ) writefile << "FILTER_VALUE " << FilterValue[f] << endl;
+							else writefile << "FILTER_VALUE " << _MyDescriptors->getFilterValue(f) << endl;
+							unsigned int nb = 0;
+							for(unsigned int k=0;k<nbClust[f];k++) if( ClusterLabel[f][k] == l ) nb++;
+							writefile << "NUMBER_OF_CLUSTER " << nb << endl;
+							// print clusters in order with increasing weight
+							vector<double> clust_id_to_print;
+							for(unsigned int k=0;k<nbClust[f];k++){
+								if( ClusterLabel[f][k] == l ){
+									clust_id_to_print.push_back(k);
+									clust_id_to_print.push_back(weights[f][k]);
+								}
+							}
+							MT->sort(clust_id_to_print,1,2,clust_id_to_print);
+							unsigned int current_nb_clust = clust_id_to_print.size()/2;
+							for(unsigned int k=0;k<current_nb_clust;k++){
+								writefile << "WEIGHT " << weights[f][((unsigned int) clust_id_to_print[k*current_nb_clust])] << endl;
+								writefile << "ESPERANCE";
+								for(unsigned int d=0;d<dim;d++) writefile << " " << mu[f][((unsigned int) clust_id_to_print[k*current_nb_clust])][d];
+								writefile << endl << "COVARIANCE_MATRIX" << endl;
+								for(unsigned int d1=0;d1<dim;d1++){
+									for(unsigned int d2=0;d2<dim;d2++) writefile << V[f][((unsigned int) clust_id_to_print[k*current_nb_clust])][d1*dim+d2] << " ";
+									writefile << endl;
+								}
+							}
+						break;
+						}
+					}
+				}
+				break;
+			}
+		}
+	}
+	writefile.close();
+}
+
 void GaussianMixtureModel::PrintToDatabase(const string &name_of_database){
 	bool isFullyLabelled = true;
 	for(unsigned int f=0;f<nbFilter;f++) isFullyLabelled *= IsLabelled[f];

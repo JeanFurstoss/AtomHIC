@@ -64,4 +64,36 @@ int main(int argc, char *argv[])
 		label_order.push_back("Lab"+to_string(l+1));
 	}
 	GMM.PrintModelParams("output.dat", label_order);
+	
+	vector<string> filter_order;
+	filter_order.push_back("Ni");
+	filter_order.push_back("Ag");
+	Properties.push_back("DESCRIPTORS_FILTERING_TYPE element");
+	Descriptors MyDescriptorsTrj("ForTestTrj","Steinhardt");
+	GaussianMixtureModel GMMTrj;
+	GMMTrj.ReadProperties(Properties);
+	GMMTrj.setDescriptors(&MyDescriptorsTrj);
+	GMMTrj.setSeed(seed);
+	GMMTrj.TrainModel(nmin,nmax,true);
+	GMMTrj.PrintModelParams("outputTrj.dat", label_order, filter_order);
+
+	// print descriptor properties to test reading of atomic files by Descriptor class
+	ofstream writefile;
+	writefile.open("outputTrj.dat", ios_base::app);
+	for(unsigned int fo=0;fo<filter_order.size();fo++){
+		for(unsigned int f=0;f<MyDescriptorsTrj.getNbFilter();f++){
+			if( filter_order[fo] == MyDescriptorsTrj.getFilterValue(f) ){
+				writefile << MyDescriptorsTrj.getNbDat(f) << " descriptors having filter value " << filter_order[fo] << " among which:" << endl; 
+				for(unsigned int lo=0;lo<label_order.size();lo++){
+					for(unsigned int l=0;l<MyDescriptorsTrj.getNbLabels();l++){
+						if( label_order[lo] == MyDescriptorsTrj.getLabels(l) ){
+							writefile << MyDescriptorsTrj.getLabelsSize(f,l) << " are labelled by " << MyDescriptorsTrj.getLabels(l) << endl;
+							break;
+						}
+					}
+				}
+				break;
+			}
+		}
+	}
 }

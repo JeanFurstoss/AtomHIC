@@ -107,6 +107,7 @@ private:
 public:
 	void PrintModelParams(std::string filename);
 	void PrintModelParams(std::string filename, std::vector<std::string> label_order); // specifiy the order of the label to print
+	void PrintModelParams(std::string filename, std::vector<std::string> label_order, std::vector<std::string> filter_order); // specifiy the order of the label to print and filter order
 	void PrintToDatabase(const std::string &name_of_database);
 	void ReadModelParamFromDatabase(const std::string &name_of_database);
 	void ReadProperties(std::vector<std::string> Properties);

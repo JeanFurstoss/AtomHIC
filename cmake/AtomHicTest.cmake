@@ -39,7 +39,7 @@ if("${NUMERICAL_DIFFERENCE_EXECUTABLE}" STREQUAL "")
 endif()
 
 if("${NUMERICAL_DIFFERENCE_TOLERANCE}" STREQUAL "")
-  set(NUMERICAL_DIFFERENCE_TOLERANCE 0.01)
+  set(NUMERICAL_DIFFERENCE_TOLERANCE 0.001)
 endif()
 
 ######################################################################
@@ -72,6 +72,9 @@ list(LENGTH INPUT_FILES NUMBER_OF_INPUT_FILES)
 
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/ForTest)
 	file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/ForTest DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+endif()
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/ForTestTrj)
+	file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/ForTestTrj DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 endif()
 
 ######################################################################

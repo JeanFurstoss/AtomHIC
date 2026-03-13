@@ -417,6 +417,21 @@ Descriptors::Descriptors(const string &FilenameOrDir, const string &DescriptorNa
 	readFixedParams();
 	string wd = filesystem::current_path();
 	string full_path = wd+'/'+FilenameOrDir;
+	
+	// check if directory exists
+	if( std::filesystem::exists(full_path) ){
+		if( !std::filesystem::is_directory(full_path) ){
+			cerr << "Reading a single labelled file is not currently implemented" << endl;
+			cerr << "The best is to use the AtomicSystem constructor to build the descriptors" << endl;
+			cerr << "Or to place your single file in directories to make labelled descriptors (the unique label wont then be used)" << endl;
+			cerr << "For instance do: mkdir TempDir; mkdir TempDir/Label; mv " << FilenameOrDir << " TempDir/Label/.; and finally recall AtomHIC executable giving TempDir directory as argument" << endl;
+			exit(EXIT_FAILURE);
+		}
+	}else{
+		cerr << "The directory " << FilenameOrDir << " does not exist" << endl;
+		exit(EXIT_FAILURE);
+	}
+
 	string buffer_s, beg;
 	struct dirent *diread;
 	const char *env = full_path.c_str();
@@ -475,10 +490,11 @@ Descriptors::Descriptors(const string &FilenameOrDir, const string &DescriptorNa
 		if( FilteringType != "none" ) IsFiltered = true;
 		unsigned int count_dat(0), count_dim(0), line_At(1000), line_aux(1000), ReadOk, index_des, index_fil(100000), nbAux;
 		size_t pos_At, pos_Aux, pos_aux_vec;
+		unsigned int buffer_uint;
 		string line, aux_name;
 		for(unsigned int l1=0;l1<Labels.size();l1++){
 			for(unsigned int l2=0;l2<full_filenames[l1].size();l2++){
-				unsigned int subcount_dat(0), subcount_dim(0), subcount_filter(0);
+				unsigned int subcount_dat(0), subcount_dim(0), subcount_filter(0), nbtimesteps(0), current_final_line(0);
 				ReadOk = 0;
 				ifstream file(full_filenames[l1][l2]);
 				unsigned int count(0), subcount(0);
@@ -489,12 +505,18 @@ Descriptors::Descriptors(const string &FilenameOrDir, const string &DescriptorNa
 						if( pos_At!=string::npos ) line_At = count;
 						if( count == line_At+1 ){
 							istringstream text(line);
-							text >> subcount_dat;
+							text >> buffer_uint;
+							subcount_dat += buffer_uint;
+							nbtimesteps++;
 							ReadOk++;
 						}
 						pos_Aux=line.find("ITEM: ATOMS");
 						if( pos_Aux!=string::npos ){
+							subcount = 0;
+							subcount_dim = 0;
+							subcount_filter = 0;
 							line_aux = count;
+							current_final_line = line_aux+buffer_uint+1;
 							istringstream text(line);
 							while( text >> buffer_s ){
 								pos_aux_vec = buffer_s.find("[");
@@ -539,8 +561,8 @@ Descriptors::Descriptors(const string &FilenameOrDir, const string &DescriptorNa
 								}
 							}
 							ReadOk++;
-						}
-						if( IsFiltered && count > line_aux ){
+						} // end read ITEM: ATOMS line
+						if( IsFiltered && count > line_aux && count < current_final_line ){
 							istringstream text(line);
 							for(unsigned int i=0;i<index_fil+1;i++) text >> buffer_s;
 							bool already = false;
@@ -576,8 +598,8 @@ Descriptors::Descriptors(const string &FilenameOrDir, const string &DescriptorNa
 					exit(EXIT_FAILURE);
 				}
 				count_dat += subcount_dat;
-			}
-		}
+			} // end loop on files in a given label
+		} // end loop on labels
 		
 
 		dim = count_dim;
@@ -604,16 +626,27 @@ Descriptors::Descriptors(const string &FilenameOrDir, const string &DescriptorNa
 		count_dat = 0;
 		for(unsigned int l1=0;l1<Labels.size();l1++){
 			for(unsigned int l2=0;l2<full_filenames[l1].size();l2++){
-				size_t pos_aux;
+				size_t pos_aux, pos_At;
 				unsigned int count(0);
 				line_aux = 1000;
+				line_At = 1000;
+				unsigned int current_final_line = 0;
 				ifstream file(full_filenames[l1][l2].c_str(), ifstream::in);
 				if(file){
 					string line;
 					while(getline(file,line)){
+						pos_At=line.find("NUMBER OF ATOMS");
+						if( pos_At!=string::npos ) line_At = count;
+						if( count == line_At+1 ){
+							istringstream text(line);
+							text >> buffer_uint;
+						}
 						pos_Aux=line.find("ITEM: ATOMS");
-						if( pos_Aux!=string::npos ) line_aux = count;
-						if( count > line_aux ){
+						if( pos_Aux!=string::npos ){
+							line_aux = count;
+							current_final_line = line_aux+buffer_uint+1;
+						}
+						if( count > line_aux && count < current_final_line ){
 							istringstream text(line);
 							unsigned int current_fil = 0;
 							for(unsigned int ind=0;ind<nbAux;ind++){
