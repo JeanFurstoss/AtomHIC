@@ -547,7 +547,7 @@ void KMeans::PrintToDatabase(const string &name_of_database){
 		ofstream writefile(path2base+full_filename);
 		if( IsRead ){
 			writefile << "DESCRIPTOR_NAME " << DescriptorName << endl;
-			writefile << "FILTER_TYPE " << FilteringType << endl;
+			writefile << "DESCRIPTORS_FILTERING_TYPE " << FilteringType << endl;
 			for(unsigned int p=0;p<DescriptorProperties.size();p++) writefile << DescriptorProperties[p] << endl;
 		}else _MyDescriptors->printDescriptorsPropToDatabase(writefile);
 
@@ -608,7 +608,7 @@ void KMeans::ReadModelParamFromDatabase(const string &name_of_database){
 						text >> buffer_s;
 						text >> DescriptorName;
 					}
-					pos_filter_type=line.find("FILTER_TYPE ");
+					pos_filter_type=line.find("DESCRIPTORS_FILTERING_TYPE ");
 					if(pos_filter_type!=string::npos){
 						line_ftype = count;
 						istringstream text(line);
@@ -688,7 +688,7 @@ void KMeans::ReadModelParamFromDatabase(const string &name_of_database){
 			ifstream file(full_file_path.c_str(), ifstream::in);
 			if( file ){
 				while(getline(file,line)){
-					pos_filter_type=line.find("FILTER_TYPE ");
+					pos_filter_type=line.find("DESCRIPTORS_FILTERING_TYPE ");
 					if(pos_filter_type!=string::npos) line_ftype = count;
 					pos_filter_val=line.find("FILTER_VALUE ");
 					if(pos_filter_val!=string::npos){

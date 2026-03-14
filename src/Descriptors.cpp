@@ -45,6 +45,27 @@ Descriptors::Descriptors(AtomicSystem *_MySystem):MySystem(_MySystem){
 	ConstructFilterIndexArray();
 }
 
+Descriptors::Descriptors(AtomicSystem *_MySystem, string DescriptorName):MySystem(_MySystem){
+	readFixedParams();
+	MT = new MathTools();
+	nbDatTot = _MySystem->getNbAtom();
+	ConstructFilterIndexArray();
+	if( DescriptorName == "Position" ){
+		dim = 3;
+		ConstructDescriptorFromAtomicPosition();
+	}else{
+		unsigned int aux_size, aux_id;
+		aux_id = _MySystem->getAuxIdAndSize(DescriptorName,aux_size);
+		if( aux_size == 0 ){
+			cerr << "The provided descriptor name cannot be found in the auxiliary properties of the atomic system (it could also be the keyword \"Position\"), aborting" << endl;
+			exit(EXIT_FAILURE);
+		}
+		dim = aux_size;
+		_Descriptors = _MySystem->getAux(aux_id);
+		AreDescriptorsMine = false;
+	}
+}
+
 Descriptors::Descriptors(AtomicSystem *_MySystem, string DescriptorName, string _FilteringType):MySystem(_MySystem){
 	FilteringType = _FilteringType;
 	MT = new MathTools();
@@ -1059,13 +1080,13 @@ void Descriptors::printDescriptorsPropToDatabase(ofstream &writefile){
 	for(unsigned int s=0;s<Properties.size();s++){
 		pos_d = Properties[s].find("DESCRIPTOR_NAME");
 		if( pos_d!=string::npos ) IsDesName = true;
-		pos_t = Properties[s].find("FILTER_TYPE");
+		pos_t = Properties[s].find("DESCRIPTORS_FILTERING_TYPE");
 		if( pos_t!=string::npos ) Isftype = true;
 		pos_ndim = Properties[s].find("NUMBER_OF_DIMENSION");
 		if( pos_ndim!=string::npos ) IsNbDim = true;
 	}
 	if( !IsDesName ) writefile << "DESCRIPTOR_NAME " << name << endl;
-	if( !Isftype ) writefile << "FILTER_TYPE " << FilteringType << endl;
+	if( !Isftype ) writefile << "DESCRIPTORS_FILTERING_TYPE " << FilteringType << endl;
 	if( !IsNbDim ) writefile << "NUMBER_OF_DIMENSION " << dim << endl;
 	for(unsigned int s=0;s<Properties.size();s++) writefile << Properties[s] << endl;
 }
@@ -1076,7 +1097,7 @@ void Descriptors::readProperties(vector<string> _Properties){
 	size_t pos_ftype;
 	string buffer_s;
 	for(unsigned int s=0;s<_Properties.size();s++){
-		pos_ftype = _Properties[s].find("FILTER_TYPE");
+		pos_ftype = _Properties[s].find("DESCRIPTORS_FILTERING_TYPE");
 		if( pos_ftype!=string::npos ){
 			istringstream text(_Properties[s]);
 			text >> buffer_s >> FilteringType;

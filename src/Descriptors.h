@@ -119,6 +119,7 @@ public:
 	// constructors
 	Descriptors(AtomicSystem *_MySystem);
 	Descriptors(AtomicSystem *_MySystem, std::vector<std::string> _Properties);
+	Descriptors(AtomicSystem *_MySystem, std::string DescriptorName); // Decriptor name could be an auxiliary property of the AtomicSystem or Position of atoms
 	Descriptors(AtomicSystem *_MySystem, std::string DescriptorName, std::string _FilteringType); // Decriptor name could be an auxiliary property of the AtomicSystem or Position of atoms
 	Descriptors(const std::string& FilenameOrDir); // constructor from file reading 
 	Descriptors(const std::string& FilenameOrDir, const std::string& DescriptorName); // constructor from file reading 

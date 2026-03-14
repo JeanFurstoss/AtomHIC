@@ -173,7 +173,7 @@ string MachineLearningModel::getDatabasePath(const string &name_of_database){
 	return path2base;
 }
 
-void MachineLearningModel::PrintClassifiedData(string filename){
+void MachineLearningModel::PrintClassifiedData(string filename, bool outdes){
 	if( !IsClassified ){
 		cerr << "The data are not classified, we thus cannot print them, aborting" << endl;
 		exit(EXIT_FAILURE);
@@ -182,12 +182,14 @@ void MachineLearningModel::PrintClassifiedData(string filename){
 	unsigned int nbDatTot = 0;
 	for(unsigned int f=0;f<nbFilter_descriptors;f++){
 		for(unsigned int j=0;j<nbDat[f];j++){
-			for(unsigned int d=0;d<dim;d++) writefile << _MyDescriptors->getDescriptors()[_MyDescriptors->getFilterIndex(f*nbDatMax+j)*dim+d] << " ";
+			if( outdes ) for(unsigned int d=0;d<dim;d++) writefile << _MyDescriptors->getDescriptors()[_MyDescriptors->getFilterIndex(f*nbDatMax+j)*dim+d] << " ";
 			writefile << Classificator[_MyDescriptors->getFilterIndex(f*nbDatMax+j)*2] << " " << Classificator[_MyDescriptors->getFilterIndex(f*nbDatMax+j)*2+1] << endl;
 		}
 	}
 	writefile.close();
-	cout << "Classified data successfully printed in \"" << filename << "\" under format : DescriptorValues LabelIndex MaximumLikelihoodClassifier" << endl;
+	cout << "Classified data successfully printed in \"" << filename << "\" under format: ";
+	if( outdes ) cout << "DescriptorValues ";
+	cout << "LabelIndex MaximumLikelihoodClassifier" << endl;
 }
 
 unsigned int MachineLearningModel::getCurrentFIndex(string filter_value){

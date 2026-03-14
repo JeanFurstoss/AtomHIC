@@ -99,7 +99,7 @@ public:
 	void ReadModelParamFromDatabase(const std::string &path2base); 
 	void PrintToDatabase(const std::string &path2base);
 	void Classify();
-	void PrintClassifiedData(std::string filename);
+	void PrintClassifiedData(std::string filename, bool outdes);
 	void readFixedParams();
 	void ReadProperties(std::vector<std::string> &Properties);
 	// getters

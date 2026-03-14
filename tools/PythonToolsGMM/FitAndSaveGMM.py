@@ -72,7 +72,7 @@ for i in range(len(DesProp)):
         with open(DesProp[i],'r') as file: 
             for line in file:
                 DescriptorProperties.append(line)
-                if 'FILTER_TYPE' in line:
+                if 'DESCRIPTORS_FILTERING_TYPE' in line:
                     FilterType = (line.split(' ')[1]).strip()
                 if 'NUMBER_OF_DIMENSION' in line:
                     NbDim = int((line.split(' ')[1]).strip())
@@ -331,7 +331,7 @@ for i in range(len(categories)):
     fo = open(PathOfThisScript+dirModelToPrint+ath_database_name+'/'+categories[i]+'.ath','w')
     if not IsDesProp: 
         fo.write("NUMBER_OF_DIMENSION "+str(NbDim)+"\n")
-        fo.write("FILTER_TYPE none\n")
+        fo.write("DESCRIPTORS_FILTERING_TYPE none\n")
     else:
         for l in range(len(DescriptorProperties)):
             fo.write(DescriptorProperties[l])

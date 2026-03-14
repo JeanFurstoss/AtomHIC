@@ -38,6 +38,7 @@
 #include "ACEDescriptors.h"
 #include "GaussianMixtureModel.h"
 #include "AtomicSystem.h"
+#include "AtomicSystemTrajectory.h"
 #include <Displays.h>
 
 using namespace std;
@@ -51,9 +52,8 @@ int main(int argc, char *argv[])
 		cerr << "InputFilename could be an atomic system containing or not the descriptor values. If the atomic system contains the descriptors values the name of the auxiliary properties corresponding to the descriptors could be provided as the NameOfDescriptor argument" << endl;
 		cerr << "InputFilename could also be a simple file containing the descriptors value" << endl;
 		cerr << "The argument NameOfDatabse should be a directory in /data/MachineLearningModels/GaussianMixtureModel/ which could be generated using the ./FitAndSaveGMM executable" << endl;
-		cerr << "In the case of an atomic system the obtained output file contains the index of the labels (Struct[1]) and the maximum likelihood classifier (Struct[2])" << endl;
-		cerr << "If OutputDescriptorsOrNot = 0 the descriptors wont be printed in the output file name, if OutputDescriptorsOrNot = 1 the descriptors will be printed in addition with Struct[1] and Struct[2]" << endl;
-		cerr << "In the case of a simple file, the descriptors are simply printed again as well as Struct[1] and Struct[2]" << endl;
+		cerr << "The obtained output file contains the index of the labels (Struct[1]) and the maximum likelihood classifier (Struct[2])" << endl;
+		cerr << "If OutputDescriptorsOrNot = 0 the descriptors wont be printed in the output file, if OutputDescriptorsOrNot = 1 the descriptors will be printed in addition with Struct[1] and Struct[2]" << endl;
 		GaussianMixtureModel GMM;
 		vector<string> basis = GMM.getAvailableDatabases();
 		cerr << "Available GMM databases:" << endl;
@@ -63,78 +63,132 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	Dis.Printer_OnlyAuxProp();
 
-	unsigned int outdes;
-	if( argc == 5 ){	
-		string InputFilename = argv[1];
-		string DatabaseFilename = argv[2];
-		string OutputFilename = argv[3];
-		istringstream iss_o(argv[4]);
-		iss_o >> outdes;
-		GaussianMixtureModel GMM;
-		GMM.ReadModelParamFromDatabase(DatabaseFilename);
-		AtomicSystem MySystem;
-		if( MySystem.FilenameConstructor(InputFilename) ){ // in this case, the provided file is an atomic file without descriptors, thus compute the descriptors needed from the database
-			string DescriptorName, buffer_s;
-			size_t pos_name;
-			for(unsigned int s=0;s<GMM.getDescriptorProperties().size();s++){
-				pos_name = GMM.getDescriptorProperties()[s].find("DESCRIPTOR_NAME");
-				if( pos_name!=string::npos ){
-					istringstream text(GMM.getDescriptorProperties()[s]);
-					text >> buffer_s >> DescriptorName;
-				}
-			}
-			if( DescriptorName == "Steinhardt" ){
-				SteinhardtDescriptors MyDescriptors(&MySystem,GMM.getDescriptorProperties());
-				GMM.setDescriptors(&MyDescriptors);
-				GMM.Classify();
-				MySystem.setAux_vec(GMM.getClassificator(),2,"Struct");
-				if( outdes == 1 ){
-					MySystem.setAux_vec(MyDescriptors.getDescriptors(),MyDescriptors.getDim(),DescriptorName);
-					MySystem.printSystem_aux(OutputFilename,DescriptorName+" Struct");
-				}else MySystem.printSystem_aux(OutputFilename,"Struct");
-				return 0;
-			}else if( DescriptorName == "ACE" ){
-				ACEDescriptors MyDescriptors(&MySystem,GMM.getDescriptorProperties());
-				GMM.setDescriptors(&MyDescriptors);
-				GMM.Classify();
-				MySystem.setAux_vec(GMM.getClassificator(),2,"Struct");
-				if( outdes == 1 ){
-					MySystem.setAux_vec(MyDescriptors.getDescriptors(),MyDescriptors.getDim(),DescriptorName);
-					MySystem.printSystem_aux(OutputFilename,DescriptorName+" Struct");
-				}else MySystem.printSystem_aux(OutputFilename,"Struct");
-				return 0;
-			}else{ // other developped descriptors could be put here
-				cerr << "The descriptor name does not correspond to a descriptor that AtomHIC can compute, aborting" << endl;
-				return EXIT_FAILURE;
-			}
-		}else{
-			Descriptors MyDescriptors(InputFilename);
-			GMM.setDescriptors(&MyDescriptors);
-			GMM.Classify();
-			GMM.PrintClassifiedData(OutputFilename);
-		}
+	// read parameters
+	unsigned int current_read_ind = 1;
+	string InputFilename = argv[current_read_ind];
+	current_read_ind++;
+	
+	string DescriptorName;
+	if( argc == 6 ){
+		DescriptorName = argv[current_read_ind];
+		current_read_ind++;
+	}
+
+	string DatabaseFilename = argv[current_read_ind];
+	current_read_ind++;
+
+	string OutputFilename = argv[current_read_ind];
+	current_read_ind++;
+
+	unsigned int outdes_i;
+	istringstream iss_o(argv[current_read_ind]);
+	iss_o >> outdes_i;
+	bool outdes = false;
+	if( outdes_i == 1 ) outdes = true;
+
+	// set system, nbSys = 0 => simple file (only descriptors), 1 => single atomic file, >1 atomic trajectory
+	AtomicSystemTrajectory MyTraj;
+	AtomicSystem *MySystem;
+
+	unsigned int nbSys = 0;
+
+	if( MyTraj.SearchIsTrajectory(InputFilename) ){
+		MyTraj.setAtomicSystemList(InputFilename);
+		nbSys = MyTraj.getNbSys();
 	}else{
-		string InputFilename = argv[1];
-		string DescriptorName = argv[2];
-		string DatabaseFilename = argv[3];
-		string OutputFilename = argv[4];
-		GaussianMixtureModel GMM;
-		GMM.ReadModelParamFromDatabase(DatabaseFilename);
-		string ftype = GMM.getFilteringType();
+		MySystem = new AtomicSystem();
+		if( MySystem->FilenameConstructor(InputFilename) ) nbSys = 1;
+		else{
+			delete MySystem;
+			MySystem = nullptr;
+		}
+	}
+
+	if( nbSys == 0 ) Dis.Printer_NoFixedParams();
+	else Dis.Printer_OnlyAuxProp();
+
+	// read GMM properties
+	GaussianMixtureModel GMM;
+	GMM.ReadModelParamFromDatabase(DatabaseFilename);
+	string DescriptorNameGMM;
+	string ftype = GMM.getFilteringType();
+	if( nbSys > 0 && argc == 5 ){	
+		size_t pos_name;
+		string buffer_s;
+		for(unsigned int s=0;s<GMM.getDescriptorProperties().size();s++){
+			pos_name = GMM.getDescriptorProperties()[s].find("DESCRIPTOR_NAME");
+			if( pos_name!=string::npos ){
+				istringstream text(GMM.getDescriptorProperties()[s]);
+				text >> buffer_s >> DescriptorNameGMM;
+			}
+		}
+	}
+	
+	if( argc == 6 ){
 		cout << endl;
 		cout << "WARNING !!! From the database we expect that the provided descriptors (" << DescriptorName << ") are computed using the following properties: " << endl;
 		for(unsigned int s=0;s<GMM.getDescriptorProperties().size();s++) cout << GMM.getDescriptorProperties()[s] << endl;
 		cout << endl;
-		AtomicSystem MySystem(InputFilename);
-		Descriptors MyDescriptors(&MySystem,DescriptorName,ftype);
-		GMM.setDescriptors(&MyDescriptors);
-		GMM.Classify();
-		MySystem.setAux_vec(GMM.getClassificator(),2,"Struct");
-		if( outdes == 0 ) MySystem.printSystem_aux(OutputFilename,"Struct");
-		else MySystem.printSystem_aux(OutputFilename,DescriptorName+" Struct");
 	}
+
+	// set descriptors if file is not atomic file
+	Descriptors *MyDescriptors;
+	if( nbSys == 0 ){
+		MyDescriptors = new Descriptors(InputFilename);
+		nbSys = 1;
+	}
+
+	// loop over number of system
+	for(unsigned int i=0;i<nbSys;i++){
+		// set AtomicSystem in case of trajectory file
+		if( nbSys > 1 ){
+			cout << "Treating timestep " << MyTraj.getTimestep(i) << endl;
+			MySystem = MyTraj.getAtomicSystem(i);
+		}
+		
+		// compute descriptors for atomic files if the descriptor is not provided
+		if( MySystem ){
+			if( argc == 5 ){
+				if( DescriptorNameGMM == "Steinhardt" )
+					MyDescriptors = new SteinhardtDescriptors(MySystem,GMM.getDescriptorProperties());
+				else if( DescriptorNameGMM == "ACE" )
+					MyDescriptors = new ACEDescriptors(MySystem,GMM.getDescriptorProperties());
+				else{ // other developped descriptors could be put here
+					cerr << "The descriptor name does not correspond to a descriptor that AtomHIC can compute, aborting" << endl;
+					return EXIT_FAILURE;
+				}
+			}else{
+				MyDescriptors = new Descriptors(MySystem,DescriptorName,ftype);
+				DescriptorNameGMM = DescriptorName;
+			}
+		}
+
+		// perform classification
+		GMM.setDescriptors(MyDescriptors);
+		GMM.Classify();
+
+		// set classificator and descriptors if asked
+		if( MySystem ){
+			MySystem->setAux_vec(GMM.getClassificator(),2,"Struct");
+			if( outdes && argc == 5 ) MySystem->setAux_vec(MyDescriptors->getDescriptors(),MyDescriptors->getDim(),DescriptorNameGMM);
+			// free descriptor memory
+			delete MyDescriptors;
+		}
+	}
+
+	if( MySystem ){
+		string ForPrinting = "Struct ";
+		if( outdes ) ForPrinting += DescriptorNameGMM;
+		if( nbSys == 1 ){
+			MySystem->printSystem_aux(OutputFilename,ForPrinting);
+			delete MySystem;
+		}else
+			MyTraj.printSystem_aux(OutputFilename,ForPrinting);
+	}else
+		GMM.PrintClassifiedData(OutputFilename,outdes);
+
 	Dis.ExecutionTime();	
 	return 0;
+
 }

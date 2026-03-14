@@ -925,6 +925,7 @@ void Displays::Printer_DBScanClustering(){
 	ReadCurrentFixedParams();
 	PrintHeadExecMsg();
 	cout << "\t AUX_PROPERTIES_TO_PRINT " << AuxProp2Print << endl;
+	cout << "\t DESCRIPTORS_FILTERING_TYPE " << FilteringType << endl;
 	cout << "\t DBSCAN_NB_MAX_CLUSTER " << nbClustMax_DBScan << endl;
 	cout << "\t DBSCAN_EPS " << eps_meth << endl;
 	cout << "\t DBSCAN_MINPTS " << minPts_meth << endl;
