@@ -174,12 +174,28 @@ int main(int argc, char *argv[])
 	Bicrystal MyGB(crystalName,h_a,k_a,l_a,theta,h_p,k_p,l_p,rat_b,Properties);
 	//
 	if( DisMode == "Distance" ){
-		double Lx = MyGB.getH1()[0];
-		double Ly = MyGB.getH2()[1];
-		double Lz = MyGB.getH3()[2];
-		nx = round(Lx/dx);
-		ny = round(Ly/dy);
-		nz = round(Lz/dz);
+		if( SampMode == "DSC" ){
+			vector<double> norms(3,0.);
+			for(unsigned int i=0;i<3;i++){
+				for(unsigned int j=0;j<3;j++) norms[i] += pow(MyGB.getDSC_Basis()[j*3+i],2.);
+				norms[i] = sqrt(norms[i]);
+			}
+			nx = round(norms[0]/dx);
+			ny = round(norms[1]/dy);
+			nz = round(norms[2]/dz);
+		}else if( SampMode == "CSL" ){
+			vector<double> norms(3,0.);
+			for(unsigned int i=0;i<3;i++){
+				for(unsigned int j=0;j<3;j++) norms[i] += pow(MyGB.getCSL_Basis()[j*3+i],2.);
+				norms[i] = sqrt(norms[i]);
+			}
+			nx = round(norms[0]/dx);
+			ny = round(norms[1]/dy);
+			nz = round(norms[2]/dz);
+		}else if( SampMode == "InPlane" ){
+			nx = round(MyGB.getH1()[0]/dx);
+			ny = round(MyGB.getH2()[1]/dy);
+		}
 		if( nx < 1 ){
 			cout << "Warning from the provided dx value nx is null => nx has been set equal to 1" << endl;
 			nx = 1;
