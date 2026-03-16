@@ -184,6 +184,7 @@ int main(int argc, char *argv[])
 	writefile << "  DeltaSplineBins: 0.001" << endl;
 	writefile << "species:" << endl;
 	for(unsigned int b=0;b<nbblock;b++){
+		unsigned int nbDims = 0;
 		unsigned int nbspec = species[b].size();
 		writefile << "  - speciesblock: ";
 		for(unsigned int s=0;s<nbspec;s++) writefile << species[b][s] << " ";
@@ -223,6 +224,7 @@ int main(int argc, char *argv[])
 				for(unsigned int s=0;s<nbspec;s++) writefile << " " << species[b][s];
 				if( nbspec == 1 ) writefile << " " << species[b][0]; 
 				writefile << ", nr: [" << i+1 << "], nl: [0]}" << endl;
+				nbDims++;
 			}
 		}
 		// 3-body
@@ -240,6 +242,7 @@ int main(int argc, char *argv[])
 						for(unsigned int l=0;l<L[b][1]+1;l++){
 							writefile << "      - {type: " << spec_comb[s];
 							writefile << ", nr: [" << nr1+1 <<", " << nr2+1 << "], nl: [" << l << ", " << l << "]}" << endl;
+							nbDims++;
 						}
 					}
 				}
@@ -314,6 +317,7 @@ int main(int argc, char *argv[])
 							for(unsigned int a=0;a<lcombs.size();a++){
 								writefile << "      - {type: " << spec_comb[s];
 								writefile << ", nr: [" << nr1+1 <<", " << nr2+1 << ", " << nr3+1 << "], nl: [" << lcombs[a][0] << ", " << lcombs[a][1] << ", " << lcombs[a][2] << "], lint: [" << lcombs[a][2] << "]}" << endl;
+								nbDims++;
 							}
 						}
 					}
@@ -405,6 +409,7 @@ int main(int argc, char *argv[])
 														        if( KeepOrNot5body[index] == 1 ){	
 																writefile << "      - {type: " << spec_comb[s];
 																writefile << ", nr: [" << nr1+1 <<", " << nr2+1 << ", " << nr3+1 << ", " << nr4+1 << "], nl: [" << l1 << ", " << l2 << ", " << l3 << ", " << l4 << "], lint: [" << lint << ", " << lint << "]}" << endl;
+																nbDims++;
 															}
 														}
 											       		}
@@ -528,6 +533,7 @@ int main(int argc, char *argv[])
 														        			if( KeepOrNot6body[index] == 1 ){	
 																			writefile << "      - {type: " << spec_comb[s];
 																			writefile << ", nr: [" << nr1+1 <<", " << nr2+1 << ", " << nr3+1 << ", " << nr4+1 << ", " << nr5+1 << "], nl: [" << l1 << ", " << l2 << ", " << l3 << ", " << l4 << ", " << l5 << "], lint: [" << lint1 << ", " << lint2 << ", " << l5 << "]}" << endl;
+																			nbDims++;
 																		}
 																	}
 																}
@@ -545,11 +551,16 @@ int main(int argc, char *argv[])
 				}
 			}
 		} // end 6-body
+		cout << "Block " << b+1 << " (";
+		for(unsigned int s=0;s<nbspec-1;s++) cout << species[b][s] << " ";
+		cout << species[b][nbspec-1] << ") will lead to " << nbDims << "-dimension ACE descriptors" << endl; 
 
 	}
+	cout << endl << "File " << OutputFilename << " successfully writted !" << endl;
 	Dis.ExecutionTime();
 	// parameters having default values :
-	// - r_in: 0	
+	// - r_in: 0
+	// to continue	
 	return 0;
 }
 

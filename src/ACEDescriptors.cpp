@@ -30,6 +30,7 @@
 #include <complex>
 #include <omp.h>
 #include <iomanip>
+#include <filesystem>
 #include "ML-PACE/ace/ace_b_basis.h"
 #include "ML-PACE/ace-evaluator/ace_radial.cpp"
 
@@ -289,7 +290,9 @@ void ACEDescriptors::readProperties(vector<string> _Properties){
 }
 
 void ACEDescriptors::setProperties(){
-	Properties.push_back("NAME_OF_YAML_INPUT "+yaml_filename);
+	std::filesystem::path pf = yaml_filename;
+	if( pf.is_relative() ) Properties.push_back("NAME_OF_YAML_INPUT "+std::filesystem::current_path().string()+"/"+yaml_filename);
+	else Properties.push_back("NAME_OF_YAML_INPUT "+yaml_filename);
 }
 
 void ACEDescriptors::printDescriptorsPropToDatabase(ofstream &writefile){

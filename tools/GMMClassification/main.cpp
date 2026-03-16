@@ -185,8 +185,10 @@ int main(int argc, char *argv[])
 			delete MySystem;
 		}else
 			MyTraj.printSystem_aux(OutputFilename,ForPrinting);
-	}else
+	}else{
 		GMM.PrintClassifiedData(OutputFilename,outdes);
+		delete MyDescriptors;
+	}
 
 	Dis.ExecutionTime();	
 	return 0;
