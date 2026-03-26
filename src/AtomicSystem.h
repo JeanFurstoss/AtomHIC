@@ -113,6 +113,9 @@ protected:
 	std::vector<double*> density_prof; // density_prof[i][j*2] = density of auxiliary property i at sampled point j, density_prof[i][j*2+1] = coordinate (in density_name[i*2+1] direction) of the sample point j
 	std::vector<int> density_nbPts; // density_nbPts[i] = number of sampled point
 	std::vector<std::string*> density_name; // auxiliary atom properties => density_name[i*2] = auxiliary property used to compute density, density_name[i*2+1] = direction along which the density has been computed
+	std::vector<double*> density_prof_2D; // density_prof_2D[i*(nbPts*3)] = x coordinate of point i [i*(nbPts*3)+1] = y coord [i*(nbPts*3)+2] value of density at point i (with nbPts = nbPtsDir1*nbPtsDir2
+	std::vector<int> density_nbPts_2D; // density_nbPts[i*2] = number of sampled point in dir 1 [i*2+1] in dir2
+	std::vector<std::string*> density_name_2D; // 
 	std::string File_Heading; // head of lmp printed file
 	// Parameters read from Fixed_Parameter.dat file
 	std::string FixedParam_Filename = "FixedParameters.ath";
@@ -209,7 +212,9 @@ public:
 	unsigned int searchNeighbours_restricted(const double& rc, const std::vector<unsigned int> & IndexToSearch, const std::vector<unsigned int> & IndexForSearch); // return nbNMax which is crucial for findings neighbours from the list
 	void computeWrap();
 	unsigned int Compute1dDensity(std::string auxname, std::string dir, double sigma, unsigned int nbPts); // compute and store the 1D density profile of a given auxiliary property, the metho return the index of the given density
+	unsigned int Compute2dDensity(std::string auxname, std::string dir, double sigma, unsigned int nbPts_1, unsigned int nbPts_2); // compute and store the 1D density profile of a given auxiliary property, the metho return the index of the given density
 	void Print1dDensity(std::string filename, std::string auxname);
+	void Print2dDensity(std::string filename, std::string auxname);
 	//applyshift
 	void ApplyShift(const double &shift_x, const double &shift_y, const double &shift_z);
 	void duplicate(const unsigned int &nx, const unsigned int &ny, const unsigned int &nz);

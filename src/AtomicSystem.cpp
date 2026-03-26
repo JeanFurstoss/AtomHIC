@@ -943,9 +943,123 @@ void AtomicSystem::computeInverseCellVec(){
 	this->G3[2] = this->H2[1]*this->H1[0]/det;
 }
 
-//unsigned int AtomicSystem::Compute2dDensity(std::string auxname, std::string dir, double sigma, unsigned int nbPtsDir2, unsigned int nbPtsDir2){
-//
-//}
+unsigned int AtomicSystem::Compute2dDensity(std::string auxname, std::string dir, double sigma, unsigned int nbPtsDir1, unsigned int nbPtsDir2){
+	if( !IsWrappedPos ) computeWrap();
+	bool already_stored = false;
+	unsigned int ind_dens = 0;
+	for(unsigned int i=0;i<density_prof_2D.size();i++){
+		if( auxname == density_name_2D[i][0] && dir == density_name_2D[i][1] ){
+		       ind_dens = i;
+		       already_stored = true;
+	       	       break;
+		}
+	}
+	if( auxname != "Mass" ){
+		cerr << "Computing 2D density with property different than mass is not implemented for the moment" << endl;
+		exit(EXIT_FAILURE);
+	}
+	unsigned int nbPts = nbPtsDir1*nbPtsDir2;
+	if( !already_stored ){
+		density_prof_2D.push_back(new double[nbPts*3]); // density_prof_2D[i*3] = x coordinate of point i [i*3+1] = y coord [i*3+2] value of density at point i
+		ind_dens = density_prof_2D.size()-1;
+	}
+	int indexaux=-1;
+	for(unsigned int i=0;i<this->Aux_name.size();i++){
+		if( auxname == Aux_name[i] ){
+			indexaux=i;
+			break;
+		}
+	}
+	if( indexaux == -1 ){
+		if( auxname == "Mass" ){ // first not clean implemantation
+			cout << "Computing 2d mass density" << endl;
+			if( this->AtomMass[0] == 0. ){
+				cout << "Atomic mass is not defined, setting all masses to unity" << endl;
+				for(unsigned int i=0;i<nbAtomType;i++) this->AtomMass[i] = 1.;
+			}
+			if( dir == "x" ){ // Dir1 => y, Dir2 => z
+				#pragma omp parallel for
+				for(unsigned int i1=0;i1<nbPtsDir1;i1++){
+					for(unsigned int i2=0;i2<nbPtsDir2;i2++){
+						unsigned int ind1 = (i1*nbPtsDir2+i2)*3;
+						unsigned int ind2 = (i1*nbPtsDir2+i2)*3+1;
+						unsigned int ind3 = (i1*nbPtsDir2+i2)*3+2;
+						this->density_prof_2D[ind_dens][ind1] = this->H2[1]*i1/(nbPtsDir1-1.); // consider only not tilted box for the moment (TODO)
+						this->density_prof_2D[ind_dens][ind2] = this->H3[2]*i2/(nbPtsDir2-1.); // consider only not tilted box for the moment (TODO)
+						this->density_prof_2D[ind_dens][ind3] = 0.;
+						for(unsigned int j=0;j<this->nbAtom;j++){
+							// consider boundary condition
+							for(int bc1=-1;bc1<=1;bc1++){
+								for(int bc2=-1;bc2<=1;bc2++){
+									double coord1 = this->WrappedPos[j].y+(this->H2[1]*bc1);
+									double coord2 = this->WrappedPos[j].z+(this->H3[2]*bc2);
+									this->density_prof_2D[ind_dens][ind3] += MT->gaussian(this->density_prof_2D[ind_dens][ind1], this->density_prof_2D[ind_dens][ind2], coord1, coord2, sigma)*(this->AtomMass[this->AtomList[j].type_uint-1]);
+								}
+							}
+						}
+					}
+				}
+			}else if( dir == "y" ){ // Dir1 => z, Dir2 => x
+				#pragma omp parallel for
+				for(unsigned int i1=0;i1<nbPtsDir1;i1++){
+					for(unsigned int i2=0;i2<nbPtsDir2;i2++){
+						unsigned int ind1 = (i1*nbPtsDir2+i2)*3;
+						unsigned int ind2 = (i1*nbPtsDir2+i2)*3+1;
+						unsigned int ind3 = (i1*nbPtsDir2+i2)*3+2;
+						this->density_prof_2D[ind_dens][ind1] = this->H3[2]*i1/(nbPtsDir1-1.); // consider only not tilted box for the moment (TODO)
+						this->density_prof_2D[ind_dens][ind2] = this->H1[0]*i2/(nbPtsDir2-1.); // consider only not tilted box for the moment (TODO)
+						this->density_prof_2D[ind_dens][ind3] = 0;
+						for(unsigned int j=0;j<this->nbAtom;j++){
+							// consider boundary condition
+							for(int bc1=-1;bc1<=1;bc1++){
+								for(int bc2=-1;bc2<=1;bc2++){
+									double coord1 = this->WrappedPos[j].z+(this->H3[2]*bc1);
+									double coord2 = this->WrappedPos[j].x+(this->H1[0]*bc2);
+									this->density_prof_2D[ind_dens][ind3] += MT->gaussian(this->density_prof_2D[ind_dens][ind1], this->density_prof_2D[ind_dens][ind2], coord1, coord2, sigma)*(this->AtomMass[this->AtomList[j].type_uint-1]);
+								}
+							}
+						}
+					}
+				}
+			}else if( dir == "z" ){ // Dir1 => x, Dir2 => y
+				#pragma omp parallel for
+				for(unsigned int i1=0;i1<nbPtsDir1;i1++){
+					for(unsigned int i2=0;i2<nbPtsDir2;i2++){
+						unsigned int ind1 = (i1*nbPtsDir2+i2)*3;
+						unsigned int ind2 = (i1*nbPtsDir2+i2)*3+1;
+						unsigned int ind3 = (i1*nbPtsDir2+i2)*3+2;
+						this->density_prof_2D[ind_dens][ind1] = this->H1[0]*i1/(nbPtsDir1-1.); // consider only not tilted box for the moment (TODO)
+						this->density_prof_2D[ind_dens][ind2] = this->H2[1]*i2/(nbPtsDir2-1.); // consider only not tilted box for the moment (TODO)
+						this->density_prof_2D[ind_dens][ind3] = 0;
+						for(unsigned int j=0;j<this->nbAtom;j++){
+							// consider boundary condition
+							for(int bc1=-1;bc1<=1;bc1++){
+								for(int bc2=-1;bc2<=1;bc2++){
+									double coord1 = this->WrappedPos[j].x+(this->H1[0]*bc1);
+									double coord2 = this->WrappedPos[j].y+(this->H2[1]*bc2);
+									this->density_prof_2D[ind_dens][ind3] += MT->gaussian(this->density_prof_2D[ind_dens][ind1], this->density_prof_2D[ind_dens][ind2], coord1, coord2, sigma)*(this->AtomMass[this->AtomList[j].type_uint-1]);
+								}
+							}
+						}
+					}
+				}
+			}
+			cout << "Done !" << endl;
+		}
+	}
+	if( already_stored ){
+		this->density_nbPts_2D[ind_dens*2] = nbPtsDir1;
+		this->density_nbPts_2D[ind_dens*2+1] = nbPtsDir2;
+	}else{
+		this->density_name_2D.push_back(new string[2]);
+		this->density_name_2D[this->density_name_2D.size()-1][0] = auxname;
+		this->density_name_2D[this->density_name_2D.size()-1][1] = dir;
+		this->density_nbPts_2D.push_back(nbPtsDir1);
+		this->density_nbPts_2D.push_back(nbPtsDir2);
+	}
+
+	return ind_dens;
+}
 
 unsigned int AtomicSystem::Compute1dDensity(std::string auxname, std::string dir, double sigma, unsigned int nbPts){
 	if( !IsWrappedPos ) computeWrap();
@@ -1115,6 +1229,29 @@ void AtomicSystem::Print1dDensity(string filename, string auxname){
 	writefile.close();
 	cout << filename << " file writted" << endl;
 }
+
+void AtomicSystem::Print2dDensity(string filename, string auxname){
+	int indexaux = -1;
+	for(unsigned int i=0;i<this->density_name_2D.size();i++){
+		if( this->density_name_2D[i][0] == auxname ){
+			indexaux = i;
+			break;
+		}
+	}
+	if( indexaux == -1 ) cout << "The density property to print does not exist" << endl;
+	ofstream writefile(filename);
+	writefile << "#" << this->density_name_2D[indexaux][1] << " " << this->density_name_2D[indexaux][0] << "Density" << endl;
+	unsigned int count = 0;
+	for(unsigned int i=0;i<this->density_nbPts_2D[indexaux*2];i++){
+		for(unsigned int j=0;j<this->density_nbPts_2D[indexaux*2+1];j++){
+			writefile << this->density_prof_2D[indexaux][count*3] << " " << this->density_prof_2D[indexaux][count*3+1] << " " << this->density_prof_2D[indexaux][count*3+2] << endl; 
+			count++;
+		}
+	}
+	writefile.close();
+	cout << filename << " file writted" << endl;
+}
+
 
 void AtomicSystem::setCrystal(Crystal* MyCrystal){
 	this->_MyCrystal = MyCrystal;

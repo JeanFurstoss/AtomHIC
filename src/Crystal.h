@@ -183,6 +183,7 @@ public:
 	void ConstructOrthogonalCell();
 	void computeStoich();
 	void ChangeTypes(unsigned int *CorresArray);
+	void ShiftMotif(const double &_shift_x, const double &_shift_y, const double &_shift_z);
 	double ComputeD_hkl(const int& h, const int& k, const int& l);
 	// destructor
 	~Crystal();

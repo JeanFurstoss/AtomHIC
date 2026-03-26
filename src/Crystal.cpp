@@ -625,11 +625,7 @@ void Crystal::ConstructOrthogonalCell(){
 	double *TotalTrans = new double[9];
 	MT->MatDotMat(TiltTrans_xyz,this->rot_mat_total,TotalTrans);
 	// shift the motif
-	for(unsigned int i=0;i<this->nbAtom;i++){
-		Motif[i].pos.x += shift_x;
-		Motif[i].pos.y += shift_y;
-		Motif[i].pos.z += shift_z;
-	}
+	ShiftMotif(shift_x,shift_y,shift_z);
 	// rotate the motif
 	for(unsigned int i=0;i<this->nbAtom;i++) MT->MatDotAt(TotalTrans,Motif[i],Motif[i]);	
 	
@@ -1279,6 +1275,14 @@ void Crystal::ChangeTypes(unsigned int *CorresArray){
 	delete[] ReferenceBondOriParam_tmp;
 	delete[] Stoichiometry_tmp;
 
+}
+
+void Crystal::ShiftMotif(const double &_shift_x, const double &_shift_y, const double &_shift_z){
+	for(unsigned int i=0;i<this->nbAtom;i++){
+		Motif[i].pos.x += _shift_x;
+		Motif[i].pos.y += _shift_y;
+		Motif[i].pos.z += _shift_z;
+	}
 }
 
 Crystal::~Crystal(){

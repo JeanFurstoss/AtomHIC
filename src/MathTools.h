@@ -82,6 +82,7 @@ public:
 	void mixedProd(const double *vector1, const double *vector2, double *prod);
 	void reduce_vec(const int *vec1, int *vec2);
 	double gaussian(double x, double mu, double sigma);
+	double gaussian(double &x, double &y, double &mu_x, double &mu_y, double &sigma);
 	double gaussian_prefac(double x, double mu, double sigma, double prefac);
 	double det(const double *mat);
 	double det(const std::vector<std::vector<double>> &mat);

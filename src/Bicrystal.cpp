@@ -83,6 +83,8 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	_MyCrystal2->ComputeOrthogonalPlanesAndDirections();
 	double *Dir1_G1 = new double[3];
 	double *Dir2_G1 = new double[3];
+	double *Dir1_G2 = new double[3];
+	double *Dir2_G2 = new double[3];
 	double facnorm1(0.), facnorm2(0.);
 	double sp_t = 0.;
 	for(unsigned int i=0;i<3;i++){
@@ -300,12 +302,18 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	double nume = (fabs(l1[0])*final_xbox) + (fabs(l1[1])*final_ybox);
 	double tol = 1e-5;
 	bool found = false;
+	bool ShouldBeEven = true;
+	if( fabs(FacetJctDir[0]) < zero_num || fabs(FacetJctDir[1]) < zero_num ) ShouldBeEven = false;
 	for(unsigned int k=1;k<dupMaxFac;k++){
 		unsigned int current_N = round(k*nume/(nLcor*dfac2*denom));
-		if( current_N < 2 ) continue;
-		else if( current_N % 2 != 0 ) current_N++;
+		if( ShouldBeEven ){
+			if( current_N < 2 ) continue;
+			else if( current_N % 2 != 0 ) current_N++;
+		}else if( current_N < 1 ) continue;
 		for(unsigned int i_N=0;i_N<2;i_N++){
-			unsigned int N = current_N + i_N*2;
+			unsigned int N = 0;
+			if( ShouldBeEven ) N = current_N + i_N*2;
+			else N = current_N + i_N;
 			for(unsigned int i_n=0;i_n<PossibleN.size();i_n++){
 				unsigned int n = PossibleN[i_n];
 				if( fabs( (N*n*dfac2*denom) - (k*nume) ) < tol ){
@@ -317,7 +325,8 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 				}
 			}
 			if( found ) break;
-			N = current_N - i_N*2;
+			if( ShouldBeEven ) N = current_N - i_N*2;
+			else N = current_N - i_N;
 			for(unsigned int i_n=0;i_n<PossibleN.size();i_n++){
 				unsigned int n = PossibleN[i_n];
 				if( fabs( (N*n*dfac2*denom) - (k*nume) ) < tol ){
@@ -486,6 +495,114 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 		}
 	}
 	for(unsigned int i=0;i<3;i++) NormalPlaneEq[(NbPlanes-1)*3+i] = Dir1_G1[i];
+	
+	// Compute planes eq for grain 2 according to the corresponding crystallographic planes
+	// 1. search Dir1_G2, Dir2_G2 and new FacetJctDir 
+	int h_c, k_c, l_c, u_c_1, v_c_1, w_c_1, u_c_2, v_c_2, w_c_2;
+	_MyCrystal2->SearchCrystallographicPlanesAndDirections(Dir1_G1,h_c,k_c,l_c,u_c_1,v_c_1,w_c_1);
+	_MyCrystal2->SearchCrystallographicPlanesAndDirections(Dir2_G1,h_c,k_c,l_c,u_c_2,v_c_2,w_c_2);
+	_MyCrystal2->getA1()[0] *= Mx2;
+	_MyCrystal2->getA1()[1] *= My2;
+	_MyCrystal2->getA2()[0] *= Mx2;
+	_MyCrystal2->getA2()[1] *= My2;
+	_MyCrystal2->getA3()[0] *= Mx2;
+	_MyCrystal2->getA3()[1] *= My2;
+	_MyCrystal->computeReciproqual();
+	facnorm1 = 0.;
+	facnorm2 = 0.;
+	for(unsigned int i=0;i<3;i++){
+		Dir1_G2[i] = u_c_1*_MyCrystal2->getA1_star()[i]+v_c_1*_MyCrystal2->getA2_star()[i]+w_c_1*_MyCrystal2->getA3_star()[i];
+		Dir2_G2[i] = u_c_2*_MyCrystal2->getA1_star()[i]+v_c_2*_MyCrystal2->getA2_star()[i]+w_c_2*_MyCrystal2->getA3_star()[i];
+		facnorm1 += Dir1_G2[i]*Dir1_G2[i];
+		facnorm2 += Dir2_G2[i]*Dir2_G2[i];
+	}
+	facnorm1 = sqrt(facnorm1);
+	facnorm2 = sqrt(facnorm2);
+	if( Dir1_G1[2] >= 0 ) for(unsigned int i=0;i<3;i++) Dir1_G1[i] *= -1.;
+	else for(unsigned int i=0;i<3;i++) Dir2_G1[i] *= -1.;
+	double sp1(0.), sp2(0.);
+	for(unsigned int i=0;i<3;i++){
+		sp1 += Dir1_G1[i]*Dir1_G2[i];
+		sp2 += Dir2_G1[i]*Dir2_G2[i];
+	}
+	if( sp1 < 0. ) facnorm1 *= -1.;
+	if( sp2 < 0. ) facnorm2 *= -1.;
+	for(unsigned int i=0;i<3;i++){
+		Dir1_G2[i] /= facnorm1;
+		Dir2_G2[i] /= facnorm2;
+	}
+	MT->mixedProd(Dir1_G2,Dir2_G2,FacetJctDir);
+	double facnorm3 = 0.;
+	for(unsigned int i=0;i<3;i++) facnorm3 += FacetJctDir[i]*FacetJctDir[i];
+	facnorm3 = sqrt(facnorm3);
+	for(unsigned int i=0;i<3;i++) FacetJctDir[i] /= facnorm3;
+
+	// 2. Compute plane eq for grain 2
+	double *FullPlaneEq_2 = new double[NbPlanes]; 
+	double *NormalPlaneEq_2 = new double[NbPlanes*3]; // just store the normal of facet plane of each plane (redondant but allows to save time in the atom loop
+	double *VertPlaneEq_2 = new double[NbPlanes];
+	double VertPlaneSlope_2;
+	bool xpar_2 = false;
+	if( fabs(FacetJctDir[0]) > zero_num ) VertPlaneSlope_2 = FacetJctDir[1]/FacetJctDir[0];
+	else{
+		VertPlaneSlope_2 = 0.;
+		xpar = true;
+	}
+	double invcosphi_2 = 1./cos(atan(VertPlaneSlope_2));
+
+	if( Dir1_G2[2] < 0 ) for(unsigned int i=0;i<3;i++) Dir1_G2[i] *= -1.;
+	else for(unsigned int i=0;i<3;i++) Dir2_G2[i] *= -1.;
+
+	if( VertPlaneSlope_2 < 0. ){
+		VertPlaneEq_2[0] = 0.; // values of y for x = 0
+		FullPlaneEq_2[0] = 0.;
+	}else{
+		VertPlaneEq_2[0] = - VertPlaneSlope_2*final_xbox; 
+		FullPlaneEq_2[0] = - Dir1_G2[1]*VertPlaneSlope_2*final_xbox;
+	}
+	for(unsigned int i=0;i<3;i++) NormalPlaneEq_2[i] = Dir1_G2[i];
+
+	for(unsigned int i=0;i<Nfacets;i++){
+		if( VertPlaneSlope_2 < 0. ){
+			VertPlaneEq_2[i*2+1] = ((L1xy/2.) + i*(L2xy+L1xy))*invcosphi_2; // values of y for x = 0
+			VertPlaneEq_2[i*2+2] = ((L1xy/2.) + L2xy + i*(L2xy+L1xy))*invcosphi_2;
+			FullPlaneEq_2[i*2+1] = Dir2_G2[1]*(VertPlaneEq_2[i*2+1]+(L2xy*invcosphi_2/2.)); // values of y for x = 0 and z = 0
+			FullPlaneEq_2[i*2+2] = Dir1_G2[1]*(VertPlaneEq_2[i*2+2]+(L1xy*invcosphi_2/2.));
+		}else{
+			VertPlaneEq_2[i*2+1] = -(VertPlaneSlope_2*final_xbox) + ((L1xy/2.) + i*(L2xy+L1xy))*invcosphi_2; // values of y for x = 0 
+			VertPlaneEq_2[i*2+2] = -(VertPlaneSlope_2*final_xbox) + ((L1xy/2.) + L2xy + i*(L2xy+L1xy))*invcosphi_2;
+			if( xpar_2 ){
+				FullPlaneEq_2[i*2+1] = Dir2_G2[0]*(VertPlaneEq_2[i*2+1]+(L2xy*invcosphi_2/2.));
+				FullPlaneEq_2[i*2+2] = Dir1_G2[0]*(VertPlaneEq_2[i*2+2]+(L1xy*invcosphi_2/2.));
+			}else{
+				FullPlaneEq_2[i*2+1] = Dir2_G2[1]*(VertPlaneEq_2[i*2+1]+(L2xy*invcosphi_2/2.));
+				FullPlaneEq_2[i*2+2] = Dir1_G2[1]*(VertPlaneEq_2[i*2+2]+(L1xy*invcosphi_2/2.));
+			}
+		}
+		for(unsigned int d=0;d<3;d++){
+			NormalPlaneEq_2[i*6+3+d] = Dir2_G2[d];
+			NormalPlaneEq_2[i*6+6+d] = Dir1_G2[d];
+		}
+	}
+	if( VertPlaneSlope_2 < 0. ){
+		if( xpar_2 ){
+			VertPlaneEq_2[NbPlanes-1] = final_xbox; // values of y for x = 0
+			FullPlaneEq_2[NbPlanes-1] = final_xbox;
+		}else{
+			VertPlaneEq_2[NbPlanes-1] = final_ybox - VertPlaneSlope_2*final_xbox; // values of y for x = 0
+			FullPlaneEq_2[NbPlanes-1] = final_ybox - VertPlaneSlope_2*final_xbox;
+		}
+	}else{
+		if( xpar ){
+			VertPlaneEq_2[NbPlanes-1] = final_xbox; 
+			FullPlaneEq_2[NbPlanes-1] = Dir1_G2[0]*final_xbox;
+		}else{
+			VertPlaneEq_2[NbPlanes-1] = final_ybox; 
+			FullPlaneEq_2[NbPlanes-1] = Dir1_G2[1]*final_ybox;
+		}
+	}
+	for(unsigned int i=0;i<3;i++) NormalPlaneEq_2[(NbPlanes-1)*3+i] = Dir1_G2[i];
+
 	// paste the two grains
 	double xpos, ypos, zpos, Lin;
 
@@ -495,6 +612,7 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	double hG1_inf= zboxG1-(2.*DeltaZ);
 	double hG2_sup= 2.*DeltaZ;
 	double eps_pos = 1e-2;
+	double eps_pos_z = 3e-1;
 	// TODO manage bonds and angle
 	if( !this->_MyCrystal->getIsDoNotSep() ){
 		// for crystals where ions can be separated
@@ -520,7 +638,7 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 								else buffer_v = eps_pos + ypos - VertPlaneSlope*xpos;
 								if( ( buffer_v > VertPlaneEq[f] ) && ( buffer_v < VertPlaneEq[f+1] ) ){
 									// Then test if atom is bellow the real plane
-									double buffer_f = -eps_pos + xpos*NormalPlaneEq[f*3] + ypos*NormalPlaneEq[f*3+1] + (zpos-zboxG1+DeltaZ)*NormalPlaneEq[f*3+2];
+									double buffer_f = eps_pos_z + xpos*NormalPlaneEq[f*3] + ypos*NormalPlaneEq[f*3+1] + (zpos-zboxG1+DeltaZ)*NormalPlaneEq[f*3+2];
 									if( buffer_f < FullPlaneEq[f] ){
 										AtomList_temp[at_count] = this->_MyCrystal->getOrientedSystem()->getAtom(n);
 										AtomList_temp[at_count].pos.x = xpos;
@@ -560,7 +678,7 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 								else buffer_v = eps_pos + ypos - VertPlaneSlope*xpos;
 								if( ( buffer_v > VertPlaneEq[f] ) && ( buffer_v < VertPlaneEq[f+1] ) ){
 									// Then test if atom is above the real plane
-									double buffer_f = eps_pos + xpos*NormalPlaneEq[f*3] + ypos*NormalPlaneEq[f*3+1] + (zpos-DeltaZ)*NormalPlaneEq[f*3+2];
+									double buffer_f = eps_pos_z + xpos*NormalPlaneEq[f*3] + ypos*NormalPlaneEq[f*3+1] + (zpos-DeltaZ)*NormalPlaneEq[f*3+2];
 									if( buffer_f > FullPlaneEq[f] ){
 										AtomList_temp[at_count] = this->_MyCrystal2->getOrientedSystem()->getAtom(n);
 										AtomList_temp[at_count].pos.x = xpos;
@@ -601,11 +719,11 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 								at_count += 1;
 								for(unsigned int neigh=0;neigh<NotSepTag1[n][0];neigh++){
 									AtomList_temp[at_count] = this->_MyCrystal->getOrientedSystem()->getAtom(NotSepTag1[n][neigh+1]);
-									AtomList_temp[at_count].pos.x *= Mx1;
-									AtomList_temp[at_count].pos.y *= My1;
 									AtomList_temp[at_count].pos.x += i*xl1;
 									AtomList_temp[at_count].pos.y += j*yl1;
 									AtomList_temp[at_count].pos.z += k*zl1;
+									AtomList_temp[at_count].pos.x *= Mx1;
+									AtomList_temp[at_count].pos.y *= My1;
 									TagGrain[at_count] = 1;
 									at_count += 1;
 								}
@@ -617,7 +735,7 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 									else buffer_v = eps_pos + ypos - VertPlaneSlope*xpos;
 									if( ( buffer_v > VertPlaneEq[f] ) && ( buffer_v < VertPlaneEq[f+1] ) ){
 										// Then test if atom is bellow the real plane
-										double buffer_f = -eps_pos + xpos*NormalPlaneEq[f*3] + ypos*NormalPlaneEq[f*3+1] + (zpos-zboxG1+DeltaZ)*NormalPlaneEq[f*3+2];
+										double buffer_f = eps_pos_z + xpos*NormalPlaneEq[f*3] + ypos*NormalPlaneEq[f*3+1] + (zpos-zboxG1+DeltaZ)*NormalPlaneEq[f*3+2];
 										if( buffer_f < FullPlaneEq[f] ){
 											AtomList_temp[at_count] = this->_MyCrystal->getOrientedSystem()->getAtom(n);
 											AtomList_temp[at_count].pos.x = xpos;
@@ -627,11 +745,11 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 											at_count += 1;
 											for(unsigned int neigh=0;neigh<NotSepTag1[n][0];neigh++){
 												AtomList_temp[at_count] = this->_MyCrystal->getOrientedSystem()->getAtom(NotSepTag1[n][neigh+1]);
-												AtomList_temp[at_count].pos.x *= Mx1;
-												AtomList_temp[at_count].pos.y *= My1;
 												AtomList_temp[at_count].pos.x += i*xl1;
 												AtomList_temp[at_count].pos.y += j*yl1;
 												AtomList_temp[at_count].pos.z += k*zl1;
+												AtomList_temp[at_count].pos.x *= Mx1;
+												AtomList_temp[at_count].pos.y *= My1;
 												TagGrain[at_count] = 1;
 												at_count += 1;
 											}
@@ -663,11 +781,11 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 								at_count += 1;
 								for(unsigned int neigh=0;neigh<NotSepTag2[n][0];neigh++){
 									AtomList_temp[at_count] = this->_MyCrystal2->getOrientedSystem()->getAtom(NotSepTag2[n][neigh+1]);
-									AtomList_temp[at_count].pos.x *= Mx2;
-									AtomList_temp[at_count].pos.y *= My2;
 									AtomList_temp[at_count].pos.x += i*xl2;
 									AtomList_temp[at_count].pos.y += j*yl2;
 									AtomList_temp[at_count].pos.z += k*zl2;
+									AtomList_temp[at_count].pos.x *= Mx2;
+									AtomList_temp[at_count].pos.y *= My2;
 									TagGrain[at_count] = 2;
 									at_count += 1;
 								}
@@ -676,11 +794,11 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 									// First test if atom is between two vertical planes
 									double buffer_v;
 								        if( xpar ) buffer_v = eps_pos + xpos;
-									else buffer_v = eps_pos + ypos - VertPlaneSlope*xpos;
-									if( ( buffer_v > VertPlaneEq[f] ) && ( buffer_v < VertPlaneEq[f+1] ) ){
+									else buffer_v = eps_pos + ypos - VertPlaneSlope_2*xpos;
+									if( ( buffer_v > VertPlaneEq_2[f] ) && ( buffer_v < VertPlaneEq_2[f+1] ) ){
 										// Then test if atom is above the real plane
-										double buffer_f = eps_pos + xpos*NormalPlaneEq[f*3] + ypos*NormalPlaneEq[f*3+1] + (zpos-DeltaZ)*NormalPlaneEq[f*3+2];
-										if( buffer_f > FullPlaneEq[f] ){
+										double buffer_f = eps_pos_z + xpos*NormalPlaneEq_2[f*3] + ypos*NormalPlaneEq_2[f*3+1] + (zpos-DeltaZ)*NormalPlaneEq_2[f*3+2];
+										if( buffer_f > FullPlaneEq_2[f] ){
 											AtomList_temp[at_count] = this->_MyCrystal2->getOrientedSystem()->getAtom(n);
 											AtomList_temp[at_count].pos.x = xpos;
 											AtomList_temp[at_count].pos.y = ypos;
@@ -689,11 +807,11 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 											at_count += 1;
 											for(unsigned int neigh=0;neigh<NotSepTag2[n][0];neigh++){
 												AtomList_temp[at_count] = this->_MyCrystal2->getOrientedSystem()->getAtom(NotSepTag2[n][neigh+1]);
-												AtomList_temp[at_count].pos.x *= Mx2;
-												AtomList_temp[at_count].pos.y *= My2;
 												AtomList_temp[at_count].pos.x += i*xl2;
 												AtomList_temp[at_count].pos.y += j*yl2;
 												AtomList_temp[at_count].pos.z += k*zl2;
+												AtomList_temp[at_count].pos.x *= Mx2;
+												AtomList_temp[at_count].pos.y *= My2;
 												TagGrain[at_count] = 2;
 												at_count += 1;
 											}
@@ -752,7 +870,7 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 			break;
 		}
 	}
-	stoich = true;
+	//stoich = true;
 	// adjsut stoichiometry
 	if( !stoich ){
 		cout << "Adjusting stoichiometry.. (this may take a while)" << endl;
@@ -2353,6 +2471,9 @@ void Bicrystal::setOrientedCrystals(const string& crystalName, bool rationalize,
 	}
 	// construct the first crystal with the wanted plane horyzontal
 	this->_MyCrystal->RotateCrystal(h_p,k_p,l_p,h_px,k_px,l_px);
+	// shift it relative the lower grain shift
+	this->_MyCrystal->ShiftMotif(lowgrain_shift_x,lowgrain_shift_y,lowgrain_shift_z);
+
 	if( rationalize ){
 		double temp_var = RationalizeOri(this->h_a,this->k_a,this->l_a,this->theta,rot_ax,CSL_vec);
 		this->theta = temp_var;
@@ -2703,7 +2824,7 @@ void Bicrystal::read_params(){
 	//string filename=fp+backslash+FixedParam_Filename;
 	//ifstream file(filename, ios::in);
 	ifstream file(FixedParam_Filename, ios::in);
-	size_t pos_thetamax, pos_MaxHKL, pos_toldist, pos_tolpos_kC, pos_tolCSLint, pos_tolAlign, pos_rcut, pos_lsph, pos_MaxMisfit, pos_GBSpace, pos_MaxDup, pos_FullGrains, pos_maxvarfl, pos_maxdupf;
+	size_t pos_thetamax, pos_MaxHKL, pos_toldist, pos_tolpos_kC, pos_tolCSLint, pos_tolAlign, pos_rcut, pos_lsph, pos_MaxMisfit, pos_GBSpace, pos_MaxDup, pos_FullGrains, pos_maxvarfl, pos_maxdupf, pos_shift_grain;
 	string buffer_s, line;
 	if(file){
 		while(file){
@@ -2717,6 +2838,11 @@ void Bicrystal::read_params(){
 			if(pos_maxdupf!=string::npos){
 				istringstream text(line);
 				text >> buffer_s >> this->dupMaxFac;
+			}
+			pos_shift_grain=line.find("LOWER_GRAIN_SHIFT ");
+			if(pos_shift_grain!=string::npos){
+				istringstream text(line);
+				text >> buffer_s >> this->lowgrain_shift_x >> this->lowgrain_shift_y >> this->lowgrain_shift_z;
 			}
 			pos_thetamax=line.find("THETA_MAX_ROT_ANGLE_RAT ");
 			if(pos_thetamax!=string::npos){
@@ -2781,7 +2907,7 @@ void Bicrystal::read_params(){
 }
 
 void Bicrystal::ReadProperties(vector<string> Properties){
-	size_t pos_thetamax, pos_MaxHKL, pos_toldist, pos_tolpos_kC, pos_tolCSLint, pos_tolAlign, pos_rcut, pos_lsph, pos_MaxMisfit, pos_GBSpace, pos_MaxDup, pos_FullGrains, pos_maxvarfl, pos_maxdupf;
+	size_t pos_thetamax, pos_MaxHKL, pos_toldist, pos_tolpos_kC, pos_tolCSLint, pos_tolAlign, pos_rcut, pos_lsph, pos_MaxMisfit, pos_GBSpace, pos_MaxDup, pos_FullGrains, pos_maxvarfl, pos_maxdupf, pos_shift_grain;
 	string buffer_s, line;
 	for(unsigned int i=0;i<Properties.size();i++){
 		pos_maxvarfl=Properties[i].find("MAX_VAR_FACET_LENGTH ");
@@ -2793,6 +2919,11 @@ void Bicrystal::ReadProperties(vector<string> Properties){
 		if(pos_maxdupf!=string::npos){
 			istringstream text(Properties[i]);
 			text >> buffer_s >> this->dupMaxFac;
+		}
+		pos_shift_grain=Properties[i].find("LOWER_GRAIN_SHIFT ");
+		if(pos_shift_grain!=string::npos){
+			istringstream text(Properties[i]);
+			text >> buffer_s >> this->lowgrain_shift_x >> this->lowgrain_shift_y >> this->lowgrain_shift_z;
 		}
 		pos_thetamax=Properties[i].find("THETA_MAX_ROT_ANGLE_RAT ");
 		if(pos_thetamax!=string::npos){

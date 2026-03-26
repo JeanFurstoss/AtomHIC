@@ -221,6 +221,10 @@ double MathTools::gaussian(double x, double mu, double sigma){
         return (1./(sigma*sqrt(M_PI*2.)))*exp(-pow(x-mu, 2.)/(2.*pow(sigma,2.)));
 }
 
+double MathTools::gaussian(double &x, double &y, double &mu_x, double &mu_y, double &sigma){
+        return (1./(sigma*sigma*M_PI*2.))*exp(-(pow(x-mu_x, 2.)+pow(y-mu_y, 2.))/(2.*pow(sigma,2.)));
+}
+
 double MathTools::gaussian_prefac(double x, double mu, double sigma, double prefac){
         return (prefac/(sigma*sqrt(M_PI*2.)))*exp(-pow(x-mu, 2.)/(2.*pow(sigma,2.)));
 }
