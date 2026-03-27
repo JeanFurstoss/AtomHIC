@@ -611,7 +611,7 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	unsigned int at_count = 0;
 	double hG1_inf= zboxG1-(2.*DeltaZ);
 	double hG2_sup= 2.*DeltaZ;
-	double eps_pos = 1e-2;
+	double eps_pos = 5e-2;
 	double eps_pos_z = 3e-1;
 	// TODO manage bonds and angle
 	if( !this->_MyCrystal->getIsDoNotSep() ){
@@ -847,6 +847,8 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	this->Grain1 = new AtomicSystem(this->AtomList_G1,nbAtom1,_MyCrystal,this->H1_G1,this->H2_G1,this->H3_G1);
 	this->Grain2 = new AtomicSystem(this->AtomList_G2,nbAtom2,_MyCrystal2,this->H1_G2,this->H2_G2,this->H3_G2);
 	this->AreGrainsDefined = true;
+	Grain1->getH3()[2] *= 2.;
+	Grain1->MakeSurfaceNeutral_3dBased();
 	// verify the stoichiometry
 	unsigned int *currentStoich = new unsigned int[this->_MyCrystal->getNbAtomType()];
 	for(unsigned int i=0;i<this->_MyCrystal->getNbAtomType();i++) currentStoich[i] = 0;
@@ -870,7 +872,7 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 			break;
 		}
 	}
-	//stoich = true;
+	stoich = true;
 	// adjsut stoichiometry
 	if( !stoich ){
 		cout << "Adjusting stoichiometry.. (this may take a while)" << endl;

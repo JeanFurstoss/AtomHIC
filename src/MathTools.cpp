@@ -43,6 +43,7 @@ MathTools::MathTools(){
 	this->buffer_mat_1 = new double[9];
 	this->buffer_mat_2 = new double[9];
 	this->buffer_mat_uint = new unsigned int[9];
+	coeff_gauss_3d = 1./(pow(M_PI*2.,3./2.));
 }
 
 double MathTools::min_vec(const vector<double> arr){
@@ -223,6 +224,10 @@ double MathTools::gaussian(double x, double mu, double sigma){
 
 double MathTools::gaussian(double &x, double &y, double &mu_x, double &mu_y, double &sigma){
         return (1./(sigma*sigma*M_PI*2.))*exp(-(pow(x-mu_x, 2.)+pow(y-mu_y, 2.))/(2.*pow(sigma,2.)));
+}
+
+double MathTools::gaussian(double &x, double &y, double &z, double &mu_x, double &mu_y, double &mu_z, double &sigma){
+        return (coeff_gauss_3d/(sigma*sigma*sigma))*exp(-( ((x-mu_x)*(x-mu_x)) + ((y-mu_y)*(y-mu_y)) + ((z-mu_z)*(z-mu_z)) )/(2.*sigma*sigma));
 }
 
 double MathTools::gaussian_prefac(double x, double mu, double sigma, double prefac){

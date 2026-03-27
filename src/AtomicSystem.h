@@ -194,6 +194,7 @@ public:
 	void set_File_Heading(const std::string& Heading){ this->File_Heading = Heading; }
 	// methods
 	void MakeSurfaceNeutral(); // try to have neutral surfaces (considering only z-oriented surface)
+	void MakeSurfaceNeutral_3dBased(); // try to have neutral surfaces 
 	double ComputeAverageDistance();
 	void ComputeNotSepList();
 	void UpdateTypes2Crystal();

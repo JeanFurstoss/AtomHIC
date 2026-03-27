@@ -503,6 +503,7 @@ void AtomicSystem::AtomListConstructor(Atom *AtomList, unsigned int nbAtom, Crys
 	read_params_atsys();
 	this->IsWrappedPos = false;
 	this->IsAtomListMine = false;
+	IsElem = true;
 	this->IsCellVecMine = false;
 	IsCrystalDefined = true;
 	this->nbAtomType = _MyCrystal->getNbAtomType();
@@ -3225,6 +3226,106 @@ void AtomicSystem::duplicate(const unsigned int& nx, const unsigned int& ny, con
 		delete[] WrappedPos;
 		this->IsWrappedPos = false;
 	}
+}
+
+void AtomicSystem::MakeSurfaceNeutral_3dBased(){
+	if( IsCharge == false ) return;
+	bool Possible = false; // at least we should have two atom types having charge with opposite sign
+	bool pos(false),neg(false);
+	// to see after
+	//if( !IsNotSepTag ){
+		for(unsigned int n=0;n<nbAtomType;n++){
+			if( AtomCharge[n] > 0 ) pos = true;
+			if( AtomCharge[n] < 0 ) neg = true;
+			if( pos && neg ){
+				Possible = true;
+				break;
+			}
+		}
+	//}else{ // 
+
+	if( !Possible ){
+		cout << "It is not possible to construct charge neutral surfaces as there are not two types of ions having charge with opposite signs" << endl;
+		return;
+	}
+
+	cout << "Trying to make the surface charge neutral" << endl;
+	// Compute charge density at each ion position
+	double *ChargeDens = new double[nbAtom];
+	double sigma_gauss = MT->max_p(_MyCrystal->getALength(),3);
+	sigma_gauss *= 1.5;
+	for(unsigned int i=0;i<nbAtom;i++){
+		ChargeDens[i] = 0.;
+		for(unsigned int j=0;j<nbAtom;j++){ // think about restrict to neighbour in cutoff
+			for(int bc1=-1;bc1<=1;bc1++){
+				double coord1 = this->AtomList[j].pos.x+(this->H1[0]*bc1);
+				for(int bc2=-1;bc2<=1;bc2++){
+					double coord2 = this->AtomList[j].pos.y+(this->H2[1]*bc2);
+					for(int bc3=-1;bc3<=1;bc3++){
+						double coord3 = this->AtomList[j].pos.z+(this->H3[2]*bc3);
+						ChargeDens[i] += MT->gaussian(AtomList[i].pos.x, AtomList[i].pos.y, AtomList[i].pos.z, coord1, coord2, coord3, sigma_gauss)*AtomCharge[AtomList[j].type_uint-1];
+					}
+				}
+			}
+		}
+	}
+	setAux(ChargeDens,"ChargeDensBefore");
+
+	// remove ions in areas of high charge density with the same sign of the ion and exclude its neighbours for this pass
+	double rcut = MT->min_p(_MyCrystal->getALength(),3);
+	searchNeighbours(rcut);
+	double max_charge = 2.e-4;
+	unsigned int *dontreat = new unsigned int[nbAtom];
+	vector<unsigned int> ions2remove;
+	for(unsigned int i=0;i<nbAtom;i++) dontreat[i] = 0;
+	bool stop = false;
+	unsigned int iter = 0;
+	unsigned int max_iter = 10000;
+	while( !stop && iter < max_iter ){ // the loop should be stoped when all ions having charge density higher than max_charge have been removed or assigned to dontreat = 1
+		cout << "ITER " << iter << endl;
+		iter++;
+		stop = false;
+		unsigned int current_ind = MT->max_p_ind(ChargeDens,nbAtom);
+		if( current_ind == 3557 ){
+			cout << "stop" << endl;
+		}
+		if( fabs(ChargeDens[current_ind]) <  max_charge ) stop = true;
+		else if( signbit(ChargeDens[current_ind]) == signbit(AtomCharge[AtomList[current_ind].type_uint-1]) && dontreat[current_ind] == 0 ){ 
+			// remove this ion
+			ions2remove.push_back(current_ind);
+			ChargeDens[current_ind] = 0.;
+			for(unsigned int j=0;j<Neighbours[current_ind*(nbMaxN+1)];j++){
+				unsigned int id = Neighbours[current_ind*(nbMaxN+1)+j+1];
+				dontreat[id] = 1;
+				ChargeDens[id] = 0.;
+			}
+		}
+
+		current_ind = MT->min_p_ind(ChargeDens,nbAtom);
+		if( fabs(ChargeDens[current_ind]) <  max_charge ){ if( stop ) break; }// all ions have now charge density < max_charge
+		else if( signbit(ChargeDens[current_ind]) == signbit(AtomCharge[AtomList[current_ind].type_uint-1]) && dontreat[current_ind] == 0 ){ 
+			// remove this ion
+			ions2remove.push_back(current_ind);
+			ChargeDens[current_ind] = 0.;
+			for(unsigned int j=0;j<Neighbours[current_ind*(nbMaxN+1)];j++){
+				unsigned int id = Neighbours[current_ind*(nbMaxN+1)+j+1];
+				dontreat[id] = 1;
+				ChargeDens[id] = 0.;
+			}
+		}
+
+		// search if all ions having charge dens > max_charge are assigned to dontreat = 1 if yes stop
+		stop = true;
+		for(unsigned int i=0;i<nbAtom;i++){
+			if( fabs(ChargeDens[i]) > max_charge && dontreat[i] == 0 ){
+				stop = false;
+				break;
+			}
+		}
+	}
+	cout << "nb ions rem = " << ions2remove.size() << endl;
+	setAux(ChargeDens,"ChargeDensAfter");
+	printSystem_aux("TESTCharge.cfg","ChargeDensBefore ChargeDensAfter");
 }
 
 void AtomicSystem::MakeSurfaceNeutral(){

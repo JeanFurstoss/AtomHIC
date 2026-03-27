@@ -48,6 +48,7 @@ protected:
 	double *buffer_mat_1;
 	double *buffer_mat_2;
 	unsigned int *buffer_mat_uint;
+	double coeff_gauss_3d;
 	std::vector<std::vector<double>> buffer_vec_vec_1, buffer_vec_vec_2;
 public:
 	MathTools();
@@ -83,6 +84,7 @@ public:
 	void reduce_vec(const int *vec1, int *vec2);
 	double gaussian(double x, double mu, double sigma);
 	double gaussian(double &x, double &y, double &mu_x, double &mu_y, double &sigma);
+	double gaussian(double &x, double &y, double &z, double &mu_x, double &mu_y, double &mu_z, double &sigma);
 	double gaussian_prefac(double x, double mu, double sigma, double prefac);
 	double det(const double *mat);
 	double det(const std::vector<std::vector<double>> &mat);
