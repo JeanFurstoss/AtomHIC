@@ -1,6 +1,8 @@
  # Forsterite - Mg2SiO4 Relaxed (0 GPa) using Pedonne et al. (2006) interatomic potential 
 
 CRYSTAL Orthorhombic  
+DONOTSEPARE 2 4 3
+DONOTSEPARE 2 2 1
  
           28  atoms
            3  atom types

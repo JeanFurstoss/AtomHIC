@@ -47,7 +47,7 @@ int main(int argc, char *argv[])
 	Properties.push_back("MAX_DUP 100");
 	Properties.push_back("GB_SPACE 2.");
 	//Properties.push_back("");
-	Bicrystal MyGB1("Forsterite",1,0,0,-60.8*M_PI/180.,0,1,1,0,Properties);
+	Bicrystal MyGB1("Forsterite_DNS_Mg2SiO4",1,0,0,-60.8*M_PI/180.,0,1,1,0,Properties);
 	MyGB1.print_lmp("GB1.lmp");
 	Dis.ExecutionTime();	
 	Bicrystal MyGB2("Ice",0,0,1,141.787*M_PI/180.,1,3,0,0,Properties);
