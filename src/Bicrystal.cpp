@@ -447,10 +447,10 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	else for(unsigned int i=0;i<3;i++) Dir2_G1[i] *= -1.;
 
 	if( VertPlaneSlope < 0. ){
-		VertPlaneEq[0] = 0.; // values of y for x = 0
+		VertPlaneEq[0] = -1.; // values of y for x = 0
 		FullPlaneEq[0] = 0.;
 	}else{
-		VertPlaneEq[0] = - VertPlaneSlope*final_xbox; 
+		VertPlaneEq[0] = - VertPlaneSlope*final_xbox - 1.; 
 		FullPlaneEq[0] = - Dir1_G1[1]*VertPlaneSlope*final_xbox;
 	}
 	for(unsigned int i=0;i<3;i++) NormalPlaneEq[i] = Dir1_G1[i];
@@ -479,18 +479,18 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	}
 	if( VertPlaneSlope < 0. ){
 		if( xpar ){
-			VertPlaneEq[NbPlanes-1] = final_xbox; // values of y for x = 0
+			VertPlaneEq[NbPlanes-1] = final_xbox + 1.; // values of y for x = 0
 			FullPlaneEq[NbPlanes-1] = final_xbox;
 		}else{
-			VertPlaneEq[NbPlanes-1] = final_ybox - VertPlaneSlope*final_xbox; // values of y for x = 0
+			VertPlaneEq[NbPlanes-1] = final_ybox - VertPlaneSlope*final_xbox + 1.; // values of y for x = 0
 			FullPlaneEq[NbPlanes-1] = final_ybox - VertPlaneSlope*final_xbox;
 		}
 	}else{
 		if( xpar ){
-			VertPlaneEq[NbPlanes-1] = final_xbox; 
+			VertPlaneEq[NbPlanes-1] = final_xbox + 1.; 
 			FullPlaneEq[NbPlanes-1] = Dir1_G1[0]*final_xbox;
 		}else{
-			VertPlaneEq[NbPlanes-1] = final_ybox; 
+			VertPlaneEq[NbPlanes-1] = final_ybox + 1.; 
 			FullPlaneEq[NbPlanes-1] = Dir1_G1[1]*final_ybox;
 		}
 	}
@@ -554,10 +554,10 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	else for(unsigned int i=0;i<3;i++) Dir2_G2[i] *= -1.;
 
 	if( VertPlaneSlope_2 < 0. ){
-		VertPlaneEq_2[0] = 0.; // values of y for x = 0
+		VertPlaneEq_2[0] = -1.; // values of y for x = 0
 		FullPlaneEq_2[0] = 0.;
 	}else{
-		VertPlaneEq_2[0] = - VertPlaneSlope_2*final_xbox; 
+		VertPlaneEq_2[0] = - VertPlaneSlope_2*final_xbox - 1.; 
 		FullPlaneEq_2[0] = - Dir1_G2[1]*VertPlaneSlope_2*final_xbox;
 	}
 	for(unsigned int i=0;i<3;i++) NormalPlaneEq_2[i] = Dir1_G2[i];
@@ -586,23 +586,23 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	}
 	if( VertPlaneSlope_2 < 0. ){
 		if( xpar_2 ){
-			VertPlaneEq_2[NbPlanes-1] = final_xbox; // values of y for x = 0
+			VertPlaneEq_2[NbPlanes-1] = final_xbox + 1.; // values of y for x = 0
 			FullPlaneEq_2[NbPlanes-1] = final_xbox;
 		}else{
-			VertPlaneEq_2[NbPlanes-1] = final_ybox - VertPlaneSlope_2*final_xbox; // values of y for x = 0
+			VertPlaneEq_2[NbPlanes-1] = final_ybox - VertPlaneSlope_2*final_xbox + 1.; // values of y for x = 0
 			FullPlaneEq_2[NbPlanes-1] = final_ybox - VertPlaneSlope_2*final_xbox;
 		}
 	}else{
 		if( xpar ){
-			VertPlaneEq_2[NbPlanes-1] = final_xbox; 
+			VertPlaneEq_2[NbPlanes-1] = final_xbox + 1.; 
 			FullPlaneEq_2[NbPlanes-1] = Dir1_G2[0]*final_xbox;
 		}else{
-			VertPlaneEq_2[NbPlanes-1] = final_ybox; 
+			VertPlaneEq_2[NbPlanes-1] = final_ybox + 1.; 
 			FullPlaneEq_2[NbPlanes-1] = Dir1_G2[1]*final_ybox;
 		}
 	}
 	for(unsigned int i=0;i<3;i++) NormalPlaneEq_2[(NbPlanes-1)*3+i] = Dir1_G2[i];
-
+	
 	// paste the two grains
 	double xpos, ypos, zpos, Lin;
 
@@ -848,6 +848,7 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	this->Grain2 = new AtomicSystem(this->AtomList_G2,nbAtom2,_MyCrystal2,this->H1_G2,this->H2_G2,this->H3_G2);
 	this->AreGrainsDefined = true;
 	Grain1->getH3()[2] *= 2.;
+	Grain1->computeWrap();
 	Grain1->MakeSurfaceNeutral_3dBased();
 	// verify the stoichiometry
 	unsigned int *currentStoich = new unsigned int[this->_MyCrystal->getNbAtomType()];
@@ -1448,6 +1449,17 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 		this->Grain1 = new AtomicSystem(this->AtomList_G1, nbAtom1_G, this->_MyCrystal, this->H1_G1, this->H2_G1, this->H3_G1, this->MolId_G1, nbBonds_G1, nbBondType_G1, this->Bonds_G1, this->BondType_G1, nbAngles_G1, nbAngleType_G1, this->Angles_G1, this->AngleType_G1);
 		this->Grain2 = new AtomicSystem(this->AtomList_G2, nbAtom2_G, this->_MyCrystal2, this->H1_G2, this->H2_G2, this->H3_G2, this->MolId_G2, nbBonds_G2, nbBondType_G2, this->Bonds_G2, this->BondType_G2, nbAngles_G2, nbAngleType_G2, this->Angles_G2, this->AngleType_G2);
 	}
+
+	//TEST
+	//Grain1->getH3()[2] *= 2.;
+	//Grain1->computeWrap();
+	//Grain1->MakeSurfaceNeutral_3dBased();
+	//Grain1->getH3()[2] /= 2.;
+	Grain2->getH3()[2] *= 2.;
+	Grain2->computeWrap();
+	Grain2->MakeSurfaceNeutral_3dBased();
+	Grain2->getH3()[2] /= 2.;
+	//ENDTEST
 
 	this->AreGrainsDefined = true;
 	string h_a_str = to_string(this->h_a);

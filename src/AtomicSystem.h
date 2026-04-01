@@ -68,7 +68,7 @@ protected:
 	unsigned int *Neighbours = nullptr; // List of neigbors, structured as 2D array [ nbAtom x (nbMaxNeighbours+1) ] where the first value of each line corresponds to the number of neighbours for the ith atom, i.e. Neighbours[i*(nbMaxN+1)] = nb of neighbour of atom i, Neighbours[i*(nbMaxN+1)+j+1] = id of the jth neighbour of atom i
 	int *CLNeighbours = nullptr; // List of coefficient (NclX,Ncly,Nclz) applied to the atom position to be a neighbour [ nbAtom x (nbMaxNeighbours*3) ] where the first value of each line corresponds to the number of neighbours for the ith atom, i.e. CLNeighbours[i*nbMaxN*3+j*3] = integer applied to H1 to the jth neighbour of atom i for being its neighbour, CLNeighbours[i*nbMaxN*3+j*3+1] = integer applied to H2 to the jth neighbour of atom i for being its neighbour, CLNeighbours[i*nbMaxN*3+j*3+2] = integer applied to H3 to the jth neighbour of atom i for being its neighbour
 	bool IsNeighbours = false;
-	std::vector<int> *NotSepTag; // array containing the atom which should not be separated: NotSepTag[i][0] = -1 => the atom i is stored because of the NotSep list, 0 => this atom is not related to the NotSep list, n => the atom has stored n neighbour because of the NotSep list, in the latter case: NotSepTag[i][j+1] return the index of the jth atom which has been stored with the ith one due to the NotSepList
+	std::vector<int> *NotSepTag; // array containing the atom which should not be separated: NotSepTag[i][0] = -1 => the atom i is stored because of the NotSep list, 0 => this atom is not related to the NotSep list, n => the atom has stored n neighbour because of the NotSep list, in the latter case: NotSepTag[i][j+1] return the index of the jth atom which has been stored with the ith one due to the NotSepList // TEST NotSepTag[i][0] < 0 atom has been stored due to not sep list and the value correspond to -1*index of the associated neighbour
 	bool IsNotSepTag = false;
 	double *H1 = nullptr; // cell vectors of the system
 	double *H2 = nullptr;
@@ -187,6 +187,7 @@ public:
 	void setAux(const double* aux, const std::string& AuxName);
 	void setAux_vec(const double* aux, const unsigned int size, const std::string& AuxName);
 	void modifyAux_vec(const double* aux, const std::string& AuxName);
+	void modifyAux_vec(const unsigned int* aux, const std::string& AuxName);
 	void setAux(const unsigned int* aux, const std::string& AuxName);
 	void setAux(const int* aux, const std::string& AuxName);
 	void setCrystal(Crystal* MyCrystal);
@@ -195,6 +196,7 @@ public:
 	// methods
 	void MakeSurfaceNeutral(); // try to have neutral surfaces (considering only z-oriented surface)
 	void MakeSurfaceNeutral_3dBased(); // try to have neutral surfaces 
+	void RemoveAtoms(std::vector<unsigned int> index2rm);
 	double ComputeAverageDistance();
 	void ComputeNotSepList();
 	void UpdateTypes2Crystal();
