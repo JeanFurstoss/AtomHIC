@@ -1731,6 +1731,7 @@ Bicrystal::Bicrystal(const string& filename):AtomicSystem(filename){
 //void Bicrystal::searchCSL(int h_a_func, int k_a_func, int l_a_func, double theta_func, int *CSL_vec, unsigned int verbose){
 bool Bicrystal::searchCSL(double *rot_ax_func, double theta_func, int *CSL_vec, unsigned int verbose){
 	//cout << "Searching CSL lattice" << endl;
+	verbose = 2;
 	this->CSL_Basis = new double[9];
 	this->IsCSL_Basis = true;
 	double SigmaMax = 10000.;
@@ -1808,7 +1809,7 @@ bool Bicrystal::searchCSL(double *rot_ax_func, double theta_func, int *CSL_vec, 
 		MT->MatDotRawVec(a1_inv,searchVec,searchVec);
 		L = MT->find_integer_vector(searchVec,tol_IntVec,SigmaMax,k,IsFindIntVec);
 		if( !IsFindIntVec ){
-			if( verbose == 2 ) cout << "Fail ! Increasing tolerance !" << endl;
+			if( verbose == 2 ) cout << "Fail 1 ! Increasing tolerance !" << endl;
 			if( exp > 1.5 )	exp -= .5;
 			else exp -= .1;
 			continue;
@@ -1821,7 +1822,7 @@ bool Bicrystal::searchCSL(double *rot_ax_func, double theta_func, int *CSL_vec, 
 		MT->MatDotRawVec(Ei_inv,searchVec,searchVec);
 		L = MT->find_integer_vector(searchVec,tol_IntVec,SigmaMax,k,IsFindIntVec);
 		if( !IsFindIntVec ){
-			if( verbose == 2 ) cout << "Fail ! Increasing tolerance !" << endl;
+			if( verbose == 2 ) cout << "Fail 2 ! Increasing tolerance !" << endl;
 			if( exp > 1.5 )	exp -= .5;
 			else exp -= .1;
 			continue;
@@ -1832,7 +1833,7 @@ bool Bicrystal::searchCSL(double *rot_ax_func, double theta_func, int *CSL_vec, 
 			MT->MatDotRawVec(Ei_inv,searchVec,searchVec);
 			M = MT->find_integer_vector(searchVec,tol_IntVec,SigmaMax,k,IsFindIntVec);
 			if( !IsFindIntVec ){
-				if( verbose == 2 ) cout << "Fail ! Increasing tolerance !" << endl;
+				if( verbose == 2 ) cout << "Fail 3 ! Increasing tolerance !" << endl;
 				if( exp > 1.5 )	exp -= .5;
 				else exp -= .1;
 				continue;
@@ -1848,7 +1849,7 @@ bool Bicrystal::searchCSL(double *rot_ax_func, double theta_func, int *CSL_vec, 
 			MT->MatDotRawVec(Fi_inv,searchVec,searchVec);
 			M = MT->find_integer_vector(searchVec,tol_IntVec,SigmaMax,k,IsFindIntVec);
 			if( !IsFindIntVec ){
-				if( verbose == 2 ) cout << "Fail ! Increasing tolerance !" << endl;
+				if( verbose == 2 ) cout << "Fail 4 ! Increasing tolerance !" << endl;
 				if( exp > 1.5 )	exp -= .5;
 				else exp -= .1;
 				continue;
@@ -2031,9 +2032,9 @@ void Bicrystal::solve_DSC(const int *u, const unsigned int L, const double *B, d
 	}
 	if( !found ) cout << "Failed to find DSC basis !" << endl;
 	for(unsigned int i=0;i<3;i++){
-		DSC_Base[i*3] = B[i*3] / g_lambda;
-		DSC_Base[i*3+1] = (alpha*B[i*3]/(g_lambda * g_mu)) + B[i*3+1]/g_mu;
-		DSC_Base[i*3+2] = (B[i*3]*(alpha*gamma+beta*g_mu)/(g_mu*g_v*g_lambda)) + (B[i*3+1]*gamma/(g_mu*g_v)) + B[i*3+2]/g_v;
+		DSC_Base[i*3] = B[i*3] / ((double) g_lambda);
+		DSC_Base[i*3+1] = (((double) alpha)*B[i*3]/(((double) g_lambda * g_mu))) + (B[i*3+1]/((double) g_mu));
+		DSC_Base[i*3+2] = (B[i*3]*((double) (alpha*gamma+beta*g_mu))/((double) (g_mu*g_v*g_lambda))) + (B[i*3+1]*((double) gamma)/((double) g_mu* g_v)) + (B[i*3+2]/((double) g_v));
 	}
 
 	delete[] GCD;
