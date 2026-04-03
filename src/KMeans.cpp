@@ -107,11 +107,25 @@ void KMeans::TrainModel(vector<unsigned int> &nbClust_min, vector<unsigned int> 
 void KMeans::TrainModel(unsigned int &_nbClust, std::string filter_value){
 	unsigned int current_f = getCurrentFIndex(filter_value);
 	nbClust[current_f] = _nbClust;
+	_MyDescriptors->constructSubarrays(true,false);
+	_dataMat = _MyDescriptors->getSubarray(current_nbDat,filter_value);
 	if( IsKMeansTools[current_f] ) delete MyKMeansTools[current_f];
 	MyKMeansTools[current_f] = new KMeansTools(nbClust[current_f],_dataMat,current_nbDat,dim);
 	IsKMeansTools[current_f] = true;
 	MyKMeansTools[current_f]->ReadProperties(current_Properties);
 	MyKMeansTools[current_f]->fit();
+	// clean variables of previous optimal KMeans
+	for(unsigned int n=0;n<optimal_centroids.size();n++) optimal_centroids[n].clear();
+	optimal_centroids.clear();
+	
+	// store new optimal KMeans
+	optimal_nbClust = _nbClust;
+	for(unsigned int n=0;n<_nbClust;n++){
+		optimal_centroids.push_back(vector<double>());
+		for(unsigned int d1=0;d1<dim;d1++) optimal_centroids[n].push_back(MyKMeansTools[current_f]->getCentroids()(n,d1));	
+	}
+
+
 }
 
 void KMeans::fitOptimalKMeans(unsigned int &nbClust_min, unsigned int &nbClust_max, string namefile){
@@ -384,7 +398,6 @@ void KMeans::Classify(string filter_value){
 	
 	MyKMeansTools[current_f]->AffectData2Cluster();
 	unsigned int *data2Cluster = MyKMeansTools[current_f]->getData2Cluster();
-	
 	unsigned int nbDatTot = 0;
 	for(unsigned int f=0;f<nbFilter_descriptors;f++) nbDatTot += nbDat[f];
 	if( !IsClassified ){

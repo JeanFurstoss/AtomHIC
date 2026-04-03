@@ -51,7 +51,7 @@ protected:
 	bool IsDescriptor = false;
 	MathTools *MT;
 
-	MatrixXd *_dataMat;
+	MatrixXd *_dataMat = nullptr;
 
 	double *buffer_vec_1_dim;
 	double *buffer_vec_2_dim;

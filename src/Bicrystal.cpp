@@ -847,119 +847,24 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	this->Grain1 = new AtomicSystem(this->AtomList_G1,nbAtom1,_MyCrystal,this->H1_G1,this->H2_G1,this->H3_G1);
 	this->Grain2 = new AtomicSystem(this->AtomList_G2,nbAtom2,_MyCrystal2,this->H1_G2,this->H2_G2,this->H3_G2);
 	this->AreGrainsDefined = true;
+	string temp="1";
 	Grain1->getH3()[2] *= 2.;
 	Grain1->computeWrap();
-	Grain1->MakeSurfaceNeutral_3dBased();
-	// verify the stoichiometry
-	unsigned int *currentStoich = new unsigned int[this->_MyCrystal->getNbAtomType()];
-	for(unsigned int i=0;i<this->_MyCrystal->getNbAtomType();i++) currentStoich[i] = 0;
-	for(unsigned int i=0;i<at_count;i++){
-		for(unsigned int t=0;t<this->_MyCrystal->getNbAtomType();t++){
-			if( AtomList_temp[i].type_uint == t+1 ){
-				currentStoich[t] += 1;
-				break;
-			}
-		}
-	}
-	bool stoich = true;
-	for(unsigned int i=0;i<this->_MyCrystal->getNbAtomType();i++){
-		if( fabs(((double) currentStoich[i]/at_count) - ((double) this->_MyCrystal->getStoich()[i]/this->_MyCrystal->getNbAtom()) ) > 1e-9 ){
-			stoich = false;
-			cout << "The stoichiometry is not the same than parent crystal, ";
-			for(unsigned int t=0;t<this->_MyCrystal->getNbAtomType();t++){
-				cout << "number of " << this->_MyCrystal->getAtomType(t+1) << " : " << currentStoich[t] << ", ";
-			}
-			cout << endl;
-			break;
-		}
-	}
-	stoich = true;
-	// adjsut stoichiometry
-	if( !stoich ){
-		cout << "Adjusting stoichiometry.. (this may take a while)" << endl;
-		int *adjust = new int[this->_MyCrystal->getNbAtomType()];
-		int *adjust_tmp = new int[this->_MyCrystal->getNbAtomType()];
-		for(unsigned int i=0;i<this->_MyCrystal->getNbAtomType();i++){
-			adjust[i] = this->_MyCrystal->getNbAtom()*round((double) at_count/this->_MyCrystal->getNbAtom())*((double) this->_MyCrystal->getStoich()[i]/this->_MyCrystal->getNbAtom())-currentStoich[i];
-			adjust_tmp[i] = adjust[i];
-		}
-		// modify to have only negative value (we only want to remove atoms)
-		for(unsigned int i=0;i<this->_MyCrystal->getNbAtomType();i++){
-			if( adjust[i] > 0 ){
-				for(unsigned int t=0;t<this->_MyCrystal->getNbAtomType();t++){
-					adjust[t] -= adjust_tmp[i]*((double) this->_MyCrystal->getStoich()[t]/this->_MyCrystal->getStoich()[i]);
-				}
-				adjust_tmp[i] = adjust[i];
-			}
-		}
-		// neighboring search in the GB zone for ions type to remove
-		double GBup = this->_MyCrystal->getOrientedSystem()->getH3()[2]+3.;
-		double GBdown = this->_MyCrystal->getOrientedSystem()->getH3()[2]-DeltaZ-3.;
-		vector<vector<double>> Neigh;
-		vector<int> Type2Rm;
-		for(unsigned int i=0;i<this->_MyCrystal->getNbAtomType();i++){
-			if( adjust[i] < 0 ){
-				Type2Rm.push_back(i+1);
-				Neigh.push_back(vector<double>());
-			}
-		}
-		double rc_squared = pow(3.,2.);
-		double d_squared;
-		for(unsigned int i=0;i<at_count;i++){
-			for(unsigned int t=0;t<Type2Rm.size();t++){
-				if( AtomList_temp[i].pos.z < GBup && AtomList_temp[i].pos.z > GBdown && AtomList_temp[i].type_uint == Type2Rm[t] ){
-					xpos = AtomList_temp[i].pos.x;
-					ypos = AtomList_temp[i].pos.y;
-					zpos = AtomList_temp[i].pos.z;
-					for(unsigned int j=0;j<at_count;j++){
-						if( i != j && AtomList_temp[j].pos.z < GBup && AtomList_temp[j].pos.z > GBdown  && AtomList_temp[j].type_uint == Type2Rm[t] ){
-							d_squared = pow(xpos-AtomList_temp[j].pos.x,2.) + pow(ypos-AtomList_temp[j].pos.y,2.) + pow(zpos-AtomList_temp[j].pos.z,2.); 
-							if( d_squared < rc_squared ){
-								Neigh[t].push_back(d_squared);
-								Neigh[t].push_back(j);
-							}
-						}
-					}
-				}
-			}
-		}
-		this->nbAtom = at_count;
-		for(unsigned int t=0;t<Type2Rm.size();t++){
-			this->MT->sort(Neigh[t],0,2,Neigh[t]);
-			this->nbAtom += adjust[Type2Rm[t]-1];
-		}
-		this->AtomList = new Atom[this->nbAtom];
-		unsigned int at_count2 = 0;
-		bool store;
-		for(unsigned int i=0;i<at_count;i++){
-			store = true;
-			for(unsigned int t=0;t<Type2Rm.size();t++){
-				if( AtomList_temp[i].type_uint == Type2Rm[t] ){
-					for(unsigned int n=0;n<abs(adjust[Type2Rm[t]-1]);n++){
-						if( round(Neigh[t][n*2+1]) == i ){
-							store = false;
-							if( TagGrain[i] == 1 ) trueNbAt1 -= 1;
-							else if( TagGrain[i] == 2 ) trueNbAt2 -= 1;
-							break;
-						}
-					}
-				}
-			}
-			if( store ){
-				this->AtomList[at_count2] = AtomList_temp[i];
-				if( TagGrain[i] == 2 ) this->AtomList[at_count2].pos.z += (GBspace/2.);
-				at_count2 += 1;
-			}
-		}
-		delete[] adjust;
-		delete[] adjust_tmp;
-	}else{
-		this->nbAtom = at_count;
-		this->AtomList = new Atom[this->nbAtom];
-		for(unsigned int i=0;i<this->nbAtom;i++){
-			this->AtomList[i] = AtomList_temp[i];
-			if( TagGrain[i] == 2 ) this->AtomList[i].pos.z += (GBspace/2.)-(2.*DeltaZ)+zboxG1;
-		}
+	Grain1->MakeSurfaceNeutral_3dBased_bis(temp);
+	Grain1->getH3()[2] /= 2.;
+	Grain2->getH3()[2] *= 2.;
+	Grain2->computeWrap();
+	temp="2";
+	Grain2->MakeSurfaceNeutral_3dBased_bis(temp);
+	Grain2->getH3()[2] /= 2.;
+
+	// merge the two grains 
+	this->nbAtom = Grain1->getNbAtom() + Grain2->getNbAtom();
+	this->AtomList = new Atom[this->nbAtom];
+	for(unsigned int i=0;i<Grain1->getNbAtom();i++) this->AtomList[i] = Grain1->getAtom(i);
+	for(unsigned int i=0;i<Grain2->getNbAtom();i++){
+		this->AtomList[i+Grain1->getNbAtom()] = Grain2->getAtom(i);
+		this->AtomList[i+Grain1->getNbAtom()].pos.z += (GBspace/2.)-(2.*DeltaZ)+zboxG1;
 	}
 	string h_a_str = to_string(h_a);
 	string k_a_str = to_string(k_a);
@@ -985,7 +890,6 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	this->yl1 *= My1; 
 	this->yl2 *= My2; 
 	// delete allocated memory
-	delete[] currentStoich;
 	delete[] AtomList_temp;
 	delete[] Dir1_G1;
 	delete[] Dir2_G1;
@@ -1451,13 +1355,15 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	}
 
 	//TEST
-	//Grain1->getH3()[2] *= 2.;
-	//Grain1->computeWrap();
-	//Grain1->MakeSurfaceNeutral_3dBased();
-	//Grain1->getH3()[2] /= 2.;
+	string temp="1";
+	Grain1->getH3()[2] *= 2.;
+	Grain1->computeWrap();
+	Grain1->MakeSurfaceNeutral_3dBased_bis(temp);
+	Grain1->getH3()[2] /= 2.;
 	Grain2->getH3()[2] *= 2.;
 	Grain2->computeWrap();
-	Grain2->MakeSurfaceNeutral_3dBased();
+	temp="2";
+	Grain2->MakeSurfaceNeutral_3dBased_bis(temp);
 	Grain2->getH3()[2] /= 2.;
 	//ENDTEST
 
@@ -1731,7 +1637,6 @@ Bicrystal::Bicrystal(const string& filename):AtomicSystem(filename){
 //void Bicrystal::searchCSL(int h_a_func, int k_a_func, int l_a_func, double theta_func, int *CSL_vec, unsigned int verbose){
 bool Bicrystal::searchCSL(double *rot_ax_func, double theta_func, int *CSL_vec, unsigned int verbose){
 	//cout << "Searching CSL lattice" << endl;
-	verbose = 2;
 	this->CSL_Basis = new double[9];
 	this->IsCSL_Basis = true;
 	double SigmaMax = 10000.;
@@ -2996,6 +2901,110 @@ void Bicrystal::ReadProperties(vector<string> Properties){
 		}
 	}
 }
+
+//void TestFuncAdjustStoich(){ // this function was initially in the Facet GB constructor (to see if it can be useful at some point)
+//	// verify the stoichiometry
+//	unsigned int *currentStoich = new unsigned int[this->_MyCrystal->getNbAtomType()];
+//	for(unsigned int i=0;i<this->_MyCrystal->getNbAtomType();i++) currentStoich[i] = 0;
+//	for(unsigned int i=0;i<at_count;i++){
+//		for(unsigned int t=0;t<this->_MyCrystal->getNbAtomType();t++){
+//			if( AtomList_temp[i].type_uint == t+1 ){
+//				currentStoich[t] += 1;
+//				break;
+//			}
+//		}
+//	}
+//	bool stoich = true;
+//	for(unsigned int i=0;i<this->_MyCrystal->getNbAtomType();i++){
+//		if( fabs(((double) currentStoich[i]/at_count) - ((double) this->_MyCrystal->getStoich()[i]/this->_MyCrystal->getNbAtom()) ) > 1e-9 ){
+//			stoich = false;
+//			cout << "The stoichiometry is not the same than parent crystal, ";
+//			for(unsigned int t=0;t<this->_MyCrystal->getNbAtomType();t++){
+//				cout << "number of " << this->_MyCrystal->getAtomType(t+1) << " : " << currentStoich[t] << ", ";
+//			}
+//			cout << endl;
+//			break;
+//		}
+//	}
+//	stoich = true;
+//		cout << "Adjusting stoichiometry.. (this may take a while)" << endl;
+//		int *adjust = new int[this->_MyCrystal->getNbAtomType()];
+//		int *adjust_tmp = new int[this->_MyCrystal->getNbAtomType()];
+//		for(unsigned int i=0;i<this->_MyCrystal->getNbAtomType();i++){
+//			adjust[i] = this->_MyCrystal->getNbAtom()*round((double) at_count/this->_MyCrystal->getNbAtom())*((double) this->_MyCrystal->getStoich()[i]/this->_MyCrystal->getNbAtom())-currentStoich[i];
+//			adjust_tmp[i] = adjust[i];
+//		}
+//		// modify to have only negative value (we only want to remove atoms)
+//		for(unsigned int i=0;i<this->_MyCrystal->getNbAtomType();i++){
+//			if( adjust[i] > 0 ){
+//				for(unsigned int t=0;t<this->_MyCrystal->getNbAtomType();t++){
+//					adjust[t] -= adjust_tmp[i]*((double) this->_MyCrystal->getStoich()[t]/this->_MyCrystal->getStoich()[i]);
+//				}
+//				adjust_tmp[i] = adjust[i];
+//			}
+//		}
+//		// neighboring search in the GB zone for ions type to remove
+//		double GBup = this->_MyCrystal->getOrientedSystem()->getH3()[2]+3.;
+//		double GBdown = this->_MyCrystal->getOrientedSystem()->getH3()[2]-DeltaZ-3.;
+//		vector<vector<double>> Neigh;
+//		vector<int> Type2Rm;
+//		for(unsigned int i=0;i<this->_MyCrystal->getNbAtomType();i++){
+//			if( adjust[i] < 0 ){
+//				Type2Rm.push_back(i+1);
+//				Neigh.push_back(vector<double>());
+//			}
+//		}
+//		double rc_squared = pow(3.,2.);
+//		double d_squared;
+//		for(unsigned int i=0;i<at_count;i++){
+//			for(unsigned int t=0;t<Type2Rm.size();t++){
+//				if( AtomList_temp[i].pos.z < GBup && AtomList_temp[i].pos.z > GBdown && AtomList_temp[i].type_uint == Type2Rm[t] ){
+//					xpos = AtomList_temp[i].pos.x;
+//					ypos = AtomList_temp[i].pos.y;
+//					zpos = AtomList_temp[i].pos.z;
+//					for(unsigned int j=0;j<at_count;j++){
+//						if( i != j && AtomList_temp[j].pos.z < GBup && AtomList_temp[j].pos.z > GBdown  && AtomList_temp[j].type_uint == Type2Rm[t] ){
+//							d_squared = pow(xpos-AtomList_temp[j].pos.x,2.) + pow(ypos-AtomList_temp[j].pos.y,2.) + pow(zpos-AtomList_temp[j].pos.z,2.); 
+//							if( d_squared < rc_squared ){
+//								Neigh[t].push_back(d_squared);
+//								Neigh[t].push_back(j);
+//							}
+//						}
+//					}
+//				}
+//			}
+//		}
+//		this->nbAtom = at_count;
+//		for(unsigned int t=0;t<Type2Rm.size();t++){
+//			this->MT->sort(Neigh[t],0,2,Neigh[t]);
+//			this->nbAtom += adjust[Type2Rm[t]-1];
+//		}
+//		this->AtomList = new Atom[this->nbAtom];
+//		unsigned int at_count2 = 0;
+//		bool store;
+//		for(unsigned int i=0;i<at_count;i++){
+//			store = true;
+//			for(unsigned int t=0;t<Type2Rm.size();t++){
+//				if( AtomList_temp[i].type_uint == Type2Rm[t] ){
+//					for(unsigned int n=0;n<abs(adjust[Type2Rm[t]-1]);n++){
+//						if( round(Neigh[t][n*2+1]) == i ){
+//							store = false;
+//							if( TagGrain[i] == 1 ) trueNbAt1 -= 1;
+//							else if( TagGrain[i] == 2 ) trueNbAt2 -= 1;
+//							break;
+//						}
+//					}
+//				}
+//			}
+//			if( store ){
+//				this->AtomList[at_count2] = AtomList_temp[i];
+//				if( TagGrain[i] == 2 ) this->AtomList[at_count2].pos.z += (GBspace/2.);
+//				at_count2 += 1;
+//			}
+//		}
+//		delete[] adjust;
+//		delete[] adjust_tmp;
+//}
 
 Bicrystal::~Bicrystal(){
 	if( this->IsCrystal2 ) delete _MyCrystal2;

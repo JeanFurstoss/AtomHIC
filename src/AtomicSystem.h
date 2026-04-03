@@ -195,7 +195,8 @@ public:
 	void set_File_Heading(const std::string& Heading){ this->File_Heading = Heading; }
 	// methods
 	void MakeSurfaceNeutral(); // try to have neutral surfaces (considering only z-oriented surface)
-	void MakeSurfaceNeutral_3dBased(); // try to have neutral surfaces 
+	void MakeSurfaceNeutral_3dBased(std::string ext); // try to have neutral surfaces 
+	void MakeSurfaceNeutral_3dBased_bis(std::string ext); // try to have neutral surfaces 
 	void RemoveAtoms(std::vector<unsigned int> index2rm);
 	double ComputeAverageDistance();
 	void ComputeNotSepList();

@@ -49,7 +49,7 @@ class ATOMHIC_EXPORT KMeans : public MachineLearningModel {
 private:
 	// parameters of the KMeans for searching optimal number of cluster
 	unsigned int optimal_nbClust;
-	std::vector<std::vector<double>> optimal_centroids;
+	std::vector<std::vector<double>> optimal_centroids; // optimal_centroids[n][d]
 
 	// parameters of the KMeans ML model (filtered( and labelled)) the first index of the following vectors represent the filter value
 	std::vector<unsigned int> nbClust;
@@ -102,6 +102,8 @@ public:
 	void ReadProperties(std::vector<std::string> Properties);
 	// getters
 	unsigned int getNbClust(unsigned int &filter_value){ return nbClust[filter_value]; }
+	std::vector<double> getOptimalCentroid(unsigned int n){ return optimal_centroids[n]; }
+	KMeansTools *getKMeansTools(unsigned int filter_value){ return MyKMeansTools[filter_value]; }
 	// destructor
 	~KMeans();
 	

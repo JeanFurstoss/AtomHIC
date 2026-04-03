@@ -644,7 +644,7 @@ unsigned int MathTools::find_integer_vector(const double *vec, double tol, unsig
 		}
 	}
 	if( Find ){
-		for(unsigned int i=0;i<3;i++) int_vec[i] = round(commonDenom*vec[i]);
+		for(unsigned int i=0;i<3;i++) int_vec[i] = round((double) commonDenom*vec[i]);
 		reduce_vec(int_vec,int_vec);
 		IsFound = true;
 		return commonDenom;
