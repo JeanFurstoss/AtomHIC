@@ -3596,7 +3596,7 @@ void AtomicSystem::MakeSurfaceNeutral_3dBased_bis(string ext){
 	for(unsigned int i=0;i<nbAtom;i++)
 		classif[i] = 1. / (double) Neighbours[i*(nbMaxN+1)];
 	Descriptors *Des = new Descriptors(classif,nbAtom,1);
-	unsigned int nb_clust_KM = 3;
+	unsigned int nb_clust_KM = 2;
 	KMeans *KM = new KMeans();
 	KM->setDescriptors(Des);
 	KM->TrainModel(nb_clust_KM);
@@ -3738,10 +3738,23 @@ void AtomicSystem::MakeSurfaceNeutral_3dBased_bis(string ext){
 	double current_total_charge = total_charge;
 	while( probs.size() != 0 ){ // this loop is also broke if current_nbIons2Treat == 0
 	// randomly select ions to remove from poss2rm using ChargeDensity as probability
+		unsigned int nb_continue = 0;
 		while( probs.size() != 0 ){
     			discrete_distribution<size_t> d{probs.begin(), probs.end()};
 			unsigned int ind2rm = d(gen);
-			
+
+			// help to got neutral system
+			if( fabs(current_total_charge) > zero_num ){
+				double block_charge = 0.;	
+				for(unsigned int i=0;i<poss2rm[ind2rm].size();i++)
+					block_charge += AtomCharge[AtomList[poss2rm[ind2rm][i]].type_uint-1];
+				if( signbit(current_total_charge) != signbit(block_charge) ){
+					nb_continue++;
+					if( nb_continue < poss2rm.size() )
+						continue;
+				}
+			}
+
 			// remove these ions from ions2treat and ChargeDens lists
 			for(unsigned int i=0;i<poss2rm[ind2rm].size();i++){
 				// add these ions to the ion2remove list
