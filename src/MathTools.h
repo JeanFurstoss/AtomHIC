@@ -107,6 +107,7 @@ public:
 	void printMat(const double *mat);
 	void printMatVec(const std::vector<std::vector<double>> mat);
 	void printVec(const double *vec);
+	void printVec(const std::vector<double> vec);
 	void crossProd(const double *vec1, const double *vec2, double *Prod);
 	void dia_sym_mtx(const double *Mat, double *Prod); // compute the symmetric over the second diagonal
 	void get_right_hand(const double *Mat, double *Prod); // get right handed lattice of Mat 

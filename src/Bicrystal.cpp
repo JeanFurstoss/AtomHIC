@@ -847,16 +847,389 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	this->Grain1 = new AtomicSystem(this->AtomList_G1,nbAtom1,_MyCrystal,this->H1_G1,this->H2_G1,this->H3_G1);
 	this->Grain2 = new AtomicSystem(this->AtomList_G2,nbAtom2,_MyCrystal2,this->H1_G2,this->H2_G2,this->H3_G2);
 	this->AreGrainsDefined = true;
-	string temp="1";
-	Grain1->getH3()[2] *= 2.;
-	Grain1->computeWrap();
-	Grain1->MakeSurfaceNeutral_3dBased_bis(temp);
-	Grain1->getH3()[2] /= 2.;
-	Grain2->getH3()[2] *= 2.;
-	Grain2->computeWrap();
-	temp="2";
-	Grain2->MakeSurfaceNeutral_3dBased_bis(temp);
-	Grain2->getH3()[2] /= 2.;
+	//string temp="1";
+	//Grain1->getH3()[2] *= 2.;
+	//Grain1->computeWrap();
+	//Grain1->MakeSurfaceNeutral_3dBased(temp);
+	//Grain1->getH3()[2] /= 2.;
+	//Grain2->getH3()[2] *= 2.;
+	//Grain2->computeWrap();
+	//temp="2";
+	//Grain2->MakeSurfaceNeutral_3dBased(temp);
+	//Grain2->getH3()[2] /= 2.;
+	bool adjust_surfaces = true;
+	if( adjust_surfaces ){ 
+		// idea here is to create oriented systems with the different free surfaces in presence
+		// adjust their surfaces with the MakeSurfaceNeutral function (1d-based the only one working well)
+		// rotate the systems and apply the given crystal def and misfits to align with Grain1 or 2
+		// make coinciding the systems at the surfaces and delete atoms which not coinciding
+		
+		// ** Grain1 ** //
+		// Bottom surface
+		vector<int> Oris;
+		for(unsigned int i=0;i<3;i++) Oris.push_back(_MyCrystal->getOrthogonalPlanes()[6+i]);
+		for(unsigned int i=0;i<3;i++) Oris.push_back(_MyCrystal->getOrthogonalPlanes()[i]);
+		vector<double> shifts = {lowgrain_shift_x, lowgrain_shift_y, lowgrain_shift_z};
+		vector<double> Misfits = {Mx1, My1, 1.};
+		vector<double> currentPlaneNormal = {0., 0., -1.};
+		double currentVertPlaneSlope = 0.;
+		vector<double> currentVertPlaneEq = {-eps_pos,this->H2_G1[1]+eps_pos};
+		vector<double> currentFullPlaneEq = {0.};
+		double z_shift_box = 0.;
+		Grain1->MakeSurfaceNeutral(Oris, shifts, Misfits, currentPlaneNormal, currentVertPlaneSlope, currentVertPlaneEq, currentFullPlaneEq, z_shift_box);
+		// Facet 1
+		for(unsigned int i=0;i<3;i++){
+			Oris[i] = FacetsType[i];
+			currentPlaneNormal[i] = -1.*Dir1_G1[i];
+		}
+		currentVertPlaneSlope = VertPlaneSlope;
+		currentVertPlaneEq.clear();
+		currentFullPlaneEq.clear();
+		currentFullPlaneEq.push_back(FullPlaneEq[0]);
+		currentVertPlaneEq.push_back(VertPlaneEq[0]);
+		currentVertPlaneEq.push_back(VertPlaneEq[1]);
+		for(unsigned int i=0;i<NbPlanes/2;i++){
+			currentVertPlaneEq.push_back(VertPlaneEq[i*2+2]);
+			currentVertPlaneEq.push_back(VertPlaneEq[i*2+3]);
+			currentFullPlaneEq.push_back(FullPlaneEq[i*2+2]);
+		}
+		for(unsigned int i=0;i<currentVertPlaneEq.size();i++) cout << currentVertPlaneEq[i] << " ";
+		for(unsigned int i=0;i<currentFullPlaneEq.size();i++) cout << currentFullPlaneEq[i] << " ";
+		cout << endl;
+		currentFullPlaneEq.pop_back();
+		z_shift_box = zboxG1-DeltaZ;
+		Grain1->MakeSurfaceNeutral(Oris, shifts, Misfits, currentPlaneNormal, currentVertPlaneSlope, currentVertPlaneEq, currentFullPlaneEq, z_shift_box);
+		//u_x = _MyCrystal->getOrthogonalPlanes()[0];
+		//v_x = _MyCrystal->getOrthogonalPlanes()[1];
+		//w_x = _MyCrystal->getOrthogonalPlanes()[2];
+		//u_z = _MyCrystal->getOrthogonalPlanes()[6];
+		//v_z = _MyCrystal->getOrthogonalPlanes()[7];
+		//w_z = _MyCrystal->getOrthogonalPlanes()[8];
+		//Crystal OriCryst(crystalName);
+		//OriCryst.RotateCrystal(u_z,v_z,w_z,u_x,v_x,w_x);
+		//OriCryst.ShiftMotif(lowgrain_shift_x, lowgrain_shift_y, lowgrain_shift_z);
+		//OriCryst.ConstructOrthogonalCell();
+		//AtomicSystem *OriSys = OriCryst.getOrientedSystem();
+		//double z_shift_OriSys = OriSys->MakeSurfaceNeutral();
+		//// keep only a small part of the system near to the surface to limit computational cost
+		//double select_width = 10.;
+		//double hi_nb = 1.e8;
+		//vector<unsigned int> index2rm = OriSys->selectAtomInBox(-hi_nb, hi_nb, -hi_nb, hi_nb, select_width, hi_nb, false);
+		//OriSys->RemoveAtoms(index2rm);
+		//// remove z shift from the MakeSurfaceNeutral function
+		//double zero = 0.;
+		//OriSys->ApplyShift(zero, zero, z_shift_OriSys);
+		//// no need to rotate here because the bottom surface is still oriented similarly to the OriSys
+		////
+		//// ** Set the current grain def and misfit to the OriSys ** //
+		//// 1. remove the crystal def to the ori sys TODO verify as for bottom surface it will not change ?
+		//double *invTiltTrans = new double[9];
+		//MT->invert3x3(OriCryst.getTiltTrans(),invTiltTrans);
+		//unsigned int nbAt_OriSys = OriSys->getNbAtom();
+		//for(unsigned int i=0;i<nbAt_OriSys;i++) MT->MatDotAt(invTiltTrans, OriSys->getAtomRef(i), OriSys->getAtomRef(i));
+		//// 2. Apply grain1 def
+		//for(unsigned int i=0;i<nbAt_OriSys;i++) MT->MatDotAt(_MyCrystal->getTiltTrans(), OriSys->getAtomRef(i), OriSys->getAtomRef(i));
+		//// 3. Apply misfit
+		//for(unsigned int i=0;i<nbAt_OriSys;i++){
+		//	OriSys->getAtomRef(i).pos.x *= Mx1;
+		//	OriSys->getAtomRef(i).pos.y *= My1;
+		//}
+
+		//// ** Make coincide the ori system with grain 1 at the bottom surface ** //
+		//// Set a subsystem of grain 1
+		//double y_width = 2.*OriSys->getH2()[1];
+		//vector<Atom> SubSys;
+		//for(unsigned int i=0;i<nbAtom1;i++)
+		//       if( AtomList_G1[i].pos.y < y_width && AtomList_G1[i].pos.z < select_width*2. ) SubSys.push_back(AtomList_G1[i]);
+		//double sigma = 0.25;
+		//double *at_sp = new double[nbAt_OriSys];
+		//double tol = 1.e-3;
+		//double init_sp_sum = 0.;
+		//for(unsigned int i=0;i<nbAt_OriSys;i++){
+		//	at_sp[i] = 0.;
+		//	for(unsigned int j=0;j<SubSys.size();j++) at_sp[i] += MT->gaussian(OriSys->getAtomRef(i).pos.x, OriSys->getAtomRef(i).pos.y, OriSys->getAtomRef(i).pos.z, SubSys[j].pos.x, SubSys[j].pos.y, SubSys[j].pos.z, sigma);
+		//	if( i != 0 && fabs(at_sp[i]-at_sp[i-1]) > tol ) cout << "WARNING the oriented system seems to not coincide with grain 1" << endl;
+		//	init_sp_sum += at_sp[i];
+		//}
+		//// shift the OriSys using _Crystal cell vecs and choose the fully coinciding system being the closest to the bottom surface
+		//int max_hkl_search = 5;
+		//vector<int> hkl_shift;
+		//vector<double> z_shift;
+		//double *current_shift = new double[3];
+		//for(int i=-max_hkl_search;i<=max_hkl_search;i++){
+		//	for(int j=-max_hkl_search;j<=max_hkl_search;j++){
+		//		for(int k=-max_hkl_search;k<=max_hkl_search;k++){
+		//			for(unsigned int d=0;d<3;d++) current_shift[d] = _MyCrystal->getA1()[d]*i + _MyCrystal->getA2()[d]*j + _MyCrystal->getA3()[d]*k;
+		//		        OriSys->ApplyShift(current_shift[0], current_shift[1], current_shift[2]);
+		//			double current_sp_sum = 0.;
+		//			for(unsigned int n1=0;n1<nbAt_OriSys;n1++){
+		//				at_sp[n1] = 0.;
+		//				for(unsigned int n2=0;n2<SubSys.size();n2++) at_sp[n1] += MT->gaussian(OriSys->getAtomRef(n1).pos.x, OriSys->getAtomRef(n1).pos.y, OriSys->getAtomRef(n1).pos.z, SubSys[n2].pos.x, SubSys[n2].pos.y, SubSys[n2].pos.z, sigma);
+		//				current_sp_sum += at_sp[n1];
+		//			}
+		//			if( fabs(current_sp_sum-init_sp_sum) < tol ){
+		//				hkl_shift.push_back(i);
+		//				hkl_shift.push_back(j);
+		//				hkl_shift.push_back(k);
+		//				z_shift.push_back(current_shift[2]);
+		//			}
+		//		        OriSys->ApplyShift(-current_shift[0], -current_shift[1], -current_shift[2]);
+		//		}
+		//	}
+		//}
+		//if( z_shift.size() == 0 ){
+		//	cerr << "An issue occured when translating the oriented system to search the optimal postion with grain 1" << endl;
+		//	exit(EXIT_FAILURE);
+		//}
+		//unsigned int opt_ind = MT->min(z_shift);
+		//for(unsigned int d=0;d<3;d++) current_shift[d] = _MyCrystal->getA1()[d]*hkl_shift[opt_ind*3] + _MyCrystal->getA2()[d]*hkl_shift[opt_ind*3+1] + _MyCrystal->getA3()[d]*hkl_shift[opt_ind*3+2];
+		//OriSys->ApplyShift(current_shift[0], current_shift[1], current_shift[2]);
+		//// now the ori sys is well positionned
+
+		//// ** swap the bottom surface of grain 1 and remove the ions not coinciding with ori sys ** //
+		//double y_shift = OriSys->getH2()[1]*My1;
+		//unsigned int nb_y_shift = round(this->H2_G1[1]/y_shift)+2;
+		//// put the ori sys at minimum y pos
+		//double min_y = std::numeric_limits<double>::max();
+		//double mean_z_pos = 0.;
+		//for(unsigned int i=0;i<nbAt_OriSys;i++){
+		//	mean_z_pos += OriSys->getAtom(i).pos.z;
+		//	if( OriSys->getAtom(i).pos.y < min_y ) min_y = OriSys->getAtom(i).pos.y;
+		//}
+		//mean_z_pos /= nbAt_OriSys;
+		//// min_y should be at most 0
+		//double cur_y_shift = y_shift*(double) ceil(min_y/y_shift);
+		//OriSys->ApplyShift(zero, -cur_y_shift, zero);
+		//index2rm.clear();
+		//double tol_rmatom = 0.9*init_sp_sum/nbAt_OriSys;
+		//for(unsigned int i=0;i<nbAtom1;i++){
+		//	if( Grain1->getAtom(i).pos.z < mean_z_pos ){
+		//		double cur_sp = 0.;
+		//		for(unsigned int j=0;j<nbAt_OriSys;j++){
+		//			for(unsigned int k=0;k<nb_y_shift;k++){
+		//				double cur_y_s = k*y_shift + OriSys->getAtomRef(j).pos.y;
+		//				cur_sp += MT->gaussian(Grain1->getAtomRef(i).pos.x, Grain1->getAtomRef(i).pos.y, Grain1->getAtomRef(i).pos.z, OriSys->getAtomRef(j).pos.x, cur_y_s, OriSys->getAtomRef(j).pos.z, sigma);
+		//			}
+		//		}
+		//		if( cur_sp < tol_rmatom ) index2rm.push_back(i);
+		//	}
+		//}
+		//Grain1->RemoveAtoms(index2rm);
+		nbAtom1 = Grain1->getNbAtom();
+
+		
+		// ** Grain1 facet 1 ** //
+		//Crystal OriCryst_f1(crystalName);
+		//OriCryst_f1.RotateCrystal(FacetsType[0], FacetsType[1], FacetsType[2],u_x,v_x,w_x);
+		//OriCryst_f1.ShiftMotif(lowgrain_shift_x, lowgrain_shift_y, lowgrain_shift_z);
+		//OriCryst_f1.ConstructOrthogonalCell();
+		//AtomicSystem *OriSys_f1 = OriCryst_f1.getOrientedSystem();
+		//double *invRotMat = new double[9];
+		//MT->invert3x3(OriCryst_f1.getTiltTrans(),invTiltTrans);
+		//MT->invert3x3(OriCryst_f1.getRotMat(),invRotMat);
+		//z_shift_OriSys = OriSys_f1->MakeSurfaceNeutral();
+		//// keep only a small part of the system near to the surface to limit computational cost
+		//index2rm = OriSys_f1->selectAtomInBox(-hi_nb, hi_nb, -hi_nb, hi_nb, -hi_nb, OriSys_f1->getH3()[2]-select_width, false);
+		//OriSys_f1->RemoveAtoms(index2rm);
+		//nbAt_OriSys = OriSys_f1->getNbAtom();
+		//// remove z shift from the MakeSurfaceNeutral function
+		//OriSys_f1->ApplyShift(zero, zero, z_shift_OriSys);
+		//// ** Set the curent grain def and misfit to the OriSys ** //
+		//// 1. remove the crystal def to the ori sys
+		//for(unsigned int i=0;i<nbAt_OriSys;i++) MT->MatDotAt(invTiltTrans, OriSys_f1->getAtomRef(i), OriSys_f1->getAtomRef(i));
+		//for(unsigned int i=0;i<nbAt_OriSys;i++) MT->MatDotAt(invRotMat, OriSys_f1->getAtomRef(i), OriSys_f1->getAtomRef(i));
+		//// 2. Rotate the Ori sys for the plane normal to be aligned with the facet normal 
+		//for(unsigned int i=0;i<nbAt_OriSys;i++) MT->MatDotAt(_MyCrystal->getRotMat(), OriSys_f1->getAtomRef(i), OriSys_f1->getAtomRef(i));
+		//// 3. Apply grain1 def
+		//for(unsigned int i=0;i<nbAt_OriSys;i++) MT->MatDotAt(_MyCrystal->getTiltTrans(), OriSys_f1->getAtomRef(i), OriSys_f1->getAtomRef(i));
+		//// 4. Apply misfit
+		//double *mean_pos_orisys = new double[3];
+		//for(unsigned int i=0;i<3;i++) mean_pos_orisys[i] = 0.;
+		//for(unsigned int i=0;i<nbAt_OriSys;i++){
+		//	OriSys_f1->getAtomRef(i).pos.x *= Mx1;
+		//	OriSys_f1->getAtomRef(i).pos.y *= My1;
+		//	mean_pos_orisys[0] += OriSys_f1->getAtomRef(i).pos.x;
+		//	mean_pos_orisys[1] += OriSys_f1->getAtomRef(i).pos.y;
+		//	mean_pos_orisys[2] += OriSys_f1->getAtomRef(i).pos.z;
+		//}
+		//for(unsigned int i=0;i<3;i++) mean_pos_orisys[i] /= nbAt_OriSys;
+		//
+		//// ** Make coincide the ori system with grain 1 at the bottom surface ** //
+		//// Set a subsystem of grain 1
+		//double para_width = 2.*OriSys->getH2()[1];
+		//SubSys.clear();
+		//double *mean_pos_subsys = new double[3];
+		//for(unsigned int i=0;i<3;i++) mean_pos_subsys[i] = 0.;
+		//for(unsigned int i=0;i<nbAtom1;i++){
+		//	xpos = Grain1->getAtom(i).pos.x;
+		//	ypos = Grain1->getAtom(i).pos.y;
+		//	zpos = Grain1->getAtom(i).pos.z;
+		//	double buffer_v;
+		//	unsigned int f=0;
+		//	if( xpar ) buffer_v = eps_pos + xpos;
+		//	else buffer_v = eps_pos + ypos - VertPlaneSlope*xpos;
+		//	if( ( buffer_v > VertPlaneEq[f] ) && ( buffer_v < VertPlaneEq[f+1] ) ){
+		//		// Then test if atom is bellow the real plane
+		//		double buffer_f = eps_pos_z + xpos*NormalPlaneEq[f*3] + ypos*NormalPlaneEq[f*3+1] + (zpos-zboxG1+DeltaZ)*NormalPlaneEq[f*3+2];
+		//		if( buffer_f > FullPlaneEq[f]-(select_width*2.) ){
+		//			SubSys.push_back(Grain1->getAtom(i));
+		//			mean_pos_subsys[0] += Grain1->getAtomRef(i).pos.x;
+		//			mean_pos_subsys[1] += Grain1->getAtomRef(i).pos.y;
+		//			mean_pos_subsys[2] += Grain1->getAtomRef(i).pos.z;
+		//		}
+		//	}
+		//}
+		//// shift orisys using cell vec to be inside the subsys
+		//double *diff_orisubsys = new double[3];
+		//for(unsigned int i=0;i<3;i++){
+		//	mean_pos_subsys[i] /= SubSys.size();
+		//	diff_orisubsys[i] = mean_pos_subsys[i] - mean_pos_orisys[i];
+		//}
+		//max_hkl_search = 15;
+		//vector<double> optshift(3);
+		//double min_dist = std::numeric_limits<double>::max();
+		//for(int i=-max_hkl_search;i<=max_hkl_search;i++){
+		//	for(int j=-max_hkl_search;j<=max_hkl_search;j++){
+		//		for(int k=-max_hkl_search;k<=max_hkl_search;k++){
+		//			double cur_dist = 0.;
+		//			for(unsigned int d=0;d<3;d++){
+		//				double cur_vec = _MyCrystal->getA1()[d]*i + _MyCrystal->getA2()[d]*j + _MyCrystal->getA3()[d]*k;
+		//				cur_dist += (cur_vec-diff_orisubsys[d])*(cur_vec-diff_orisubsys[d]); 
+		//			}
+		//			if( cur_dist < min_dist ){
+		//				for(unsigned int d=0;d<3;d++) optshift[d] = _MyCrystal->getA1()[d]*i + _MyCrystal->getA2()[d]*j + _MyCrystal->getA3()[d]*k;
+		//				min_dist = cur_dist;
+		//			}
+		//		}
+		//	}
+		//}
+		//OriSys_f1->ApplyShift(optshift[0],optshift[1],optshift[2]);
+
+
+		//sigma = 0.25;
+		//delete[] at_sp;
+		//at_sp = nullptr;
+		//at_sp = new double[nbAt_OriSys];
+		//tol = 1.e-3;
+		//init_sp_sum = 0.;
+		//for(unsigned int i=0;i<nbAt_OriSys;i++){
+		//	at_sp[i] = 0.;
+		//	for(unsigned int j=0;j<SubSys.size();j++) at_sp[i] += MT->gaussian(OriSys_f1->getAtomRef(i).pos.x, OriSys_f1->getAtomRef(i).pos.y, OriSys_f1->getAtomRef(i).pos.z, SubSys[j].pos.x, SubSys[j].pos.y, SubSys[j].pos.z, sigma);
+		//	if( i != 0 && fabs(at_sp[i]-at_sp[i-1]) > tol ) cout << "WARNING the oriented system seems to not coincide with grain 1" << endl;
+		//	init_sp_sum += at_sp[i];
+		//}
+		//// shift the OriSys using _Crystal cell vecs and choose the fully coinciding system being the closest to the bottom surface
+		//max_hkl_search = 5;
+		//hkl_shift.clear();
+		//z_shift.clear();
+		//for(int i=-max_hkl_search;i<=max_hkl_search;i++){
+		//	for(int j=-max_hkl_search;j<=max_hkl_search;j++){
+		//		for(int k=-max_hkl_search;k<=max_hkl_search;k++){
+		//			for(unsigned int d=0;d<3;d++) current_shift[d] = _MyCrystal->getA1()[d]*i + _MyCrystal->getA2()[d]*j + _MyCrystal->getA3()[d]*k;
+		//		        OriSys_f1->ApplyShift(current_shift[0], current_shift[1], current_shift[2]);
+		//			double current_sp_sum = 0.;
+		//			for(unsigned int n1=0;n1<nbAt_OriSys;n1++){
+		//				at_sp[n1] = 0.;
+		//				for(unsigned int n2=0;n2<SubSys.size();n2++) at_sp[n1] += MT->gaussian(OriSys_f1->getAtomRef(n1).pos.x, OriSys_f1->getAtomRef(n1).pos.y, OriSys_f1->getAtomRef(n1).pos.z, SubSys[n2].pos.x, SubSys[n2].pos.y, SubSys[n2].pos.z, sigma);
+		//				current_sp_sum += at_sp[n1];
+		//			}
+		//			if( fabs(current_sp_sum-init_sp_sum) < tol ){
+		//				hkl_shift.push_back(i);
+		//				hkl_shift.push_back(j);
+		//				hkl_shift.push_back(k);
+		//				unsigned int f=0;
+		//				double buffer_f = current_shift[0]*NormalPlaneEq[f*3] + current_shift[1]*NormalPlaneEq[f*3+1] + (current_shift[2]-zboxG1+DeltaZ)*NormalPlaneEq[f*3+2];
+		//				z_shift.push_back(-buffer_f+FullPlaneEq[f]);
+		//			}
+		//		        OriSys_f1->ApplyShift(-current_shift[0], -current_shift[1], -current_shift[2]);
+		//		}
+		//	}
+		//}
+		//if( z_shift.size() == 0 ){
+		//	cerr << "An issue occured when translating the oriented system to search the optimal postion with grain 1" << endl;
+		//	exit(EXIT_FAILURE);
+		//}
+		//opt_ind = MT->min(z_shift);
+		//for(unsigned int d=0;d<3;d++) current_shift[d] = _MyCrystal->getA1()[d]*hkl_shift[opt_ind*3] + _MyCrystal->getA2()[d]*hkl_shift[opt_ind*3+1] + _MyCrystal->getA3()[d]*hkl_shift[opt_ind*3+2];
+		//OriSys_f1->ApplyShift(current_shift[0], current_shift[1], current_shift[2]);
+		//// BEGIN  PRINTING
+		////OriSys->setAux(at_sp,"foraux");
+		////OriSys->printSystem_aux("SP.cfg","foraux");
+		//unsigned int sizesys = SubSys.size()+nbAt_OriSys;
+		////unsigned int sizesys = nbAtom1+nbAt_OriSys;
+		//Atom *AtList_temp = new Atom[sizesys];
+		//double *foraux = new double[sizesys];
+		//for(unsigned int i=0;i<SubSys.size();i++){
+		//	AtList_temp[i] = SubSys[i];
+		//	foraux[i] = 0.;
+		//}
+		////for(unsigned int i=0;i<nbAtom1;i++){
+		////	AtList_temp[i] = Grain1->getAtom(i);
+		////	foraux[i] = 0.;
+		////}
+		//for(unsigned int i=0;i<nbAt_OriSys;i++){
+		//	AtList_temp[i+SubSys.size()] = OriSys_f1->getAtom(i);
+		//	foraux[i+SubSys.size()] = 1.;
+		//	//AtList_temp[i+nbAtom1] = OriSys_f1->getAtom(i);
+		//	//foraux[i+nbAtom1] = 1.;
+		//}
+		//AtomicSystem *AtSysTemp = new AtomicSystem(AtList_temp,sizesys,_MyCrystal,this->H1_G1,this->H2_G1,this->H3_G1);
+		//AtSysTemp->setAux(foraux,"foraux");
+		//AtSysTemp->printSystem_aux("FORAUX.cfg","foraux");
+		//// END PRINTING
+
+		//// now the ori sys is well positionned
+
+		//// ** swap the bottom surface of grain 1 and remove the ions not coinciding with ori sys ** //
+		////
+		//double *swap_shift = new double[3];
+		//for(unsigned int i=0;i<3;i++) swap_shift[i] = OriSys_f1->getH2()[i];
+		//MT->MatDotRawVec(invTiltTrans,swap_shift,swap_shift);
+		//MT->MatDotRawVec(invRotMat,swap_shift,swap_shift);
+		//MT->MatDotRawVec(_MyCrystal->getRotMat(),swap_shift,swap_shift);
+		//MT->MatDotRawVec(_MyCrystal->getTiltTrans(),swap_shift,swap_shift);
+		//swap_shift[0] *= Mx1;
+		//swap_shift[1] *= My1;
+		//unsigned int nb_shift = round((VertPlaneEq[1]-VertPlaneEq[0])/swap_shift[1])+2;
+		//// put the ori sys at minimum y pos
+		//min_y = std::numeric_limits<double>::max();
+		//mean_z_pos = 0.;
+		//for(unsigned int i=0;i<nbAt_OriSys;i++){
+		//				unsigned int f=0;
+		//	double buffer_f = OriSys_f1->getAtom(i).pos.x*NormalPlaneEq[f*3] + OriSys_f1->getAtom(i).pos.y*NormalPlaneEq[f*3+1] + (OriSys_f1->getAtom(i).pos.z-zboxG1+DeltaZ)*NormalPlaneEq[f*3+2];
+		//	mean_z_pos += FullPlaneEq[f]-buffer_f;
+		//	if( OriSys_f1->getAtom(i).pos.y < min_y ) min_y = OriSys_f1->getAtom(i).pos.y;
+		//}
+		//mean_z_pos /= nbAt_OriSys;
+		//// min_y should be at most 0
+		//for(unsigned int i=0;i<3;i++) current_shift[i] = swap_shift[i]*(double) ceil(min_y/swap_shift[1]);
+		//OriSys_f1->ApplyShift(-current_shift[0], -current_shift[1], -current_shift[2]);
+		//index2rm.clear();
+		//tol_rmatom = 0.9*init_sp_sum/nbAt_OriSys;
+		//for(unsigned int i=0;i<nbAtom1;i++){
+		//				unsigned int f=0;
+		//	double buffer_f = Grain1->getAtom(i).pos.x*NormalPlaneEq[f*3] + Grain1->getAtom(i).pos.y*NormalPlaneEq[f*3+1] + (Grain1->getAtom(i).pos.z-zboxG1+DeltaZ)*NormalPlaneEq[f*3+2];
+		//	double dist = FullPlaneEq[f]-buffer_f;
+		//	if( dist < mean_z_pos ){
+		//		double cur_sp = 0.;
+		//		for(unsigned int j=0;j<nbAt_OriSys;j++){
+		//			for(unsigned int k=0;k<nb_shift;k++){
+		//				current_shift[0] = swap_shift[0]*k + OriSys_f1->getAtomRef(j).pos.x;
+		//				current_shift[1] = swap_shift[1]*k + OriSys_f1->getAtomRef(j).pos.y;
+		//				current_shift[2] = swap_shift[2]*k + OriSys_f1->getAtomRef(j).pos.z;
+		//				cur_sp += MT->gaussian(Grain1->getAtomRef(i).pos.x, Grain1->getAtomRef(i).pos.y, Grain1->getAtomRef(i).pos.z, current_shift[0], current_shift[1], current_shift[2], sigma);
+		//			}
+		//		}
+		//		if( cur_sp < tol_rmatom ) index2rm.push_back(i);
+		//	}
+		//}
+		//Grain1->RemoveAtoms(index2rm);
+
+
+
+
+
+	} // end if adjust surfaces
 
 	// merge the two grains 
 	this->nbAtom = Grain1->getNbAtom() + Grain2->getNbAtom();
@@ -1353,19 +1726,6 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 		this->Grain1 = new AtomicSystem(this->AtomList_G1, nbAtom1_G, this->_MyCrystal, this->H1_G1, this->H2_G1, this->H3_G1, this->MolId_G1, nbBonds_G1, nbBondType_G1, this->Bonds_G1, this->BondType_G1, nbAngles_G1, nbAngleType_G1, this->Angles_G1, this->AngleType_G1);
 		this->Grain2 = new AtomicSystem(this->AtomList_G2, nbAtom2_G, this->_MyCrystal2, this->H1_G2, this->H2_G2, this->H3_G2, this->MolId_G2, nbBonds_G2, nbBondType_G2, this->Bonds_G2, this->BondType_G2, nbAngles_G2, nbAngleType_G2, this->Angles_G2, this->AngleType_G2);
 	}
-
-	//TEST
-	string temp="1";
-	Grain1->getH3()[2] *= 2.;
-	Grain1->computeWrap();
-	Grain1->MakeSurfaceNeutral_3dBased_bis(temp);
-	Grain1->getH3()[2] /= 2.;
-	Grain2->getH3()[2] *= 2.;
-	Grain2->computeWrap();
-	temp="2";
-	Grain2->MakeSurfaceNeutral_3dBased_bis(temp);
-	Grain2->getH3()[2] /= 2.;
-	//ENDTEST
 
 	this->AreGrainsDefined = true;
 	string h_a_str = to_string(this->h_a);

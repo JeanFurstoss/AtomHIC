@@ -579,6 +579,11 @@ void MathTools::printVec(const double *vec){
 	cout << endl;
 }
 
+void MathTools::printVec(const vector<double> vec){
+	for(unsigned int i=0;i<3;i++) cout << vec[i] << " " ;
+	cout << endl;
+}
+
 void MathTools::MatDotAt(const double *mat, const Atom &At, Atom &At_prod){
 	this->buffer_vec_2[0] = At.pos.x;
 	this->buffer_vec_2[1] = At.pos.y;
@@ -829,10 +834,13 @@ void MathTools::computeTiltTrans(const double *xh, const double *yh, const doubl
 	TiltTrans[1] = buffer_mat_1[1]*xbox/(xh[0]+buffer_mat_1[1]*xh[1]+buffer_mat_1[2]*xh[2]);
 	TiltTrans[2] = buffer_mat_1[2]*xbox/(xh[0]+buffer_mat_1[1]*xh[1]+buffer_mat_1[2]*xh[2]);
 	TiltTrans[3] = -(xh[1]*buffer_mat_1[4]+buffer_mat_1[5]*xh[2])/(xh[0]+buffer_mat_1[1]*xh[1]+buffer_mat_1[2]*xh[2]);
+	//TiltTrans[3] = TiltTrans[1];
 	TiltTrans[4] = buffer_mat_1[4]-(xh[1]*buffer_mat_1[4]+buffer_mat_1[5]*xh[2])*buffer_mat_1[1]/(xh[0]+buffer_mat_1[1]*xh[1]+buffer_mat_1[2]*xh[2]);
 	TiltTrans[5] = buffer_mat_1[5]-(xh[1]*buffer_mat_1[4]+buffer_mat_1[5]*xh[2])*buffer_mat_1[2]/(xh[0]+buffer_mat_1[1]*xh[1]+buffer_mat_1[2]*xh[2]);
 	TiltTrans[6] = -(xh[2]*buffer_mat_1[8]+buffer_mat_1[7]*xh[1])/(xh[0]+buffer_mat_1[1]*xh[1]+buffer_mat_1[2]*xh[2]);
+	//TiltTrans[6] = TiltTrans[2];
 	TiltTrans[7] = buffer_mat_1[7]-(xh[2]*buffer_mat_1[8]+buffer_mat_1[7]*xh[1])*buffer_mat_1[1]/(xh[0]+buffer_mat_1[1]*xh[1]+buffer_mat_1[2]*xh[2]);
+	//TiltTrans[7] = TiltTrans[5];
 	TiltTrans[8] = buffer_mat_1[8]-(xh[2]*buffer_mat_1[8]+buffer_mat_1[7]*xh[1])*buffer_mat_1[2]/(xh[0]+buffer_mat_1[1]*xh[1]+buffer_mat_1[2]*xh[2]);
 }
 
