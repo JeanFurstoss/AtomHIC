@@ -198,7 +198,7 @@ public:
 	// The two next functions have not been succesfully implemented one day may be pushed further
 	//void MakeSurfaceNeutral_3dBased(std::string ext); // try to have neutral surfaces 
 	//void MakeSurfaceNeutral_3dBased_bis(std::string ext); // try to have neutral surfaces 
-	void MakeSurfaceNeutral(std::vector<int> Oris, std::vector<double> shift, std::vector<double> Misfit, std::vector<double> PlaneNormal, double VertPlaneSlope, std::vector<double> VertPlaneEq, std::vector<double> FullPlaneEq, double shift_z_box); // 
+	void MakeSurfaceNeutral(std::vector<int> Oris, std::vector<double> shift, std::vector<double> Misfit, std::vector<double> PlaneNormal, double VertPlaneSlope, std::vector<double> VertPlaneEq, std::vector<double> FullPlaneEq, double shift_z_box, std::string outputfilename=""); // 
 	void RemoveAtoms(std::vector<unsigned int> index2rm);
 	double ComputeAverageDistance();
 	void ComputeNotSepList();

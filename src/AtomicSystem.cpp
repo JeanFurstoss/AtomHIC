@@ -4050,7 +4050,7 @@ void AtomicSystem::RemoveAtoms(vector<unsigned int> index2rm){
 	
 }
 
-void AtomicSystem::MakeSurfaceNeutral(vector<int> Oris, vector<double> shift, vector<double> Misfit, vector<double> PlaneNormal, double VertPlaneSlope, vector<double> VertPlaneEq, vector<double> FullPlaneEq, double shift_z_box){
+void AtomicSystem::MakeSurfaceNeutral(vector<int> Oris, vector<double> shift, vector<double> Misfit, vector<double> PlaneNormal, double VertPlaneSlope, vector<double> VertPlaneEq, vector<double> FullPlaneEq, double shift_z_box, string outputfilename){
 	Crystal OriCryst_f1(_MyCrystal->getName());
 	OriCryst_f1.RotateCrystal(Oris[0], Oris[1], Oris[2], Oris[3], Oris[4], Oris[5]);
 	OriCryst_f1.ShiftMotif(shift[0], shift[1], shift[2]);
@@ -4061,13 +4061,27 @@ void AtomicSystem::MakeSurfaceNeutral(vector<int> Oris, vector<double> shift, ve
 	MT->invert3x3(OriCryst_f1.getTiltTrans(),invTiltTrans);
 	MT->invert3x3(OriCryst_f1.getRotMat(),invRotMat);
 	double z_shift_OriSys = OriSys_f1->MakeSurfaceNeutral();
+	if( outputfilename != "" ) OriSys_f1->print_lmp(outputfilename);
 	// keep only a small part of the system near to the surface to limit computational cost
 	double select_width = 10.;
 	double zero = 0.;
+	double zero_num = 1.e-8;
 	bool xpar = false; // TODO
 	double hi_nb = 1.e8;
+	// test whether we should keep the bottom or the top surface to be aligned with the normal plane
+	double *zaxis = new double[3];
+	zaxis[0] = 0.;
+	zaxis[1] = 0.;
+	zaxis[2] = 1.;
+	MT->MatDotRawVec(invTiltTrans,zaxis,zaxis);
+	MT->MatDotRawVec(invRotMat,zaxis,zaxis);
+	MT->MatDotRawVec(_MyCrystal->getRotMat(),zaxis,zaxis);
+	MT->MatDotRawVec(_MyCrystal->getTiltTrans(),zaxis,zaxis);
+        double sp_z = 0.;
+	for(unsigned int i=0;i<3;i++) sp_z += zaxis[i]*PlaneNormal[i];
+	cout << "SPZ = " << sp_z << endl;
 	vector<unsigned int> index2rm;
-	if( PlaneNormal[2] > 0 ) index2rm = OriSys_f1->selectAtomInBox(-hi_nb, hi_nb, -hi_nb, hi_nb, -hi_nb, OriSys_f1->getH3()[2]-select_width, false);
+	if( sp_z > 0 ) index2rm = OriSys_f1->selectAtomInBox(-hi_nb, hi_nb, -hi_nb, hi_nb, -hi_nb, OriSys_f1->getH3()[2]-select_width, false);
 	else index2rm = OriSys_f1->selectAtomInBox(-hi_nb, hi_nb, -hi_nb, hi_nb, select_width, hi_nb, false);
 	OriSys_f1->RemoveAtoms(index2rm);
 	unsigned int nbAt_OriSys = OriSys_f1->getNbAtom();
@@ -4105,9 +4119,12 @@ void AtomicSystem::MakeSurfaceNeutral(vector<int> Oris, vector<double> shift, ve
 	double *current_shift = new double[3];
 	double *swap_shift = new double[3];
 
+	cout << "Plane normal : ";
+	for(unsigned int i=0;i<3;i++) cout << PlaneNormal[i] << " ";
+	cout << endl;
 	// loop on number of plane 
 	for(unsigned int f=0;f<FullPlaneEq.size();f++){
-		cout << f << endl;
+	//for(unsigned int f=0;f<1;f++){
 		vector<Atom> SubSys;
 		for(unsigned int i=0;i<3;i++) mean_pos_subsys[i] = 0.;
 		for(unsigned int i=0;i<nbAtom;i++){
@@ -4128,19 +4145,26 @@ void AtomicSystem::MakeSurfaceNeutral(vector<int> Oris, vector<double> shift, ve
 				}
 			}
 		}
-		cout << SubSys.size() << endl;
 
 		// shift orisys using cell vec to be inside the subsys
 		for(unsigned int i=0;i<3;i++){
 			mean_pos_subsys[i] /= SubSys.size();
 			diff_orisubsys[i] = mean_pos_subsys[i] - mean_pos_orisys[i];
 		}
-		int max_hkl_search = 15;
+		int max_hkl_search = 150;
+		vector<unsigned int> search_hkl;
+		for(unsigned int i=0;i<3;i++){
+			if( fabs(_MyCrystal->getA1()[i]) > zero_num ) search_hkl.push_back(round(fabs(diff_orisubsys[i]/_MyCrystal->getA1()[i])));
+			if( fabs(_MyCrystal->getA2()[i]) > zero_num ) search_hkl.push_back(round(fabs(diff_orisubsys[i]/_MyCrystal->getA2()[i])));
+			if( fabs(_MyCrystal->getA3()[i]) > zero_num ) search_hkl.push_back(round(fabs(diff_orisubsys[i]/_MyCrystal->getA3()[i])));
+		}
+		int hkl_search = (int) MT->max_vec(search_hkl);
+		if( hkl_search > max_hkl_search ) hkl_search = max_hkl_search;
 		vector<double> optshift(3);
 		double min_dist = std::numeric_limits<double>::max();
-		for(int i=-max_hkl_search;i<=max_hkl_search;i++){
-			for(int j=-max_hkl_search;j<=max_hkl_search;j++){
-				for(int k=-max_hkl_search;k<=max_hkl_search;k++){
+		for(int i=-hkl_search;i<=hkl_search;i++){
+			for(int j=-hkl_search;j<=hkl_search;j++){
+				for(int k=-hkl_search;k<=hkl_search;k++){
 					double cur_dist = 0.;
 					for(unsigned int d=0;d<3;d++){
 						double cur_vec = _MyCrystal->getA1()[d]*i + _MyCrystal->getA2()[d]*j + _MyCrystal->getA3()[d]*k;
@@ -4154,54 +4178,26 @@ void AtomicSystem::MakeSurfaceNeutral(vector<int> Oris, vector<double> shift, ve
 			}
 		}
 		OriSys_f1->ApplyShift(optshift[0],optshift[1],optshift[2]);
-
-			// BEGIN  PRINTING
-			//OriSys->setAux(at_sp,"foraux");
-			//OriSys->printSystem_aux("SP.cfg","foraux");
-			unsigned int sizesys = SubSys.size()+nbAt_OriSys;
-			//unsigned int sizesys = nbAtom1+nbAt_OriSys;
-			Atom *AtList_temp = new Atom[sizesys];
-			double *foraux = new double[sizesys];
-			for(unsigned int i=0;i<SubSys.size();i++){
-				AtList_temp[i] = SubSys[i];
-				foraux[i] = 0.;
-			}
-			//for(unsigned int i=0;i<nbAtom1;i++){
-			//	AtList_temp[i] = Grain1->getAtom(i);
-			//	foraux[i] = 0.;
-			//}
-			for(unsigned int i=0;i<nbAt_OriSys;i++){
-				AtList_temp[i+SubSys.size()] = OriSys_f1->getAtom(i);
-				foraux[i+SubSys.size()] = 1.;
-				//AtList_temp[i+nbAtom1] = OriSys_f1->getAtom(i);
-				//foraux[i+nbAtom1] = 1.;
-			}
-			AtomicSystem *AtSysTemp = new AtomicSystem(AtList_temp,sizesys,_MyCrystal,this->H1,this->H2,this->H3);
-			AtSysTemp->setAux(foraux,"foraux");
-			AtSysTemp->printSystem_aux("FORAUX.cfg","foraux");
-			delete[] AtList_temp;
-			delete[] foraux;
-			delete AtSysTemp;
-			// END PRINTING
-
+		for(unsigned int i=0;i<3;i++) mean_pos_orisys[i] += optshift[i];
 
 
 		double sigma = 0.25;
 		double tol = 1.e-3;
 		double init_sp_sum = 0.;
+		double min_sp = 1.e-1;
 		for(unsigned int i=0;i<nbAt_OriSys;i++){
 			at_sp[i] = 0.;
 			for(unsigned int j=0;j<SubSys.size();j++) at_sp[i] += MT->gaussian(OriSys_f1->getAtomRef(i).pos.x, OriSys_f1->getAtomRef(i).pos.y, OriSys_f1->getAtomRef(i).pos.z, SubSys[j].pos.x, SubSys[j].pos.y, SubSys[j].pos.z, sigma);
-			if( i != 0 && fabs(at_sp[i]-at_sp[i-1]) > tol ) cout << "WARNING the oriented system seems to not coincide with grain 1" << endl;
+			if( ( i != 0 && fabs(at_sp[i]-at_sp[i-1]) > tol ) || at_sp[i] < min_sp ) cout << "WARNING the oriented system seems to not coincide with grain 1" << endl;
 			init_sp_sum += at_sp[i];
 		}
-		// shift the OriSys using _Crystal cell vecs and choose the fully coinciding system being the closest to the bottom surface
-		max_hkl_search = 5;
+		// shift the OriSys using _Crystal cell vecs and choose the fully coinciding system being the closest to the surface
+		hkl_search = 10;
 		vector<int> hkl_shift;
 		vector<double> z_shift;
-		for(int i=-max_hkl_search;i<=max_hkl_search;i++){
-			for(int j=-max_hkl_search;j<=max_hkl_search;j++){
-				for(int k=-max_hkl_search;k<=max_hkl_search;k++){
+		for(int i=-hkl_search;i<=hkl_search;i++){
+			for(int j=-hkl_search;j<=hkl_search;j++){
+				for(int k=-hkl_search;k<=hkl_search;k++){
 					for(unsigned int d=0;d<3;d++) current_shift[d] = _MyCrystal->getA1()[d]*i + _MyCrystal->getA2()[d]*j + _MyCrystal->getA3()[d]*k;
 				        OriSys_f1->ApplyShift(current_shift[0], current_shift[1], current_shift[2]);
 					double current_sp_sum = 0.;
@@ -4228,6 +4224,39 @@ void AtomicSystem::MakeSurfaceNeutral(vector<int> Oris, vector<double> shift, ve
 		unsigned int opt_ind = MT->min(z_shift);
 		for(unsigned int d=0;d<3;d++) current_shift[d] = _MyCrystal->getA1()[d]*hkl_shift[opt_ind*3] + _MyCrystal->getA2()[d]*hkl_shift[opt_ind*3+1] + _MyCrystal->getA3()[d]*hkl_shift[opt_ind*3+2];
 		OriSys_f1->ApplyShift(current_shift[0], current_shift[1], current_shift[2]);
+		for(unsigned int i=0;i<3;i++) mean_pos_orisys[i] += current_shift[i];
+
+			// BEGIN  PRINTING
+			//OriSys->setAux(at_sp,"foraux");
+			//OriSys->printSystem_aux("SP.cfg","foraux");
+			unsigned int sizesys = SubSys.size()+nbAt_OriSys;
+			//unsigned int sizesys = nbAtom1+nbAt_OriSys;
+			Atom *AtList_temp = new Atom[sizesys];
+			double *foraux = new double[sizesys];
+			for(unsigned int i=0;i<SubSys.size();i++){
+				AtList_temp[i] = SubSys[i];
+				foraux[i] = 0.;
+			}
+			//for(unsigned int i=0;i<nbAtom1;i++){
+			//	AtList_temp[i] = Grain1->getAtom(i);
+			//	foraux[i] = 0.;
+			//}
+			for(unsigned int i=0;i<nbAt_OriSys;i++){
+				AtList_temp[i+SubSys.size()] = OriSys_f1->getAtom(i);
+				foraux[i+SubSys.size()] = 1.;
+				//AtList_temp[i+nbAtom1] = OriSys_f1->getAtom(i);
+				//foraux[i+nbAtom1] = 1.;
+			}
+			AtomicSystem *AtSysTemp = new AtomicSystem(AtList_temp,sizesys,_MyCrystal,this->H1,this->H2,this->H3);
+			AtSysTemp->setAux(foraux,"foraux");
+			AtSysTemp->printSystem_aux("FORAUX"+to_string(f)+".cfg","foraux");
+			delete[] AtList_temp;
+			delete[] foraux;
+			delete AtSysTemp;
+			// END PRINTING
+
+
+
 		// now the ori sys is well positionned
 		// ** swap the surface of the system and remove the ions not coinciding with ori sys ** //
 		//
@@ -4236,8 +4265,8 @@ void AtomicSystem::MakeSurfaceNeutral(vector<int> Oris, vector<double> shift, ve
 		MT->MatDotRawVec(invRotMat,swap_shift,swap_shift);
 		MT->MatDotRawVec(_MyCrystal->getRotMat(),swap_shift,swap_shift);
 		MT->MatDotRawVec(_MyCrystal->getTiltTrans(),swap_shift,swap_shift);
-		for(unsigned int d=0;d<3;d++) swap_shift[d] *= Misfit[d];
-		unsigned int nb_shift = round((VertPlaneEq[2*f+1]-VertPlaneEq[2*f])/swap_shift[1])+2; //TODO warning for not 2D
+		if( swap_shift[1] < 0 ) for(unsigned int d=0;d<3;d++) swap_shift[d] *= -Misfit[d];
+		else for(unsigned int d=0;d<3;d++) swap_shift[d] *= Misfit[d];
 		// put the ori sys at minimum y pos
 		double min_y = std::numeric_limits<double>::max();
 		double mean_z_pos = 0.;
@@ -4246,35 +4275,48 @@ void AtomicSystem::MakeSurfaceNeutral(vector<int> Oris, vector<double> shift, ve
 			double ypos = OriSys_f1->getAtom(i).pos.y;
 			double zpos = OriSys_f1->getAtom(i).pos.z;
 			double buffer_f = xpos*PlaneNormal[0] + ypos*PlaneNormal[1] + (zpos-shift_z_box)*PlaneNormal[2];
-			mean_z_pos += FullPlaneEq[f]-buffer_f;
+			mean_z_pos += -FullPlaneEq[f]-buffer_f;
 			if( OriSys_f1->getAtom(i).pos.y < min_y ) min_y = OriSys_f1->getAtom(i).pos.y;
 		}
 		mean_z_pos /= nbAt_OriSys;
-		// min_y should be at most 0
-		for(unsigned int i=0;i<3;i++) current_shift[i] = swap_shift[i]*(double) ceil(min_y/swap_shift[1]);
+		// min_y should be at most VertPlaneEq[2*f]
+		for(unsigned int i=0;i<3;i++) current_shift[i] = swap_shift[i]*((double) ceil((min_y-VertPlaneEq[2*f])/swap_shift[1]) + 1.);
 		OriSys_f1->ApplyShift(-current_shift[0], -current_shift[1], -current_shift[2]);
+		for(unsigned int i=0;i<3;i++) mean_pos_orisys[i] -= current_shift[i];
+		unsigned int nb_shift = round((VertPlaneEq[2*f+1]-VertPlaneEq[2*f]+fabs(min_y-VertPlaneEq[2*f]))/swap_shift[1])+2; //TODO warning for not 2D
+
+
 		index2rm.clear();
 		double tol_rmatom = 0.9*init_sp_sum/nbAt_OriSys;
+		cout << nb_shift << endl;
 		for(unsigned int i=0;i<nbAtom;i++){
 			double xpos = AtomList[i].pos.x;
 			double ypos = AtomList[i].pos.y;
 			double zpos = AtomList[i].pos.z;
-			double buffer_f = xpos*PlaneNormal[0] + ypos*PlaneNormal[1] + (zpos-shift_z_box)*PlaneNormal[2];
-			double dist = FullPlaneEq[f]-buffer_f;
-			if( dist < mean_z_pos ){
-				double cur_sp = 0.;
-				for(unsigned int j=0;j<nbAt_OriSys;j++){
-					for(unsigned int k=0;k<nb_shift;k++){
-						current_shift[0] = swap_shift[0]*k + OriSys_f1->getAtomRef(j).pos.x;
-						current_shift[1] = swap_shift[1]*k + OriSys_f1->getAtomRef(j).pos.y;
-						current_shift[2] = swap_shift[2]*k + OriSys_f1->getAtomRef(j).pos.z;
-						cur_sp += MT->gaussian(xpos, ypos, zpos, current_shift[0], current_shift[1], current_shift[2], sigma);
+			double buffer_v;
+			if( xpar ) buffer_v = xpos;
+			else buffer_v = ypos - VertPlaneSlope*xpos;
+			if( ( buffer_v > VertPlaneEq[f*2] ) && ( buffer_v < VertPlaneEq[2*f+1] ) ){
+				double buffer_f = xpos*PlaneNormal[0] + ypos*PlaneNormal[1] + (zpos-shift_z_box)*PlaneNormal[2];
+				double dist = -FullPlaneEq[f]-buffer_f;
+				if( dist < mean_z_pos ){
+					double cur_sp = 0.;
+					for(unsigned int j=0;j<nbAt_OriSys;j++){
+						for(unsigned int k=0;k<nb_shift;k++){
+							current_shift[0] = swap_shift[0]*k + OriSys_f1->getAtomRef(j).pos.x;
+							current_shift[1] = swap_shift[1]*k + OriSys_f1->getAtomRef(j).pos.y;
+							current_shift[2] = swap_shift[2]*k + OriSys_f1->getAtomRef(j).pos.z;
+							cur_sp += MT->gaussian(xpos, ypos, zpos, current_shift[0], current_shift[1], current_shift[2], sigma);
+						}
+					}
+					if( cur_sp < tol_rmatom ){
+						index2rm.push_back(i);
 					}
 				}
-				if( cur_sp < tol_rmatom ) index2rm.push_back(i);
 			}
 		}
 		RemoveAtoms(index2rm);
+		cout << "Number of ions removed : " << index2rm.size() << endl;
 	} // end loop on f
 
 }	

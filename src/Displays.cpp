@@ -479,7 +479,7 @@ void Displays::ReadFixedParams(string filename){
 	// crystal
 	size_t pos_tolOrthoBox, pos_tolOrthoBoxZ, pos_minBoxHeight, pos_minBoxAside, pos_shift, pos_nblc, pos_max_hkl_search;
 	// bicrystals and CSL/DSC
-	size_t pos_thetamax, pos_MaxHKL, pos_toldist, pos_tolpos_kC, pos_tolCSLint, pos_tolAlign, pos_MaxMisfit, pos_GBSpace, pos_MaxDup, pos_FullGrains, pos_maxvarfl, pos_maxdupf, pos_shift_grain;
+	size_t pos_thetamax, pos_MaxHKL, pos_toldist, pos_tolpos_kC, pos_tolCSLint, pos_tolAlign, pos_MaxMisfit, pos_GBSpace, pos_MaxDup, pos_FullGrains, pos_maxvarfl, pos_maxdupf, pos_shift_grain, pos_shift_upgrain;
 	// descriptors and ML
 	size_t pos_filter, pos_rattrain;
 	// Steinhardt descriptors
@@ -605,6 +605,12 @@ void Displays::ReadFixedParams(string filename){
 			if(pos_shift_grain!=string::npos){
 				istringstream text(line);
 				text >> buffer_s >> this->lowgrain_shift_x >> this->lowgrain_shift_y >> this->lowgrain_shift_z;
+				FixedParameters.push_back(line);
+			}
+			pos_shift_upgrain=line.find("UPPER_GRAIN_SHIFT ");
+			if(pos_shift_upgrain!=string::npos){
+				istringstream text(line);
+				text >> buffer_s >> this->upgrain_shift_x >> this->upgrain_shift_y >> this->upgrain_shift_z;
 				FixedParameters.push_back(line);
 			}
 			pos_MaxMisfit=line.find("MAX_MISFIT ");
@@ -881,6 +887,7 @@ void Displays::Printer_CreateGB(){
 	cout << "\t MAX_DUP " << MaxDup << endl;
 	cout << "\t GB_SPACE " << GBspace << endl;
 	cout << "\t LOWER_GRAIN_SHIFT " << lowgrain_shift_x << " " << lowgrain_shift_y << " " << lowgrain_shift_z << endl; 
+	cout << "\t UPPER_GRAIN_SHIFT " << upgrain_shift_x << " " << upgrain_shift_y << " " << upgrain_shift_z << endl; 
 	cout << "\t FULL_GRAINS " << FullGrains << endl;
 	cout << "\t THETA_MAX_ROT_ANGLE_RAT " << theta_max_rot_ax_rat << endl;
 	cout << "\t MAX_HKL_ROT_ANGLE " << MaxHKL_rot_angle_rat << endl;
@@ -905,6 +912,7 @@ void Displays::Printer_CreateFacetGB(){
 	cout << "\t MAX_DUP " << MaxDup << endl;
 	cout << "\t GB_SPACE " << GBspace << endl;
 	cout << "\t LOWER_GRAIN_SHIFT " << lowgrain_shift_x << " " << lowgrain_shift_y << " " << lowgrain_shift_z << endl; 
+	cout << "\t UPPER_GRAIN_SHIFT " << upgrain_shift_x << " " << upgrain_shift_y << " " << upgrain_shift_z << endl; 
 	cout << "\t FULL_GRAINS " << FullGrains << endl;
 	cout << "\t THETA_MAX_ROT_ANGLE_RAT " << theta_max_rot_ax_rat << endl;
 	cout << "\t MAX_HKL_ROT_ANGLE " << MaxHKL_rot_angle_rat << endl;
@@ -982,6 +990,7 @@ void Displays::Printer_SampleGB_GammaSurface(){
 	cout << "\t MAX_DUP " << MaxDup << endl;
 	cout << "\t GB_SPACE " << GBspace << endl;
 	cout << "\t LOWER_GRAIN_SHIFT " << lowgrain_shift_x << " " << lowgrain_shift_y << " " << lowgrain_shift_z << endl; 
+	cout << "\t UPPER_GRAIN_SHIFT " << upgrain_shift_x << " " << upgrain_shift_y << " " << upgrain_shift_z << endl; 
 	cout << "\t FULL_GRAINS " << FullGrains << endl;
 	cout << "\t THETA_MAX_ROT_ANGLE_RAT " << theta_max_rot_ax_rat << endl;
 	cout << "\t MAX_HKL_ROT_ANGLE " << MaxHKL_rot_angle_rat << endl;

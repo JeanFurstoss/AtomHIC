@@ -111,6 +111,9 @@ protected:
 	double lowgrain_shift_x = 0.;
 	double lowgrain_shift_y = 0.;
         double lowgrain_shift_z = 0.;
+	double upgrain_shift_x = 0.;
+	double upgrain_shift_y = 0.;
+        double upgrain_shift_z = 0.;
 	bool FullGrains = true;
 	double theta_max_rot_ax_rat = 1.7e-2;
 	unsigned int MaxHKL_rot_angle_rat = 75;
