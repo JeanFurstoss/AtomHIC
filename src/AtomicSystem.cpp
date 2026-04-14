@@ -3265,716 +3265,730 @@ void AtomicSystem::duplicate(const unsigned int& nx, const unsigned int& ny, con
 }
 
 // The two next functions have not been succesfully implemented one day may be pushed further
-//void AtomicSystem::MakeSurfaceNeutral_3dBased(string ext){
-//	if( IsCharge == false ) return;
-//	bool Possible = false; // at least we should have two atom types having charge with opposite sign
-//	bool pos(false),neg(false);
-//	double zero_num = 1e-8;
-//	if( !_MyCrystal->getIsDoNotSep() ){
-//		for(unsigned int n=0;n<nbAtomType;n++){
-//			if( AtomCharge[n] > zero_num ) pos = true;
-//			else if( AtomCharge[n] < -zero_num ) neg = true;
-//			if( pos && neg ){
-//				Possible = true;
-//				break;
-//			}
-//		}
-//	}else{
-//		ComputeNotSepList();
-//		vector<vector<unsigned int>> DNS = _MyCrystal->getDoNotSep();
-//		unsigned int *Stoich = _MyCrystal->getStoich();
-//		for(unsigned int n=0;n<nbAtomType;n++){
-//			double block_charge = 0.; 
-//			for(unsigned int i=0;i<DNS.size();i++){
-//				if( DNS[i][0]-1 == n ){
-//					if( i == 0 ) block_charge = AtomCharge[DNS[i][0]-1];
-//					block_charge += AtomCharge[DNS[i][2]-1]*DNS[i][1];
-//					if( block_charge > zero_num ) pos = true;
-//					else if( block_charge < -zero_num ) neg = true;
-//					if( Stoich[DNS[i][2]-1] > Stoich[DNS[i][0]-1]*DNS[i][1] ){
-//						if( AtomCharge[DNS[i][2]-1] > zero_num ) pos = true;
-//						else if( AtomCharge[DNS[i][2]-1] < -zero_num ) neg = true;
-//					}
-//					if( pos && neg ){
-//						Possible = true;
-//						break;
-//					}
-//				}
-//			}
-//		}
-//		for(unsigned int n=0;n<nbAtomType;n++){
-//			bool treat = true;
-//			for(unsigned int i=0;i<DNS.size();i++){
-//				if( DNS[i][0]-1 == n ){
-//					treat = false;
-//					break;
-//				}
-//				if( DNS[i][2]-1 == n ){
-//					treat = false;
-//					break;
-//				}
-//			}
-//			if( treat ){
-//				if( AtomCharge[n] > zero_num ) pos = true;
-//				else if( AtomCharge[n] < -zero_num ) neg = true;
-//				if( pos && neg ){
-//					Possible = true;
-//					break;
-//				}
-//			}
-//		}
-//	}	
-//
-//	if( !Possible ){
-//		cout << "It is not possible to construct charge neutral surfaces as there are not two types of ions (or blocks of ions due to the DoNotSep crystal tag) having charge with opposite signs" << endl;
-//		return;
-//	}
-//
-//	cout << "Trying to make the surface charge neutral" << endl;
-//	// Compute charge density at each ion position
-//	double fac_sigma_gauss = 1.5;
-//	double *ChargeDens = new double[nbAtom];
-//	double sigma_gauss = MT->max_p(_MyCrystal->getALength(),3);
-//	sigma_gauss *= fac_sigma_gauss;
-//	int bcx = 2;
-//	int bcy = 2;
-//	int bcz = 2;
-//	#pragma omp parallel for
-//	for(unsigned int i=0;i<nbAtom;i++){
-//		ChargeDens[i] = 0.;
-//		for(unsigned int j=0;j<nbAtom;j++){ // think about restrict to neighbour in cutoff
-//			for(int bc1=-bcx;bc1<=bcx;bc1++){
-//				double coord1 = this->AtomList[j].pos.x+(this->H1[0]*bc1);
-//				for(int bc2=-bcy;bc2<=bcy;bc2++){
-//					double coord2 = this->AtomList[j].pos.y+(this->H2[1]*bc2);
-//					for(int bc3=-bcz;bc3<=bcz;bc3++){
-//						double coord3 = this->AtomList[j].pos.z+(this->H3[2]*bc3);
-//						ChargeDens[i] += MT->gaussian(AtomList[i].pos.x, AtomList[i].pos.y, AtomList[i].pos.z, coord1, coord2, coord3, sigma_gauss)*AtomCharge[AtomList[j].type_uint-1];
-//					}
-//				}
-//			}
-//		}
-//	}
-//	setAux(ChargeDens,"ChargeDens");
-//
-//	// remove ions in areas of high charge density with the same sign of the ion and exclude its neighbours for this pass
-//	double rcut = MT->min_p(_MyCrystal->getALength(),3);
-//	//searchNeighbours(rcut);
-//	sigma_gauss /= fac_sigma_gauss;
-//	searchNeighbours(sigma_gauss);
-//	sigma_gauss *= fac_sigma_gauss;
-//	double max_charge = 7.e-5;
-//	unsigned int *removed = new unsigned int[nbAtom];
-//	double *classif = new double[nbAtom];
-//	double *current_charge = new double[nbAtom];
-//	unsigned int *dontreat = new unsigned int[nbAtom];
-//	double total_charge = 0.;
-//	vector<unsigned int> ions2remove;
-//	for(unsigned int i=0;i<nbAtom;i++){
-//		dontreat[i] = 0;
-//		removed[i] = 0;
-//		classif[i] = 1. / (double) Neighbours[i*(nbMaxN+1)];
-//		//classif[i] = fabs( ChargeDens[i] / ((double) Neighbours[i*(nbMaxN+1)] * (double) Neighbours[i*(nbMaxN+1)] * (double) Neighbours[i*(nbMaxN+1)]) );
-//		//classif[i] = fabs( ChargeDens[i] / ((double) Neighbours[i*(nbMaxN+1)]) );
-//		current_charge[i] = AtomCharge[AtomList[i].type_uint-1];
-//		total_charge += current_charge[i];
-//	}
-//
-//	double mean_q, stdev_q;
-//	unsigned int current_nbAtoms;
-//	current_nbAtoms = nbAtom - ions2remove.size();
-//	mean_q = 0.;
-//	stdev_q = 0.;
-//	for(unsigned int i=0;i<nbAtom;i++) mean_q += ChargeDens[i];
-//	mean_q /= current_nbAtoms;
-//	for(unsigned int n=0;n<ions2remove.size();n++) ChargeDens[ions2remove[n]] = mean_q;
-//	for(unsigned int i=0;i<nbAtom;i++)
-//		//stdev_q += (mean_q-ChargeDens[i])*(mean_q-ChargeDens[i]);
-//		stdev_q += fabs(ChargeDens[i]);
-//	stdev_q /= current_nbAtoms;
-//	for(unsigned int n=0;n<ions2remove.size();n++) ChargeDens[ions2remove[n]] = 0.;
-//	bool stop = false;
-//	unsigned int iter = 0;
-//	unsigned int max_iter = nbAtom;
-//	ofstream file("distribQ_0.dat");
-//	for(unsigned int i=0;i<nbAtom;i++) file << ChargeDens[i] << endl;
-//	file.close();
-//	file.open("metric");
-//	setAux(classif,"classbef");
-//	setAux(classif,"class");
-//	setAux(removed,"rm");
-//
-//	vector<unsigned int> select_ind; 
-//	vector<double> select_stdev;
-//	select_ind.push_back(ions2remove.size());
-//	select_stdev.push_back(stdev_q); // TODO use sum(abs(chargedens))/nbAt as loss fct
-//	
-//			printSystem_aux("Charges"+ext+"_0.cfg","ChargeDens class rm");
-//	//while( !stop && iter < max_iter ){ // the loop should be stoped when all ions having charge density higher than max_charge have been removed or assigned to dontreat = 1
-//	while( iter < max_iter ){ // the loop should be stoped when all ions having charge density higher than max_charge have been removed or assigned to dontreat = 1
-//		cout << "ITER " << iter << " over " << max_iter << " (" << ions2remove.size() << " removed), stdevQ =" << stdev_q << endl;
-//		iter++;
-//		stop = false;
-//		unsigned int current_ind = MT->max_p_ind(classif,nbAtom);
-//		vector<unsigned int> current_ions2remove;
-//		if( IsNotSepTag ){
-//			if( NotSepTag[current_ind][0] == 0 ) current_ions2remove.push_back(current_ind);
-//			else if( NotSepTag[current_ind][0] < 0 ){
-//				unsigned int neigh_ind = (unsigned int) 1-NotSepTag[current_ind][0];
-//				current_ions2remove.push_back(neigh_ind);	
-//				for(unsigned int n=0;n<NotSepTag[neigh_ind][0];n++) current_ions2remove.push_back(NotSepTag[neigh_ind][n+1]);
-//			}else{
-//				current_ions2remove.push_back(current_ind);
-//				for(unsigned int n=0;n<NotSepTag[current_ind][0];n++) current_ions2remove.push_back(NotSepTag[current_ind][n+1]);
-//			}
-//		}else current_ions2remove.push_back(current_ind);
-//		double block_charge = 0.;
-//		for(unsigned int n=0;n<current_ions2remove.size();n++) block_charge += AtomCharge[AtomList[current_ions2remove[n]].type_uint-1];
-//
-//		if( fabs(ChargeDens[current_ind]) >  max_charge && signbit(ChargeDens[current_ind]) == signbit(block_charge) ){
-//			for(unsigned int n=0;n<current_ions2remove.size();n++){
-//				// remove contribution of this ion to neighbour list
-//				//for(unsigned int j=0;j<Neighbours[current_ions2remove[n]*(nbMaxN+1)];j++){
-//				//	unsigned int current_nid = Neighbours[current_ions2remove[n]*(nbMaxN+1)+1+j];
-//				//	unsigned int index2rm = 0;
-//				//	bool found = false;
-//				//	for(unsigned int j2=0;j2<Neighbours[current_nid*(nbMaxN+1)];j2++){
-//				//		if( Neighbours[current_nid*(nbMaxN+1)+1+j2] == current_ions2remove[n] ){
-//				//			index2rm = j2;
-//				//			found = true;
-//				//			break;
-//				//		}
-//				//	}
-//				//	if(found){
-//				//		for(unsigned int j2=index2rm+1;j2<Neighbours[current_nid*(nbMaxN+1)];j2++) Neighbours[current_nid*(nbMaxN+1)+j2] = Neighbours[current_nid*(nbMaxN+1)+1+j2];
-//				//		Neighbours[current_nid*(nbMaxN+1)]--;
-//				//	}else cout << "NOTFOUND!!" << endl;
-//				//}
-//				// remove contribution of this ion to charge density
-//				for(unsigned int i=0;i<nbAtom;i++){
-//					bool treat = true;
-//					for(unsigned int j=0;j<ions2remove.size();j++){
-//						if( i == ions2remove[j] ){
-//							treat = false;
-//							break;
-//						}
-//					}
-//					if( !treat ) continue;
-//					for(int bc1=-bcx;bc1<=bcx;bc1++){
-//						double coord1 = this->AtomList[current_ind].pos.x+(this->H1[0]*bc1);
-//						for(int bc2=-bcx;bc2<=bcx;bc2++){
-//							double coord2 = this->AtomList[current_ind].pos.y+(this->H2[1]*bc2);
-//							for(int bc3=-bcx;bc3<=bcx;bc3++){
-//								double coord3 = this->AtomList[current_ind].pos.z+(this->H3[2]*bc3);
-//								ChargeDens[i] -= MT->gaussian(AtomList[i].pos.x, AtomList[i].pos.y, AtomList[i].pos.z, coord1, coord2, coord3, sigma_gauss)*AtomCharge[AtomList[current_ions2remove[n]].type_uint-1];
-//							}
-//						}
-//					}
-//					// update classif
-//					classif[i] = 1. / (double) Neighbours[i*(nbMaxN+1)];
-//					//classif[i] = fabs( ChargeDens[i] / ((double) Neighbours[i*(nbMaxN+1)] * (double) Neighbours[i*(nbMaxN+1)] * (double) Neighbours[i*(nbMaxN+1)]) );
-//					//classif[i] = fabs( ChargeDens[i] / ((double) Neighbours[i*(nbMaxN+1)] ) );
-//				}
-//				classif[current_ions2remove[n]] = 0.;
-//				removed[current_ions2remove[n]] += 1;
-//				total_charge -= current_charge[current_ions2remove[n]]; // trouver une loss global pour juger qualite du truc courant et arreter la fct quand le loss est pas mal et quand total_charge = 0
-//				current_charge[current_ions2remove[n]] = 0.;
-//				ChargeDens[current_ions2remove[n]] = 0.;
-//				ions2remove.push_back(current_ions2remove[n]);
-//			}
-//			if( fabs(total_charge) < zero_num ){
-//				// Compute standard dev of chagre density (used as metric)
-//				current_nbAtoms = nbAtom - ions2remove.size();
-//				mean_q = 0.;
-//				stdev_q = 0.;
-//				for(unsigned int i=0;i<nbAtom;i++) mean_q += ChargeDens[i];
-//				mean_q /= current_nbAtoms;
-//				for(unsigned int n=0;n<ions2remove.size();n++) ChargeDens[ions2remove[n]] = mean_q;
-//				for(unsigned int i=0;i<nbAtom;i++)
-//					//stdev_q += (mean_q-ChargeDens[i])*(mean_q-ChargeDens[i]);
-//					stdev_q += fabs(ChargeDens[i]);
-//				stdev_q /= current_nbAtoms;
-//				for(unsigned int n=0;n<ions2remove.size();n++) ChargeDens[ions2remove[n]] = 0.;
-//				select_ind.push_back(ions2remove.size());
-//				select_stdev.push_back(stdev_q);
-//			}
-//
-//			string fname = "Charges"+ext+"_"+to_string(ions2remove.size())+".cfg";
-//			modifyAux_vec(ChargeDens,"ChargeDens");
-//			modifyAux_vec(classif,"class");
-//			modifyAux_vec(removed,"rm");
-//			printSystem_aux(fname,"ChargeDens class rm");
-//		}else
-//			for(unsigned int n=0;n<current_ions2remove.size();n++) classif[current_ions2remove[n]] = 0.; // doublement pas bon ici => essayer de les remettre en jeu
-//	}
-//	if( select_ind.size() == 0 ){
-//		cout << "Neutral system has not been found, aborting making neutral surfaces" << endl;
-//		return;
-//	}else{
-//		unsigned int opt_ind = MT->min(select_stdev);
-//		cout << "Number of possible neutral systems : " << select_ind.size() << endl;
-//		cout << "OPTIND corresponds to Nrm = " << select_ind[opt_ind] << " over " << ions2remove.size() << endl;
-//		unsigned int init_size = ions2remove.size();
-//		for(unsigned int i=select_ind[opt_ind];i<init_size;i++) ions2remove.pop_back(); // to test
-//	}
-//	RemoveAtoms(ions2remove);
-//
-//	file.close();
-//	file.open("distribQ_1.dat");
-//	for(unsigned int i=0;i<nbAtom;i++) file << ChargeDens[i] << endl;
-//	file.close();
-//	cout << "nb ions rem = " << ions2remove.size() << ", total charge = " << total_charge << endl;
-//	setAux(classif,"class");
-//	setAux(removed,"rm");
-//	setAux(ChargeDens,"ChargeDensAfter");
-//	printSystem_aux("TESTCharge.cfg","ChargeDensBefore classbef class ChargeDensAfter rm");
-//
-//	delete[] ChargeDens;
-//	delete[] removed;
-//	delete[] classif;
-//	delete[] current_charge;
-//	delete[] dontreat;
-//}
-//
-//void AtomicSystem::MakeSurfaceNeutral_3dBased_bis(string ext){
-//	if( IsCharge == false ) return;
-//	bool Possible = false; // at least we should have two atom types having charge with opposite sign
-//	bool pos(false),neg(false);
-//	double zero_num = 1e-8;
-//	if( !_MyCrystal->getIsDoNotSep() ){
-//		for(unsigned int n=0;n<nbAtomType;n++){
-//			if( AtomCharge[n] > zero_num ) pos = true;
-//			else if( AtomCharge[n] < -zero_num ) neg = true;
-//			if( pos && neg ){
-//				Possible = true;
-//				break;
-//			}
-//		}
-//	}else{
-//		ComputeNotSepList();
-//		vector<vector<unsigned int>> DNS = _MyCrystal->getDoNotSep();
-//		unsigned int *Stoich = _MyCrystal->getStoich();
-//		for(unsigned int n=0;n<nbAtomType;n++){
-//			double block_charge = 0.; 
-//			for(unsigned int i=0;i<DNS.size();i++){
-//				if( DNS[i][0]-1 == n ){
-//					if( i == 0 ) block_charge = AtomCharge[DNS[i][0]-1];
-//					block_charge += AtomCharge[DNS[i][2]-1]*DNS[i][1];
-//					if( block_charge > zero_num ) pos = true;
-//					else if( block_charge < -zero_num ) neg = true;
-//					if( Stoich[DNS[i][2]-1] > Stoich[DNS[i][0]-1]*DNS[i][1] ){
-//						if( AtomCharge[DNS[i][2]-1] > zero_num ) pos = true;
-//						else if( AtomCharge[DNS[i][2]-1] < -zero_num ) neg = true;
-//					}
-//					if( pos && neg ){
-//						Possible = true;
-//						break;
-//					}
-//				}
-//			}
-//		}
-//		for(unsigned int n=0;n<nbAtomType;n++){
-//			bool treat = true;
-//			for(unsigned int i=0;i<DNS.size();i++){
-//				if( DNS[i][0]-1 == n ){
-//					treat = false;
-//					break;
-//				}
-//				if( DNS[i][2]-1 == n ){
-//					treat = false;
-//					break;
-//				}
-//			}
-//			if( treat ){
-//				if( AtomCharge[n] > zero_num ) pos = true;
-//				else if( AtomCharge[n] < -zero_num ) neg = true;
-//				if( pos && neg ){
-//					Possible = true;
-//					break;
-//				}
-//			}
-//		}
-//	}	
-//
-//	if( !Possible ){
-//		cout << "It is not possible to construct charge neutral surfaces as there are not two types of ions (or blocks of ions due to the DoNotSep crystal tag) having charge with opposite signs" << endl;
-//		return;
-//	}
-//
-//	cout << "Trying to make the surface charge neutral" << endl;
-//	
-//	// search surface ions and compute the initial total_charge
-//	double rcut = MT->max_p(_MyCrystal->getALength(),3);
-//	searchNeighbours(rcut);
-//	double *classif = new double[nbAtom];
-//	for(unsigned int i=0;i<nbAtom;i++)
-//		classif[i] = 1. / (double) Neighbours[i*(nbMaxN+1)];
-//	Descriptors *Des = new Descriptors(classif,nbAtom,1);
-//	unsigned int nb_clust_KM = 3;
-//	KMeans *KM = new KMeans();
-//	KM->setDescriptors(Des);
-//	KM->TrainModel(nb_clust_KM);
-//	unsigned int clust_ind = 0;
-//	for(unsigned int i=1;i<nb_clust_KM;i++)
-//		if( KM->getOptimalCentroid(i)[0] > KM->getOptimalCentroid(clust_ind)[0] ) clust_ind = i;
-//	vector<unsigned int> ions2treat;
-//	double total_charge = 0.;
-//	//ofstream filep("test");
-//	//for(unsigned int i=0;i<nbAtom;i++){
-//	//	filep << classif[i] << endl;
-//	//	total_charge += AtomCharge[AtomList[i].type_uint-1];
-//	//	if( classif[i] < 0.99*KM->getOptimalCentroid(clust_ind)[0] ) classif[i] = 0.;
-//	//	else{
-//	//		classif[i] = 1.;
-//	//		ions2treat.push_back(i);
-//	//	}
-//	//}
-//	//filep.close();
-//	//cout << KM->getOptimalCentroid(0)[0] << " " << KM->getOptimalCentroid(0)[0] << " " << KM->getOptimalCentroid(clust_ind)[0] << endl;
-//	for(unsigned int i=0;i<nbAtom;i++){
-//		classif[i] = 0.;
-//		total_charge += AtomCharge[AtomList[i].type_uint-1];
-//		if( KM->getKMeansTools(0)->getData2Cluster()[i] == clust_ind ){
-//			classif[i] = 1.;
-//			ions2treat.push_back(i);
-//		}
-//	}
-//	unsigned int nbIons2Treat = ions2treat.size();
-//	cout << nbIons2Treat << " surface ions will be used to try to get neutral surfaces" << endl;
-//	setAux(classif,"class");
-//	printSystem_aux("TEST.cfg","class");
-//
-//	// Compute charge density at each ions to treat position
-//	double fac_sigma_gauss = 1.5;
-//	double *ChargeDens = new double[nbIons2Treat];
-//	double sigma_gauss = rcut;
-//	sigma_gauss *= fac_sigma_gauss;
-//	int bcx = 2; // to be computed depending on box size
-//	int bcy = 2;
-//	int bcz = 2;
-//	#pragma omp parallel for
-//	for(unsigned int i=0;i<nbIons2Treat;i++){
-//		ChargeDens[i] = 0.;
-//		for(unsigned int j=0;j<nbAtom;j++){
-//			for(int bc1=-bcx;bc1<=bcx;bc1++){
-//				double coord1 = this->AtomList[j].pos.x+(this->H1[0]*bc1);
-//				for(int bc2=-bcy;bc2<=bcy;bc2++){
-//					double coord2 = this->AtomList[j].pos.y+(this->H2[1]*bc2);
-//					for(int bc3=-bcz;bc3<=bcz;bc3++){
-//						double coord3 = this->AtomList[j].pos.z+(this->H3[2]*bc3);
-//						ChargeDens[i] += MT->gaussian(AtomList[ions2treat[i]].pos.x, AtomList[ions2treat[i]].pos.y, AtomList[ions2treat[i]].pos.z, coord1, coord2, coord3, sigma_gauss)*AtomCharge[AtomList[j].type_uint-1];
-//					}
-//				}
-//			}
-//		}
-//	}
-//
-//	// compute initial loss only if the system is charge neutral
-//	bool initialy_neutral = false; 
-//	double initial_loss;
-//	if( fabs(total_charge) < zero_num ){
-//		initialy_neutral = true;
-//		initial_loss = 0.;
-//		for(unsigned int i=0;i<nbIons2Treat;i++) initial_loss += fabs(ChargeDens[i]);
-//		initial_loss /= nbIons2Treat;
-//	}
-//
-//
-//
-//	//mt19937 gen(random_device{}());
-//	mt19937 gen;
-//	gen.seed(42);
-//	
-//	vector<vector<unsigned int>> ions2remove; // ions2remove[r*nbRand+n] = ions 2 remove for rcut = rcut[r] and n random
-//	vector<vector<unsigned int>> select_ind; // select_ind[r*nbRand+n][i] = index from which to remove element in ions2remove[r*nbRand+n] array to have the loss select_loss[r*..][i]
-//	vector<vector<double>> select_loss;
-//	unsigned int exp_prob = 4;
-//	unsigned int nb_rcut = 2;
-//	double max_facrcut = 1.5;
-//	double min_facrcut = 0.25;
-//	unsigned int nbRand = 2;
-//	unsigned int total_nbTry = nb_rcut*nbRand;
-//	// loop or fac_rcut should begin here
-//	// compute restricted neighbours
-//	for(unsigned int nrc=0;nrc<nb_rcut;nrc++){
-//	double fac_rcut = min_facrcut + (max_facrcut-min_facrcut)*nrc/(nb_rcut-1.);
-//	//cout << "facrcut = " << fac_rcut << endl;
-//	double current_rcut = rcut*fac_rcut;
-//	searchNeighbours_restricted(current_rcut,ions2treat,ions2treat);
-//	// loop on nbRand should begin here
-//	for(unsigned int nr=0;nr<nbRand;nr++){
-//
-//		// construct a first set of possible ion to remove
-//		vector<vector<unsigned int>> poss2rm;
-//		vector<double> probs;
-//
-//        	for(unsigned int i=0;i<nbIons2Treat;i++){
-//			unsigned int current_ind = ions2treat[i];
-//			bool already = false;
-//			for(unsigned int j1=0;j1<poss2rm.size();j1++){
-//				for(unsigned int j2=0;j2<poss2rm[j1].size();j2++){
-//					if( poss2rm[j1][j2] == current_ind ){
-//						already = true;
-//						break;
-//					}
-//				}
-//				if( already ) break;
-//			}
-//			if( already ) continue;
-//			vector<unsigned int> current_ions2remove;
-//			if( IsNotSepTag ){
-//				if( NotSepTag[current_ind][0] == 0 ) current_ions2remove.push_back(current_ind);
-//				else if( NotSepTag[current_ind][0] < 0 ){
-//					unsigned int neigh_ind = (unsigned int) -1-NotSepTag[current_ind][0];
-//					current_ions2remove.push_back(current_ind);
-//					current_ions2remove.push_back(neigh_ind);	
-//					for(unsigned int n=0;n<NotSepTag[neigh_ind][0];n++)
-//						if( current_ind != NotSepTag[neigh_ind][n+1] ) current_ions2remove.push_back(NotSepTag[neigh_ind][n+1]);
-//				}else{
-//					current_ions2remove.push_back(current_ind);
-//					for(unsigned int n=0;n<NotSepTag[current_ind][0];n++) current_ions2remove.push_back(NotSepTag[current_ind][n+1]);
-//				}
-//			}else current_ions2remove.push_back(current_ind);
-//			double block_charge = 0.;
-//			for(unsigned int n=0;n<current_ions2remove.size();n++) block_charge += AtomCharge[AtomList[current_ions2remove[n]].type_uint-1];
-//
-//			if( signbit(ChargeDens[i]) == signbit(block_charge) ){
-//				poss2rm.push_back(current_ions2remove);
-//				probs.push_back(pow(fabs(ChargeDens[i]),exp_prob)); // maybe bias more the probability by taking ChargeDens^2,3,4? 
-//			}
-//		}
-//
-//
-//		//cout << "NRAND =" << nr << endl;
-//	ions2remove.push_back(vector<unsigned int>());
-//	select_ind.push_back(vector<unsigned int>());
-//	select_loss.push_back(vector<double>());
-//	// copy initial data, we need ChargeDensity
-//	
-//	vector<double> current_ChargeDens(nbIons2Treat);
-//	vector<unsigned int> current_ions2treat(nbIons2Treat);
-//	for(unsigned int i=0;i<nbIons2Treat;i++){
-//		current_ChargeDens[i] = ChargeDens[i];
-//		current_ions2treat[i] = ions2treat[i];
-//	}
-//	unsigned int cur_i2m = ions2remove.size()-1;
-//
-//	unsigned int current_nbIons2Treat = current_ChargeDens.size();
-//	double current_total_charge = total_charge;
-//	unsigned int nbreset = 0;
-//	unsigned int maxnbreset = 10;
-//	while( probs.size() != 0 ){ // this loop is also broke if current_nbIons2Treat == 0
-//	// randomly select ions to remove from poss2rm using ChargeDensity as probability
-//		unsigned int nb_continue = 0;
-//		while( probs.size() != 0 ){
-//    			discrete_distribution<size_t> d{probs.begin(), probs.end()};
-//			unsigned int ind2rm = d(gen);
-//
-//			// help to got neutral system
-//			double block_charge = 0.;	
-//			if( fabs(current_total_charge) > zero_num ){
-//				for(unsigned int i=0;i<poss2rm[ind2rm].size();i++)
-//					block_charge += AtomCharge[AtomList[poss2rm[ind2rm][i]].type_uint-1];
-//				if( signbit(current_total_charge) != signbit(block_charge) ){
-//					nb_continue++;
-//					if( nb_continue < poss2rm.size() )
-//						continue;
-//					else
-//						probs.clear();
-//						poss2rm.clear();
-//						nbreset++;
-//						cout << "resseting " << nbreset << endl;
-//						break;
-//				}
-//			}
-//			nb_continue = 0;
-//
-//			// remove these ions from ions2treat and ChargeDens lists
-//			for(unsigned int i=0;i<poss2rm[ind2rm].size();i++){
-//				// add these ions to the ion2remove list
-//				ions2remove[cur_i2m].push_back(poss2rm[ind2rm][i]);
-//				// remove it from the current_ChargeDens and current_ions2treat arrays
-//				bool found = false;
-//				unsigned int curind2rm;
-//				for(unsigned int n=0;n<current_ions2treat.size();n++){
-//					if( poss2rm[ind2rm][i] == current_ions2treat[n] ){
-//						curind2rm = n;
-//						found = true;
-//						break;
-//					}
-//				}
-//				if( found ){
-//					current_ions2treat.erase(current_ions2treat.begin()+curind2rm);
-//					current_ChargeDens.erase(current_ChargeDens.begin()+curind2rm);
-//				}
-//			}
-//			current_nbIons2Treat = current_ions2treat.size();
-//
-//			// remove contribution of these ions to charge density and total_charge
-//			for(unsigned int i=0;i<poss2rm[ind2rm].size();i++){
-//				current_total_charge -= AtomCharge[AtomList[poss2rm[ind2rm][i]].type_uint-1];
-//				for(unsigned int n=0;n<current_ChargeDens.size();n++){
-//					for(int bc1=-bcx;bc1<=bcx;bc1++){
-//						double coord1 = this->AtomList[poss2rm[ind2rm][i]].pos.x+(this->H1[0]*bc1);
-//						for(int bc2=-bcx;bc2<=bcx;bc2++){
-//							double coord2 = this->AtomList[poss2rm[ind2rm][i]].pos.y+(this->H2[1]*bc2);
-//							for(int bc3=-bcx;bc3<=bcx;bc3++){
-//								double coord3 = this->AtomList[poss2rm[ind2rm][i]].pos.z+(this->H3[2]*bc3);
-//								current_ChargeDens[n] -= MT->gaussian(AtomList[current_ions2treat[n]].pos.x, AtomList[current_ions2treat[n]].pos.y, AtomList[current_ions2treat[n]].pos.z, coord1, coord2, coord3, sigma_gauss)*AtomCharge[AtomList[poss2rm[ind2rm][i]].type_uint-1];
-//							}
-//						}
-//					}
-//				}
-//			}
-//
-//			// recompute loss and store indexes if total charge = 0
-//			if( fabs(current_total_charge) < zero_num ){
-//				select_ind[cur_i2m].push_back(ions2remove[cur_i2m].size());
-//				select_loss[cur_i2m].push_back(0.);
-//				for(unsigned int n=0;n<current_ChargeDens.size();n++) select_loss[cur_i2m][select_loss[cur_i2m].size()-1] += fabs(current_ChargeDens[n]);
-//				select_loss[cur_i2m][select_loss[cur_i2m].size()-1] /= current_nbIons2Treat;
-//			}
-//
-//			// remove ions and neighboring ions from the probs and poss2rm list
-//			unsigned int ind_in_N;
-//		        bool found = false;
-//			for(unsigned int n=0;n<ions2treat.size();n++){
-//				if( poss2rm[ind2rm][0] == ions2treat[n] ){
-//					found = true;
-//					ind_in_N = n;
-//					break;
-//				}
-//			}
-//			if( !found ) cout << "OTHER ISSUE IN NEIGH!!" << endl;
-//			poss2rm.erase(poss2rm.begin()+ind2rm);
-//			probs.erase(probs.begin()+ind2rm);
-//			for(unsigned int n=0;n<Neighbours[ind_in_N*(nbMaxN+1)];n++){
-//				unsigned int Nind = Neighbours[ind_in_N*(nbMaxN+1)+1+n];
-//				unsigned int n2rm;
-//				found = false;
-//				for(unsigned int j1=0;j1<poss2rm.size();j1++){
-//					for(unsigned int j2=0;j2<poss2rm[j1].size();j2++){
-//						if( Nind == poss2rm[j1][j2] ){
-//							n2rm = j1;
-//							found = true;
-//							break;
-//						}
-//					}
-//					if( found ) break;
-//				}
-//				if( found ){
-//					poss2rm.erase(poss2rm.begin()+n2rm);
-//					probs.erase(probs.begin()+n2rm);
-//				}
-//			}
-//			// maybe update probs here ?
-//			for(unsigned int i=0;i<probs.size();i++){
-//				bool found = false;
-//				for(unsigned int j=0;j<current_ions2treat.size();j++){
-//					if( poss2rm[i][0] == current_ions2treat[j] ){
-//						found = true;
-//						probs[i] = pow(fabs(current_ChargeDens[j]),exp_prob);
-//						break;
-//					}
-//				}
-//			}
-//		} // end while probs.size() != 0
-//		// compute new poss2rm and probs lists if current_nbIons2Treat != 0 
-//		if( current_nbIons2Treat == 0 || nbreset == maxnbreset ) break;
-//        	for(unsigned int i=0;i<current_nbIons2Treat;i++){
-//			unsigned int current_ind = current_ions2treat[i];
-//			bool already = false;
-//			for(unsigned int j1=0;j1<poss2rm.size();j1++){
-//				for(unsigned int j2=0;j2<poss2rm[j1].size();j2++){
-//					if( poss2rm[j1][j2] == current_ind ){
-//						already = true;
-//						break;
-//					}
-//				}
-//				if( already ) break;
-//			}
-//			if( already ) continue;
-//			vector<unsigned int> current_ions2remove;
-//			if( IsNotSepTag ){
-//				if( NotSepTag[current_ind][0] == 0 ) current_ions2remove.push_back(current_ind);
-//				else if( NotSepTag[current_ind][0] < 0 ){
-//					unsigned int neigh_ind = (unsigned int) -1-NotSepTag[current_ind][0];
-//					current_ions2remove.push_back(current_ind);
-//					current_ions2remove.push_back(neigh_ind);	
-//					for(unsigned int n=0;n<NotSepTag[neigh_ind][0];n++)
-//						if( current_ind != NotSepTag[neigh_ind][n+1] ) current_ions2remove.push_back(NotSepTag[neigh_ind][n+1]);
-//				}else{
-//					current_ions2remove.push_back(current_ind);
-//					for(unsigned int n=0;n<NotSepTag[current_ind][0];n++) current_ions2remove.push_back(NotSepTag[current_ind][n+1]);
-//				}
-//			}else current_ions2remove.push_back(current_ind);
-//			double block_charge = 0.;
-//			for(unsigned int n=0;n<current_ions2remove.size();n++) block_charge += AtomCharge[AtomList[current_ions2remove[n]].type_uint-1];
-//
-//			if( signbit(current_ChargeDens[i]) == signbit(block_charge) ){
-//				poss2rm.push_back(current_ions2remove);
-//				probs.push_back(pow(fabs(current_ChargeDens[i]),exp_prob)); // maybe bias more the probability by taking ChargeDens^2,3,4? 
-//			}
-//		}
-//	} // end while probs.size() != 0
-//	  cout << "At the end of try " << cur_i2m << ", still " << current_nbIons2Treat << " ions 2 treat" << endl;
-//	}}
-//	// end loops on rcut and nrand
-//	
-//	// choose the optimal system
-//	bool neutral_found = false;
-//	for(unsigned int n=0;n<total_nbTry;n++){
-//		if( select_ind[n].size() != 0 ){
-//			neutral_found = true;
-//			break;
-//		}
-//	}
-//	
-//	unsigned int opt_ind_glob, opt_ind;
-//	if( initialy_neutral && !neutral_found ){
-//		cout << "Only initial system is neutral, keeping it" << endl;
-//		return;
-//	}else if( !initialy_neutral && !neutral_found ){
-//		cout << "Cannot find neutral system" << endl;
-//		return;
-//	}else{
-//		double min_loss = std::numeric_limits<double>::max();
-//		for(unsigned int n1=0;n1<total_nbTry;n1++){
-//			for(unsigned int n2=0;n2<select_loss[n1].size();n2++){
-//				if( select_loss[n1][n2] < min_loss ){
-//					opt_ind_glob = n1;
-//					opt_ind = n2;
-//					min_loss = select_loss[n1][n2];
-//				}
-//			}
-//		}
-//		if( initialy_neutral && initial_loss < min_loss )
-//			cout << "The initial system is better than all investigated systems, keeping it intact" << endl;
-//		else{
-//			unsigned int init_size = ions2remove[opt_ind_glob].size();
-//			cout << "A better system have been found by removing " << select_ind[opt_ind_glob][opt_ind] << " over " << ions2remove[opt_ind_glob].size() << endl;
-//			for(unsigned int i=select_ind[opt_ind_glob][opt_ind];i<init_size;i++) ions2remove[opt_ind_glob].pop_back(); // to test
-//			RemoveAtoms(ions2remove[opt_ind_glob]);
-//		}
-//	}
-//
-//	//file.close();
-//	//file.open("distribQ_1.dat");
-//	//for(unsigned int i=0;i<nbAtom;i++) file << ChargeDens[i] << endl;
-//	//file.close();
-//	//cout << "nb ions rem = " << ions2remove.size() << ", total charge = " << total_charge << endl;
-//	//setAux(classif,"class");
-//	//setAux(removed,"rm");
-//	//setAux(ChargeDens,"ChargeDensAfter");
-//	//printSystem_aux("TESTCharge.cfg","ChargeDensBefore classbef class ChargeDensAfter rm");
-//	//
-//	delete[] classif;
-//	delete Des;
-//	delete KM;
-//	delete[] ChargeDens;
-//}
+void AtomicSystem::MakeSurfaceNeutral_3dBased(string ext){
+	if( IsCharge == false ) return;
+	bool Possible = false; // at least we should have two atom types having charge with opposite sign
+	bool pos(false),neg(false);
+	double zero_num = 1e-8;
+	if( !_MyCrystal->getIsDoNotSep() ){
+		for(unsigned int n=0;n<nbAtomType;n++){
+			if( AtomCharge[n] > zero_num ) pos = true;
+			else if( AtomCharge[n] < -zero_num ) neg = true;
+			if( pos && neg ){
+				Possible = true;
+				break;
+			}
+		}
+	}else{
+		ComputeNotSepList();
+		vector<vector<unsigned int>> DNS = _MyCrystal->getDoNotSep();
+		unsigned int *Stoich = _MyCrystal->getStoich();
+		for(unsigned int n=0;n<nbAtomType;n++){
+			double block_charge = 0.; 
+			for(unsigned int i=0;i<DNS.size();i++){
+				if( DNS[i][0]-1 == n ){
+					if( i == 0 ) block_charge = AtomCharge[DNS[i][0]-1];
+					block_charge += AtomCharge[DNS[i][2]-1]*DNS[i][1];
+					if( block_charge > zero_num ) pos = true;
+					else if( block_charge < -zero_num ) neg = true;
+					if( Stoich[DNS[i][2]-1] > Stoich[DNS[i][0]-1]*DNS[i][1] ){
+						if( AtomCharge[DNS[i][2]-1] > zero_num ) pos = true;
+						else if( AtomCharge[DNS[i][2]-1] < -zero_num ) neg = true;
+					}
+					if( pos && neg ){
+						Possible = true;
+						break;
+					}
+				}
+			}
+		}
+		for(unsigned int n=0;n<nbAtomType;n++){
+			bool treat = true;
+			for(unsigned int i=0;i<DNS.size();i++){
+				if( DNS[i][0]-1 == n ){
+					treat = false;
+					break;
+				}
+				if( DNS[i][2]-1 == n ){
+					treat = false;
+					break;
+				}
+			}
+			if( treat ){
+				if( AtomCharge[n] > zero_num ) pos = true;
+				else if( AtomCharge[n] < -zero_num ) neg = true;
+				if( pos && neg ){
+					Possible = true;
+					break;
+				}
+			}
+		}
+	}	
 
-void AtomicSystem::RemoveAtoms(vector<unsigned int> index2rm){
+	if( !Possible ){
+		cout << "It is not possible to construct charge neutral surfaces as there are not two types of ions (or blocks of ions due to the DoNotSep crystal tag) having charge with opposite signs" << endl;
+		return;
+	}
+
+	cout << "Trying to make the surface charge neutral" << endl;
+	// Compute charge density at each ion position
+	double fac_sigma_gauss = 1.5;
+	double *ChargeDens = new double[nbAtom];
+	double sigma_gauss = MT->max_p(_MyCrystal->getALength(),3);
+	sigma_gauss *= fac_sigma_gauss;
+	int bcx = 2;
+	int bcy = 2;
+	int bcz = 2;
+	#pragma omp parallel for
+	for(unsigned int i=0;i<nbAtom;i++){
+		ChargeDens[i] = 0.;
+		for(unsigned int j=0;j<nbAtom;j++){ // think about restrict to neighbour in cutoff
+			for(int bc1=-bcx;bc1<=bcx;bc1++){
+				double coord1 = this->AtomList[j].pos.x+(this->H1[0]*bc1);
+				for(int bc2=-bcy;bc2<=bcy;bc2++){
+					double coord2 = this->AtomList[j].pos.y+(this->H2[1]*bc2);
+					for(int bc3=-bcz;bc3<=bcz;bc3++){
+						double coord3 = this->AtomList[j].pos.z+(this->H3[2]*bc3);
+						ChargeDens[i] += MT->gaussian(AtomList[i].pos.x, AtomList[i].pos.y, AtomList[i].pos.z, coord1, coord2, coord3, sigma_gauss)*AtomCharge[AtomList[j].type_uint-1];
+					}
+				}
+			}
+		}
+	}
+	setAux(ChargeDens,"ChargeDens");
+
+	// remove ions in areas of high charge density with the same sign of the ion and exclude its neighbours for this pass
+	double rcut = MT->min_p(_MyCrystal->getALength(),3);
+	//searchNeighbours(rcut);
+	sigma_gauss /= fac_sigma_gauss;
+	searchNeighbours(sigma_gauss);
+	sigma_gauss *= fac_sigma_gauss;
+	double max_charge = 7.e-5;
+	unsigned int *removed = new unsigned int[nbAtom];
+	double *classif = new double[nbAtom];
+	double *current_charge = new double[nbAtom];
+	unsigned int *dontreat = new unsigned int[nbAtom];
+	double total_charge = 0.;
+	vector<unsigned int> ions2remove;
+	for(unsigned int i=0;i<nbAtom;i++){
+		dontreat[i] = 0;
+		removed[i] = 0;
+		classif[i] = 1. / (double) Neighbours[i*(nbMaxN+1)];
+		//classif[i] = fabs( ChargeDens[i] / ((double) Neighbours[i*(nbMaxN+1)] * (double) Neighbours[i*(nbMaxN+1)] * (double) Neighbours[i*(nbMaxN+1)]) );
+		//classif[i] = fabs( ChargeDens[i] / ((double) Neighbours[i*(nbMaxN+1)]) );
+		current_charge[i] = AtomCharge[AtomList[i].type_uint-1];
+		total_charge += current_charge[i];
+	}
+
+	double mean_q, stdev_q;
+	unsigned int current_nbAtoms;
+	current_nbAtoms = nbAtom - ions2remove.size();
+	mean_q = 0.;
+	stdev_q = 0.;
+	for(unsigned int i=0;i<nbAtom;i++) mean_q += ChargeDens[i];
+	mean_q /= current_nbAtoms;
+	for(unsigned int n=0;n<ions2remove.size();n++) ChargeDens[ions2remove[n]] = mean_q;
+	for(unsigned int i=0;i<nbAtom;i++)
+		//stdev_q += (mean_q-ChargeDens[i])*(mean_q-ChargeDens[i]);
+		stdev_q += fabs(ChargeDens[i]);
+	stdev_q /= current_nbAtoms;
+	for(unsigned int n=0;n<ions2remove.size();n++) ChargeDens[ions2remove[n]] = 0.;
+	bool stop = false;
+	unsigned int iter = 0;
+	unsigned int max_iter = nbAtom;
+	ofstream file("distribQ_0.dat");
+	for(unsigned int i=0;i<nbAtom;i++) file << ChargeDens[i] << endl;
+	file.close();
+	file.open("metric");
+	setAux(classif,"classbef");
+	setAux(classif,"class");
+	setAux(removed,"rm");
+
+	vector<unsigned int> select_ind; 
+	vector<double> select_stdev;
+	select_ind.push_back(ions2remove.size());
+	select_stdev.push_back(stdev_q); // TODO use sum(abs(chargedens))/nbAt as loss fct
+	
+			printSystem_aux("Charges"+ext+"_0.cfg","ChargeDens class rm");
+	//while( !stop && iter < max_iter ){ // the loop should be stoped when all ions having charge density higher than max_charge have been removed or assigned to dontreat = 1
+	while( iter < max_iter ){ // the loop should be stoped when all ions having charge density higher than max_charge have been removed or assigned to dontreat = 1
+		cout << "ITER " << iter << " over " << max_iter << " (" << ions2remove.size() << " removed), stdevQ =" << stdev_q << endl;
+		iter++;
+		stop = false;
+		unsigned int current_ind = MT->max_p_ind(classif,nbAtom);
+		vector<unsigned int> current_ions2remove;
+		if( IsNotSepTag ){
+			if( NotSepTag[current_ind][0] == 0 ) current_ions2remove.push_back(current_ind);
+			else if( NotSepTag[current_ind][0] < 0 ){
+				unsigned int neigh_ind = (unsigned int) 1-NotSepTag[current_ind][0];
+				current_ions2remove.push_back(neigh_ind);	
+				for(unsigned int n=0;n<NotSepTag[neigh_ind][0];n++) current_ions2remove.push_back(NotSepTag[neigh_ind][n+1]);
+			}else{
+				current_ions2remove.push_back(current_ind);
+				for(unsigned int n=0;n<NotSepTag[current_ind][0];n++) current_ions2remove.push_back(NotSepTag[current_ind][n+1]);
+			}
+		}else current_ions2remove.push_back(current_ind);
+		double block_charge = 0.;
+		for(unsigned int n=0;n<current_ions2remove.size();n++) block_charge += AtomCharge[AtomList[current_ions2remove[n]].type_uint-1];
+
+		if( fabs(ChargeDens[current_ind]) >  max_charge && signbit(ChargeDens[current_ind]) == signbit(block_charge) ){
+			for(unsigned int n=0;n<current_ions2remove.size();n++){
+				// remove contribution of this ion to neighbour list
+				//for(unsigned int j=0;j<Neighbours[current_ions2remove[n]*(nbMaxN+1)];j++){
+				//	unsigned int current_nid = Neighbours[current_ions2remove[n]*(nbMaxN+1)+1+j];
+				//	unsigned int index2rm = 0;
+				//	bool found = false;
+				//	for(unsigned int j2=0;j2<Neighbours[current_nid*(nbMaxN+1)];j2++){
+				//		if( Neighbours[current_nid*(nbMaxN+1)+1+j2] == current_ions2remove[n] ){
+				//			index2rm = j2;
+				//			found = true;
+				//			break;
+				//		}
+				//	}
+				//	if(found){
+				//		for(unsigned int j2=index2rm+1;j2<Neighbours[current_nid*(nbMaxN+1)];j2++) Neighbours[current_nid*(nbMaxN+1)+j2] = Neighbours[current_nid*(nbMaxN+1)+1+j2];
+				//		Neighbours[current_nid*(nbMaxN+1)]--;
+				//	}else cout << "NOTFOUND!!" << endl;
+				//}
+				// remove contribution of this ion to charge density
+				for(unsigned int i=0;i<nbAtom;i++){
+					bool treat = true;
+					for(unsigned int j=0;j<ions2remove.size();j++){
+						if( i == ions2remove[j] ){
+							treat = false;
+							break;
+						}
+					}
+					if( !treat ) continue;
+					for(int bc1=-bcx;bc1<=bcx;bc1++){
+						double coord1 = this->AtomList[current_ind].pos.x+(this->H1[0]*bc1);
+						for(int bc2=-bcx;bc2<=bcx;bc2++){
+							double coord2 = this->AtomList[current_ind].pos.y+(this->H2[1]*bc2);
+							for(int bc3=-bcx;bc3<=bcx;bc3++){
+								double coord3 = this->AtomList[current_ind].pos.z+(this->H3[2]*bc3);
+								ChargeDens[i] -= MT->gaussian(AtomList[i].pos.x, AtomList[i].pos.y, AtomList[i].pos.z, coord1, coord2, coord3, sigma_gauss)*AtomCharge[AtomList[current_ions2remove[n]].type_uint-1];
+							}
+						}
+					}
+					// update classif
+					classif[i] = 1. / (double) Neighbours[i*(nbMaxN+1)];
+					//classif[i] = fabs( ChargeDens[i] / ((double) Neighbours[i*(nbMaxN+1)] * (double) Neighbours[i*(nbMaxN+1)] * (double) Neighbours[i*(nbMaxN+1)]) );
+					//classif[i] = fabs( ChargeDens[i] / ((double) Neighbours[i*(nbMaxN+1)] ) );
+				}
+				classif[current_ions2remove[n]] = 0.;
+				removed[current_ions2remove[n]] += 1;
+				total_charge -= current_charge[current_ions2remove[n]]; // trouver une loss global pour juger qualite du truc courant et arreter la fct quand le loss est pas mal et quand total_charge = 0
+				current_charge[current_ions2remove[n]] = 0.;
+				ChargeDens[current_ions2remove[n]] = 0.;
+				ions2remove.push_back(current_ions2remove[n]);
+			}
+			if( fabs(total_charge) < zero_num ){
+				// Compute standard dev of chagre density (used as metric)
+				current_nbAtoms = nbAtom - ions2remove.size();
+				mean_q = 0.;
+				stdev_q = 0.;
+				for(unsigned int i=0;i<nbAtom;i++) mean_q += ChargeDens[i];
+				mean_q /= current_nbAtoms;
+				for(unsigned int n=0;n<ions2remove.size();n++) ChargeDens[ions2remove[n]] = mean_q;
+				for(unsigned int i=0;i<nbAtom;i++)
+					//stdev_q += (mean_q-ChargeDens[i])*(mean_q-ChargeDens[i]);
+					stdev_q += fabs(ChargeDens[i]);
+				stdev_q /= current_nbAtoms;
+				for(unsigned int n=0;n<ions2remove.size();n++) ChargeDens[ions2remove[n]] = 0.;
+				select_ind.push_back(ions2remove.size());
+				select_stdev.push_back(stdev_q);
+			}
+
+			string fname = "Charges"+ext+"_"+to_string(ions2remove.size())+".cfg";
+			modifyAux_vec(ChargeDens,"ChargeDens");
+			modifyAux_vec(classif,"class");
+			modifyAux_vec(removed,"rm");
+			printSystem_aux(fname,"ChargeDens class rm");
+		}else
+			for(unsigned int n=0;n<current_ions2remove.size();n++) classif[current_ions2remove[n]] = 0.; // doublement pas bon ici => essayer de les remettre en jeu
+	}
+	if( select_ind.size() == 0 ){
+		cout << "Neutral system has not been found, aborting making neutral surfaces" << endl;
+		return;
+	}else{
+		unsigned int opt_ind = MT->min(select_stdev);
+		cout << "Number of possible neutral systems : " << select_ind.size() << endl;
+		cout << "OPTIND corresponds to Nrm = " << select_ind[opt_ind] << " over " << ions2remove.size() << endl;
+		unsigned int init_size = ions2remove.size();
+		for(unsigned int i=select_ind[opt_ind];i<init_size;i++) ions2remove.pop_back(); // to test
+	}
+	RemoveAtoms(ions2remove);
+
+	file.close();
+	file.open("distribQ_1.dat");
+	for(unsigned int i=0;i<nbAtom;i++) file << ChargeDens[i] << endl;
+	file.close();
+	cout << "nb ions rem = " << ions2remove.size() << ", total charge = " << total_charge << endl;
+	setAux(classif,"class");
+	setAux(removed,"rm");
+	setAux(ChargeDens,"ChargeDensAfter");
+	printSystem_aux("TESTCharge.cfg","ChargeDensBefore classbef class ChargeDensAfter rm");
+
+	delete[] ChargeDens;
+	delete[] removed;
+	delete[] classif;
+	delete[] current_charge;
+	delete[] dontreat;
+}
+//
+void AtomicSystem::MakeSurfaceNeutral_3dBased_bis(string ext){
+	if( IsCharge == false ) return;
+	bool Possible = false; // at least we should have two atom types having charge with opposite sign
+	bool pos(false),neg(false);
+	double zero_num = 1e-8;
+	if( !_MyCrystal->getIsDoNotSep() ){
+		for(unsigned int n=0;n<nbAtomType;n++){
+			if( AtomCharge[n] > zero_num ) pos = true;
+			else if( AtomCharge[n] < -zero_num ) neg = true;
+			if( pos && neg ){
+				Possible = true;
+				break;
+			}
+		}
+	}else{
+		ComputeNotSepList();
+		vector<vector<unsigned int>> DNS = _MyCrystal->getDoNotSep();
+		unsigned int *Stoich = _MyCrystal->getStoich();
+		for(unsigned int n=0;n<nbAtomType;n++){
+			double block_charge = 0.; 
+			for(unsigned int i=0;i<DNS.size();i++){
+				if( DNS[i][0]-1 == n ){
+					if( i == 0 ) block_charge = AtomCharge[DNS[i][0]-1];
+					block_charge += AtomCharge[DNS[i][2]-1]*DNS[i][1];
+					if( block_charge > zero_num ) pos = true;
+					else if( block_charge < -zero_num ) neg = true;
+					if( Stoich[DNS[i][2]-1] > Stoich[DNS[i][0]-1]*DNS[i][1] ){
+						if( AtomCharge[DNS[i][2]-1] > zero_num ) pos = true;
+						else if( AtomCharge[DNS[i][2]-1] < -zero_num ) neg = true;
+					}
+					if( pos && neg ){
+						Possible = true;
+						break;
+					}
+				}
+			}
+		}
+		for(unsigned int n=0;n<nbAtomType;n++){
+			bool treat = true;
+			for(unsigned int i=0;i<DNS.size();i++){
+				if( DNS[i][0]-1 == n ){
+					treat = false;
+					break;
+				}
+				if( DNS[i][2]-1 == n ){
+					treat = false;
+					break;
+				}
+			}
+			if( treat ){
+				if( AtomCharge[n] > zero_num ) pos = true;
+				else if( AtomCharge[n] < -zero_num ) neg = true;
+				if( pos && neg ){
+					Possible = true;
+					break;
+				}
+			}
+		}
+	}	
+
+	if( !Possible ){
+		cout << "It is not possible to construct charge neutral surfaces as there are not two types of ions (or blocks of ions due to the DoNotSep crystal tag) having charge with opposite signs" << endl;
+		return;
+	}
+
+	cout << "Trying to make the surface charge neutral" << endl;
+	
+	// search surface ions and compute the initial total_charge
+	double rcut = MT->max_p(_MyCrystal->getALength(),3);
+	searchNeighbours(rcut);
+	double *classif = new double[nbAtom];
+	for(unsigned int i=0;i<nbAtom;i++)
+		classif[i] = 1. / (double) Neighbours[i*(nbMaxN+1)];
+	Descriptors *Des = new Descriptors(classif,nbAtom,1);
+	unsigned int nb_clust_KM = 2;
+	KMeans *KM = new KMeans();
+	KM->setDescriptors(Des);
+	KM->TrainModel(nb_clust_KM);
+	unsigned int clust_ind = 0;
+	for(unsigned int i=1;i<nb_clust_KM;i++)
+		if( KM->getOptimalCentroid(i)[0] > KM->getOptimalCentroid(clust_ind)[0] ) clust_ind = i;
+	vector<unsigned int> ions2treat;
+	double total_charge = 0.;
+	//ofstream filep("test");
+	//for(unsigned int i=0;i<nbAtom;i++){
+	//	filep << classif[i] << endl;
+	//	total_charge += AtomCharge[AtomList[i].type_uint-1];
+	//	if( classif[i] < 0.99*KM->getOptimalCentroid(clust_ind)[0] ) classif[i] = 0.;
+	//	else{
+	//		classif[i] = 1.;
+	//		ions2treat.push_back(i);
+	//	}
+	//}
+	//filep.close();
+	//cout << KM->getOptimalCentroid(0)[0] << " " << KM->getOptimalCentroid(0)[0] << " " << KM->getOptimalCentroid(clust_ind)[0] << endl;
+	for(unsigned int i=0;i<nbAtom;i++){
+		classif[i] = 0.;
+		total_charge += AtomCharge[AtomList[i].type_uint-1];
+		if( KM->getKMeansTools(0)->getData2Cluster()[i] == clust_ind ){
+			classif[i] = 1.;
+			ions2treat.push_back(i);
+		}
+	}
+	unsigned int nbIons2Treat = ions2treat.size();
+	cout << nbIons2Treat << " surface ions will be used to try to get neutral surfaces" << endl;
+
+	// Compute charge density at each ions to treat position
+	double fac_sigma_gauss = 1.5;
+	double *ChargeDens = new double[nbIons2Treat];
+	double sigma_gauss = rcut;
+	sigma_gauss *= fac_sigma_gauss;
+	int bcx = 2; // to be computed depending on box size
+	int bcy = 2;
+	int bcz = 2;
+	#pragma omp parallel for
+	for(unsigned int i=0;i<nbIons2Treat;i++){
+		ChargeDens[i] = 0.;
+		for(unsigned int j=0;j<nbAtom;j++){
+			for(int bc1=-bcx;bc1<=bcx;bc1++){
+				double coord1 = this->AtomList[j].pos.x+(this->H1[0]*bc1);
+				for(int bc2=-bcy;bc2<=bcy;bc2++){
+					double coord2 = this->AtomList[j].pos.y+(this->H2[1]*bc2);
+					for(int bc3=-bcz;bc3<=bcz;bc3++){
+						double coord3 = this->AtomList[j].pos.z+(this->H3[2]*bc3);
+						ChargeDens[i] += MT->gaussian(AtomList[ions2treat[i]].pos.x, AtomList[ions2treat[i]].pos.y, AtomList[ions2treat[i]].pos.z, coord1, coord2, coord3, sigma_gauss)*AtomCharge[AtomList[j].type_uint-1];
+					}
+				}
+			}
+		}
+	}
+	for(unsigned int i=0;i<nbIons2Treat;i++) classif[ions2treat[i]] = ChargeDens[i];
+
+	setAux(classif,"class");
+	printSystem_aux("TEST.cfg","class");
+
+	// compute initial loss only if the system is charge neutral
+	bool initialy_neutral = false; 
+	double initial_loss;
+	if( fabs(total_charge) < zero_num ){
+		initialy_neutral = true;
+		initial_loss = 0.;
+		for(unsigned int i=0;i<nbIons2Treat;i++) initial_loss += fabs(ChargeDens[i]);
+		initial_loss /= nbIons2Treat;
+	}
+
+
+
+	mt19937 gen(random_device{}());
+	//mt19937 gen;
+	//gen.seed(42);
+	
+	vector<vector<unsigned int>> ions2remove; // ions2remove[r*nbRand+n] = ions 2 remove for rcut = rcut[r] and n random
+	vector<vector<unsigned int>> select_ind; // select_ind[r*nbRand+n][i] = index from which to remove element in ions2remove[r*nbRand+n] array to have the loss select_loss[r*..][i]
+	vector<vector<double>> select_loss;
+	unsigned int exp_prob = 2;
+	unsigned int nb_rcut = 20;
+	double max_facrcut = 10;
+	double min_facrcut = 0.1;
+	unsigned int nbRand = 20;
+	unsigned int total_nbTry = nb_rcut*nbRand;
+	// loop or fac_rcut should begin here
+	// compute restricted neighbours
+	for(unsigned int nrc=0;nrc<nb_rcut;nrc++){
+	double fac_rcut = min_facrcut + (max_facrcut-min_facrcut)*nrc/(nb_rcut-1.);
+	//cout << "facrcut = " << fac_rcut << endl;
+	double current_rcut = rcut*fac_rcut;
+	searchNeighbours_restricted(current_rcut,ions2treat,ions2treat);
+	// loop on nbRand should begin here
+	for(unsigned int nr=0;nr<nbRand;nr++){
+
+		// construct a first set of possible ion to remove
+		vector<vector<unsigned int>> poss2rm;
+		vector<double> probs;
+
+        	for(unsigned int i=0;i<nbIons2Treat;i++){
+			unsigned int current_ind = ions2treat[i];
+			bool already = false;
+			for(unsigned int j1=0;j1<poss2rm.size();j1++){
+				for(unsigned int j2=0;j2<poss2rm[j1].size();j2++){
+					if( poss2rm[j1][j2] == current_ind ){
+						already = true;
+						break;
+					}
+				}
+				if( already ) break;
+			}
+			if( already ) continue;
+			vector<unsigned int> current_ions2remove;
+			if( IsNotSepTag ){
+				if( NotSepTag[current_ind][0] == 0 ) current_ions2remove.push_back(current_ind);
+				else if( NotSepTag[current_ind][0] < 0 ){
+					unsigned int neigh_ind = (unsigned int) -1-NotSepTag[current_ind][0];
+					current_ions2remove.push_back(current_ind);
+					current_ions2remove.push_back(neigh_ind);	
+					for(unsigned int n=0;n<NotSepTag[neigh_ind][0];n++)
+						if( current_ind != NotSepTag[neigh_ind][n+1] ) current_ions2remove.push_back(NotSepTag[neigh_ind][n+1]);
+				}else{
+					current_ions2remove.push_back(current_ind);
+					for(unsigned int n=0;n<NotSepTag[current_ind][0];n++) current_ions2remove.push_back(NotSepTag[current_ind][n+1]);
+				}
+			}else current_ions2remove.push_back(current_ind);
+			double block_charge = 0.;
+			for(unsigned int n=0;n<current_ions2remove.size();n++) block_charge += AtomCharge[AtomList[current_ions2remove[n]].type_uint-1];
+
+			//if( signbit(ChargeDens[i]) == signbit(block_charge) ){
+			if( ions2treat[i] == 15911 ){
+				cout << "CELUI LA!!" << endl;
+				cout << (signbit(ChargeDens[i]) == signbit(block_charge)) << " " << (signbit(block_charge) == signbit(total_charge))  << " " << (fabs(block_charge) - fabs(total_charge) < zero_num) << endl;
+				cout << block_charge << " " << total_charge << endl;
+			}
+			if( signbit(ChargeDens[i]) == signbit(block_charge) && signbit(block_charge) == signbit(total_charge)  && fabs(block_charge) - fabs(total_charge) < zero_num ){
+				cout << "STOCKEEEE" << endl;
+				poss2rm.push_back(current_ions2remove);
+				probs.push_back(pow(fabs(ChargeDens[i]),exp_prob)); // maybe bias more the probability by taking ChargeDens^2,3,4? 
+			}
+		}
+
+
+		//cout << "NRAND =" << nr << endl;
+	ions2remove.push_back(vector<unsigned int>());
+	select_ind.push_back(vector<unsigned int>());
+	select_loss.push_back(vector<double>());
+	// copy initial data, we need ChargeDensity
+	
+	vector<double> current_ChargeDens(nbIons2Treat);
+	vector<unsigned int> current_ions2treat(nbIons2Treat);
+	for(unsigned int i=0;i<nbIons2Treat;i++){
+		current_ChargeDens[i] = ChargeDens[i];
+		current_ions2treat[i] = ions2treat[i];
+	}
+	unsigned int cur_i2m = ions2remove.size()-1;
+
+	unsigned int current_nbIons2Treat = current_ChargeDens.size();
+	double current_total_charge = total_charge;
+	unsigned int nbreset = 0;
+	unsigned int maxnbreset = 10;
+	while( probs.size() != 0 && fabs(current_total_charge) > zero_num ){ // this loop is also broke if current_nbIons2Treat == 0
+	// randomly select ions to remove from poss2rm using ChargeDensity as probability
+		unsigned int nb_continue = 0;
+		while( probs.size() != 0 && fabs(current_total_charge) > zero_num ){
+    			discrete_distribution<size_t> d{probs.begin(), probs.end()};
+			unsigned int ind2rm = d(gen);
+
+			// help to got neutral system
+			double block_charge = 0.;	
+			if( fabs(current_total_charge) > zero_num ){
+				for(unsigned int i=0;i<poss2rm[ind2rm].size();i++)
+					block_charge += AtomCharge[AtomList[poss2rm[ind2rm][i]].type_uint-1];
+				if( signbit(current_total_charge) != signbit(block_charge) ){
+					nb_continue++;
+					if( nb_continue < poss2rm.size() )
+						continue;
+					else
+						probs.clear();
+						poss2rm.clear();
+						nbreset++;
+						cout << "resseting " << nbreset << endl;
+						break;
+				}
+			}
+			nb_continue = 0;
+
+			// remove these ions from ions2treat and ChargeDens lists
+			for(unsigned int i=0;i<poss2rm[ind2rm].size();i++){
+				// add these ions to the ion2remove list
+				ions2remove[cur_i2m].push_back(poss2rm[ind2rm][i]);
+				// remove it from the current_ChargeDens and current_ions2treat arrays
+				bool found = false;
+				unsigned int curind2rm;
+				for(unsigned int n=0;n<current_ions2treat.size();n++){
+					if( poss2rm[ind2rm][i] == current_ions2treat[n] ){
+						curind2rm = n;
+						found = true;
+						break;
+					}
+				}
+				if( found ){
+					current_ions2treat.erase(current_ions2treat.begin()+curind2rm);
+					current_ChargeDens.erase(current_ChargeDens.begin()+curind2rm);
+				}
+			}
+			current_nbIons2Treat = current_ions2treat.size();
+
+			// remove contribution of these ions to charge density and total_charge
+			for(unsigned int i=0;i<poss2rm[ind2rm].size();i++){
+				current_total_charge -= AtomCharge[AtomList[poss2rm[ind2rm][i]].type_uint-1];
+				for(unsigned int n=0;n<current_ChargeDens.size();n++){
+					for(int bc1=-bcx;bc1<=bcx;bc1++){
+						double coord1 = this->AtomList[poss2rm[ind2rm][i]].pos.x+(this->H1[0]*bc1);
+						for(int bc2=-bcx;bc2<=bcx;bc2++){
+							double coord2 = this->AtomList[poss2rm[ind2rm][i]].pos.y+(this->H2[1]*bc2);
+							for(int bc3=-bcx;bc3<=bcx;bc3++){
+								double coord3 = this->AtomList[poss2rm[ind2rm][i]].pos.z+(this->H3[2]*bc3);
+								current_ChargeDens[n] -= MT->gaussian(AtomList[current_ions2treat[n]].pos.x, AtomList[current_ions2treat[n]].pos.y, AtomList[current_ions2treat[n]].pos.z, coord1, coord2, coord3, sigma_gauss)*AtomCharge[AtomList[poss2rm[ind2rm][i]].type_uint-1];
+							}
+						}
+					}
+				}
+			}
+
+			// recompute loss and store indexes if total charge = 0
+			if( fabs(current_total_charge) < zero_num ){
+				select_ind[cur_i2m].push_back(ions2remove[cur_i2m].size());
+				select_loss[cur_i2m].push_back(0.);
+				for(unsigned int n=0;n<current_ChargeDens.size();n++) select_loss[cur_i2m][select_loss[cur_i2m].size()-1] += fabs(current_ChargeDens[n]);
+				select_loss[cur_i2m][select_loss[cur_i2m].size()-1] /= current_nbIons2Treat;
+			}
+
+			// remove ions and neighboring ions from the probs and poss2rm list
+			unsigned int ind_in_N;
+		        bool found = false;
+			for(unsigned int n=0;n<ions2treat.size();n++){
+				if( poss2rm[ind2rm][0] == ions2treat[n] ){
+					found = true;
+					ind_in_N = n;
+					break;
+				}
+			}
+			if( !found ) cout << "OTHER ISSUE IN NEIGH!!" << endl;
+			poss2rm.erase(poss2rm.begin()+ind2rm);
+			probs.erase(probs.begin()+ind2rm);
+			for(unsigned int n=0;n<Neighbours[ind_in_N*(nbMaxN+1)];n++){
+				unsigned int Nind = Neighbours[ind_in_N*(nbMaxN+1)+1+n];
+				unsigned int n2rm;
+				found = false;
+				for(unsigned int j1=0;j1<poss2rm.size();j1++){
+					for(unsigned int j2=0;j2<poss2rm[j1].size();j2++){
+						if( Nind == poss2rm[j1][j2] ){
+							n2rm = j1;
+							found = true;
+							break;
+						}
+					}
+					if( found ) break;
+				}
+				if( found ){
+					poss2rm.erase(poss2rm.begin()+n2rm);
+					probs.erase(probs.begin()+n2rm);
+				}
+			}
+			// maybe update probs here ?
+			for(unsigned int i=0;i<probs.size();i++){
+				bool found = false;
+				for(unsigned int j=0;j<current_ions2treat.size();j++){
+					if( poss2rm[i][0] == current_ions2treat[j] ){
+						found = true;
+						probs[i] = pow(fabs(current_ChargeDens[j]),exp_prob);
+						break;
+					}
+				}
+			}
+		} // end while probs.size() != 0
+		// compute new poss2rm and probs lists if current_nbIons2Treat != 0 
+		if( current_nbIons2Treat == 0 || nbreset == maxnbreset ) break;
+        	for(unsigned int i=0;i<current_nbIons2Treat;i++){
+			unsigned int current_ind = current_ions2treat[i];
+			bool already = false;
+			for(unsigned int j1=0;j1<poss2rm.size();j1++){
+				for(unsigned int j2=0;j2<poss2rm[j1].size();j2++){
+					if( poss2rm[j1][j2] == current_ind ){
+						already = true;
+						break;
+					}
+				}
+				if( already ) break;
+			}
+			if( already ) continue;
+			vector<unsigned int> current_ions2remove;
+			if( IsNotSepTag ){
+				if( NotSepTag[current_ind][0] == 0 ) current_ions2remove.push_back(current_ind);
+				else if( NotSepTag[current_ind][0] < 0 ){
+					unsigned int neigh_ind = (unsigned int) -1-NotSepTag[current_ind][0];
+					current_ions2remove.push_back(current_ind);
+					current_ions2remove.push_back(neigh_ind);	
+					for(unsigned int n=0;n<NotSepTag[neigh_ind][0];n++)
+						if( current_ind != NotSepTag[neigh_ind][n+1] ) current_ions2remove.push_back(NotSepTag[neigh_ind][n+1]);
+				}else{
+					current_ions2remove.push_back(current_ind);
+					for(unsigned int n=0;n<NotSepTag[current_ind][0];n++) current_ions2remove.push_back(NotSepTag[current_ind][n+1]);
+				}
+			}else current_ions2remove.push_back(current_ind);
+			double block_charge = 0.;
+			for(unsigned int n=0;n<current_ions2remove.size();n++) block_charge += AtomCharge[AtomList[current_ions2remove[n]].type_uint-1];
+
+			if( signbit(ChargeDens[i]) == signbit(block_charge) && signbit(block_charge) == signbit(total_charge)  && fabs(block_charge) - fabs(total_charge) < zero_num ){
+				poss2rm.push_back(current_ions2remove);
+				probs.push_back(pow(fabs(current_ChargeDens[i]),exp_prob)); // maybe bias more the probability by taking ChargeDens^2,3,4? 
+			}
+		}
+	} // end while probs.size() != 0
+	  cout << "At the end of try " << cur_i2m << ", still " << current_nbIons2Treat << " ions 2 treat" << endl;
+	}}
+	// end loops on rcut and nrand
+	
+	// choose the optimal system
+	bool neutral_found = false;
+	for(unsigned int n=0;n<total_nbTry;n++){
+		if( select_ind[n].size() != 0 ){
+			neutral_found = true;
+			break;
+		}
+	}
+	
+	unsigned int opt_ind_glob, opt_ind;
+	if( initialy_neutral && !neutral_found ){
+		cout << "Only initial system is neutral, keeping it" << endl;
+		return;
+	}else if( !initialy_neutral && !neutral_found ){
+		cout << "Cannot find neutral system" << endl;
+		return;
+	}else{
+		double min_loss = std::numeric_limits<double>::max();
+		ofstream file("lossfct.dat");
+		unsigned int glob_count = 0;
+		for(unsigned int n1=0;n1<total_nbTry;n1++){
+			for(unsigned int n2=0;n2<select_loss[n1].size();n2++){
+				file << glob_count << " " << select_loss[n1][n2] << endl;
+				glob_count++;
+				if( select_loss[n1][n2] < min_loss ){
+					opt_ind_glob = n1;
+					opt_ind = n2;
+					min_loss = select_loss[n1][n2];
+				}
+			}
+		}
+		file.close();
+		if( initialy_neutral && initial_loss < min_loss )
+			cout << "The initial system is better than all investigated systems, keeping it intact" << endl;
+		else{
+			unsigned int init_size = ions2remove[opt_ind_glob].size();
+			cout << "A better system have been found by removing " << select_ind[opt_ind_glob][opt_ind] << " over " << ions2remove[opt_ind_glob].size() << endl;
+			for(unsigned int i=select_ind[opt_ind_glob][opt_ind];i<init_size;i++) ions2remove[opt_ind_glob].pop_back(); // to test
+			RemoveAtoms(ions2remove[opt_ind_glob]);
+		}
+	}
+
+	//file.close();
+	//file.open("distribQ_1.dat");
+	//for(unsigned int i=0;i<nbAtom;i++) file << ChargeDens[i] << endl;
+	//file.close();
+	//cout << "nb ions rem = " << ions2remove.size() << ", total charge = " << total_charge << endl;
+	//setAux(classif,"class");
+	//setAux(removed,"rm");
+	//setAux(ChargeDens,"ChargeDensAfter");
+	//printSystem_aux("TESTCharge.cfg","ChargeDensBefore classbef class ChargeDensAfter rm");
+	//
+	delete[] classif;
+	delete Des;
+	delete KM;
+	delete[] ChargeDens;
+}
+
+void AtomicSystem::RemoveAtoms(vector<unsigned int> index2rm, bool DNS){
 	//if( !IsAtomListMine ){
 	//	cout << "The atom list does not belong to the atomic system, cannot delete atoms" << endl;
 	//	return;
@@ -3991,21 +4005,65 @@ void AtomicSystem::RemoveAtoms(vector<unsigned int> index2rm){
 		CLNeighbours = nullptr;
 		IsNeighbours = false;
 	}
-	if( IsNotSepTag ){
-		delete[] NotSepTag;
-		NotSepTag = nullptr;
-		IsNotSepTag = false;
+	if( DNS && !_MyCrystal->getIsDoNotSep() ) DNS = false;
+	else if( DNS && !IsNotSepTag ){
+		cout << "Computing not sep list.." << endl;
+		ComputeNotSepList();
 	}
 
-	unsigned int newNbAtom = nbAtom-index2rm.size();
-	Atom *tempAtomList = new Atom[newNbAtom];
-	vector<double*> tempAux;
-	for(unsigned int i=0;i<Aux_size.size();i++) tempAux.push_back(new double[newNbAtom*Aux_size[i]]);
+
+	//unsigned int newNbAtom = nbAtom-index2rm.size();
+	//Atom *tempAtomList = new Atom[newNbAtom];
+	//vector<double*> tempAux;
+	//for(unsigned int i=0;i<Aux_size.size();i++) tempAux.push_back(new double[newNbAtom*Aux_size[i]]);
+	vector<Atom> tempAtomList;
+	vector<vector<double>> tempAux(Aux_size.size(),vector<double>());
 
 	// copy vector
 	vector<unsigned int> current_index2rm;
 	for(unsigned int i=0;i<index2rm.size();i++) current_index2rm.push_back(index2rm[i]);
 
+	// adjust the list to account for the do not separe list
+	if( DNS ){
+		for(unsigned int i=0;i<index2rm.size();i++){
+			if( NotSepTag[index2rm[i]][0] == 0 ) continue;
+			else if( NotSepTag[index2rm[i]][0] < 0 ){
+				bool toadd = true;
+				unsigned int neigh_ind = (unsigned int) -1-NotSepTag[index2rm[i]][0];
+				for(unsigned int j=0;j<index2rm.size();j++){
+					if( index2rm[j] == neigh_ind ){
+						toadd = false;
+						break;
+					}
+				}
+				if( toadd ) current_index2rm.push_back(neigh_ind);
+				for(unsigned int n=0;n<NotSepTag[neigh_ind][0];n++){
+					if( index2rm[i] == NotSepTag[neigh_ind][n+1] ) continue;
+					else{
+						toadd = true;
+						for(unsigned int j=0;j<index2rm.size();j++){
+							if( index2rm[j] == NotSepTag[neigh_ind][n+1] ){
+								toadd = false;
+								break;
+							}
+						}
+						if( toadd ) current_index2rm.push_back(NotSepTag[neigh_ind][n+1]);
+					}
+				}
+			}else{
+				for(unsigned int n=0;n<NotSepTag[index2rm[i]][0];n++){
+					bool toadd = true;
+					for(unsigned int j=0;j<index2rm.size();j++){
+						if( index2rm[j] == NotSepTag[index2rm[i]][n+1] ){
+							toadd = false;
+							break;
+						}
+					}
+					if( toadd ) current_index2rm.push_back(NotSepTag[index2rm[i]][n+1]);
+				}
+			}
+		}
+	}
 	unsigned int count=0;
 	for(unsigned int i=0;i<nbAtom;i++){
 		bool treat = true;
@@ -4017,9 +4075,9 @@ void AtomicSystem::RemoveAtoms(vector<unsigned int> index2rm){
 			}
 		}
 		if( treat ){
-			tempAtomList[count] = AtomList[i];
+			tempAtomList.push_back(AtomList[i]);
 			for(unsigned int a=0;a<Aux_size.size();a++){
-				for(unsigned int d=0;d<Aux_size[a];d++) tempAux[a][count*Aux_size[a]+d] = Aux[a][i*Aux_size[a]+d];
+				for(unsigned int d=0;d<Aux_size[a];d++) tempAux[a].push_back(Aux[a][i*Aux_size[a]+d]);
 			}
 			count++;
 		}else current_index2rm.erase(current_index2rm.begin()+j);
@@ -4028,8 +4086,8 @@ void AtomicSystem::RemoveAtoms(vector<unsigned int> index2rm){
 	delete[] AtomList;
 	for(unsigned int a=0;a<Aux_size.size();a++) delete[] Aux[a];
 	Aux.clear();
-
-	nbAtom = newNbAtom;
+	
+	nbAtom = count;
 	AtomList = new Atom[nbAtom];
 	for(unsigned int i=0;i<Aux_size.size();i++) Aux.push_back(new double[nbAtom*Aux_size[i]]);
 	for(unsigned int i=0;i<nbAtom;i++){
@@ -4039,9 +4097,15 @@ void AtomicSystem::RemoveAtoms(vector<unsigned int> index2rm){
 		}
 	}
 
-	delete[] tempAtomList;
-	for(unsigned int a=0;a<Aux_size.size();a++) delete[] tempAux[a];
-	tempAux.clear();
+	if( IsNotSepTag ){
+		delete[] NotSepTag;
+		NotSepTag = nullptr;
+		IsNotSepTag = false;
+	}
+
+	//delete[] tempAtomList;
+	//for(unsigned int a=0;a<Aux_size.size();a++) delete[] tempAux[a];
+	//tempAux.clear();
 		
 	// TODO
 	//unsigned int *tempMolId, *tempBonds, *tempAngles, *tempBondType, *tempAngleType;
@@ -4050,7 +4114,177 @@ void AtomicSystem::RemoveAtoms(vector<unsigned int> index2rm){
 	
 }
 
+void AtomicSystem::MakeSystemNeutral(){
+	if( IsCharge == false ) return;
+	bool Possible = false; // at least we should have two atom types having charge with opposite sign
+	bool pos(false),neg(false);
+	double zero_num = 1e-8;
+	if( !_MyCrystal->getIsDoNotSep() ){
+		for(unsigned int n=0;n<nbAtomType;n++){
+			if( AtomCharge[n] > zero_num ) pos = true;
+			else if( AtomCharge[n] < -zero_num ) neg = true;
+			if( pos && neg ){
+				Possible = true;
+				break;
+			}
+		}
+	}else{
+		ComputeNotSepList();
+		vector<vector<unsigned int>> DNS = _MyCrystal->getDoNotSep();
+		unsigned int *Stoich = _MyCrystal->getStoich();
+		for(unsigned int n=0;n<nbAtomType;n++){
+			double block_charge = 0.; 
+			for(unsigned int i=0;i<DNS.size();i++){
+				if( DNS[i][0]-1 == n ){
+					if( i == 0 ) block_charge = AtomCharge[DNS[i][0]-1];
+					block_charge += AtomCharge[DNS[i][2]-1]*DNS[i][1];
+					if( block_charge > zero_num ) pos = true;
+					else if( block_charge < -zero_num ) neg = true;
+					if( Stoich[DNS[i][2]-1] > Stoich[DNS[i][0]-1]*DNS[i][1] ){
+						if( AtomCharge[DNS[i][2]-1] > zero_num ) pos = true;
+						else if( AtomCharge[DNS[i][2]-1] < -zero_num ) neg = true;
+					}
+					if( pos && neg ){
+						Possible = true;
+						break;
+					}
+				}
+			}
+		}
+		for(unsigned int n=0;n<nbAtomType;n++){
+			bool treat = true;
+			for(unsigned int i=0;i<DNS.size();i++){
+				if( DNS[i][0]-1 == n ){
+					treat = false;
+					break;
+				}
+				if( DNS[i][2]-1 == n ){
+					treat = false;
+					break;
+				}
+			}
+			if( treat ){
+				if( AtomCharge[n] > zero_num ) pos = true;
+				else if( AtomCharge[n] < -zero_num ) neg = true;
+				if( pos && neg ){
+					Possible = true;
+					break;
+				}
+			}
+		}
+	}	
+
+	if( !Possible ){
+		cout << "It is not possible to construct charge neutral surfaces as there are not two types of ions (or blocks of ions due to the DoNotSep crystal tag) having charge with opposite signs" << endl;
+		return;
+	}
+	
+	vector<unsigned int> ions2treat;
+	double total_charge = 0.;
+	for(unsigned int i=0;i<nbAtom;i++) total_charge += AtomCharge[AtomList[i].type_uint-1];
+	
+	// Compute charge density at each ions position
+	double fac_sigma_gauss = 1.5;
+	double *ChargeDens = new double[nbAtom];
+	double sigma_gauss = MT->max_p(_MyCrystal->getALength(),3);
+	sigma_gauss *= fac_sigma_gauss;
+	int bcx = 2; // to be computed depending on box size
+	int bcy = 2;
+	int bcz = 2;
+	double initial_metric = 0.;
+	#pragma omp parallel for
+	for(unsigned int i=0;i<nbAtom;i++){
+		ChargeDens[i] = 0.;
+		for(unsigned int j=0;j<nbAtom;j++){
+			for(int bc1=-bcx;bc1<=bcx;bc1++){
+				double coord1 = this->AtomList[j].pos.x+(this->H1[0]*bc1);
+				for(int bc2=-bcy;bc2<=bcy;bc2++){
+					double coord2 = this->AtomList[j].pos.y+(this->H2[1]*bc2);
+					for(int bc3=-bcz;bc3<=bcz;bc3++){
+						double coord3 = this->AtomList[j].pos.z+(this->H3[2]*bc3);
+						ChargeDens[i] += MT->gaussian(AtomList[ions2treat[i]].pos.x, AtomList[ions2treat[i]].pos.y, AtomList[ions2treat[i]].pos.z, coord1, coord2, coord3, sigma_gauss)*AtomCharge[AtomList[j].type_uint-1];
+					}
+				}
+			}
+		}
+		initial_metric += fabs(ChargeDens[i]);
+	}
+	initial_metric /= nbAtom;
+
+	//mt19937 gen(random_device{}());
+	mt19937 gen;
+	gen.seed(42);
+
+	unsigned int iter_totC = 0;
+	unsigned int maxIter_totC = 100;
+
+	//while( fabs(total_charge) > 1e-8 && iter_totC < maxIter_totC ){
+	//	vector<vector<unsigned int>> poss2rm;
+	//	vector<double> probs;
+	//	// search ions having ChargeDens of same sign than both block_charge and total_charge
+	//	for(unsigned int i=0;i<nbAtom;i++){
+	//		vector<unsigned int> current_ions2remove;
+	//		if( IsNotSepTag ){
+	//			if( NotSepTag[i][0] == 0 ) current_ions2remove.push_back(i);
+	//			else if( NotSepTag[i][0] < 0 ){
+	//				unsigned int neigh_ind = (unsigned int) -1-NotSepTag[i][0];
+	//				current_ions2remove.push_back(i);
+	//				current_ions2remove.push_back(neigh_ind);	
+	//				for(unsigned int n=0;n<NotSepTag[neigh_ind][0];n++)
+	//					if( i != NotSepTag[neigh_ind][n+1] ) current_ions2remove.push_back(NotSepTag[neigh_ind][n+1]);
+	//			}else{
+	//				current_ions2remove.push_back(i);
+	//				for(unsigned int n=0;n<NotSepTag[i][0];n++) current_ions2remove.push_back(NotSepTag[i][n+1]);
+	//			}
+	//		}else current_ions2remove.push_back(i);
+	//		double block_charge = 0.;
+	//		for(unsigned int n=0;n<current_ions2remove.size();n++) block_charge += AtomCharge[AtomList[current_ions2remove[n]].type_uint-1];
+
+	//		if( signbit(ChargeDens[i]) == signbit(block_charge) && signbit(block_charge) == signbit(total_charge)  && fabs(block_charge) <= fabs(total_charge) ){
+	//			poss2rm.push_back(current_ions2remove);
+	//			double mean_charge_dens = 0.;
+	//			for(unsigned int n=0;n<current_ions2remove.size();n++) mean_charge_dens += fabs(ChargeDens[current_ions2remove[n]]);
+	//			mean_charge_dens /= current_ions2remove.size();
+	//			probs.push_back(mean_charge_dens);
+	//		}
+	//	}
+
+    	//	discrete_distribution<size_t> d{probs.begin(), probs.end()};
+	//	unsigned int ind2rm = d(gen);
+
+	//	// remove these ions from ions2treat and ChargeDens lists
+	//	for(unsigned int i=0;i<poss2rm[ind2rm].size();i++){
+	//		// add these ions to the ion2remove list
+	//		ions2remove[cur_i2m].push_back(poss2rm[ind2rm][i]);
+	//		// remove it from the current_ChargeDens and current_ions2treat arrays
+	//		bool found = false;
+	//		unsigned int curind2rm;
+	//		for(unsigned int n=0;n<current_ions2treat.size();n++){
+	//			if( poss2rm[ind2rm][i] == current_ions2treat[n] ){
+	//				curind2rm = n;
+	//				found = true;
+	//				break;
+	//			}
+	//		}
+	//		if( found ){
+	//			current_ions2treat.erase(current_ions2treat.begin()+curind2rm);
+	//			current_ChargeDens.erase(current_ChargeDens.begin()+curind2rm);
+	//		}
+	//	}
+	//	current_nbIons2Treat = current_ions2treat.size();
+
+	//} // end while total_charge != 0
+
+}
+
 void AtomicSystem::MakeSurfaceNeutral(vector<int> Oris, vector<double> shift, vector<double> Misfit, vector<double> PlaneNormal, double VertPlaneSlope, vector<double> VertPlaneEq, vector<double> FullPlaneEq, double shift_z_box, string outputfilename){
+	double zero = 0.;
+	unsigned int nbSample_S_z = 5;
+	double max_s_z = 4.;
+	vector<vector<unsigned int>> opt_index2rm(nbSample_S_z,vector<unsigned int>());
+	#pragma omp parallel for
+	for(unsigned int s_z_i=0;s_z_i<nbSample_S_z;s_z_i++){
+	double s_z = max_s_z*(double) s_z_i/((double) nbSample_S_z - 1.);
 	Crystal OriCryst_f1(_MyCrystal->getName());
 	OriCryst_f1.RotateCrystal(Oris[0], Oris[1], Oris[2], Oris[3], Oris[4], Oris[5]);
 	OriCryst_f1.ShiftMotif(shift[0], shift[1], shift[2]);
@@ -4060,11 +4294,11 @@ void AtomicSystem::MakeSurfaceNeutral(vector<int> Oris, vector<double> shift, ve
 	double *invRotMat = new double[9];
 	MT->invert3x3(OriCryst_f1.getTiltTrans(),invTiltTrans);
 	MT->invert3x3(OriCryst_f1.getRotMat(),invRotMat);
-	double z_shift_OriSys = OriSys_f1->MakeSurfaceNeutral();
+	OriSys_f1->ApplyShift(zero, zero, s_z);
+	double z_shift_OriSys = OriSys_f1->MakeSurfaceNeutral(false);
 	if( outputfilename != "" ) OriSys_f1->print_lmp(outputfilename);
 	// keep only a small part of the system near to the surface to limit computational cost
 	double select_width = 10.;
-	double zero = 0.;
 	double zero_num = 1.e-8;
 	bool xpar = false; // TODO
 	double hi_nb = 1.e8;
@@ -4079,14 +4313,13 @@ void AtomicSystem::MakeSurfaceNeutral(vector<int> Oris, vector<double> shift, ve
 	MT->MatDotRawVec(_MyCrystal->getTiltTrans(),zaxis,zaxis);
         double sp_z = 0.;
 	for(unsigned int i=0;i<3;i++) sp_z += zaxis[i]*PlaneNormal[i];
-	cout << "SPZ = " << sp_z << endl;
 	vector<unsigned int> index2rm;
 	if( sp_z > 0 ) index2rm = OriSys_f1->selectAtomInBox(-hi_nb, hi_nb, -hi_nb, hi_nb, -hi_nb, OriSys_f1->getH3()[2]-select_width, false);
 	else index2rm = OriSys_f1->selectAtomInBox(-hi_nb, hi_nb, -hi_nb, hi_nb, select_width, hi_nb, false);
 	OriSys_f1->RemoveAtoms(index2rm);
 	unsigned int nbAt_OriSys = OriSys_f1->getNbAtom();
 	// remove z shift from the MakeSurfaceNeutral function
-	OriSys_f1->ApplyShift(zero, zero, z_shift_OriSys);
+	OriSys_f1->ApplyShift(zero, zero, z_shift_OriSys-s_z);
 	// ** Set the curent grain def and misfit to the OriSys ** //
 	// 1. remove the crystal def to the ori sys
 	for(unsigned int i=0;i<nbAt_OriSys;i++) MT->MatDotAt(invTiltTrans, OriSys_f1->getAtomRef(i), OriSys_f1->getAtomRef(i));
@@ -4119,9 +4352,6 @@ void AtomicSystem::MakeSurfaceNeutral(vector<int> Oris, vector<double> shift, ve
 	double *current_shift = new double[3];
 	double *swap_shift = new double[3];
 
-	cout << "Plane normal : ";
-	for(unsigned int i=0;i<3;i++) cout << PlaneNormal[i] << " ";
-	cout << endl;
 	// loop on number of plane 
 	for(unsigned int f=0;f<FullPlaneEq.size();f++){
 	//for(unsigned int f=0;f<1;f++){
@@ -4158,7 +4388,7 @@ void AtomicSystem::MakeSurfaceNeutral(vector<int> Oris, vector<double> shift, ve
 			if( fabs(_MyCrystal->getA2()[i]) > zero_num ) search_hkl.push_back(round(fabs(diff_orisubsys[i]/_MyCrystal->getA2()[i])));
 			if( fabs(_MyCrystal->getA3()[i]) > zero_num ) search_hkl.push_back(round(fabs(diff_orisubsys[i]/_MyCrystal->getA3()[i])));
 		}
-		int hkl_search = (int) MT->max_vec(search_hkl);
+		int hkl_search = (int) MT->max_vec(search_hkl)+3;
 		if( hkl_search > max_hkl_search ) hkl_search = max_hkl_search;
 		vector<double> optshift(3);
 		double min_dist = std::numeric_limits<double>::max();
@@ -4185,11 +4415,48 @@ void AtomicSystem::MakeSurfaceNeutral(vector<int> Oris, vector<double> shift, ve
 		double tol = 1.e-3;
 		double init_sp_sum = 0.;
 		double min_sp = 1.e-1;
+		bool toprint = false;
 		for(unsigned int i=0;i<nbAt_OriSys;i++){
 			at_sp[i] = 0.;
 			for(unsigned int j=0;j<SubSys.size();j++) at_sp[i] += MT->gaussian(OriSys_f1->getAtomRef(i).pos.x, OriSys_f1->getAtomRef(i).pos.y, OriSys_f1->getAtomRef(i).pos.z, SubSys[j].pos.x, SubSys[j].pos.y, SubSys[j].pos.z, sigma);
-			if( ( i != 0 && fabs(at_sp[i]-at_sp[i-1]) > tol ) || at_sp[i] < min_sp ) cout << "WARNING the oriented system seems to not coincide with grain 1" << endl;
+			if( ( i != 0 && fabs(at_sp[i]-at_sp[i-1]) > tol ) || at_sp[i] < min_sp ){
+				cout << "WARNING the oriented system seems to not coincide with grain 1" << endl;
+				toprint = true;
+			}
 			init_sp_sum += at_sp[i];
+		}
+		if( toprint ){
+			cout << diff_orisubsys[0] << " "<< diff_orisubsys[1] << " "<< diff_orisubsys[2] << endl; 
+			// BEGIN  PRINTING
+			//OriSys->setAux(at_sp,"foraux");
+			//OriSys->printSystem_aux("SP.cfg","foraux");
+			unsigned int sizesys = SubSys.size()+nbAt_OriSys;
+			//unsigned int sizesys = nbAtom1+nbAt_OriSys;
+			Atom *AtList_temp = new Atom[sizesys];
+			double *foraux = new double[sizesys];
+			for(unsigned int i=0;i<SubSys.size();i++){
+				AtList_temp[i] = SubSys[i];
+				foraux[i] = 0.;
+			}
+			//for(unsigned int i=0;i<nbAtom1;i++){
+			//	AtList_temp[i] = Grain1->getAtom(i);
+			//	foraux[i] = 0.;
+			//}
+			for(unsigned int i=0;i<nbAt_OriSys;i++){
+				AtList_temp[i+SubSys.size()] = OriSys_f1->getAtom(i);
+				foraux[i+SubSys.size()] = 1.;
+				//AtList_temp[i+nbAtom1] = OriSys_f1->getAtom(i);
+				//foraux[i+nbAtom1] = 1.;
+			}
+			AtomicSystem *AtSysTemp = new AtomicSystem(AtList_temp,sizesys,_MyCrystal,this->H1,this->H2,this->H3);
+			AtSysTemp->setAux(foraux,"foraux");
+			AtSysTemp->printSystem_aux("FORAUX_"+to_string(f)+"_"+to_string(s_z_i)+".cfg","foraux");
+			delete[] AtList_temp;
+			delete[] foraux;
+			delete AtSysTemp;
+			// END PRINTING
+
+
 		}
 		// shift the OriSys using _Crystal cell vecs and choose the fully coinciding system being the closest to the surface
 		hkl_search = 10;
@@ -4226,36 +4493,7 @@ void AtomicSystem::MakeSurfaceNeutral(vector<int> Oris, vector<double> shift, ve
 		OriSys_f1->ApplyShift(current_shift[0], current_shift[1], current_shift[2]);
 		for(unsigned int i=0;i<3;i++) mean_pos_orisys[i] += current_shift[i];
 
-			// BEGIN  PRINTING
-			//OriSys->setAux(at_sp,"foraux");
-			//OriSys->printSystem_aux("SP.cfg","foraux");
-			unsigned int sizesys = SubSys.size()+nbAt_OriSys;
-			//unsigned int sizesys = nbAtom1+nbAt_OriSys;
-			Atom *AtList_temp = new Atom[sizesys];
-			double *foraux = new double[sizesys];
-			for(unsigned int i=0;i<SubSys.size();i++){
-				AtList_temp[i] = SubSys[i];
-				foraux[i] = 0.;
-			}
-			//for(unsigned int i=0;i<nbAtom1;i++){
-			//	AtList_temp[i] = Grain1->getAtom(i);
-			//	foraux[i] = 0.;
-			//}
-			for(unsigned int i=0;i<nbAt_OriSys;i++){
-				AtList_temp[i+SubSys.size()] = OriSys_f1->getAtom(i);
-				foraux[i+SubSys.size()] = 1.;
-				//AtList_temp[i+nbAtom1] = OriSys_f1->getAtom(i);
-				//foraux[i+nbAtom1] = 1.;
-			}
-			AtomicSystem *AtSysTemp = new AtomicSystem(AtList_temp,sizesys,_MyCrystal,this->H1,this->H2,this->H3);
-			AtSysTemp->setAux(foraux,"foraux");
-			AtSysTemp->printSystem_aux("FORAUX"+to_string(f)+".cfg","foraux");
-			delete[] AtList_temp;
-			delete[] foraux;
-			delete AtSysTemp;
-			// END PRINTING
-
-
+		
 
 		// now the ori sys is well positionned
 		// ** swap the surface of the system and remove the ions not coinciding with ori sys ** //
@@ -4288,7 +4526,6 @@ void AtomicSystem::MakeSurfaceNeutral(vector<int> Oris, vector<double> shift, ve
 
 		index2rm.clear();
 		double tol_rmatom = 0.9*init_sp_sum/nbAt_OriSys;
-		cout << nb_shift << endl;
 		for(unsigned int i=0;i<nbAtom;i++){
 			double xpos = AtomList[i].pos.x;
 			double ypos = AtomList[i].pos.y;
@@ -4315,13 +4552,29 @@ void AtomicSystem::MakeSurfaceNeutral(vector<int> Oris, vector<double> shift, ve
 				}
 			}
 		}
-		RemoveAtoms(index2rm);
-		cout << "Number of ions removed : " << index2rm.size() << endl;
+		for(unsigned int i=0;i<index2rm.size();i++) opt_index2rm[s_z_i].push_back(index2rm[i]);
 	} // end loop on f
+	//cout << "Number of ions removed : " << index2rm.size() << endl;
+	delete[] invTiltTrans;
+	delete[] invRotMat;
+	delete[] zaxis;
+	delete[] mean_pos_orisys;
+	delete[] mean_pos_subsys;
+	delete[] diff_orisubsys;
+	delete[] at_sp;
+	delete[] current_shift;
+	delete[] swap_shift;
+	} // end loop on s_z
+	
+		unsigned int opt_ind = 0;
+		for(unsigned int i=1;i<nbSample_S_z;i++)
+			if( opt_index2rm[i].size() < opt_index2rm[opt_ind].size() ) opt_ind = i;
+		cout << "Final number of ions removed : " << opt_index2rm[opt_ind].size() << endl;
+		RemoveAtoms(opt_index2rm[opt_ind], true);
 
 }	
 	
-double AtomicSystem::MakeSurfaceNeutral(){
+double AtomicSystem::MakeSurfaceNeutral(bool verbose){
 	if( IsCharge == false ) return 0.;
 	bool Possible = false; // at least we should have two atom types having charge with opposite sign
 	bool pos(false),neg(false);
@@ -4345,7 +4598,7 @@ double AtomicSystem::MakeSurfaceNeutral(){
 	double slab_width = ave_dist*2.;
 	for(unsigned int i=0;i<nbAtom;i++) if( AtomList[i].pos.z < slab_width ) nbMoveMax++;
 	if( nbMoveMax < MinNbMoveMax ) nbMoveMax = MinNbMoveMax;
-	cout << "Trying to make charge neutral surfaces by moving " << nbMoveMax << " ions (or group of ions to be not separed) from the bottom surface to the upper one.." << endl;
+	if( verbose ) cout << "Trying to make charge neutral surfaces by moving " << nbMoveMax << " ions (or group of ions to be not separed) from the bottom surface to the upper one.." << endl;
 	// Increase H3 length to be sure to have free surfaces
 	double fac_vac = 1.5;
 	double shift_z = this->H3[2] * ((fac_vac-1.)/2.);
@@ -4365,7 +4618,7 @@ double AtomicSystem::MakeSurfaceNeutral(){
 	unsigned int nbPts_g = floor(H3[2]*2./ave_dist);
 	if( nbPts_g % 2 != 1 ) nbPts_g++;
 	unsigned int dens_ind = Compute1dDensity("Charge","z",ave_dist,nbPts_g);
-	Print1dDensity("InitialChargeDensity.dat","Charge");
+	if( verbose ) Print1dDensity("InitialChargeDensity.dat","Charge");
 	unsigned int mid = floor((double) (nbPts_g) * zmid / H3[2])+1;
 	double low_int(0.),up_int(0.); // integrals of charge density in the upper and lower part of the system
 	for(unsigned int i=0;i<mid;i++) low_int += density_prof[dens_ind][i*2]; // no need to account for distance as step is regular and system is divided by the middle
@@ -4393,7 +4646,7 @@ double AtomicSystem::MakeSurfaceNeutral(){
 	vector<unsigned int> nbIonsMoved;
 	nbIonsMoved.push_back(0);
 	for(unsigned int i=0;i<nbMoveMax;i++){
-		Dis->ProgressBar(nbMoveMax,i);
+		if( verbose ) Dis->ProgressBar(nbMoveMax,i);
 		AtomList[ind_tomove].pos.x += InitH3[0];
 		AtomList[ind_tomove].pos.y += InitH3[1];
 		AtomList[ind_tomove].pos.z += InitH3[2];
@@ -4449,8 +4702,10 @@ double AtomicSystem::MakeSurfaceNeutral(){
 	delete[] InitH3;
 	delete[] z;
 	delete[] true_z;
-	cout << "Initial charge balance = " << init_charge_bal << ", final one = " << charge_bal << ", number of ions moved = " << nbIonsMoved[opt_ind] << endl;
-	Print1dDensity("FinalChargeDensity.dat","Charge");
+	if( verbose ){
+		cout << "Initial charge balance = " << init_charge_bal << ", final one = " << charge_bal << ", number of ions moved = " << nbIonsMoved[opt_ind] << endl;
+		Print1dDensity("FinalChargeDensity.dat","Charge");
+	}
 	return final_zmin-init_zmin;
 }
 

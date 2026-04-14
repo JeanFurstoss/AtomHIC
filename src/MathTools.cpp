@@ -785,7 +785,7 @@ void MathTools::dia_sym_mtx(const double *Mat, double *Prod){
 	}
 }
 
-// cross product of two vectors //TODO verify if the two following function work well
+// cross product of two vectors 
 void MathTools::crossProd(const double *vec1, const double *vec2, double *Prod){
 	for(unsigned int i=0;i<3;i++){
 		buffer_vec_1[i] = vec1[i];

@@ -15,6 +15,7 @@ MAX_MISFIT 0.02 // maximum misfit for pasting crystal over each others when crea
 MAX_DUP 100 // maximum duplication of the two grains for pasting crystal over each others when creating bicrystal and respecting the maximum misfit (default 100)
 GB_SPACE 2. // space between the two crystals (in A) (default 2)
 LOWER_GRAIN_SHIFT 0 0 0 // shift of the lower grain when creating bicrystal systems, could be used to explore translational microscopic DoF (default 0 0 0)
+UPPER_GRAIN_SHIFT 0 0 0 // shift of the upper grain when creating bicrystal systems, could be used to explore translational microscopic DoF (default 0 0 0)
 FULL_GRAINS 1 // if 1 the two grains used for constructing bicrystals are fully considered (with duplication), if 0 their sizes correspond to the unit cell of the corresponding plane. FULL_GRAINS 0 allows to save memory during computation if the GB is really large (default 1)
 MAX_VAR_FACET_LENGTH 0.3 // Maximum variation between the provided facet length and the real facet length when creating faceted GB (default 0.3)
 MAX_DUP_FACET 10 // Maximum duplication of faceted GB system for finding the real facet length (by increasing this parameter the system could be much larger but the facet length will be closer to the provided one) (default 10)
