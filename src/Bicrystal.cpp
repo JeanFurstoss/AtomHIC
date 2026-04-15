@@ -959,14 +959,20 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 			double *DistanceToJct = new double[nbAtom1];
 			double *buffer1 = new double[3];
 			double *buffer2 = new double[3];
-			cout << "FCT jct " << endl;
-			MT->printVec(FacetJctDir);
-			for(unsigned int n=0;n<nbInters;n++){
-				for(unsigned int d=0;d<3;d++) cout << dirPoint[n*3+d] << " ";
-				cout << endl;
+			double mindist2jct = 10.;
+			double mindist2jct2 = mindist2jct*mindist2jct;
+			vector<vector<unsigned int>> index_totreat;
+			vector<unsigned int> dist_totreat;
+			vector<int>* NotSepTag = nullptr;
+			if( _MyCrystal->getIsDoNotSep() && !Grain1->getIsNotSepTag() ){
+				Grain1->ComputeNotSepList();
+				NotSepTag = Grain1->getNotSepTag();
 			}
-			
+			cout << "A" << endl;
 			for(unsigned int i=0;i<nbAtom1;i++){
+				if( NotSepTag ){
+					if( NotSepTag[i][0] < 0 ) continue;
+				}
 				vector<double> distances;	
 				for(unsigned int n=0;n<nbInters;n++){
 					buffer1[0] = Grain1->getAtom(i).pos.x-dirPoint[n*3];
@@ -977,11 +983,87 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 					for(unsigned int d=0;d<3;d++) distances[distances.size()-1] += buffer2[d]*buffer2[d];
 				}
 				DistanceToJct[i] = MT->min_vec(distances);
+				if( DistanceToJct[i] < mindist2jct2 ){
+					vector<unsigned int> buffer;
+					buffer.push_back(i);
+					dist_totreat.push_back(DistanceToJct[i]);
+					if( NotSepTag ){
+						for(unsigned int n=0;n<NotSepTag[i][0];n++) buffer.push_back(NotSepTag[i][n+1]);
+					}
+					index_totreat.push_back(buffer);
+				}
 			}
+			cout << "B" << endl;
+			// Compute charge density at ions 2 treat pos
+			int bcx = 2; // to be computed depending on box size
+			int bcy = 2;
+			unsigned int iter = 0;
+			unsigned int maxIter = 100;
+			double sigma_gauss = 10.;
+			double block_charge;
+			vector<unsigned int> ionsRemoved;
+			while( fabs(total_charge_1) > 1e-8 && iter < maxIter ){
+				cout << "ITER " << iter << ", total charge = " << total_charge_1 << endl;
+				vector<vector<unsigned int>> poss2rm;
+				vector<double> current_dist;
+				for(unsigned int i1=0;i1<index_totreat.size();i1++){
+					block_charge = 0.;
+					for(unsigned int i2=0;i2<index_totreat[i1].size();i2++) block_charge += AtomCharge[Grain1->getAtom(index_totreat[i1][i2]).type_uint-1];
+					if( signbit(block_charge) == signbit(total_charge_1)  && (fabs(block_charge) - fabs(total_charge_1)) < 1e-8 ){
+						double ChargeDens = 0.;
+						for(unsigned int j=0;j<nbAtom1;j++){
+							bool treat = true;
+							for(unsigned int j2=0;j2<ionsRemoved.size();j2++){
+								if( j == ionsRemoved[j2] ){
+									treat = false;
+									break;
+								}
+							}
+							if( !treat ) continue;
+							for(int bc1=-bcx;bc1<=bcx;bc1++){
+								double coord1 = Grain1->getAtom(j).pos.x+(this->H1[0]*bc1);
+								for(int bc2=-bcy;bc2<=bcy;bc2++){
+									double coord2 = Grain1->getAtom(j).pos.y+(this->H2[1]*bc2);
+									double coord3 = Grain1->getAtom(j).pos.z;
+									double xpos = Grain1->getAtom(index_totreat[i1][0]).pos.x;
+									double ypos = Grain1->getAtom(index_totreat[i1][0]).pos.y;
+									double zpos = Grain1->getAtom(index_totreat[i1][0]).pos.z;
+									ChargeDens += MT->gaussian(xpos, ypos, zpos, coord1, coord2, coord3, sigma_gauss)*AtomCharge[Grain1->getAtom(j).type_uint-1];
+								}
+							}
+						}
+						if( signbit(ChargeDens) == signbit(block_charge) ){
+							poss2rm.push_back(index_totreat[i1]);
+							current_dist.push_back(dist_totreat[i1]);
+						}
+					}
+				}
+				if( poss2rm.size() == 0 ) cout << "Warning, we don't find ions to adjust charges" << endl;
+				unsigned int torm = MT->min(current_dist);
+				block_charge = 0.;
+				for(unsigned int i2=0;i2<poss2rm[torm].size();i2++){
+					block_charge += AtomCharge[Grain1->getAtom(poss2rm[torm][i2]).type_uint-1];
+					ionsRemoved.push_back(poss2rm[torm][i2]);
+				}
+				for(unsigned int i=0;i<index_totreat.size();i++){
+					if( index_totreat[i][0] == poss2rm[torm][0] ){
+						index_totreat.erase(index_totreat.begin()+i);
+						dist_totreat.erase(dist_totreat.begin()+i);
+						break;
+					}
+				}
+				total_charge_1 -= block_charge;
+				iter++;
+			}
+			if( fabs(total_charge_1) < 1e-8 ){
+				cout << ionsRemoved.size() << " ions removed to get electroneutrality" << endl;
+				Grain1->RemoveAtoms(ionsRemoved);
+			}else{
+				cout << "Cannot find electroneutral system.." << endl;
+			}
+						
 
-			Grain1->setAux(DistanceToJct,"Crit");
-			Grain1->printSystem_aux("ForCrit.cfg","Crit");
-				
+
 
 			//Grain1->getH3()[2] *= 2.;
 			//Grain1->computeInverseCellVec();

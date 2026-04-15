@@ -163,6 +163,7 @@ public:
 	unsigned int getNeighbours(const unsigned long int Id){ return this->Neighbours[Id]; } // Warning Id should really be a long variable !!!
 	int* getCLNeighbours(){ return this->CLNeighbours; }
 	std::vector<int>* getNotSepTag(){ return this->NotSepTag; }
+	bool getIsNotSepTag(){ return this->IsNotSepTag; }
 	int getCLNeighbours(const unsigned long int Id){ return this->CLNeighbours[Id]; } // Warning Id should really be a long variable !!!
 	unsigned int getNbMaxN(){ return this->nbMaxN; }
 	bool getIsNeighbours(){ return this->IsNeighbours; }
