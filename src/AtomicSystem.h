@@ -125,6 +125,9 @@ protected:
 	int l_sph_st;
 public:
 	AtomicSystem();
+	AtomicSystem(const AtomicSystem &AtSys); // copy constructor
+	void swap(AtomicSystem &AtSys); // copy constructor
+	AtomicSystem& operator=(AtomicSystem AtSys); // copy constructor
 	AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double zhi, std::vector<int> cl_box); // construct atomic system from crystal and cell size
 	AtomicSystem(const std::string& filename, const int &_timestep=-1); // construct AtomicSystem by reading file
 	AtomicSystem(AtomicSystem *AtSys, unsigned int &nbSys, std::string &dir); // construct AtomicSystem with multiple AtomicSystems by merging along a given direction (to be used for replacing bicrystal construction in addition with the new duplicate method)
@@ -134,6 +137,7 @@ public:
 	AtomicSystem(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3, unsigned int *MolId, unsigned int nbBonds, unsigned int nbBondType, unsigned int *Bonds, unsigned int *BondType, unsigned int nbAngles, unsigned int nbAngleType, unsigned int *Angles, unsigned int *AngleType); // construct AtomicSystem giving AtomList and cell vectors 
 	bool FilenameConstructor(const std::string& filename, const int &_timestep=-1);
 	void AtomListConstructor(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3); // construct AtomicSystem giving AtomList and cell vectors
+												   
 	// getters
 	std::string getAtomType(const unsigned int i){ return this->AtomType[i]; };
 	double getAtomMass(const unsigned int i){ return this->AtomMass[i]; };
@@ -200,7 +204,7 @@ public:
 	void MakeSurfaceNeutral_3dBased(std::string ext); // try to have neutral surfaces 
 	void MakeSurfaceNeutral_3dBased_bis(std::string ext); // try to have neutral surfaces 
 	void MakeSurfaceNeutral(std::vector<int> Oris, std::vector<double> shift, std::vector<double> Misfit, std::vector<double> PlaneNormal, double VertPlaneSlope, std::vector<double> VertPlaneEq, std::vector<double> FullPlaneEq, double shift_z_box, std::string outputfilename=""); // 
-	void MakeSystemNeutral(); // try to have neutral surfaces 
+	void MakeSystemNeutral(std::vector<double> dirPoint, std::vector<double> DirVec, double mindist2lign); // try to have neutral surfaces 
 	void RemoveAtoms(std::vector<unsigned int> index2rm, bool DNS=false);
 	double ComputeAverageDistance();
 	void ComputeNotSepList();

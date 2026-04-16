@@ -531,11 +531,12 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 		Dir1_G2[i] /= facnorm1;
 		Dir2_G2[i] /= facnorm2;
 	}
-	MT->mixedProd(Dir1_G2,Dir2_G2,FacetJctDir);
+	double *FacetJctDir2 = new double[3];
+	MT->mixedProd(Dir1_G2,Dir2_G2,FacetJctDir2);
 	double facnorm3 = 0.;
-	for(unsigned int i=0;i<3;i++) facnorm3 += FacetJctDir[i]*FacetJctDir[i];
+	for(unsigned int i=0;i<3;i++) facnorm3 += FacetJctDir2[i]*FacetJctDir2[i];
 	facnorm3 = sqrt(facnorm3);
-	for(unsigned int i=0;i<3;i++) FacetJctDir[i] /= facnorm3;
+	for(unsigned int i=0;i<3;i++) FacetJctDir2[i] /= facnorm3;
 
 	// 2. Compute plane eq for grain 2
 	double *FullPlaneEq_2 = new double[NbPlanes]; 
@@ -543,7 +544,7 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	double *VertPlaneEq_2 = new double[NbPlanes];
 	double VertPlaneSlope_2;
 	bool xpar_2 = false;
-	if( fabs(FacetJctDir[0]) > zero_num ) VertPlaneSlope_2 = FacetJctDir[1]/FacetJctDir[0];
+	if( fabs(FacetJctDir2[0]) > zero_num ) VertPlaneSlope_2 = FacetJctDir2[1]/FacetJctDir2[0];
 	else{
 		VertPlaneSlope_2 = 0.;
 		xpar = true;
@@ -867,7 +868,7 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 		
 		// ** Grain1 ** //
 		// Bottom surface
-		Grain1->print_lmp("Grain1Before.lmp");
+		//Grain1->print_lmp("Grain1_1.lmp");
 		vector<int> Oris;
 		for(unsigned int i=0;i<3;i++) Oris.push_back(_MyCrystal->getOrthogonalPlanes()[6+i]);
 		for(unsigned int i=0;i<3;i++) Oris.push_back(_MyCrystal->getOrthogonalPlanes()[i]);
@@ -878,6 +879,7 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 		vector<double> currentVertPlaneEq = {-5.,this->H2_G1[1]+5.};
 		vector<double> currentFullPlaneEq = {0.};
 		double z_shift_box = 0.;
+		cout << "Adjusting grain 1 bottom surface" << endl;
 		Grain1->MakeSurfaceNeutral(Oris, shifts, Misfits, currentPlaneNormal, currentVertPlaneSlope, currentVertPlaneEq, currentFullPlaneEq, z_shift_box, "Grain1_neutral.lmp");
 		// Facet 1
 		for(unsigned int i=0;i<3;i++) Oris[i] = FacetsType[i];
@@ -898,6 +900,7 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 		//cout << "G1 facet1" << endl;
 		//for(unsigned int i=0;i<currentFullPlaneEq.size();i++) cout << currentVertPlaneEq[i*2] << " " << currentVertPlaneEq[i*2+1] << " " << currentFullPlaneEq[i] << endl;
 		z_shift_box = zboxG1-DeltaZ;
+		cout << "Adjusting grain 1 facet 1" << endl;
 		Grain1->MakeSurfaceNeutral(Oris, shifts, Misfits, currentPlaneNormal, currentVertPlaneSlope, currentVertPlaneEq, currentFullPlaneEq, z_shift_box);
 		
 		// Facet 2
@@ -917,17 +920,21 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 		//cout << "G1 facet2" << endl;
 		//for(unsigned int i=0;i<currentFullPlaneEq.size();i++) cout << currentVertPlaneEq[i*2] << " " << currentVertPlaneEq[i*2+1] << " " << currentFullPlaneEq[i] << endl;
 		z_shift_box = zboxG1-DeltaZ;
+		cout << "Adjusting grain 1 facet 2" << endl;
 		Grain1->MakeSurfaceNeutral(Oris, shifts, Misfits, currentPlaneNormal, currentVertPlaneSlope, currentVertPlaneEq, currentFullPlaneEq, z_shift_box);
 
 		nbAtom1 = Grain1->getNbAtom();
+		
 		// check if the system if charge neutral
 		double total_charge_1 = 0.;
 		for(unsigned int i=0;i<nbAtom1;i++)
 			total_charge_1 += AtomCharge[Grain1->getAtom(i).type_uint-1];
-		cout << "Total charge 1 = " << total_charge_1 << endl;
+		//cout << "Total charge 1 = " << total_charge_1 << endl;
+		//Grain1->print_lmp("Grain1_2.lmp");
 		if( fabs(total_charge_1) > 1e-8 ){
+			cout << "Adjusting electroneutrality of grain 1" << endl;
 			unsigned int nbInters = (NbPlanes/2);
-			double *dirPoint = new double[3*nbInters];
+			vector<double> dirPoint(3*nbInters);
 			double n1n1(0.), n2n2(0.), n1n2(0.);
 			if( Dir1_G1[2] < 0 ) for(unsigned int i=0;i<3;i++) Dir1_G1[i] *= -1.;
 			else for(unsigned int i=0;i<3;i++) Dir2_G1[i] *= -1.;
@@ -956,129 +963,24 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 				for(unsigned int d=0;d<3;d++) dirPoint[i*3+d] = firstTerm * current_d1[d] + secondTerm * current_d2[d];
 				dirPoint[i*3+2] += zboxG1-DeltaZ;
 			}
-			double *DistanceToJct = new double[nbAtom1];
-			double *buffer1 = new double[3];
-			double *buffer2 = new double[3];
+			vector<double> DirVec;
+			for(unsigned int i=0;i<nbInters;i++)
+				for(unsigned int d=0;d<3;d++) DirVec.push_back(FacetJctDir[d]);
+
 			double mindist2jct = 10.;
-			double mindist2jct2 = mindist2jct*mindist2jct;
-			vector<vector<unsigned int>> index_totreat;
-			vector<unsigned int> dist_totreat;
-			vector<int>* NotSepTag = nullptr;
-			if( _MyCrystal->getIsDoNotSep() && !Grain1->getIsNotSepTag() ){
-				Grain1->ComputeNotSepList();
-				NotSepTag = Grain1->getNotSepTag();
-			}
-			cout << "A" << endl;
-			for(unsigned int i=0;i<nbAtom1;i++){
-				if( NotSepTag ){
-					if( NotSepTag[i][0] < 0 ) continue;
-				}
-				vector<double> distances;	
-				for(unsigned int n=0;n<nbInters;n++){
-					buffer1[0] = Grain1->getAtom(i).pos.x-dirPoint[n*3];
-				        buffer1[1] = Grain1->getAtom(i).pos.y-dirPoint[n*3+1];
-					buffer1[2] = Grain1->getAtom(i).pos.z-dirPoint[n*3+2];
-				        MT->crossProd(buffer1,FacetJctDir,buffer2);
-					distances.push_back(0.);
-					for(unsigned int d=0;d<3;d++) distances[distances.size()-1] += buffer2[d]*buffer2[d];
-				}
-				DistanceToJct[i] = MT->min_vec(distances);
-				if( DistanceToJct[i] < mindist2jct2 ){
-					vector<unsigned int> buffer;
-					buffer.push_back(i);
-					dist_totreat.push_back(DistanceToJct[i]);
-					if( NotSepTag ){
-						for(unsigned int n=0;n<NotSepTag[i][0];n++) buffer.push_back(NotSepTag[i][n+1]);
-					}
-					index_totreat.push_back(buffer);
-				}
-			}
-			cout << "B" << endl;
-			// Compute charge density at ions 2 treat pos
-			int bcx = 2; // to be computed depending on box size
-			int bcy = 2;
-			unsigned int iter = 0;
-			unsigned int maxIter = 100;
-			double sigma_gauss = 10.;
-			double block_charge;
-			vector<unsigned int> ionsRemoved;
-			while( fabs(total_charge_1) > 1e-8 && iter < maxIter ){
-				cout << "ITER " << iter << ", total charge = " << total_charge_1 << endl;
-				vector<vector<unsigned int>> poss2rm;
-				vector<double> current_dist;
-				for(unsigned int i1=0;i1<index_totreat.size();i1++){
-					block_charge = 0.;
-					for(unsigned int i2=0;i2<index_totreat[i1].size();i2++) block_charge += AtomCharge[Grain1->getAtom(index_totreat[i1][i2]).type_uint-1];
-					if( signbit(block_charge) == signbit(total_charge_1)  && (fabs(block_charge) - fabs(total_charge_1)) < 1e-8 ){
-						double ChargeDens = 0.;
-						for(unsigned int j=0;j<nbAtom1;j++){
-							bool treat = true;
-							for(unsigned int j2=0;j2<ionsRemoved.size();j2++){
-								if( j == ionsRemoved[j2] ){
-									treat = false;
-									break;
-								}
-							}
-							if( !treat ) continue;
-							for(int bc1=-bcx;bc1<=bcx;bc1++){
-								double coord1 = Grain1->getAtom(j).pos.x+(this->H1[0]*bc1);
-								for(int bc2=-bcy;bc2<=bcy;bc2++){
-									double coord2 = Grain1->getAtom(j).pos.y+(this->H2[1]*bc2);
-									double coord3 = Grain1->getAtom(j).pos.z;
-									double xpos = Grain1->getAtom(index_totreat[i1][0]).pos.x;
-									double ypos = Grain1->getAtom(index_totreat[i1][0]).pos.y;
-									double zpos = Grain1->getAtom(index_totreat[i1][0]).pos.z;
-									ChargeDens += MT->gaussian(xpos, ypos, zpos, coord1, coord2, coord3, sigma_gauss)*AtomCharge[Grain1->getAtom(j).type_uint-1];
-								}
-							}
-						}
-						if( signbit(ChargeDens) == signbit(block_charge) ){
-							poss2rm.push_back(index_totreat[i1]);
-							current_dist.push_back(dist_totreat[i1]);
-						}
-					}
-				}
-				if( poss2rm.size() == 0 ) cout << "Warning, we don't find ions to adjust charges" << endl;
-				unsigned int torm = MT->min(current_dist);
-				block_charge = 0.;
-				for(unsigned int i2=0;i2<poss2rm[torm].size();i2++){
-					block_charge += AtomCharge[Grain1->getAtom(poss2rm[torm][i2]).type_uint-1];
-					ionsRemoved.push_back(poss2rm[torm][i2]);
-				}
-				for(unsigned int i=0;i<index_totreat.size();i++){
-					if( index_totreat[i][0] == poss2rm[torm][0] ){
-						index_totreat.erase(index_totreat.begin()+i);
-						dist_totreat.erase(dist_totreat.begin()+i);
-						break;
-					}
-				}
-				total_charge_1 -= block_charge;
-				iter++;
-			}
-			if( fabs(total_charge_1) < 1e-8 ){
-				cout << ionsRemoved.size() << " ions removed to get electroneutrality" << endl;
-				Grain1->RemoveAtoms(ionsRemoved);
-			}else{
-				cout << "Cannot find electroneutral system.." << endl;
-			}
+			Grain1->getH3()[2] *= 2.;
+                	Grain1->computeInverseCellVec();
+			Grain1->MakeSystemNeutral(dirPoint,DirVec,mindist2jct);
+                	Grain1->getH3()[2] /= 2.;
+                	Grain1->computeInverseCellVec();
 						
-
-
-
-			//Grain1->getH3()[2] *= 2.;
-			//Grain1->computeInverseCellVec();
-			//Grain1->computeWrap();
-			//Grain1->MakeSurfaceNeutral_3dBased_bis("");
-			//Grain1->getH3()[2] /= 2.;
-			//Grain1->computeInverseCellVec();
-			//Grain1->computeWrap();
 		}
 		
 		nbAtom1 = Grain1->getNbAtom();
 		total_charge_1 = 0.;
 		for(unsigned int i=0;i<nbAtom1;i++)
 			total_charge_1 += AtomCharge[Grain1->getAtom(i).type_uint-1];
-		cout << "Total charge 1 = " << total_charge_1 << endl;
+		//cout << "Total charge 1 = " << total_charge_1 << endl;
 
 
 		// ** Grain2 ** //
@@ -1094,6 +996,7 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 		//cout << "G2 surface" << endl;
 		//for(unsigned int i=0;i<currentFullPlaneEq.size();i++) cout << currentVertPlaneEq[i*2] << " " << currentVertPlaneEq[i*2+1] << " " << currentFullPlaneEq[i] << endl;
 		z_shift_box = 0.;
+		cout << "Adjusting grain 2 bottom surface" << endl;
 		Grain2->MakeSurfaceNeutral(Oris, shifts, Misfits, currentPlaneNormal, currentVertPlaneSlope, currentVertPlaneEq, currentFullPlaneEq, z_shift_box, "Grain2_neutral.lmp");
 		// Facet 1
 		Oris[0] = u_c_1;
@@ -1116,6 +1019,7 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 		//cout << "G2 facet1" << endl;
 		//for(unsigned int i=0;i<currentFullPlaneEq.size();i++) cout << currentVertPlaneEq[i*2] << " " << currentVertPlaneEq[i*2+1] << " " << currentFullPlaneEq[i] << endl;
 		z_shift_box = DeltaZ;
+		cout << "Adjusting grain 2 facet 1" << endl;
 		Grain2->MakeSurfaceNeutral(Oris, shifts, Misfits, currentPlaneNormal, currentVertPlaneSlope, currentVertPlaneEq, currentFullPlaneEq, z_shift_box);
 
 		// Facet 2
@@ -1136,30 +1040,64 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 		}
 		//cout << "G2 facet2" << endl;
 		//for(unsigned int i=0;i<currentFullPlaneEq.size();i++) cout << currentVertPlaneEq[i*2] << " " << currentVertPlaneEq[i*2+1] << " " << currentFullPlaneEq[i] << endl;
+		cout << "Adjusting grain 2 facet 2" << endl;
 		Grain2->MakeSurfaceNeutral(Oris, shifts, Misfits, currentPlaneNormal, currentVertPlaneSlope, currentVertPlaneEq, currentFullPlaneEq, z_shift_box);
 		nbAtom2 = Grain2->getNbAtom();
 
 		// check if the system if charge neutral
+		nbAtom2 = Grain2->getNbAtom();
 		double total_charge_2 = 0.;
 		for(unsigned int i=0;i<nbAtom2;i++)
 			total_charge_2 += AtomCharge[Grain2->getAtom(i).type_uint-1];
-		cout << "Total charge 2 = " << total_charge_2 << endl;
+		//cout << "Total charge 2 = " << total_charge_2 << endl;
 		if( fabs(total_charge_2) > 1e-8 ){
-			//Grain2->getH3()[2] *= 2.;
-			//Grain2->computeInverseCellVec();
-			Grain2->computeWrap();
-			//Grain2->MakeSurfaceNeutral_3dBased_bis("");
-			//Grain2->getH3()[2] /= 2.;
-			//Grain2->computeInverseCellVec();
-			//Grain2->computeWrap();
-		}
-		
-		nbAtom2 = Grain2->getNbAtom();
-		total_charge_2 = 0.;
-		for(unsigned int i=0;i<nbAtom2;i++)
-			total_charge_2 += AtomCharge[Grain2->getAtom(i).type_uint-1];
-		cout << "Total charge 2 = " << total_charge_2 << endl;
+			cout << "Adjusting electroneutrality of grain 2" << endl;
+			unsigned int nbInters = (NbPlanes/2);
+			vector<double> dirPoint(3*nbInters);
+			double n1n1(0.), n2n2(0.), n1n2(0.);
+			for(unsigned int i=0;i<3;i++){
+				n1n1 += Dir1_G2[i]*Dir1_G2[i];
+				n2n2 += Dir2_G2[i]*Dir2_G2[i];
+				n1n2 += Dir1_G2[i]*Dir2_G2[i];
+			}
+			for(unsigned int i=0;i<nbInters;i++){
+				double d1 = FullPlaneEq[i];
+				double d2 = FullPlaneEq[i+1];
+				double *current_d1, *current_d2;
+				double firstTerm, secondTerm;
+				if( i%2 == 0 ){
+					current_d1 = Dir1_G2;
+					current_d2 = Dir2_G2;
+					firstTerm = ( d1*n2n2 - d2*n1n2 ) / ( n1n1*n2n2 - n1n2*n1n2 );
+					secondTerm = ( d2*n1n1 - d1*n1n2 ) / ( n1n1*n2n2 - n1n2*n1n2 );
+				}else{
+					current_d1 = Dir2_G2;
+					current_d2 = Dir1_G2;
+					firstTerm = ( d1*n1n1 - d2*n1n2 ) / ( n1n1*n2n2 - n1n2*n1n2 );
+					secondTerm = ( d2*n2n2 - d1*n1n2 ) / ( n1n1*n2n2 - n1n2*n1n2 );
+					firstTerm = ( FullPlaneEq[i]*n1n1 - FullPlaneEq[i+1]*n1n2 ) / ( n1n1*n2n2 - n1n2*n1n2 );
+				}
+				for(unsigned int d=0;d<3;d++) dirPoint[i*3+d] = firstTerm * current_d1[d] + secondTerm * current_d2[d];
+				dirPoint[i*3+2] += DeltaZ;
+			}
+			vector<double> DirVec;
+			for(unsigned int i=0;i<nbInters;i++)
+				for(unsigned int d=0;d<3;d++) DirVec.push_back(FacetJctDir2[d]);
 
+			double mindist2jct = 10.;
+			Grain2->getH3()[2] *= 2.;
+                	Grain2->computeInverseCellVec();
+			Grain2->MakeSystemNeutral(dirPoint,DirVec,mindist2jct);
+                	Grain2->getH3()[2] /= 2.;
+                	Grain2->computeInverseCellVec();
+			
+			nbAtom2 = Grain2->getNbAtom();
+			total_charge_2 = 0.;
+			for(unsigned int i=0;i<nbAtom2;i++)
+				total_charge_2 += AtomCharge[Grain2->getAtom(i).type_uint-1];
+			cout << "Total charge 2 = " << total_charge_2 << endl;
+		
+		}
 		cout << "Sum = " << total_charge_1+total_charge_2 << endl;
 
 
@@ -1186,9 +1124,13 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	string h_f2_str = to_string(FacetsType[3]);
 	string k_f2_str = to_string(FacetsType[4]);
 	string l_f2_str = to_string(FacetsType[5]);
-	string nbAt1_str = to_string(trueNbAt1);
-	string nbAt2_str = to_string(trueNbAt2);
-	this->File_Heading = " # ["+h_a_str+k_a_str+l_a_str+"]"+theta_str+"°("+h_p_str+k_p_str+l_p_str+") "+crystalName+" grain boundary\n # The grain boundary is faceted with ["+h_f1_str+k_f1_str+l_f1_str+"] and ["+h_f2_str+k_f2_str+l_f2_str+"] directions in the GB plane\n # The lower grain contains "+nbAt1_str+" atoms and the upper grain contains "+nbAt2_str+" atoms\n";
+	string nbAt1_str = to_string(nbAtom1);
+	string nbAt2_str = to_string(nbAtom2);
+	this->File_Heading = " # ["+h_a_str+k_a_str+l_a_str+"]"+theta_str+"°("+h_p_str+k_p_str+l_p_str+") "+crystalName+" grain boundary\n # The grain boundary is faceted with ("+to_string(FacetsType[0])+"_"+to_string(FacetsType[1])+"_"+to_string(FacetsType[2])+") and ("+to_string(FacetsType[3])+"_"+to_string(FacetsType[4])+"_"+to_string(FacetsType[5])+") GB planes\n";
+	this->File_Heading += " # The lower grain (Grain1) contains "+nbAt1_str+" atoms\n";
+	this->File_Heading += " # The upper grain (Grain2) contains "+nbAt2_str+" atoms\n";
+	this->File_Heading += " # ("+to_string(FacetsType[0])+"_"+to_string(FacetsType[1])+"_"+to_string(FacetsType[2])+") facet has length of "+to_string(L_facet)+" A, for total area of "+to_string(double (Nfacets)*FacetLength*L_facet)+" A2\n";
+	this->File_Heading += " # ("+to_string(FacetsType[3])+"_"+to_string(FacetsType[4])+"_"+to_string(FacetsType[5])+") facet has length of "+to_string(L_facet2)+" A, for total area of "+to_string(double (Nfacets)*FacetLength*L_facet2)+" A2\n";
 	this->Grain1->set_File_Heading(" # Lower grain of the ["+h_a_str+k_a_str+l_a_str+"]"+theta_str+"°("+h_p_str+k_p_str+l_p_str+") "+crystalName+" grain boundary\n");
 	this->Grain2->set_File_Heading(" # Upper grain of the ["+h_a_str+k_a_str+l_a_str+"]"+theta_str+"°("+h_p_str+k_p_str+l_p_str+") "+crystalName+" grain boundary\n");
 
