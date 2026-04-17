@@ -131,12 +131,12 @@ public:
 	AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double zhi, std::vector<int> cl_box); // construct atomic system from crystal and cell size
 	AtomicSystem(const std::string& filename, const int &_timestep=-1); // construct AtomicSystem by reading file
 	AtomicSystem(AtomicSystem *AtSys, unsigned int &nbSys, std::string &dir); // construct AtomicSystem with multiple AtomicSystems by merging along a given direction (to be used for replacing bicrystal construction in addition with the new duplicate method)
-	AtomicSystem(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3); // construct AtomicSystem giving AtomList and cell vectors 
+	AtomicSystem(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3, bool deepCopyAtList=false); // construct AtomicSystem giving AtomList and cell vectors deepCopyAtList should be used if the RemoveAtoms method is then used
 	AtomicSystem(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3, unsigned int *MolId); // construct AtomicSystem giving AtomList and cell vectors 
 	AtomicSystem(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3, unsigned int *MolId, unsigned int nbBonds, unsigned int nbBondType, unsigned int *Bonds, unsigned int *BondType); // construct AtomicSystem giving AtomList and cell vectors 
 	AtomicSystem(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3, unsigned int *MolId, unsigned int nbBonds, unsigned int nbBondType, unsigned int *Bonds, unsigned int *BondType, unsigned int nbAngles, unsigned int nbAngleType, unsigned int *Angles, unsigned int *AngleType); // construct AtomicSystem giving AtomList and cell vectors 
 	bool FilenameConstructor(const std::string& filename, const int &_timestep=-1);
-	void AtomListConstructor(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3); // construct AtomicSystem giving AtomList and cell vectors
+	void AtomListConstructor(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3, bool deepCopyAtSys=false); // construct AtomicSystem giving AtomList and cell vectors
 												   
 	// getters
 	std::string getAtomType(const unsigned int i){ return this->AtomType[i]; };

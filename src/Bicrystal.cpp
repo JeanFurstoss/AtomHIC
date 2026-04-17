@@ -845,20 +845,9 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	}
 
 	// Initialize the two grains
-	this->Grain1 = new AtomicSystem(this->AtomList_G1,nbAtom1,_MyCrystal,this->H1_G1,this->H2_G1,this->H3_G1);
-	this->Grain2 = new AtomicSystem(this->AtomList_G2,nbAtom2,_MyCrystal2,this->H1_G2,this->H2_G2,this->H3_G2);
+	this->Grain1 = new AtomicSystem(this->AtomList_G1,nbAtom1,_MyCrystal,this->H1_G1,this->H2_G1,this->H3_G1,true);
+	this->Grain2 = new AtomicSystem(this->AtomList_G2,nbAtom2,_MyCrystal2,this->H1_G2,this->H2_G2,this->H3_G2,true);
 	this->AreGrainsDefined = true;
-	//string temp="1";
-	//Grain1->getH3()[2] *= 2.;
-	//Grain1->computeWrap();
-	//Grain1->MakeSurfaceNeutral_3dBased(temp);
-	//Grain1->getH3()[2] /= 2.;
-	//Grain2->getH3()[2] *= 2.;
-	//Grain2->computeWrap();
-	//temp="2";
-	//Grain2->MakeSurfaceNeutral_3dBased(temp);
-	//Grain2->getH3()[2] /= 2.;
-	//bool adjust_surfaces = false;
 	bool adjust_surfaces = true;
 	if( adjust_surfaces ){ 
 		// idea here is to create oriented systems with the different free surfaces in presence
@@ -1142,7 +1131,19 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	delete[] AtomList_temp;
 	delete[] Dir1_G1;
 	delete[] Dir2_G1;
+	delete[] Dir1_G2;
+	delete[] Dir2_G2;
 	delete[] TagGrain;
+	delete[] l1;
+	delete[] l2;
+	delete[] FacetJctDir;
+	delete[] FullPlaneEq;
+	delete[] NormalPlaneEq;
+	delete[] VertPlaneEq;
+	delete[] FacetJctDir2;
+	delete[] FullPlaneEq_2;
+	delete[] NormalPlaneEq_2;
+	delete[] VertPlaneEq_2;
 }
 
 void Bicrystal::ShowPossibleFacets(unsigned int max_hkl_u){
@@ -1203,6 +1204,10 @@ void Bicrystal::ShowPossibleFacets(unsigned int max_hkl_u){
 	cout << AdmissibleFacets[0] << " " << AdmissibleFacets[1] << " " << AdmissibleFacets[2] << "  " << AdmissibleFacets[3] << " " << AdmissibleFacets[4] << " " << AdmissibleFacets[5] << endl;
 	for(unsigned int i=1;i<AdmissibleFacets.size()/6;i++)
 		cout << "" << AdmissibleFacets[i*6] << " " << AdmissibleFacets[i*6+1] << " " << AdmissibleFacets[i*6+2] << "  " << AdmissibleFacets[i*6+3] << " " << AdmissibleFacets[i*6+4] << " " << AdmissibleFacets[i*6+5] << endl;
+
+	delete[] Dir1_G1;
+	delete[] Dir2_G1;
+	delete[] FacetJctDir;
 }
 
 // Constructor for bicrystal with plane GB with given misorientation and GB plane

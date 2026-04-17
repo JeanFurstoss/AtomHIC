@@ -515,9 +515,9 @@ AtomicSystem::AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double z
 	}
 }
 // construct AtomicSystem giving AtomList, number of atom and cell vectors 
-AtomicSystem::AtomicSystem(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3){
+AtomicSystem::AtomicSystem(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3, bool deepCopyAtList){
 	Dis = new Displays;
-	AtomListConstructor(AtomList,nbAtom,_MyCrystal,H1,H2,H3);
+	AtomListConstructor(AtomList,nbAtom,_MyCrystal,H1,H2,H3,deepCopyAtList);
 }
 
 AtomicSystem::AtomicSystem(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3, unsigned int *MolId){
@@ -557,7 +557,7 @@ AtomicSystem::AtomicSystem(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrys
 }
 
 
-void AtomicSystem::AtomListConstructor(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3){
+void AtomicSystem::AtomListConstructor(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3, bool deepCopyAtList){
 	if( this->AtomListConstructed ){
 		//delete[] H1;
 		//delete[] H2;
@@ -567,15 +567,21 @@ void AtomicSystem::AtomListConstructor(Atom *AtomList, unsigned int nbAtom, Crys
 		delete[] G3;
 		MT->~MathTools();
 	}
-	this->AtomList = AtomList;
 	this->nbAtom = nbAtom;
+	if( deepCopyAtList ){
+		this->AtomList = new Atom[nbAtom];
+		for(unsigned int i=0;i<nbAtom;i++) this->AtomList[i] = AtomList[i];
+		this->IsAtomListMine = true;
+	}else{
+		this->AtomList = AtomList;
+		this->IsAtomListMine = false;
+	}
 	this->_MyCrystal = _MyCrystal;
 	this->H1 = H1;
 	this->H2 = H2;
 	this->H3 = H3;
 	read_params_atsys();
 	this->IsWrappedPos = false;
-	this->IsAtomListMine = false;
 	IsElem = true;
 	this->IsCellVecMine = false;
 	IsCrystalDefined = true;
@@ -4059,10 +4065,10 @@ void AtomicSystem::MakeSurfaceNeutral_3dBased_bis(string ext){
 }
 
 void AtomicSystem::RemoveAtoms(vector<unsigned int> index2rm, bool DNS){
-	//if( !IsAtomListMine ){
-	//	cout << "The atom list does not belong to the atomic system, cannot delete atoms" << endl;
-	//	return;
-	//}
+	if( !IsAtomListMine ){
+		cout << "The atom list does not belong to the atomic system, cannot delete atoms" << endl;
+		return;
+	}
 	if( IsWrappedPos ){
 		delete[] WrappedPos;
 		WrappedPos = nullptr;
@@ -4370,7 +4376,7 @@ void AtomicSystem::MakeSurfaceNeutral(vector<int> Oris, vector<double> shift, ve
 	string teststring="z";
 	unsigned int one = 1;
 	vector<vector<unsigned int>> opt_index2rm(nbSample_S_z,vector<unsigned int>());
-	vector<AtomicSystem*> OriSys_2Print;
+	vector<AtomicSystem*> OriSys_2Print(nbSample_S_z);
 	#pragma omp parallel for
 	for(unsigned int s_z_i=0;s_z_i<nbSample_S_z;s_z_i++){
 	double s_z = max_s_z*(double) s_z_i/((double) nbSample_S_z - 1.);
@@ -4386,7 +4392,7 @@ void AtomicSystem::MakeSurfaceNeutral(vector<int> Oris, vector<double> shift, ve
 	OriSys_f1->ApplyShift(zero, zero, s_z);
 	double z_shift_OriSys = OriSys_f1->MakeSurfaceNeutral(false);
 	//if( outputfilename != "" ) OriSys_f1->print_lmp("G2_"+to_string(s_z_i)+outputfilename); 
-	if( outputfilename != "" ) OriSys_2Print.push_back(new AtomicSystem(OriSys_f1,one,teststring)); // TODO work on copy constructor and operator= to make cleaner stuff here
+	if( outputfilename != "" ) OriSys_2Print[s_z_i] = new AtomicSystem(OriSys_f1,one,teststring); // TODO work on copy constructor and operator= to make cleaner stuff here
 	// keep only a small part of the system near to the surface to limit computational cost
 	double select_width = 10.;
 	double zero_num = 1.e-8;
@@ -4459,7 +4465,7 @@ void AtomicSystem::MakeSurfaceNeutral(vector<int> Oris, vector<double> shift, ve
 			if( ( buffer_v > VertPlaneEq[f*2] ) && ( buffer_v < VertPlaneEq[2*f+1] ) ){
 				// Then test if atom is bellow the real plane
 				double buffer_f = xpos*PlaneNormal[0] + ypos*PlaneNormal[1] + (zpos-shift_z_box)*PlaneNormal[2];
-				if( buffer_f > FullPlaneEq[f]-(select_width*2.) ){
+				if( buffer_f > FullPlaneEq[f]-(select_width*3.) ){
 					SubSys.push_back(AtomList[i]);
 					mean_pos_subsys[0] += AtomList[i].pos.x;
 					mean_pos_subsys[1] += AtomList[i].pos.y;
@@ -4721,12 +4727,13 @@ void AtomicSystem::MakeSurfaceNeutral(vector<int> Oris, vector<double> shift, ve
 	delete[] swap_shift;
 	} // end loop on s_z
 	
-		unsigned int opt_ind = 0;
-		for(unsigned int i=1;i<nbSample_S_z;i++)
-			if( opt_index2rm[i].size() < opt_index2rm[opt_ind].size() ) opt_ind = i;
-		cout << "Final number of ions removed : " << opt_index2rm[opt_ind].size() << endl;
-		RemoveAtoms(opt_index2rm[opt_ind], true);
-		if( outputfilename != "" ) OriSys_2Print[opt_ind]->print_lmp(outputfilename); 
+	unsigned int opt_ind = 0;
+	for(unsigned int i=1;i<nbSample_S_z;i++)
+		if( opt_index2rm[i].size() < opt_index2rm[opt_ind].size() ) opt_ind = i;
+	cout << "Final number of ions removed : " << opt_index2rm[opt_ind].size() << endl;
+	RemoveAtoms(opt_index2rm[opt_ind], true);
+	if( outputfilename != "" ) OriSys_2Print[opt_ind]->print_lmp(outputfilename);
+	for(unsigned int i=0;i<nbSample_S_z;i++) delete OriSys_2Print[i];
 
 }	
 	
