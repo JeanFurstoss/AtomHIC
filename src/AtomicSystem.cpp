@@ -1362,7 +1362,7 @@ void AtomicSystem::ComputeNotSepList(){
 	this->NotSepTag = new vector<int>[this->nbAtom];
 	for(unsigned int i=0;i<nbAtom;i++) NotSepTag[i].push_back(0);
 	this->IsNotSepTag = true;
-	double rcut = MT->max_p(_MyCrystal->getALength(),3);
+	double rcut = MT->min_p(_MyCrystal->getALength(),3);
 	rcut *= 1.2;
 	searchNeighbours(rcut);
 	unsigned int DNS_size = _MyCrystal->getDoNotSep().size();
