@@ -39,8 +39,10 @@ void MachineLearningModel::setDescriptors(Descriptors *D){
 	_MyDescriptors = D;
 	if( IsRead ){ // Case where the ML model is read from database, check that descriptors are consistent with base informations
 		if( FilteringType != _MyDescriptors->getFilteringType() ){
-			cerr << "The filtering type is different between the descriptors and the read ML database, aborting" << endl;
-			exit(EXIT_FAILURE);
+		FilteringType = _MyDescriptors->getFilteringType();
+			//cout << FilteringType << " " << _MyDescriptors->getFilteringType() << endl;
+			//cerr << "The filtering type is different between the descriptors and the read ML database, aborting" << endl;
+			//exit(EXIT_FAILURE);
 		}
 		//if( nbFilter != _MyDescriptors->getNbFilter() ){
 		//	cerr << "The number of filter is different between the descriptors and the read ML database, aborting" << endl;
