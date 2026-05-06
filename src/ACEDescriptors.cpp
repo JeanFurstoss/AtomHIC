@@ -62,7 +62,8 @@ void ACEDescriptors::ComputeDescriptors(){
 	A_rank1.init(MyACEBBase->nelements, MyACEBBase->nradbase, "A_rank1");
 	
 	unsigned int nbAtomType = MySystem->getNbAtomType();
-	unsigned int *elem2pace = new unsigned int[nbAtomType];
+	int *elem2pace = new int[nbAtomType];
+	unsigned int trueNbAtType = 0;
 	for(unsigned int i=0;i<nbAtomType;i++){
 		bool found = false;
 		for(unsigned int p=0;p<MyACEBBase->nelements;p++){
@@ -73,8 +74,10 @@ void ACEDescriptors::ComputeDescriptors(){
 			}
 		}
 		if( !found ){
-			cerr << "The element \"" << MySystem->getAtomType(i) << "\" of the provided atomic systems was not found either in the ACE yaml file" << endl;
-			exit(EXIT_FAILURE);
+			cout << "The element \"" << MySystem->getAtomType(i) << "\" of the provided atomic systems was not found in the ACE yaml file" << endl;
+			elem2pace[i] = -1;
+			//cerr << "The element \"" << MySystem->getAtomType(i) << "\" of the provided atomic systems was not found either in the ACE yaml file" << endl;
+			//exit(EXIT_FAILURE);
 		}
 	}
 
@@ -89,6 +92,7 @@ void ACEDescriptors::ComputeDescriptors(){
 	const unsigned int nradiali = MyACEBBase->nradmax;
 	const unsigned int nradbase = MyACEBBase->nradbase;
 	for(unsigned int i=0;i<nbAtomType;i++){
+		if( elem2pace[i] == -1 ) continue;
 		unsigned int mu_i = elem2pace[i];
 		unsigned int current_dim = MyACEBBase->total_basis_size_rank1[mu_i];
     		const SHORT_INT_TYPE total_basis_size = MyACEBBase->total_basis_size[mu_i];
@@ -103,6 +107,7 @@ void ACEDescriptors::ComputeDescriptors(){
 			max_dim = current_dim;
 		//cout << ", leading to " << current_dim << "-dimension ACE descriptors";
 		for(unsigned int j=i;j<nbAtomType;j++){
+			if( elem2pace[j] == -1 ) continue;
 			unsigned int mu_j = elem2pace[j];
 			//cout << ", cutoff with " << MySystem->getAtomType(j) << " = " << MyACEBBase->radial_functions->cut(mu_i,mu_j);
 			if( max_cutoff < MyACEBBase->radial_functions->cut(mu_i,mu_j) )
@@ -127,6 +132,7 @@ void ACEDescriptors::ComputeDescriptors(){
         cout << "Computing ACE descriptors .. ";	
         // The following mainly comes from the compute_atom() function of the ACEBEvaluator (l.102 ace/ace_b_evaluator.cpp)	
 	for(unsigned int i=0;i<nbDatTot;i++){ // parallelize ?
+		if( elem2pace[MySystem->getAtom(i).type_uint-1] == -1 ) continue;
 		unsigned int count_dim = 0;
     		Array1D<ACEComplex> A_cache(MyACEBBase->rankmax);
     		ACEComplex B{0.};
@@ -149,6 +155,7 @@ void ACEDescriptors::ComputeDescriptors(){
 		//ALGORITHM 1: Atomic base A
 		for(unsigned int j_loop=0;j_loop<MySystem->getNeighbours(i*(nbNMax+1));j_loop++){
 			unsigned int id = MySystem->getNeighbours(i*(nbNMax+1)+j_loop+1);
+			if( elem2pace[MySystem->getAtom(id).type_uint-1] == -1 ) continue;
 			unsigned int ind1 = i*nbNMax*3+j_loop*3;
 			unsigned int ind2 = ind1+1;
 			unsigned int ind3 = ind2+1;
@@ -193,6 +200,7 @@ void ACEDescriptors::ComputeDescriptors(){
 			}
 		} //end loop over neighbours
 		for(unsigned int mu_j_b=0;mu_j_b<nbAtomType;mu_j_b++){
+			if( elem2pace[mu_j_b] == -1 ) continue;
 			unsigned int mu_j = elem2pace[mu_j_b];
 			for(unsigned int n=0;n<nradiali;n++){
 				auto &A_lm = A(mu_j, n);
@@ -209,7 +217,7 @@ void ACEDescriptors::ComputeDescriptors(){
 		auto basis_rank1 = MyACEBBase->basis_rank1[mu_i];
 		for(unsigned int n=0;n<total_basis_size_rank1;n++){
 			auto func = &basis_rank1[n];
-			_Descriptors[i*dim+count_dim] = A_rank1(func->mus[0], func->ns[0] - 1);
+			_Descriptors[i*dim+count_dim] = A_rank1(func->mus[0], func->ns[0] - 1) / MySystem->getNeighbours(i*(nbNMax+1));
 			//if( count_dim == dim ) cout << "ISSUE !" << endl;
 			count_dim++;
 		}
@@ -267,6 +275,7 @@ void ACEDescriptors::ComputeDescriptors(){
 			//		cout << "Same descriptor (" << count_dim << ") than dim = " << test << " descriptor" << endl;
 			//	}
 			//}
+			_Descriptors[i*dim+count_dim] /= MySystem->getNeighbours(i*(nbNMax+1));
 			count_dim++; 
 		} // end loop on total basis size
 	} // end loop on atoms

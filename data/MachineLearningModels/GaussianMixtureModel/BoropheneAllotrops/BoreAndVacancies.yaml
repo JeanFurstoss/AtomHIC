@@ -1,0 +1,212 @@
+# file generated using ./GenerateYAML4ACE 1 "B X" 7 3  10 5 5  4 4 
+global:
+  DeltaSplineBins: 0.001
+species:
+  - speciesblock: B X 
+    ndensityi: 0
+    npoti: 
+    parameters: []
+    nradmaxi: 5
+    lmaxi: 4
+    rcutij: 7
+    dcutij: 0.01 # does not impact values of descriptors
+    nradbaseij: 10
+    radbase: SBessel
+    radparameters: [1.] # does not impact values of descriptors
+    radcoefficients: [[[1., 0., 0., 0., 0., 0., 0., 0., 0., 0.], [1., 0., 0., 0., 0., 0., 0., 0., 0., 0.], [1., 0., 0., 0., 0., 0., 0., 0., 0., 0.], [1., 0., 0., 0., 0., 0., 0., 0., 0., 0.], [1., 0., 0., 0., 0., 0., 0., 0., 0., 0.]], [[0., 1., 0., 0., 0., 0., 0., 0., 0., 0.], [0., 1., 0., 0., 0., 0., 0., 0., 0., 0.], [0., 1., 0., 0., 0., 0., 0., 0., 0., 0.], [0., 1., 0., 0., 0., 0., 0., 0., 0., 0.], [0., 1., 0., 0., 0., 0., 0., 0., 0., 0.]], [[0., 0., 1., 0., 0., 0., 0., 0., 0., 0.], [0., 0., 1., 0., 0., 0., 0., 0., 0., 0.], [0., 0., 1., 0., 0., 0., 0., 0., 0., 0.], [0., 0., 1., 0., 0., 0., 0., 0., 0., 0.], [0., 0., 1., 0., 0., 0., 0., 0., 0., 0.]], [[0., 0., 0., 1., 0., 0., 0., 0., 0., 0.], [0., 0., 0., 1., 0., 0., 0., 0., 0., 0.], [0., 0., 0., 1., 0., 0., 0., 0., 0., 0.], [0., 0., 0., 1., 0., 0., 0., 0., 0., 0.], [0., 0., 0., 1., 0., 0., 0., 0., 0., 0.]], [[0., 0., 0., 0., 1., 0., 0., 0., 0., 0.], [0., 0., 0., 0., 1., 0., 0., 0., 0., 0.], [0., 0., 0., 0., 1., 0., 0., 0., 0., 0.], [0., 0., 0., 0., 1., 0., 0., 0., 0., 0.], [0., 0., 0., 0., 1., 0., 0., 0., 0., 0.]]]
+    nbody:
+      - {type: B X X, nr: [1, 3], nl: [1, 1]}
+      - {type: B X X, nr: [1, 3], nl: [2, 2]}
+      - {type: B X X, nr: [1, 3], nl: [3, 3]}
+      - {type: B X X, nr: [2, 3], nl: [2, 2]}
+      - {type: B X X X, nr: [1, 1, 3], nl: [0, 1, 1], lint: [1]}
+      - {type: B X X X, nr: [1, 1, 3], nl: [0, 3, 3], lint: [3]}
+      - {type: B X X X, nr: [1, 1, 3], nl: [2, 3, 1], lint: [1]}
+      - {type: B X X X, nr: [1, 2, 2], nl: [3, 3, 0], lint: [0]}
+      - {type: B X X X, nr: [1, 2, 3], nl: [0, 2, 2], lint: [2]}
+      - {type: B X X X, nr: [1, 3, 3], nl: [1, 2, 3], lint: [3]}
+      - {type: B X X X, nr: [1, 3, 4], nl: [1, 1, 0], lint: [0]}
+      - {type: B X X X, nr: [1, 3, 4], nl: [1, 1, 2], lint: [2]}
+      - {type: B X X X, nr: [1, 3, 4], nl: [2, 2, 2], lint: [2]}
+      - {type: B X X X, nr: [1, 3, 4], nl: [2, 4, 4], lint: [4]}
+      - {type: B X X X, nr: [1, 3, 5], nl: [1, 1, 0], lint: [0]}
+      - {type: B X X X, nr: [1, 3, 5], nl: [1, 1, 2], lint: [2]}
+      - {type: B X X X, nr: [1, 3, 5], nl: [1, 2, 1], lint: [1]}
+      - {type: B X X X, nr: [1, 3, 5], nl: [1, 4, 3], lint: [3]}
+      - {type: B X X X, nr: [2, 2, 2], nl: [2, 4, 4], lint: [4]}
+      - {type: B X X X, nr: [2, 2, 3], nl: [0, 2, 2], lint: [2]}
+      - {type: B X X X, nr: [2, 2, 3], nl: [3, 3, 2], lint: [2]}
+      - {type: B X X X, nr: [2, 2, 3], nl: [4, 4, 4], lint: [4]}
+      - {type: B X X X, nr: [2, 2, 4], nl: [0, 0, 0], lint: [0]}
+      - {type: B X X X, nr: [2, 3, 3], nl: [2, 2, 0], lint: [0]}
+      - {type: B X X X, nr: [2, 3, 3], nl: [2, 2, 2], lint: [2]}
+      - {type: B X X X, nr: [2, 3, 3], nl: [2, 3, 1], lint: [1]}
+      - {type: B X X X, nr: [2, 3, 3], nl: [2, 4, 4], lint: [4]}
+      - {type: B X X X, nr: [2, 3, 3], nl: [3, 3, 2], lint: [2]}
+      - {type: B X X X, nr: [2, 3, 3], nl: [3, 3, 4], lint: [4]}
+      - {type: B X X X, nr: [2, 3, 3], nl: [3, 4, 1], lint: [1]}
+      - {type: B X X X, nr: [2, 3, 4], nl: [0, 0, 0], lint: [0]}
+      - {type: B X X X, nr: [2, 3, 4], nl: [1, 1, 2], lint: [2]}
+      - {type: B X X X, nr: [2, 3, 4], nl: [2, 2, 0], lint: [0]}
+      - {type: B X X X, nr: [2, 3, 4], nl: [2, 2, 2], lint: [2]}
+      - {type: B X X X, nr: [2, 3, 4], nl: [2, 4, 2], lint: [2]}
+      - {type: B X X X, nr: [2, 3, 4], nl: [4, 4, 2], lint: [2]}
+      - {type: B X X X, nr: [2, 3, 5], nl: [1, 1, 0], lint: [0]}
+      - {type: B X X X, nr: [2, 3, 5], nl: [1, 1, 2], lint: [2]}
+      - {type: B X X X, nr: [2, 3, 5], nl: [1, 2, 1], lint: [1]}
+      - {type: B X X X, nr: [2, 3, 5], nl: [1, 2, 3], lint: [3]}
+      - {type: B X X X, nr: [2, 3, 5], nl: [1, 4, 3], lint: [3]}
+      - {type: B X X X, nr: [2, 3, 5], nl: [2, 2, 4], lint: [4]}
+      - {type: B X X X, nr: [2, 3, 5], nl: [2, 3, 3], lint: [3]}
+      - {type: B X X X, nr: [2, 3, 5], nl: [2, 4, 2], lint: [2]}
+      - {type: B X X X, nr: [2, 3, 5], nl: [3, 3, 0], lint: [0]}
+      - {type: B X X X, nr: [2, 3, 5], nl: [4, 4, 2], lint: [2]}
+      - {type: B X X X, nr: [2, 4, 4], nl: [2, 3, 3], lint: [3]}
+      - {type: B X X X, nr: [2, 5, 5], nl: [4, 4, 4], lint: [4]}
+      - {type: B X X X, nr: [3, 3, 3], nl: [1, 1, 2], lint: [2]}
+      - {type: B X X X, nr: [3, 3, 3], nl: [1, 3, 4], lint: [4]}
+      - {type: B X X X, nr: [3, 3, 3], nl: [4, 4, 4], lint: [4]}
+      - {type: B X X X, nr: [3, 3, 4], nl: [1, 2, 1], lint: [1]}
+      - {type: B X X X, nr: [3, 3, 4], nl: [1, 3, 2], lint: [2]}
+      - {type: B X X X, nr: [3, 3, 4], nl: [2, 2, 2], lint: [2]}
+      - {type: B X X X, nr: [3, 3, 4], nl: [2, 3, 3], lint: [3]}
+      - {type: B X X X, nr: [3, 3, 4], nl: [2, 4, 4], lint: [4]}
+      - {type: B X X X, nr: [3, 3, 4], nl: [3, 3, 4], lint: [4]}
+      - {type: B X X X, nr: [3, 3, 4], nl: [3, 4, 1], lint: [1]}
+      - {type: B X X X, nr: [3, 3, 4], nl: [3, 4, 3], lint: [3]}
+      - {type: B X X X, nr: [3, 3, 5], nl: [0, 1, 1], lint: [1]}
+      - {type: B X X X, nr: [3, 3, 5], nl: [1, 1, 0], lint: [0]}
+      - {type: B X X X, nr: [3, 3, 5], nl: [1, 3, 4], lint: [4]}
+      - {type: B X X X, nr: [3, 3, 5], nl: [2, 2, 0], lint: [0]}
+      - {type: B X X X, nr: [3, 3, 5], nl: [2, 3, 3], lint: [3]}
+      - {type: B X X X, nr: [3, 3, 5], nl: [3, 3, 0], lint: [0]}
+      - {type: B X X X, nr: [3, 3, 5], nl: [3, 3, 4], lint: [4]}
+      - {type: B X X X, nr: [3, 3, 5], nl: [3, 4, 1], lint: [1]}
+      - {type: B X X X, nr: [3, 3, 5], nl: [4, 4, 0], lint: [0]}
+      - {type: B X X X, nr: [3, 3, 5], nl: [4, 4, 4], lint: [4]}
+      - {type: B X X X, nr: [3, 4, 4], nl: [1, 2, 3], lint: [3]}
+      - {type: B X X X, nr: [3, 4, 4], nl: [2, 2, 2], lint: [2]}
+      - {type: B X X X, nr: [3, 4, 4], nl: [4, 4, 2], lint: [2]}
+      - {type: B X X X, nr: [3, 4, 5], nl: [1, 1, 2], lint: [2]}
+      - {type: B X X X, nr: [3, 4, 5], nl: [1, 2, 3], lint: [3]}
+      - {type: B X X X, nr: [3, 4, 5], nl: [1, 3, 2], lint: [2]}
+      - {type: B X X X, nr: [3, 4, 5], nl: [2, 2, 2], lint: [2]}
+      - {type: B X X X, nr: [3, 4, 5], nl: [2, 3, 3], lint: [3]}
+      - {type: B X X X, nr: [3, 4, 5], nl: [3, 3, 0], lint: [0]}
+      - {type: B X X X, nr: [3, 4, 5], nl: [3, 3, 2], lint: [2]}
+      - {type: B X X X, nr: [3, 4, 5], nl: [4, 4, 2], lint: [2]}
+      - {type: B X X X, nr: [3, 5, 5], nl: [1, 1, 2], lint: [2]}
+      - {type: B X X X, nr: [3, 5, 5], nl: [1, 2, 3], lint: [3]}
+      - {type: B X X X, nr: [3, 5, 5], nl: [2, 3, 1], lint: [1]}
+      - {type: B X X X, nr: [3, 5, 5], nl: [2, 4, 4], lint: [4]}
+      - {type: B X X X, nr: [3, 5, 5], nl: [4, 4, 0], lint: [0]}
+      - {type: B X X X, nr: [4, 4, 5], nl: [1, 1, 2], lint: [2]}
+      - {type: B X X X, nr: [4, 4, 5], nl: [3, 3, 0], lint: [0]}
+      - {type: B X X X, nr: [4, 4, 5], nl: [3, 3, 2], lint: [2]}
+      - {type: B X X X, nr: [5, 5, 5], nl: [0, 0, 0], lint: [0]}
+      - {type: B X X X, nr: [5, 5, 5], nl: [0, 1, 1], lint: [1]}
+      - {type: B X X X, nr: [5, 5, 5], nl: [4, 4, 4], lint: [4]}
+  - speciesblock: X 
+    ndensityi: 0
+    npoti: 
+    parameters: []
+    nradmaxi: 5
+    lmaxi: 4
+    rcutij: 7
+    dcutij: 0.01 # does not impact values of descriptors
+    nradbaseij: 10
+    radbase: SBessel
+    radparameters: [1.] # does not impact values of descriptors
+    radcoefficients: [[[1., 0., 0., 0., 0., 0., 0., 0., 0., 0.], [1., 0., 0., 0., 0., 0., 0., 0., 0., 0.], [1., 0., 0., 0., 0., 0., 0., 0., 0., 0.], [1., 0., 0., 0., 0., 0., 0., 0., 0., 0.], [1., 0., 0., 0., 0., 0., 0., 0., 0., 0.]], [[0., 1., 0., 0., 0., 0., 0., 0., 0., 0.], [0., 1., 0., 0., 0., 0., 0., 0., 0., 0.], [0., 1., 0., 0., 0., 0., 0., 0., 0., 0.], [0., 1., 0., 0., 0., 0., 0., 0., 0., 0.], [0., 1., 0., 0., 0., 0., 0., 0., 0., 0.]], [[0., 0., 1., 0., 0., 0., 0., 0., 0., 0.], [0., 0., 1., 0., 0., 0., 0., 0., 0., 0.], [0., 0., 1., 0., 0., 0., 0., 0., 0., 0.], [0., 0., 1., 0., 0., 0., 0., 0., 0., 0.], [0., 0., 1., 0., 0., 0., 0., 0., 0., 0.]], [[0., 0., 0., 1., 0., 0., 0., 0., 0., 0.], [0., 0., 0., 1., 0., 0., 0., 0., 0., 0.], [0., 0., 0., 1., 0., 0., 0., 0., 0., 0.], [0., 0., 0., 1., 0., 0., 0., 0., 0., 0.], [0., 0., 0., 1., 0., 0., 0., 0., 0., 0.]], [[0., 0., 0., 0., 1., 0., 0., 0., 0., 0.], [0., 0., 0., 0., 1., 0., 0., 0., 0., 0.], [0., 0., 0., 0., 1., 0., 0., 0., 0., 0.], [0., 0., 0., 0., 1., 0., 0., 0., 0., 0.], [0., 0., 0., 0., 1., 0., 0., 0., 0., 0.]]]
+    nbody:
+      - {type: X X X, nr: [1, 3], nl: [1, 1]}
+      - {type: X X X, nr: [1, 4], nl: [1, 1]}
+      - {type: X X X, nr: [2, 5], nl: [4, 4]}
+      - {type: X X X, nr: [3, 5], nl: [1, 1]}
+      - {type: X X X X, nr: [1, 1, 2], nl: [0, 1, 1], lint: [1]}
+      - {type: X X X X, nr: [1, 1, 3], nl: [1, 1, 2], lint: [2]}
+      - {type: X X X X, nr: [1, 1, 3], nl: [1, 3, 4], lint: [4]}
+      - {type: X X X X, nr: [1, 1, 3], nl: [3, 3, 4], lint: [4]}
+      - {type: X X X X, nr: [1, 1, 4], nl: [0, 3, 3], lint: [3]}
+      - {type: X X X X, nr: [1, 1, 4], nl: [2, 4, 4], lint: [4]}
+      - {type: X X X X, nr: [1, 2, 2], nl: [2, 4, 4], lint: [4]}
+      - {type: X X X X, nr: [1, 2, 3], nl: [0, 3, 3], lint: [3]}
+      - {type: X X X X, nr: [1, 2, 3], nl: [2, 3, 1], lint: [1]}
+      - {type: X X X X, nr: [1, 2, 3], nl: [4, 4, 2], lint: [2]}
+      - {type: X X X X, nr: [1, 2, 4], nl: [1, 4, 3], lint: [3]}
+      - {type: X X X X, nr: [1, 2, 4], nl: [3, 4, 1], lint: [1]}
+      - {type: X X X X, nr: [1, 2, 5], nl: [0, 2, 2], lint: [2]}
+      - {type: X X X X, nr: [1, 2, 5], nl: [1, 1, 0], lint: [0]}
+      - {type: X X X X, nr: [1, 2, 5], nl: [2, 3, 3], lint: [3]}
+      - {type: X X X X, nr: [1, 2, 5], nl: [3, 3, 2], lint: [2]}
+      - {type: X X X X, nr: [1, 3, 3], nl: [1, 1, 0], lint: [0]}
+      - {type: X X X X, nr: [1, 3, 3], nl: [1, 2, 3], lint: [3]}
+      - {type: X X X X, nr: [1, 3, 3], nl: [2, 2, 0], lint: [0]}
+      - {type: X X X X, nr: [1, 3, 3], nl: [2, 4, 4], lint: [4]}
+      - {type: X X X X, nr: [1, 3, 3], nl: [3, 3, 2], lint: [2]}
+      - {type: X X X X, nr: [1, 3, 3], nl: [3, 4, 1], lint: [1]}
+      - {type: X X X X, nr: [1, 3, 4], nl: [2, 2, 4], lint: [4]}
+      - {type: X X X X, nr: [1, 3, 4], nl: [4, 4, 2], lint: [2]}
+      - {type: X X X X, nr: [1, 3, 5], nl: [0, 1, 1], lint: [1]}
+      - {type: X X X X, nr: [1, 3, 5], nl: [1, 1, 0], lint: [0]}
+      - {type: X X X X, nr: [1, 3, 5], nl: [1, 1, 2], lint: [2]}
+      - {type: X X X X, nr: [1, 3, 5], nl: [3, 3, 4], lint: [4]}
+      - {type: X X X X, nr: [1, 4, 4], nl: [3, 3, 0], lint: [0]}
+      - {type: X X X X, nr: [1, 4, 4], nl: [4, 4, 2], lint: [2]}
+      - {type: X X X X, nr: [1, 4, 5], nl: [2, 4, 4], lint: [4]}
+      - {type: X X X X, nr: [1, 5, 5], nl: [1, 1, 0], lint: [0]}
+      - {type: X X X X, nr: [2, 2, 3], nl: [0, 3, 3], lint: [3]}
+      - {type: X X X X, nr: [2, 2, 3], nl: [1, 4, 3], lint: [3]}
+      - {type: X X X X, nr: [2, 2, 3], nl: [2, 2, 2], lint: [2]}
+      - {type: X X X X, nr: [2, 2, 3], nl: [2, 4, 4], lint: [4]}
+      - {type: X X X X, nr: [2, 2, 3], nl: [3, 4, 3], lint: [3]}
+      - {type: X X X X, nr: [2, 2, 5], nl: [0, 2, 2], lint: [2]}
+      - {type: X X X X, nr: [2, 2, 5], nl: [0, 4, 4], lint: [4]}
+      - {type: X X X X, nr: [2, 2, 5], nl: [2, 2, 4], lint: [4]}
+      - {type: X X X X, nr: [2, 2, 5], nl: [2, 4, 2], lint: [2]}
+      - {type: X X X X, nr: [2, 2, 5], nl: [4, 4, 4], lint: [4]}
+      - {type: X X X X, nr: [2, 3, 3], nl: [2, 4, 4], lint: [4]}
+      - {type: X X X X, nr: [2, 3, 3], nl: [3, 3, 2], lint: [2]}
+      - {type: X X X X, nr: [2, 3, 3], nl: [3, 3, 4], lint: [4]}
+      - {type: X X X X, nr: [2, 3, 3], nl: [3, 4, 1], lint: [1]}
+      - {type: X X X X, nr: [2, 3, 4], nl: [1, 2, 1], lint: [1]}
+      - {type: X X X X, nr: [2, 3, 4], nl: [1, 2, 3], lint: [3]}
+      - {type: X X X X, nr: [2, 3, 4], nl: [1, 4, 3], lint: [3]}
+      - {type: X X X X, nr: [2, 3, 4], nl: [2, 2, 2], lint: [2]}
+      - {type: X X X X, nr: [2, 3, 4], nl: [3, 3, 2], lint: [2]}
+      - {type: X X X X, nr: [2, 3, 4], nl: [3, 4, 1], lint: [1]}
+      - {type: X X X X, nr: [2, 3, 4], nl: [3, 4, 3], lint: [3]}
+      - {type: X X X X, nr: [2, 3, 4], nl: [4, 4, 2], lint: [2]}
+      - {type: X X X X, nr: [2, 3, 5], nl: [0, 1, 1], lint: [1]}
+      - {type: X X X X, nr: [2, 3, 5], nl: [2, 3, 1], lint: [1]}
+      - {type: X X X X, nr: [2, 3, 5], nl: [3, 3, 2], lint: [2]}
+      - {type: X X X X, nr: [2, 3, 5], nl: [4, 4, 0], lint: [0]}
+      - {type: X X X X, nr: [2, 4, 4], nl: [4, 4, 2], lint: [2]}
+      - {type: X X X X, nr: [2, 4, 5], nl: [2, 4, 4], lint: [4]}
+      - {type: X X X X, nr: [2, 4, 5], nl: [3, 3, 4], lint: [4]}
+      - {type: X X X X, nr: [2, 5, 5], nl: [1, 1, 2], lint: [2]}
+      - {type: X X X X, nr: [2, 5, 5], nl: [1, 2, 3], lint: [3]}
+      - {type: X X X X, nr: [2, 5, 5], nl: [1, 3, 4], lint: [4]}
+      - {type: X X X X, nr: [2, 5, 5], nl: [2, 4, 4], lint: [4]}
+      - {type: X X X X, nr: [2, 5, 5], nl: [3, 3, 4], lint: [4]}
+      - {type: X X X X, nr: [2, 5, 5], nl: [3, 4, 1], lint: [1]}
+      - {type: X X X X, nr: [3, 3, 3], nl: [1, 2, 3], lint: [3]}
+      - {type: X X X X, nr: [3, 3, 3], nl: [3, 3, 4], lint: [4]}
+      - {type: X X X X, nr: [3, 3, 3], nl: [4, 4, 4], lint: [4]}
+      - {type: X X X X, nr: [3, 3, 4], nl: [4, 4, 2], lint: [2]}
+      - {type: X X X X, nr: [3, 3, 5], nl: [0, 1, 1], lint: [1]}
+      - {type: X X X X, nr: [3, 3, 5], nl: [0, 3, 3], lint: [3]}
+      - {type: X X X X, nr: [3, 3, 5], nl: [1, 4, 3], lint: [3]}
+      - {type: X X X X, nr: [3, 4, 4], nl: [2, 2, 2], lint: [2]}
+      - {type: X X X X, nr: [3, 4, 4], nl: [2, 3, 3], lint: [3]}
+      - {type: X X X X, nr: [3, 4, 4], nl: [4, 4, 2], lint: [2]}
+      - {type: X X X X, nr: [3, 4, 5], nl: [1, 3, 2], lint: [2]}
+      - {type: X X X X, nr: [3, 4, 5], nl: [2, 4, 4], lint: [4]}
+      - {type: X X X X, nr: [3, 5, 5], nl: [3, 3, 0], lint: [0]}
+      - {type: X X X X, nr: [3, 5, 5], nl: [3, 4, 1], lint: [1]}
+      - {type: X X X X, nr: [4, 4, 4], nl: [2, 2, 2], lint: [2]}
+      - {type: X X X X, nr: [4, 5, 5], nl: [1, 3, 4], lint: [4]}
+      - {type: X X X X, nr: [4, 5, 5], nl: [2, 2, 2], lint: [2]}
+      - {type: X X X X, nr: [4, 5, 5], nl: [2, 4, 4], lint: [4]}
+      - {type: X X X X, nr: [4, 5, 5], nl: [3, 3, 4], lint: [4]}
+      - {type: X X X X, nr: [5, 5, 5], nl: [1, 1, 2], lint: [2]}
