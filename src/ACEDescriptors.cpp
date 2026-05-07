@@ -113,7 +113,6 @@ void ACEDescriptors::ComputeDescriptors(){
 			if( max_cutoff < MyACEBBase->radial_functions->cut(mu_i,mu_j) )
 				max_cutoff = MyACEBBase->radial_functions->cut(mu_i,mu_j);
 		}
-		cout << endl;
 	}
 
 	// Allocate descriptor array and initialize to 0

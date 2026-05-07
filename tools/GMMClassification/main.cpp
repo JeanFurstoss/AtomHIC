@@ -143,7 +143,7 @@ int main(int argc, char *argv[])
 	for(unsigned int i=0;i<nbSys;i++){
 		// set AtomicSystem in case of trajectory file
 		if( nbSys > 1 ){
-			cout << "Treating timestep " << MyTraj.getTimestep(i) << endl;
+			cout << endl << "Treating timestep " << MyTraj.getTimestep(i) << endl;
 			MySystem = MyTraj.getAtomicSystem(i);
 		}
 		

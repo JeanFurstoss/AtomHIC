@@ -1651,7 +1651,7 @@ void Descriptors::readFixedParams(){
 	//cout << "From /data/FixedParameters/FixedParameters.dat the descriptors will be filtered by \"" << FilteringType << "\"" << endl;
 }
 
-unsigned int Descriptors::current_filter(const std::string &filter_name){
+int Descriptors::current_filter(const std::string &filter_name){
 	bool already = false;
 	unsigned int f = 0;
 	if( filter_name != "none" ){
@@ -1662,10 +1662,7 @@ unsigned int Descriptors::current_filter(const std::string &filter_name){
 				break;
 			}
 		}
-		if( !already ){
-			cerr << "Filter value not found" << endl;
-			exit(EXIT_FAILURE);
-		}
+		if( !already ) return -1;
 	}
 	return f;
 }

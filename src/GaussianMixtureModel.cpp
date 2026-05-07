@@ -40,7 +40,7 @@ GaussianMixtureModel::GaussianMixtureModel(){
 void GaussianMixtureModel::setDescriptors(Descriptors *D){
 	MachineLearningModel::setDescriptors(D);
 	
-	if( IsFilterIndexModified ) ChangeFilterIndex();
+	//if( IsFilterIndexModified ) ChangeFilterIndex();
 	if( !IsRead ){
 		for(unsigned int n=0;n<nbFilter;n++){
 			nbClust.push_back(0);
@@ -326,7 +326,7 @@ void GaussianMixtureModel::ComputeStrongAveLabelProb(string filter_value){
 void GaussianMixtureModel::PrintLabelling(string filter_value){
 	unsigned int current_f = getCurrentFIndex(filter_value);
 	bool printWarning = false;
-	cout << "For descriptor filter \"" << _MyDescriptors->getFilterValue(current_f) << "\"" << endl;
+	cout << "For descriptor filter \"" << filter_value << "\"" << endl;
 	vector<vector<string>> element_arr;
 	element_arr.push_back(vector<string>());
 	element_arr[0].push_back("");
@@ -357,12 +357,13 @@ void GaussianMixtureModel::Labelling(){
 // Label the GMM by affecting to each cluster the label which has the highest probability in its and return the second highest value to see if there is overlapping between labels 
 void GaussianMixtureModel::Labelling(string filter_value){
 	unsigned int current_f = getCurrentFIndex(filter_value);
+	unsigned int current_f_lab = _MyDescriptors->current_filter(filter_value);
 	unsigned int zero_lab = 0;
-	unsigned int max = _MyDescriptors->getLabelsSize(current_f,zero_lab);
-	unsigned int min = _MyDescriptors->getLabelsSize(current_f,zero_lab);
+	unsigned int max = _MyDescriptors->getLabelsSize(current_f_lab,zero_lab);
+	unsigned int min = _MyDescriptors->getLabelsSize(current_f_lab,zero_lab);
 	for(unsigned int l=1;l<nbLabel;l++){
-		 if( _MyDescriptors->getLabelsSize(current_f,l) > max ) max = _MyDescriptors->getLabelsSize(current_f,l);
-		 else if( _MyDescriptors->getLabelsSize(current_f,l) < min ) min = _MyDescriptors->getLabelsSize(current_f,l);
+		 if( _MyDescriptors->getLabelsSize(current_f_lab,l) > max ) max = _MyDescriptors->getLabelsSize(current_f_lab,l);
+		 else if( _MyDescriptors->getLabelsSize(current_f_lab,l) < min ) min = _MyDescriptors->getLabelsSize(current_f_lab,l);
 	}
 	if( max*tolLabelSize > min ) cout << "Warning the \"" << filter_value << "\" descriptors are not homogeneously distributed within the labels (high difference between number of descriptors in each labels), which could biased the results obtained with the fitted GMM" << endl;
 	
@@ -387,11 +388,19 @@ void GaussianMixtureModel::Labelling(string filter_value){
 }
 
 void GaussianMixtureModel::Classify(){
+	unsigned int nbDatTot = 0;
+	for(unsigned int f=0;f<nbFilter_descriptors;f++) nbDatTot += nbDat[f];
+	if( Classificator ) delete[] Classificator;
+	unsigned int nbclass = 2*nbDatTot;
+	Classificator = new double[nbclass];
+	for(unsigned int i=0;i<nbclass;i++) Classificator[i] = -1.;
+
 	bool isFullyLabelled = true;
 	for(unsigned int f=0;f<nbFilter;f++){
 		Classify(FilterValue[f]);
 		isFullyLabelled *= IsLabelled[f];
 	}
+
 	if( isFullyLabelled || IsRead ){
         	// write the StructureIndex.txt file
         	ofstream writefile("StructureIndex.txt");
@@ -406,6 +415,7 @@ void GaussianMixtureModel::Classify(){
 // Classify the data using the maximum likelihood classifier
 void GaussianMixtureModel::Classify(string filter_value){
 	unsigned int current_f = getCurrentFIndex(filter_value);
+	if( _MyDescriptors->current_filter(filter_value) == -1 ) return;
 	if( !IsDescriptor ){
 		cerr << "We dont have descriptor to classify, aborting" << endl;
 		exit(EXIT_FAILURE);
@@ -418,11 +428,10 @@ void GaussianMixtureModel::Classify(string filter_value){
 	MyGMMTools[current_f]->setDataMat(_dataMat,current_nbDat);
 	MatrixXd MLC(nbClust[current_f],current_nbDat);
 	MyGMMTools[current_f]->ComputeMLC(MLC);
-	
-	unsigned int nbDatTot = 0;
-	for(unsigned int f=0;f<nbFilter_descriptors;f++) nbDatTot += nbDat[f];
-	if( !IsClassified ){
-		IsClassified = true;
+
+	if( !Classificator ){	
+		unsigned int nbDatTot = 0;
+		for(unsigned int f=0;f<nbFilter_descriptors;f++) nbDatTot += nbDat[f];
 		unsigned int nbclass = 2*nbDatTot;
 		Classificator = new double[nbclass];
 		for(unsigned int i=0;i<nbclass;i++) Classificator[i] = -1.;
@@ -470,6 +479,7 @@ void GaussianMixtureModel::Classify(string filter_value){
 	}
 }
 
+// To be removed
 void GaussianMixtureModel::ChangeFilterIndex(){
 	vector<unsigned int> nbClust_tmp(nbFilter);
 	vector<string> FilterValue_tmp(nbFilter);
@@ -651,14 +661,14 @@ void GaussianMixtureModel::PrintToDatabase(const string &name_of_database){
 		ofstream writefile_train(path2base+"labelling.out");
 		writefile_train << "Confusion matrix after labelling of the GMM:" << endl;
 		for(unsigned int f=0;f<nbFilter;f++){
-			writefile_train << "\tFor descriptor filter \"" << _MyDescriptors->getFilterValue(f) << "\"" << endl;
+			writefile_train << "\tFor descriptor filter \"" << FilterValue[f] << "\"" << endl;
 			vector<vector<string>> element_arr;
 			element_arr.push_back(vector<string>());
 			element_arr[0].push_back("");
-			for(unsigned int l1=0;l1<nbLabel;l1++) element_arr[0].push_back(_MyDescriptors->getLabels(l1));
+			for(unsigned int l1=0;l1<nbLabel;l1++) element_arr[0].push_back(Labels[l1]);
 			for(unsigned int l1=0;l1<nbLabel;l1++){
 				element_arr.push_back(vector<string>());
-				element_arr[l1+1].push_back(_MyDescriptors->getLabels(l1));
+				element_arr[l1+1].push_back(Labels[l1]);
 				for(unsigned int l2=0;l2<nbLabel;l2++){
 					double sum = 0.;
 					for(unsigned int k=0;k<nbClust[f];k++){
@@ -688,7 +698,7 @@ void GaussianMixtureModel::PrintToDatabase(const string &name_of_database){
 
 		for(unsigned int f=0;f<nbFilter;f++){
 			if( IsRead ) writefile << "FILTER_VALUE " << FilterValue[f] << endl;
-			else writefile << "FILTER_VALUE " << _MyDescriptors->getFilterValue(f) << endl;
+			else writefile << "FILTER_VALUE " << FilterValue[f] << endl;
 			unsigned int nb = 0;
 			for(unsigned int k=0;k<nbClust[f];k++) if( ClusterLabel[f][k] == l ) nb++;
 			writefile << "NUMBER_OF_CLUSTER " << nb << endl;

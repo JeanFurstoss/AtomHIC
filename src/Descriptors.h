@@ -145,7 +145,7 @@ public:
 	unsigned int *getCorresIndexSubarray(unsigned int &subarray_nbdat, std::string filter_name="none", std::string label_name="none");
 	unsigned int *getCorresIndexTestDataset(unsigned int &subarray_nbdat, std::string filter_name="none", std::string label_name="none");
 	unsigned int getLabels_uint(unsigned int &i){ return DescriptorLabel[i]; }
-	unsigned int current_filter(const std::string &filter_name);
+	int current_filter(const std::string &filter_name);
 	unsigned int current_label(const std::string &label_name);
 	// END TEST subarrays
 	// getters

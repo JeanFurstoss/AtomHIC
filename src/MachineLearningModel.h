@@ -47,20 +47,17 @@ using namespace Eigen;
 class ATOMHIC_EXPORT MachineLearningModel {
 protected:
 	std::string name;
-	Descriptors *_MyDescriptors;
+	Descriptors *_MyDescriptors = nullptr;
 	bool IsDescriptor = false;
-	MathTools *MT;
+	MathTools *MT = nullptr;
 
-	MatrixXd *_dataMat;
+	MatrixXd *_dataMat = nullptr;
 
-	double *buffer_vec_1_dim;
-	double *buffer_vec_2_dim;
-	
 	unsigned int dim;
 	unsigned int dim2;
 	unsigned int nbDatMax;
 	unsigned int current_nbDat;
-	unsigned int *nbDat; // [f] number of data with filter f
+	unsigned int *nbDat = nullptr; // [f] number of data with filter f
 	unsigned int nbFilter; // number of filter (e.g. if filtered by element, the number of element) in the ML model
 	unsigned int nbFilter_descriptors; // number of filter (e.g. if filtered by element, the number of element) of the descriptors
 	// Variables for labelling the model
@@ -68,7 +65,7 @@ protected:
 	unsigned int nbLabel;
 
 	unsigned int DescriptorSubarraySize = 1;
-	unsigned int *CorresIndexDescriptors;
+	unsigned int *CorresIndexDescriptors = nullptr;
 
 	// Variables for reading the database parameters
 	std::vector<std::string> Labels; // Labels[l] = name of the label l
@@ -77,12 +74,12 @@ protected:
 	std::string DescriptorName; // to be used for initializing descriptors
 	std::vector<std::string> DescriptorProperties; // to be used for initializing descriptors
 	std::vector<std::string> current_Properties; // the properties (i.e. ones in FixedParameters but which can be read using the ReadProperties method 
-	unsigned int *FilterIndexToModify = nullptr;
+	int *FilterIndexToModify = nullptr;
 	bool IsFilterIndexModified = false;
 	bool IsRead = false;
 	Displays Dis;
 	// Variables for classification
-	double *Classificator; // depend on the ML model but generally for classification, [n*2] = index of the label with highest probability for descriptors n (index in _Descriptor array), [n*2+1] = probability
+	double *Classificator = nullptr; // depend on the ML model but generally for classification, [n*2] = index of the label with highest probability for descriptors n (index in _Descriptor array), [n*2+1] = probability
 	bool IsClassified = false;	
 	
 	std::string FixedParam_Filename = "FixedParameters.ath";

@@ -53,8 +53,8 @@ void MachineLearningModel::setDescriptors(Descriptors *D){
 			cerr << "The number of dimension is different between the descriptors and the read ML database, aborting" << endl;
 			exit(EXIT_FAILURE);
 		}
-		if( this->IsDescriptor ) delete[] FilterIndexToModify;
-		FilterIndexToModify = new unsigned int[nbFilter];
+		if( FilterIndexToModify ) delete[] FilterIndexToModify;
+		FilterIndexToModify = new int[nbFilter];
 		for(unsigned int f1=0;f1<nbFilter;f1++){
 			bool found = false;
 			for(unsigned int f2=0;f2<nbFilter_descriptors;f2++){
@@ -66,8 +66,8 @@ void MachineLearningModel::setDescriptors(Descriptors *D){
 				}
 			}
 			if( !found ){
-				cerr << "The filter value are different between the decriptors and the read ML database, aborting" << endl;
-				exit(EXIT_FAILURE);
+				FilterIndexToModify[f1] = -1;
+				IsFilterIndexModified = true;
 			}
 		}
 	}else{
@@ -76,20 +76,18 @@ void MachineLearningModel::setDescriptors(Descriptors *D){
 		nbFilter = _MyDescriptors->getNbFilter();
 		nbFilter_descriptors = _MyDescriptors->getNbFilter();
 		FilteringType = _MyDescriptors->getFilteringType();
+		FilterValue.clear();
 		for(unsigned int f=0;f<nbFilter;f++) FilterValue.push_back(_MyDescriptors->getFilterValue(f));
 	}
 
-	if( this->IsDescriptor ){
-		delete[] nbDat;	
-		delete[] buffer_vec_1_dim;
-		delete[] buffer_vec_2_dim;
+	if( nbDat ){
+		delete[] nbDat;
+		nbDat = nullptr;
 	}
 	nbDat = new unsigned int[nbFilter_descriptors];
 	for(unsigned int f=0;f<nbFilter_descriptors;f++) nbDat[f] = _MyDescriptors->getNbDat(f);
 	
 	nbDatMax = _MyDescriptors->getNbDatMax();
-	buffer_vec_1_dim = new double[dim];
-	buffer_vec_2_dim = new double[dim];
 	DescriptorName = _MyDescriptors->getName();
 	DescriptorProperties = _MyDescriptors->getProperties();
 	this->IsDescriptor = true;
@@ -348,11 +346,7 @@ void MachineLearningModel::ReadModelParamFromDatabase(const std::string &path2ba
 
 MachineLearningModel::~MachineLearningModel(){
 	delete MT;
-	if( this->IsDescriptor ){
-		delete[] nbDat;
-		delete[] buffer_vec_1_dim;
-		delete[] buffer_vec_2_dim;
-	}
+	if( nbDat ) delete[] nbDat;
 	if( FilterIndexToModify ) delete[] FilterIndexToModify;
-	if( IsClassified ) delete[] Classificator;
+	if( Classificator ) delete[] Classificator;
 }
