@@ -14,7 +14,7 @@ else()
 		FetchContent_Declare(
 		  pace
 		  GIT_REPOSITORY https://github.com/ICAMS/lammps-user-pace.git 
-		  GIT_TAG        v.2023.11.25.fix2 
+		  GIT_TAG        v.2025.12.3 
 		)
 		FetchContent_MakeAvailable(pace)
 	endif()
