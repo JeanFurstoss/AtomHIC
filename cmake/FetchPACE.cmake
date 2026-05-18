@@ -9,7 +9,7 @@ else()
 	if (TARGET pace)
 	else()
 		message(STATUS "fetching PACE from git")
-
+		set(CMAKE_DISABLE_FIND_PACKAGE_yaml-cpp TRUE)
 		include(FetchContent)
 		FetchContent_Declare(
 		  pace
