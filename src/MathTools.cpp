@@ -188,6 +188,11 @@ unsigned int MathTools::max(vector<double> arr){
 	return imax;
 }
 
+unsigned int MathTools::max(vector<unsigned int> arr){
+	unsigned int imax = 0;
+	for(unsigned int i=1;i<arr.size();i++) if( arr[i] > arr[imax] ) imax = i;
+	return imax;
+}
 unsigned int MathTools::max(vector<long double> arr){
 	unsigned int imax = 0;
 	for(unsigned int i=1;i<arr.size();i++) if( arr[i] > arr[imax] ) imax = i;

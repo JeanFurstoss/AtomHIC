@@ -64,6 +64,7 @@ public:
 	unsigned int min_p(const unsigned int* arr, unsigned int size);
 	unsigned int max_p(const unsigned int* arr, unsigned int size);
 	// those functions return the indice of the max/min of the vector
+	unsigned int max(std::vector<unsigned int> arr);
 	unsigned int max(std::vector<double> arr);
 	unsigned int max(std::vector<long double> arr);
 	unsigned int min(std::vector<double> arr);
