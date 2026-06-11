@@ -152,7 +152,6 @@ int main(int argc, char *argv[])
 	Properties.push_back("LOWER_GRAIN_SHIFT 0 0 0");
 	Properties.push_back("UPPER_GRAIN_SHIFT 0 0 0");
 	Bicrystal *refGB = new Bicrystal(crystalName,h_a,k_a,l_a,theta,h_p,k_p,l_p,rat_b,Properties,0,0,0,true);
-	refGB->print_Grains(false);	
 
 	if( DisMode == "Distance" ){
 		nx = round(refGB->getH1()[0]/dx);
@@ -432,6 +431,10 @@ int main(int argc, char *argv[])
 		currentAtSys->duplicate(currentDupX,currentDupY,1);
 	}
 
+	// print bulk system
+	if( inv ) refGB->print_Grains(false,"LowerGrainBulk.lmp","UpperGrainBulk.lmp");	
+	else refGB->print_Grains(false,"UpperGrainBulk.lmp","LowerGrainBulk.lmp");	
+	
 	// Now create the GBs
 	double rem_shift_x = -((double) nx)*true_dx;
 	double rem_shift_y = -((double) ny)*true_dy;

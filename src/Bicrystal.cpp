@@ -2962,10 +2962,10 @@ void Bicrystal::ComputeExcessVolume(){
 	}
 }
 
-void Bicrystal::print_Grains(bool vacuum){
+void Bicrystal::print_Grains(bool vacuum, string fnameG1, string fnameG2){
 	if( this->AreGrainsDefined ){
-		this->Grain1->print_lmp("Grain1.lmp");
-		this->Grain2->print_lmp("Grain2.lmp");
+		this->Grain1->print_lmp(fnameG1);
+		this->Grain2->print_lmp(fnameG2);
 		if( vacuum ){
 			double sz1(0.), sz2(0.), zero(0.);
 			sz1 = this->Grain1->getH3()[2] * ((fac_vacuum-1.)/2);
@@ -2978,8 +2978,12 @@ void Bicrystal::print_Grains(bool vacuum){
 			this->Grain1->ApplyShift(zero,zero,sz1);
 			this->Grain2->computeInverseCellVec();
 			this->Grain2->ApplyShift(zero,zero,sz2);
-			this->Grain1->print_lmp("Grain1_vacuum.lmp");
-			this->Grain2->print_lmp("Grain2_vacuum.lmp");
+			string ext1=fnameG1.substr(fnameG1.find_last_of(".") + 1);
+			string ext2=fnameG2.substr(fnameG2.find_last_of(".") + 1);
+			string pref1=fnameG1.substr(0,fnameG1.size()-ext1.size()-1);
+			string pref2=fnameG2.substr(0,fnameG2.size()-ext2.size()-1);
+			this->Grain1->print_lmp(pref1+"_vacuum."+ext1);
+			this->Grain2->print_lmp(pref2+"_vacuum."+ext2);
 			for(unsigned int i=0;i<3;i++){
 				this->Grain1->getH3()[i] /= fac_vacuum;
 				this->Grain2->getH3()[i] /= fac_vacuum;

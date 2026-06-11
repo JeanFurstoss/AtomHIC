@@ -164,7 +164,7 @@ public:
 	void printDSC();
 	// methods
 	void read_params();
-	void print_Grains(bool vacuum = false);
+	void print_Grains(bool vacuum = false, std::string filenameG1="Grain1.lmp", std::string filenameG2="Grain2.lmp");
 	void searchGBPos();
 	void ComputeExcessVolume();
         //void searchCSL(int h_a, int k_a, int l_a, double theta, int *CSL_vec, unsigned int verbose=0);
