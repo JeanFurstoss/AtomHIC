@@ -444,7 +444,7 @@ int main(int argc, char *argv[])
 				(*CrystDown)[(*indexesDown)[il]]->getOrientedSystem()->ApplyShift(zero,true_dy,zero);
 				for(unsigned int iu=iu_lo;iu<(*indexesUp).size();iu++){
 					refGB->PasteGrains((*CrystUp)[(*indexesUp)[iu]]->getOrientedSystem(),(*CrystDown)[(*indexesDown)[il]]->getOrientedSystem());
-					refGB->print_lmp("GB_Plane_"+to_string(il)+"_"+to_string(iu)+"_Shift_"+to_string(sx)+"_"+to_string(sy)+".lmp");
+					refGB->print_lmp("GB_PlaneLow_"+to_string(il)+"_PlaneUp_"+to_string(iu)+"_Shift_"+to_string(sx)+"_"+to_string(sy)+".lmp");
 				}
 			}
 			(*CrystDown)[(*indexesDown)[il]]->getOrientedSystem()->ApplyShift(zero,rem_shift_y,zero);
