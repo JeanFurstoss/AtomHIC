@@ -72,7 +72,10 @@ protected:
 	double tolSites;
 public:
 	// constructors
-	ComputeAuxiliary(){};
+	ComputeAuxiliary(){
+		this->MT = new MathTools;
+		read_params();
+	}
 	ComputeAuxiliary(AtomicSystem *_MySystem): _MySystem(_MySystem){
 		this->MT = new MathTools;
 		read_params();
@@ -90,6 +93,7 @@ public:
 	unsigned int *get_AtomSiteIndex(){ return this->Atom_SiteIndex; }
 	double *get_StrainTensor(){ return this->StrainTensor; }
 	double *get_StrainInvII(){ return this->Strain_invII; }
+	bool AreSurfacesSame(AtomicSystem *AtSys1, std::string updown1, AtomicSystem *AtSys2, std::string updown2, bool symm=false);
 	void read_params();
 	// destructor
 	~ComputeAuxiliary();

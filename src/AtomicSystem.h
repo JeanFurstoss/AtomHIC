@@ -139,6 +139,7 @@ public:
 	void AtomListConstructor(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3, bool deepCopyAtSys=false); // construct AtomicSystem giving AtomList and cell vectors
 												   
 	// getters
+	std::string getAuxProp2Print(){ return AuxProp2Print; }
 	std::string getAtomType(const unsigned int i){ return this->AtomType[i]; };
 	double getAtomMass(const unsigned int i){ return this->AtomMass[i]; };
 	double getAtomCharge(const unsigned int i){ return this->AtomCharge[i]; };
@@ -204,7 +205,8 @@ public:
 	void MakeSurfaceNeutral_3dBased(std::string ext); // try to have neutral surfaces 
 	void MakeSurfaceNeutral_3dBased_bis(std::string ext); // try to have neutral surfaces 
 	void MakeSurfaceNeutral(std::vector<int> Oris, std::vector<double> shift, std::vector<double> Misfit, std::vector<double> PlaneNormal, double VertPlaneSlope, std::vector<double> VertPlaneEq, std::vector<double> FullPlaneEq, double shift_z_box, std::string outputfilename=""); // 
-	void MakeSystemNeutral(std::vector<double> dirPoint, std::vector<double> DirVec, double mindist2lign); // try to have neutral surfaces 
+	void MakeSystemNeutral(std::vector<double> dirPoint, std::vector<double> DirVec, double mindist2lign); // try to have neutral surfaces
+	bool SymmetrizeSurfaces(std::string surf2dup);
 	void RemoveAtoms(std::vector<unsigned int> index2rm, bool DNS=false);
 	double ComputeAverageDistance();
 	void ComputeNotSepList();

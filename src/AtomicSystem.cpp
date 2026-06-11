@@ -38,6 +38,7 @@
 #include <chrono>
 #include <random>
 #include <algorithm>
+#include <ComputeAuxiliary.h>
 
 using namespace std;
 
@@ -1363,59 +1364,148 @@ void AtomicSystem::ComputeNotSepList(){
 	for(unsigned int i=0;i<nbAtom;i++) NotSepTag[i].push_back(0);
 	this->IsNotSepTag = true;
 	double rcut = MT->min_p(_MyCrystal->getALength(),3);
-	rcut *= 1.2;
-	searchNeighbours(rcut);
+	rcut *= 2.;
+	rcut = 3.;
 	unsigned int DNS_size = _MyCrystal->getDoNotSep().size();
+	bool IsSite = false;
+	ComputeAuxiliary *CA;
+	for(unsigned int j=0;j<DNS_size;j++){
+		if( _MyCrystal->getDoNotSep()[j].size() == 4 ){
+			IsSite = true;
+			break;
+		}
+	}
+	if( IsSite ){
+		CA = new ComputeAuxiliary(this);
+		CA->ComputeAtomSiteIndex();
+	}
+	searchNeighbours(rcut);
 	//#pragma omp parallel for
 	for(unsigned int i=0;i<nbAtom;i++){
 		double xp, yp ,zp, xpos, ypos, zpos;
 		bool ToTreat = false;
-		vector<unsigned int> type2search, nbNeigh;
+		vector<unsigned int> type2search, nbNeigh, site2search;
+		bool IsCurrentSite = false;
+		for(unsigned int j=0;j<DNS_size;j++){
+			if( _MyCrystal->getDoNotSep()[j].size() == 4 ){
+				IsCurrentSite = true;
+				break;
+			}
+		}
 		for(unsigned int j=0;j<DNS_size;j++){
 			if( AtomList[i].type_uint == _MyCrystal->getDoNotSep()[j][0] ){
 				ToTreat = true;
 				nbNeigh.push_back(_MyCrystal->getDoNotSep()[j][1]);
 				type2search.push_back(_MyCrystal->getDoNotSep()[j][2]);
+				if( IsCurrentSite ){
+					if( _MyCrystal->getDoNotSep()[j].size() == 4 ) site2search.push_back(_MyCrystal->getDoNotSep()[j][3]);
+					else site2search.push_back(0);
+				}
 			}
 		}
+		//if( AtomList[i].type_uint == 1 ){
+		//	for(unsigned int n=0;n<site2search.size();n++) cout << nbNeigh[n] << " " << type2search[n]
 		if( !ToTreat ) continue;
 		xpos = WrappedPos[i].x;
 		ypos = WrappedPos[i].y;
 		zpos = WrappedPos[i].z;
-		for(unsigned int n=0;n<nbNeigh.size();n++){
-			vector<double> ToSort;
-			for(unsigned int j=0;j<Neighbours[i*(nbMaxN+1)];j++){
-				unsigned int id = Neighbours[i*(nbMaxN+1)+j+1];
-				if( AtomList[id].type_uint == type2search[n] ){
-					long unsigned int id1 = i*nbMaxN*3+j*3;
-					long unsigned int id2 = id1+1;
-					long unsigned int id3 = id1+2;
-					xp = WrappedPos[id].x+CLNeighbours[id1]*H1[0]+CLNeighbours[id2]*H2[0]+CLNeighbours[id3]*H3[0]-xpos;
-					yp = WrappedPos[id].y+CLNeighbours[id1]*H1[1]+CLNeighbours[id2]*H2[1]+CLNeighbours[id3]*H3[1]-ypos;
-					zp = WrappedPos[id].z+CLNeighbours[id1]*H1[2]+CLNeighbours[id2]*H2[2]+CLNeighbours[id3]*H3[2]-zpos;
-					ToSort.push_back(xp*xp+yp*yp+zp*zp);
-					ToSort.push_back(id);
+		if( !IsCurrentSite ){
+			for(unsigned int n=0;n<nbNeigh.size();n++){
+				vector<double> ToSort;
+				for(unsigned int j=0;j<Neighbours[i*(nbMaxN+1)];j++){
+					unsigned int id = Neighbours[i*(nbMaxN+1)+j+1];
+					if( AtomList[id].type_uint == type2search[n] ){
+						long unsigned int id1 = i*nbMaxN*3+j*3;
+						long unsigned int id2 = id1+1;
+						long unsigned int id3 = id1+2;
+						xp = WrappedPos[id].x+CLNeighbours[id1]*H1[0]+CLNeighbours[id2]*H2[0]+CLNeighbours[id3]*H3[0]-xpos;
+						yp = WrappedPos[id].y+CLNeighbours[id1]*H1[1]+CLNeighbours[id2]*H2[1]+CLNeighbours[id3]*H3[1]-ypos;
+						zp = WrappedPos[id].z+CLNeighbours[id1]*H1[2]+CLNeighbours[id2]*H2[2]+CLNeighbours[id3]*H3[2]-zpos;
+						ToSort.push_back(xp*xp+yp*yp+zp*zp);
+						ToSort.push_back(id);
+					}
+				}
+				MT->sort(ToSort,0,2,ToSort);
+				unsigned int currentneigh = ToSort.size()/2;
+				unsigned int j=0;
+				unsigned int nbneighstored = 0;
+				while( nbneighstored < nbNeigh[n] ){
+					if( j == currentneigh ){
+						cout << "Warning, not enough ions have been found to construct the DoNotSepare list, the cutoff should be increased" << endl;
+						break;
+					}
+					if( NotSepTag[(unsigned int) (ToSort[j*2+1])][0] >= 0 ){
+						NotSepTag[i][0]++;
+						NotSepTag[i].push_back((unsigned int) (ToSort[j*2+1]));
+						NotSepTag[(unsigned int) (ToSort[j*2+1])][0] = -1-i;
+						nbneighstored++;
+					}
+					j++;
 				}
 			}
-			MT->sort(ToSort,0,2,ToSort);
-			unsigned int currentneigh = ToSort.size()/2;
-			unsigned int j=0;
-			unsigned int nbneighstored = 0;
-			while( nbneighstored < nbNeigh[n] ){
-				if( j == currentneigh ){
-					cout << "Warning, not enough ions have been found to construct the DoNotSepare list, the cutoff should be increased" << endl;
-					break;
+		}else{
+			for(unsigned int n=0;n<nbNeigh.size();n++){
+				vector<double> ToSort;
+				for(unsigned int j=0;j<Neighbours[i*(nbMaxN+1)];j++){
+					unsigned int id = Neighbours[i*(nbMaxN+1)+j+1];
+					//if( NotSepTag[id][0] < 0 ) continue;
+					if( AtomList[id].type_uint == type2search[n] && ( site2search[n] == 0 || ((int) site2search[n] - 1) == CA->get_AtomSiteIndex()[id] ) ){
+						long unsigned int id1 = i*nbMaxN*3+j*3;
+						long unsigned int id2 = id1+1;
+						long unsigned int id3 = id1+2;
+						xp = WrappedPos[id].x+CLNeighbours[id1]*H1[0]+CLNeighbours[id2]*H2[0]+CLNeighbours[id3]*H3[0]-xpos;
+						yp = WrappedPos[id].y+CLNeighbours[id1]*H1[1]+CLNeighbours[id2]*H2[1]+CLNeighbours[id3]*H3[1]-ypos;
+						zp = WrappedPos[id].z+CLNeighbours[id1]*H1[2]+CLNeighbours[id2]*H2[2]+CLNeighbours[id3]*H3[2]-zpos;
+						if(zp > 0 ) ToSort.push_back(xp*xp+yp*yp+zp*zp);
+						else ToSort.push_back(xp*xp+yp*yp+zp*zp-1.e-1);
+						ToSort.push_back(id);
+							if(zp > 0 ) ToSort.push_back(0);
+							else ToSort.push_back(1);
+					}
 				}
-				if( NotSepTag[(unsigned int) (ToSort[j*2+1])][0] != -1 ){
-					NotSepTag[i][0]++;
-					NotSepTag[i].push_back((unsigned int) (ToSort[j*2+1]));
-					NotSepTag[(unsigned int) (ToSort[j*2+1])][0] = -1-i;
-					nbneighstored++;
+				MT->sort(ToSort,0,3,ToSort);
+				unsigned int currentneigh = ToSort.size()/3;
+				unsigned int j=0;
+				unsigned int nbneighstored = 0;
+				while( nbneighstored < nbNeigh[n] ){
+					if( j == currentneigh ){
+						cout << "Warning, not enough ions have been found to construct the DoNotSepare list, the cutoff should be increased" << endl;
+						break;
+					}
+					if( NotSepTag[(unsigned int) (ToSort[j*3+1])][0] >= 0 ){
+						NotSepTag[i][0]++;
+						NotSepTag[i].push_back((unsigned int) (ToSort[j*3+1]));
+						NotSepTag[(unsigned int) (ToSort[j*3+1])][0] = -1-i;
+						if( ToSort[j*3+2] == 0 && site2search[n] == 1 ){
+							cout << "WARNIGN" << endl;
+						}
+						nbneighstored++;
+					}
+					j++;
 				}
-				j++;
 			}
 		}
 	}
+
+	// TEST
+	//if( !IsSite ){
+	//	CA = new ComputeAuxiliary(this);
+	//	CA->ComputeAtomSiteIndex();
+	//}
+	//setAux(CA->get_AtomSiteIndex(),"SiteIndex");
+	//unsigned int* current_DNS = new unsigned int[nbAtom];
+	//for(unsigned int i=0;i<nbAtom;i++) current_DNS[i] = 0;
+	//vector<unsigned int> site = {1053, 1059, 1066, 1073};
+	//for(unsigned int i=0;i<site.size();i++){
+	//	current_DNS[site[i]] += i+1;
+	//	cout << "Nb DNS = " << NotSepTag[site[i]][0] << endl;
+	//	for(unsigned int n=0;n<NotSepTag[site[i]][0];n++) current_DNS[NotSepTag[site[i]][n+1]] += i+2;
+	//}
+	//setAux(current_DNS,"DNS");
+	//printSystem_aux("ForSite.cfg","SiteIndex DNS");
+	 
+
+	if( IsSite ) delete CA;
 
 }
 
@@ -1522,33 +1612,47 @@ unsigned int AtomicSystem::searchNeighbours(const double& rc){
 	int NeighCellX, NeighCellY, NeighCellZ;
 	const int bar_length = 30;
 	double CellSizeX, CellSizeY, CellSizeZ, d_squared;
-        nbCellX = floor(this->H1[0]/rc);
-        if( nbCellX == 0 ){
-                nbCellX = 1;
-                CellSizeX = this->H1[0];
-                NeighCellX = ceil(rc/this->H1[0]);
-        }else{
-                CellSizeX = this->H1[0]/nbCellX;
-                NeighCellX = 1;
-        }
-        nbCellY = floor(this->H2[1]/rc);
-        if( nbCellY == 0 ){
-                nbCellY = 1;
-                CellSizeY = this->H2[1];
-                NeighCellY = ceil(rc/this->H2[1]);
-        }else{
-                CellSizeY = this->H2[1]/nbCellY;
-                NeighCellY = 1;
-        }
-        nbCellZ = floor(this->H3[2]/rc);
-        if( nbCellZ == 0 ){
-                nbCellZ = 1;
-                CellSizeZ = this->H3[2];
-                NeighCellZ = ceil(rc/this->H3[2]);
-        }else{
-                CellSizeZ = this->H3[2]/nbCellZ;
-                NeighCellZ = 1;
-        }
+	// if number of atom is small don't do cell list
+	unsigned int minat_cl = 1000;
+	if( nbAtom < minat_cl ){
+        	nbCellX = 1;
+        	CellSizeX = this->H1[0];
+        	NeighCellX = ceil(rc/this->H1[0]);
+        	nbCellY = 1;
+        	CellSizeY = this->H2[1];
+        	NeighCellY = ceil(rc/this->H2[1]);
+        	nbCellZ = 1;
+        	CellSizeZ = this->H3[2];
+        	NeighCellZ = ceil(rc/this->H3[2]);
+	}else{
+        	nbCellX = floor(this->H1[0]/rc);
+        	if( nbCellX == 0 ){
+        	        nbCellX = 1;
+        	        CellSizeX = this->H1[0];
+        	        NeighCellX = ceil(rc/this->H1[0]);
+        	}else{
+        	        CellSizeX = this->H1[0]/nbCellX;
+        	        NeighCellX = 1;
+        	}
+        	nbCellY = floor(this->H2[1]/rc);
+        	if( nbCellY == 0 ){
+        	        nbCellY = 1;
+        	        CellSizeY = this->H2[1];
+        	        NeighCellY = ceil(rc/this->H2[1]);
+        	}else{
+        	        CellSizeY = this->H2[1]/nbCellY;
+        	        NeighCellY = 1;
+        	}
+        	nbCellZ = floor(this->H3[2]/rc);
+        	if( nbCellZ == 0 ){
+        	        nbCellZ = 1;
+        	        CellSizeZ = this->H3[2];
+        	        NeighCellZ = ceil(rc/this->H3[2]);
+        	}else{
+        	        CellSizeZ = this->H3[2]/nbCellZ;
+        	        NeighCellZ = 1;
+        	}
+	}
 	vector<vector<unsigned int>> Cells(nbCellX*nbCellY*nbCellZ);
 	if( this->IsTilted ){
 		// compute plane equations (as everywhere the only tilts considered are xy, yz, xz)
@@ -1635,20 +1739,22 @@ unsigned int AtomicSystem::searchNeighbours(const double& rc){
 		if( Cells[i].size() > this->nbMaxN ) this->nbMaxN = Cells[i].size();
 	}
 	if( nbAt_test != this->nbAtom ) cout << "We miss atoms during cell list" << endl;
-	this->nbMaxN *= (int) (2.*4.*M_PI*pow(rc,3.)/(3.*CellSizeX*CellSizeY*CellSizeZ)); // 2. is a security factor TODO put it in FixedParameters
+	unsigned int facsec = (int) (2.5*4.*M_PI*pow(rc,3.)/(3.*CellSizeX*CellSizeY*CellSizeZ)); // 2. is a security factor TODO put it in FixedParameters
+	if( facsec == 0 ) facsec = 1;
+	this->nbMaxN *= facsec; 
 	if( this->IsNeighbours ){
 		delete[] this->Neighbours;
 		delete[] this->CLNeighbours;
 	}
-	this->Neighbours = new unsigned int[(this->nbMaxN+1)*this->nbAtom];
-	this->CLNeighbours = new int[(this->nbMaxN*3)*this->nbAtom]; // contain the periodic condition (Nclx, Ncly, Nclz) applied for atom to be a neighbour
+	this->Neighbours = new unsigned int[(this->nbMaxN+ (unsigned long int) 1)*(unsigned long int) this->nbAtom];
+	this->CLNeighbours = new int[(this->nbMaxN*(unsigned long int) 3)*(unsigned long int) this->nbAtom]; // contain the periodic condition (Nclx, Ncly, Nclz) applied for atom to be a neighbour
 	// Perform neighbour research
 	double xpos,ypos,zpos;
 	int ibx, jby, kbz;
 	int Nclx, Ncly, Nclz;
 	double prog=0.;
-	unsigned int countN = 0;
-	unsigned int currentId, currentId2;
+	unsigned long int countN = 0;
+	unsigned long int currentId, currentId2;
 	//cout << "Performing neighbour research" << endl;
 	//cout << "\r[" << string(bar_length*prog,'X') << string(bar_length*(1-prog),'-') << "] " << setprecision(3) << 100*prog << "%";
 	#pragma omp parallel for private(countN,currentId,xpos,ypos,zpos,Nclx,Ncly,Nclz,ibx,jby,kbz,currentId2,d_squared)
@@ -1660,7 +1766,7 @@ unsigned int AtomicSystem::searchNeighbours(const double& rc){
 				for(unsigned int at1 = 0; at1<Cells[i*nbCellZ*nbCellY+j*nbCellZ+k].size(); at1++){
 				        countN = 0;
 					currentId = Cells[i*nbCellZ*nbCellY+j*nbCellZ+k][at1];
-					this->Neighbours[currentId*(this->nbMaxN+1)] = 0; // initialize to zero the neighbour counters
+					this->Neighbours[currentId*(this->nbMaxN+(unsigned long int) 1)] = 0; // initialize to zero the neighbour counters
 					xpos = this->WrappedPos[currentId].x;
 					ypos = this->WrappedPos[currentId].y;
 					zpos = this->WrappedPos[currentId].z;
@@ -1704,8 +1810,8 @@ unsigned int AtomicSystem::searchNeighbours(const double& rc){
 										long unsigned int id1 = currentId*this->nbMaxN*3+countN*3;
 										long unsigned int id2 = id1+1;
 										long unsigned int id3 = id1+2;
-										this->Neighbours[currentId*(this->nbMaxN+1)] += 1; // add this neighbours to the neighbour count
-										this->Neighbours[currentId*(this->nbMaxN+1)+countN+1] = currentId2; // add this neighbours to the neighbour list 
+										this->Neighbours[currentId*(this->nbMaxN+(unsigned long int) 1)] += 1; // add this neighbours to the neighbour count
+										this->Neighbours[currentId*(this->nbMaxN+(unsigned long int) 1)+countN+(unsigned long int) 1] = currentId2; // add this neighbours to the neighbour list 
 										this->CLNeighbours[id1] = Nclx; // store the cl used for this neighbour
 										this->CLNeighbours[id2] = Ncly; // store the cl used for this neighbour
 										this->CLNeighbours[id3] = Nclz; // store the cl used for this neighbour
@@ -3213,7 +3319,7 @@ void AtomicSystem::duplicate(const unsigned int& nx, const unsigned int& ny, con
 		cerr << "The AtomList array does not belong to the AtomicSystem object, cannot duplicate (to be implemented), aborting" << endl;
 		exit(EXIT_FAILURE);
 	}
-	cout << "Duplicating the system (" << nx << "," << ny << "," << nz << ")" << endl;
+	//cout << "Duplicating the system (" << nx << "," << ny << "," << nz << ")" << endl;
 	
 	unsigned int new_nbAtom = this->nbAtom*nx*ny*nz;
 	Atom *AtomList_temp = new Atom[nbAtom];
@@ -4738,10 +4844,13 @@ void AtomicSystem::MakeSurfaceNeutral(vector<int> Oris, vector<double> shift, ve
 }	
 	
 double AtomicSystem::MakeSurfaceNeutral(bool verbose){
+	//double ztol_choose = 1.e-2;
+	double ztol_choose = .3; // to pass as argument
+	unsigned int seed = 0;
 	if( IsCharge == false ) return 0.;
 	bool Possible = false; // at least we should have two atom types having charge with opposite sign
 	bool pos(false),neg(false);
-	for(unsigned int n=0;n<nbAtomType;n++){
+	for(unsigned int n=0;n<nbAtomType;n++){ // TODO better with DNS as in other MakeNeutralSurface methods
 		if( AtomCharge[n] > 0 ) pos = true;
 		if( AtomCharge[n] < 0 ) neg = true;
 		if( pos && neg ){
@@ -4759,7 +4868,16 @@ double AtomicSystem::MakeSurfaceNeutral(bool verbose){
 	unsigned int nbMoveMax = 0;
 	unsigned int MinNbMoveMax = 20;
 	double slab_width = ave_dist*2.;
-	for(unsigned int i=0;i<nbAtom;i++) if( AtomList[i].pos.z < slab_width ) nbMoveMax++;
+	double min_z = std::numeric_limits<double>::max();
+	double max_z = std::numeric_limits<double>::max();
+	for(unsigned int i=0;i<nbAtom;i++){
+		if( AtomList[i].pos.z < min_z ) min_z = AtomList[i].pos.z;
+		if( AtomList[i].pos.z > max_z ) max_z = AtomList[i].pos.z;
+	}
+
+	for(unsigned int i=0;i<nbAtom;i++){
+		if( AtomList[i].pos.z < min_z+slab_width ) nbMoveMax++;
+	}
 	if( nbMoveMax < MinNbMoveMax ) nbMoveMax = MinNbMoveMax;
 	if( verbose ) cout << "Trying to make charge neutral surfaces by moving " << nbMoveMax << " ions (or group of ions to be not separed) from the bottom surface to the upper one.." << endl;
 	// Increase H3 length to be sure to have free surfaces
@@ -4804,6 +4922,29 @@ double AtomicSystem::MakeSurfaceNeutral(bool verbose){
 	}
 	unsigned int ind_tomove = MT->min_p_ind(z,nbAtom);
 	double init_zmin = z[ind_tomove];
+	vector<unsigned int> ind_tomove_vec;
+	ind_tomove_vec.push_back(ind_tomove);
+	bool finish = false;
+	z[ind_tomove] += InitH3[2];
+	while( !finish ){
+		unsigned int new_ind_tomove = MT->min_p_ind(z,nbAtom);
+		if( fabs(init_zmin-z[new_ind_tomove]) < ztol_choose ){
+			ind_tomove_vec.push_back(new_ind_tomove);
+			z[new_ind_tomove] += InitH3[2];
+		}else{
+			finish = true;
+			break;
+		}
+	}
+	for(unsigned int i=0;i<ind_tomove_vec.size();i++) z[ind_tomove_vec[i]] -= InitH3[2];
+	mt19937 gen;
+	if( seed == 0 ) gen.seed(random_device{}());
+	else gen.seed(seed);
+	uniform_int_distribution<> distrib(0, ind_tomove_vec.size()-1);
+	unsigned int rand_index = distrib(gen);
+	ind_tomove = ind_tomove_vec[rand_index]; 
+	init_zmin = z[ind_tomove];
+
 	double final_zmin = init_zmin;
 	unsigned int opt_ind(0);
 	vector<unsigned int> nbIonsMoved;
@@ -4840,7 +4981,33 @@ double AtomicSystem::MakeSurfaceNeutral(bool verbose){
 			opt_ind = i+1;
 		}
 		z[ind_tomove] = AtomList[ind_tomove].pos.z;
+		//ind_tomove = MT->min_p_ind(z,nbAtom);
+		//
+		//
 		ind_tomove = MT->min_p_ind(z,nbAtom);
+		double current_zmin = z[ind_tomove];
+		ind_tomove_vec.clear();
+		ind_tomove_vec.push_back(ind_tomove);
+		finish = false;
+		z[ind_tomove] += InitH3[2];
+		while( !finish ){
+			unsigned int new_ind_tomove = MT->min_p_ind(z,nbAtom);
+			if( fabs(current_zmin-z[new_ind_tomove]) < ztol_choose ){
+				ind_tomove_vec.push_back(new_ind_tomove);
+				z[new_ind_tomove] += InitH3[2];
+			}else{
+				finish = true;
+				break;
+			}
+		}
+		for(unsigned int i=0;i<ind_tomove_vec.size();i++) z[ind_tomove_vec[i]] -= InitH3[2];
+		mt19937 new_gen;
+		if( seed == 0 ) new_gen.seed(random_device{}());
+		else new_gen.seed(seed);
+		uniform_int_distribution<> new_distrib(0, ind_tomove_vec.size()-1);
+		rand_index = new_distrib(new_gen);
+		ind_tomove = ind_tomove_vec[rand_index]; 
+
 	}
 	for(unsigned int i=ind_moved.size()-1;i>opt_ind;i--){
 		AtomList[ind_moved[i]].pos.x -= InitH3[0];
@@ -4870,6 +5037,254 @@ double AtomicSystem::MakeSurfaceNeutral(bool verbose){
 		Print1dDensity("FinalChargeDensity.dat","Charge");
 	}
 	return final_zmin-init_zmin;
+}
+
+bool AtomicSystem::SymmetrizeSurfaces(string surf2dup){ // TODO generalize with plane normal direction
+	if( surf2dup != "down" && surf2dup != "up" ){
+		cout << "The surface to symmetrize should be either \"down\" or \"up\"" << endl;
+		return false;		
+	}
+	double slab_width = 10.;
+	// search min and max z pos of the system
+	double min_z = std::numeric_limits<double>::max();
+	double max_z = -std::numeric_limits<double>::max();
+	for(unsigned int i=0;i<nbAtom;i++){
+		if( AtomList[i].pos.z < min_z ) min_z = AtomList[i].pos.z;
+		if( AtomList[i].pos.z > max_z ) max_z = AtomList[i].pos.z;
+	}
+	if( max_z-min_z < 4*slab_width ) cout << "Warning the system is very thick, it may cause issues" << endl;
+
+	// construct subsystems to make coincide
+	vector<Atom> SubSys_ref; // reference one (the one to be duplicated)
+	vector<Atom> SubSys_work;
+	vector<unsigned int> work_ind;
+	for(unsigned int i=0;i<nbAtom;i++){
+		if( surf2dup == "down" ){
+			if( AtomList[i].pos.z < min_z+slab_width ) SubSys_ref.push_back(AtomList[i]);
+			else if( AtomList[i].pos.z > max_z-(3.*slab_width) ){
+				SubSys_work.push_back(AtomList[i]);
+				work_ind.push_back(i);
+			}
+		}else{
+			if( AtomList[i].pos.z > max_z-slab_width ) SubSys_ref.push_back(AtomList[i]);
+			else if( AtomList[i].pos.z < min_z+(3.*slab_width) ){
+				SubSys_work.push_back(AtomList[i]);
+				work_ind.push_back(i);
+			}
+		}
+	}
+	//cout << "Nb atom in work sys = " << SubSys_work.size() << ", in ref sys = " << SubSys_ref.size() << endl;
+
+	// Apply rotation to the ref system
+	for(unsigned int i=0;i<SubSys_ref.size();i++) SubSys_ref[i].pos.z *= -1.;
+	double *vec = new double[3];
+	vec[0] = 0.;
+	vec[1] = 0.;
+	vec[2] = 1.;
+	double theta = M_PI;
+	double *rotmat = new double[9];
+	MT->Vec2rotMat(vec,theta,rotmat);
+
+	double small_shift = 0.1;
+	for(unsigned int i=0;i<SubSys_ref.size();i++){
+		MT->MatDotAt(rotmat,SubSys_ref[i],SubSys_ref[i]);
+		SubSys_ref[i].pos.x += small_shift;
+		SubSys_ref[i].pos.y += small_shift;
+	}
+	for(unsigned int i=0;i<SubSys_work.size();i++){
+		SubSys_work[i].pos.x += small_shift;
+		SubSys_work[i].pos.y += small_shift;
+	}
+
+	// wrap the two systems
+	double x,y,z;
+	for(unsigned int i=0;i<SubSys_ref.size();i++){
+		// compute reduced coordinates
+		x = SubSys_ref[i].pos.x*G1[0]+SubSys_ref[i].pos.y*G2[0]+SubSys_ref[i].pos.z*G3[0];
+		y = SubSys_ref[i].pos.x*G1[1]+SubSys_ref[i].pos.y*G2[1]+SubSys_ref[i].pos.z*G3[1];
+		z = SubSys_ref[i].pos.x*G1[2]+SubSys_ref[i].pos.y*G2[2]+SubSys_ref[i].pos.z*G3[2];
+		if( x >= 1. || x < 0. ) x = x-floor(x);
+		if( y >= 1. || y < 0. ) y = y-floor(y);
+		// cartesian coordinates
+		SubSys_ref[i].pos.x = x*H1[0]+y*H2[0]+z*H3[0];
+		SubSys_ref[i].pos.y = x*H1[1]+y*H2[1]+z*H3[1];
+	}
+	for(unsigned int i=0;i<SubSys_work.size();i++){
+		// compute reduced coordinates
+		x = SubSys_work[i].pos.x*G1[0]+SubSys_work[i].pos.y*G2[0]+SubSys_work[i].pos.z*G3[0];
+		y = SubSys_work[i].pos.x*G1[1]+SubSys_work[i].pos.y*G2[1]+SubSys_work[i].pos.z*G3[1];
+		z = SubSys_work[i].pos.x*G1[2]+SubSys_work[i].pos.y*G2[2]+SubSys_work[i].pos.z*G3[2];
+		if( x >= 1. || x < 0. ) x = x-floor(x);
+		if( y >= 1. || y < 0. ) y = y-floor(y);
+		// cartesian coordinates
+		SubSys_work[i].pos.x = x*H1[0]+y*H2[0]+z*H3[0];
+		SubSys_work[i].pos.y = x*H1[1]+y*H2[1]+z*H3[1];
+	}
+
+
+	// search translation vectors making systems coinciding (this may allow also to find cell vectors)
+	double tol = 1.e-1;
+	vector<double> TransVecs;
+	vector<double> TransVecsNorm;
+	vector<unsigned int> count_TransVecs;
+	
+	// search for first atom of work sys to construct the vectors and then parallelized for all atoms
+	//for(unsigned int j=0;j<SubSys_ref.size();j++){
+	//	double dx = SubSys_ref[j].pos.x - SubSys_work[0].pos.x;
+	//	double dy = SubSys_ref[j].pos.y - SubSys_work[0].pos.y;
+	//	double dz = SubSys_ref[j].pos.z - SubSys_work[0].pos.z;
+	//	double dist = dx*dx + dy*dy + dz*dz;
+	//	TransVecs.push_back(dx);
+	//	TransVecs.push_back(dy);
+	//	TransVecs.push_back(dz);
+	//	TransVecsNorm.push_back(dist);
+	//	count_TransVecs.push_back(1);
+	//}
+	//
+	//unsigned int nbAt_work = SubSys_work.size();
+	//for(unsigned int i=1;i<SubSys_work.size();i++){
+	//	Dis.ProgressBar(nbAt_work,i);
+	//	for(unsigned int j=0;j<SubSys_ref.size();j++){
+	//		double dx = SubSys_ref[j].pos.x - SubSys_work[i].pos.x;
+	//		double dy = SubSys_ref[j].pos.y - SubSys_work[i].pos.y;
+	//		double dz = SubSys_ref[j].pos.z - SubSys_work[i].pos.z;
+	//		double dist = dx*dx + dy*dy + dz*dz;
+	//		bool already = false;
+	//		for(unsigned int k=0;k<TransVecsNorm.size();k++){
+	//			if( fabs(TransVecsNorm[k]-dist) < tol ){
+	//				already = true;
+	//				count_TransVecs[k]++;
+	//				break;
+	//			}
+	//		}
+	//	}
+	//}
+
+	// better to do brut force to be sure to find the right place
+	unsigned int nbAt_work = SubSys_work.size();
+	for(unsigned int i=0;i<SubSys_work.size();i++){
+		//Dis->ProgressBar(nbAt_work,i);
+		for(unsigned int j=0;j<SubSys_ref.size();j++){
+			double dx = SubSys_ref[j].pos.x - SubSys_work[i].pos.x;
+			double dy = SubSys_ref[j].pos.y - SubSys_work[i].pos.y;
+			double dz = SubSys_ref[j].pos.z - SubSys_work[i].pos.z;
+			double dist = dx*dx + dy*dy + dz*dz;
+			bool already = false;
+			for(unsigned int k=0;k<TransVecsNorm.size();k++){
+				if( fabs(TransVecsNorm[k]-dist) < tol ){
+					already = true;
+					count_TransVecs[k]++;
+					break;
+				}
+			}
+			if( !already ){
+				TransVecs.push_back(dx);
+				TransVecs.push_back(dy);
+				TransVecs.push_back(dz);
+				TransVecsNorm.push_back(dist);
+				count_TransVecs.push_back(1);
+			}
+		}
+	}
+
+	// shift the ref system and verify that the ref system fully coincide with the working sys when apply x and y bc
+	bool coincide = false;
+	unsigned int max_test = 100;
+	if( max_test > TransVecsNorm.size() ) max_test = TransVecsNorm.size()-1;
+	unsigned int count = 0;
+	double *at_sp = new double[SubSys_ref.size()];
+	while( !coincide ){
+		coincide = true;
+		unsigned int opt_ind = MT->max(count_TransVecs);
+		for(unsigned int j=0;j<SubSys_ref.size();j++){
+			SubSys_ref[j].pos.x -= TransVecs[opt_ind*3];
+			SubSys_ref[j].pos.y -= TransVecs[opt_ind*3+1];
+			SubSys_ref[j].pos.z -= TransVecs[opt_ind*3+2];
+		}
+
+		double sigma = 0.25;
+		double min_sp = 1.e-1;
+		tol = 1.e-3;
+		for(unsigned int i=0;i<SubSys_ref.size();i++){
+			at_sp[i] = 0.;
+			double xr = SubSys_ref[i].pos.x;
+			double yr = SubSys_ref[i].pos.y;
+			double zr = SubSys_ref[i].pos.z;
+			for(unsigned int j=0;j<SubSys_work.size();j++){
+				for(int bx=-1;bx<2;bx++){
+					for(int by=-1;by<2;by++){
+						double xw = SubSys_work[j].pos.x + H1[0]*bx + H2[0]*by;
+						double yw = SubSys_work[j].pos.y + H1[1]*bx + H2[1]*by;
+						double zw = SubSys_work[j].pos.z;
+						at_sp[i] += MT->gaussian(xw, yw, zw, xr, yr, zr, sigma);
+					}
+				}
+			}
+			if( ( i != 0 && fabs(at_sp[i]-at_sp[i-1]) > tol ) || at_sp[i] < min_sp ){
+				coincide = false;
+				break;
+			}
+		}
+		if( !coincide ){
+			if( count >= max_test ) coincide = true;
+			else{
+				// remove the shift and erase the corresponding elements in vectors
+				for(unsigned int j=0;j<SubSys_ref.size();j++){
+					SubSys_ref[j].pos.x += TransVecs[opt_ind*3];
+					SubSys_ref[j].pos.y += TransVecs[opt_ind*3+1];
+					SubSys_ref[j].pos.z += TransVecs[opt_ind*3+2];
+				}
+				count_TransVecs.erase(count_TransVecs.begin()+opt_ind);
+				TransVecs.erase(TransVecs.begin()+opt_ind);
+				TransVecs.erase(TransVecs.begin()+opt_ind);
+				TransVecs.erase(TransVecs.begin()+opt_ind);
+				TransVecsNorm.erase(TransVecsNorm.begin()+opt_ind);
+				count++;
+			}
+		}
+	}
+	if( count >= max_test ){
+		cout << "Cannot align systems, aborting to make symmetric surfaces" << endl;
+		return false;
+	}
+	
+	// Now remove ions of the working sys not coinciding with the ref sys
+	// keep ions above/bellow mean z pos of ref system
+	vector<unsigned int> index2rm;
+	double mean_z_pos = 0.;
+	for(unsigned int i=0;i<SubSys_ref.size();i++) mean_z_pos += SubSys_ref[i].pos.z;
+	mean_z_pos /= SubSys_ref.size();
+
+	for(unsigned int i=0;i<SubSys_work.size();i++){
+		if( surf2dup == "down" && SubSys_work[i].pos.z < mean_z_pos ) continue;
+		else if( surf2dup == "up" && SubSys_work[i].pos.z > mean_z_pos ) continue;
+		else{
+			double sigma = 0.25;
+			double min_sp = 1.e-1;
+			double cur_at_sp = 0.;
+			double xr = SubSys_work[i].pos.x;
+			double yr = SubSys_work[i].pos.y;
+			double zr = SubSys_work[i].pos.z;
+			for(unsigned int j=0;j<SubSys_ref.size();j++){
+				for(int bx=-1;bx<2;bx++){
+					for(int by=-1;by<2;by++){
+						double xw = SubSys_ref[j].pos.x + H1[0]*bx + H2[0]*by;
+						double yw = SubSys_ref[j].pos.y + H1[1]*bx + H2[1]*by;
+						double zw = SubSys_ref[j].pos.z;
+						cur_at_sp += MT->gaussian(xw, yw, zw, xr, yr, zr, sigma);
+					}
+				}
+			}
+			if( cur_at_sp < min_sp ) index2rm.push_back(work_ind[i]);
+		}
+	}
+	//cout << "Removing " << index2rm.size() << " atoms to symmetrize the surfaces" << endl;
+	RemoveAtoms(index2rm);
+
+	delete[] vec;
+	delete[] rotmat;
+	delete[] at_sp;
+	return true;
 }
 
 double AtomicSystem::ComputeAverageDistance(){

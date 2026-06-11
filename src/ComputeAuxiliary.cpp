@@ -607,6 +607,180 @@ double* ComputeAuxiliary::Compute_D2Min(AtomicSystem &AnalyzedSystem, double rc)
 	return this->D2Min;
 }
 
+bool ComputeAuxiliary::AreSurfacesSame(AtomicSystem *AtSys1, std::string updown1, AtomicSystem *AtSys2, std::string updown2, bool symm){
+	if( ( updown1 != "down" && updown1 != "up" ) || ( updown2 != "down" && updown2 != "up" ) ){
+		cout << "The surface to symmetrize should be either \"down\" or \"up\"" << endl;
+		return false;		
+	}
+	
+	bool reverse = false;
+	if( ( updown1 == "down" && updown2 == "up" ) || ( updown1 == "up" && updown2 == "down" ) ) reverse = true;
+
+	double slab_width = 10.;
+	// search min and max z pos of the system
+	double min_z1 = std::numeric_limits<double>::max();
+	double max_z1 = -std::numeric_limits<double>::max();
+	double min_z2 = std::numeric_limits<double>::max();
+	double max_z2 = -std::numeric_limits<double>::max();
+	double *refpos1 = new double[3];
+	double *refpos2 = new double[3];
+	unsigned int nbAtom1 = AtSys1->getNbAtom();
+	unsigned int nbAtom2 = AtSys2->getNbAtom();
+	for(unsigned int i=0;i<nbAtom1;i++){
+		if( AtSys1->getAtom(i).pos.z < min_z1 ){
+			min_z1 = AtSys1->getAtom(i).pos.z;
+			if( updown1 == "down" ){
+				refpos1[0] = AtSys1->getAtom(i).pos.x;
+				refpos1[1] = AtSys1->getAtom(i).pos.y;
+				refpos1[2] = AtSys1->getAtom(i).pos.z;
+			}
+		}
+		if( AtSys1->getAtom(i).pos.z > max_z1 ){
+			max_z1 = AtSys1->getAtom(i).pos.z;
+			if( updown1 == "up" ){
+				refpos1[0] = AtSys1->getAtom(i).pos.x;
+				refpos1[1] = AtSys1->getAtom(i).pos.y;
+				refpos1[2] = AtSys1->getAtom(i).pos.z;
+			}
+		}
+	}
+	for(unsigned int i=0;i<nbAtom2;i++){
+		if( AtSys2->getAtom(i).pos.z < min_z2 ){
+			min_z2 = AtSys2->getAtom(i).pos.z;
+			if( updown2 == "down" ){
+				refpos2[0] = AtSys2->getAtom(i).pos.x;
+				refpos2[1] = AtSys2->getAtom(i).pos.y;
+				refpos2[2] = AtSys2->getAtom(i).pos.z;
+			}
+		}
+		if( AtSys2->getAtom(i).pos.z > max_z2 ){
+			max_z2 = AtSys2->getAtom(i).pos.z;
+			if( updown2 == "up" ){
+				refpos2[0] = AtSys2->getAtom(i).pos.x;
+				refpos2[1] = AtSys2->getAtom(i).pos.y;
+				refpos2[2] = AtSys2->getAtom(i).pos.z;
+			}
+		}
+	}
+
+	vector<Atom> SubSys1, SubSys2;
+	for(unsigned int i=0;i<nbAtom1;i++){
+		if( updown1 == "down" && AtSys1->getAtom(i).pos.z < min_z1+slab_width ) SubSys1.push_back(AtSys1->getAtom(i));
+		else if( updown1 == "up" && AtSys1->getAtom(i).pos.z > max_z1-slab_width ) SubSys1.push_back(AtSys1->getAtom(i));
+	}
+	for(unsigned int i=0;i<nbAtom2;i++){
+		if( updown2 == "down" && AtSys2->getAtom(i).pos.z < min_z2+slab_width ) SubSys2.push_back(AtSys2->getAtom(i));
+		else if( updown2 == "up" && AtSys2->getAtom(i).pos.z > max_z2-slab_width ) SubSys2.push_back(AtSys2->getAtom(i));
+	}
+	
+	double minmax;
+	if( reverse ){
+		for(unsigned int i=0;i<SubSys1.size();i++) SubSys1[i].pos.z *= -1.;
+		if( !symm ){ 
+			double *vec = new double[3];
+			vec[0] = 0.;
+			vec[1] = 0.;
+			vec[2] = 1.;
+			double theta = M_PI;
+			double *rotmat = new double[9];
+			MT->Vec2rotMat(vec,theta,rotmat);
+			for(unsigned int i=0;i<SubSys1.size();i++) MT->MatDotAt(rotmat,SubSys1[i],SubSys1[i]);
+			delete[] vec;
+			delete[] rotmat;
+		}
+		// recompute refpos1
+		if( updown1 == "down" ) minmax = -std::numeric_limits<double>::max();
+		else minmax = std::numeric_limits<double>::max();
+		for(unsigned int i=0;i<SubSys1.size();i++){
+			if( ( updown1 == "down" && SubSys1[i].pos.z > minmax ) || ( updown1 == "up" && SubSys1[i].pos.z < minmax ) ){
+				minmax = SubSys1[i].pos.z;
+				refpos1[0] = SubSys1[i].pos.x;
+				refpos1[1] = SubSys1[i].pos.y;
+				refpos1[2] = SubSys1[i].pos.z;
+			}
+		}
+	}else if( updown1 == "up" ) minmax = max_z1;
+	else minmax = min_z1;
+
+	bool debug = false;
+	if( debug ){
+		Atom *AtList = new Atom[SubSys1.size()+SubSys2.size()];
+		double *aux2print = new double[SubSys1.size()+SubSys2.size()];
+		for(unsigned int i=0;i<SubSys1.size();i++){
+			AtList[i] = SubSys1[i];
+			aux2print[i] = 0.;
+		}
+		for(unsigned int i=0;i<SubSys2.size();i++){
+			AtList[i+SubSys1.size()] = SubSys2[i];
+			aux2print[i+SubSys1.size()] = 1.;
+		}
+		Crystal *MyC = new Crystal("Forsterite");
+		AtomicSystem *ToPrint = new AtomicSystem(AtList,SubSys1.size()+SubSys2.size(),MyC,AtSys1->getH1(),AtSys1->getH2(),AtSys1->getH3());
+		ToPrint->setAux(aux2print,"aux");
+		ToPrint->printSystem_aux("Debug.cfg","aux");
+	}
+	
+	// shift sys1 to be in contact with sys2
+	for(unsigned int i=0;i<SubSys1.size();i++){
+		SubSys1[i].pos.x += refpos2[0] - refpos1[0];
+		SubSys1[i].pos.y += refpos2[1] - refpos1[1];
+		SubSys1[i].pos.z += refpos2[2] - refpos1[2];
+	}
+	delete[] refpos1;
+	delete[] refpos2;
+
+	// search if 1 coincide with 2 with bc
+	for(unsigned int i=0;i<SubSys1.size();i++){
+		if( ( ( updown1 == "down" && reverse ) || (updown1 == "up" && !reverse ) ) && SubSys1[i].pos.z < (minmax-(0.75*slab_width)) ) continue;
+		else if( ( ( updown1 == "up" && reverse ) || (updown1 == "down" && !reverse ) ) && SubSys1[i].pos.z > (minmax+(0.75*slab_width)) ) continue;
+		else{
+			double sigma = 0.25;
+			double min_sp = 1.e-1;
+			double cur_at_sp = 0.;
+			double xr = SubSys1[i].pos.x;
+			double yr = SubSys1[i].pos.y;
+			double zr = SubSys1[i].pos.z;
+			for(unsigned int j=0;j<SubSys2.size();j++){
+				for(int bx=-1;bx<2;bx++){
+					for(int by=-1;by<2;by++){
+						double xw = SubSys2[j].pos.x + AtSys2->getH1()[0]*bx + AtSys2->getH2()[0]*by;
+						double yw = SubSys2[j].pos.y + AtSys2->getH1()[1]*bx + AtSys2->getH2()[1]*by;
+						double zw = SubSys2[j].pos.z;
+						cur_at_sp += MT->gaussian(xw, yw, zw, xr, yr, zr, sigma);
+					}
+				}
+			}
+			if( cur_at_sp < min_sp ) return false;
+		}
+	}
+	// search if 2 coincide with 1 with bc
+	for(unsigned int i=0;i<SubSys2.size();i++){
+		if( updown2 == "up" && SubSys2[i].pos.z < (max_z2-(0.75*slab_width)) ) continue;
+		else if( updown1 == "down" && SubSys2[i].pos.z > (min_z2+(0.75*slab_width)) ) continue;
+		else{
+			double sigma = 0.25;
+			double min_sp = 1.e-1;
+			double cur_at_sp = 0.;
+			double xr = SubSys2[i].pos.x;
+			double yr = SubSys2[i].pos.y;
+			double zr = SubSys2[i].pos.z;
+			for(unsigned int j=0;j<SubSys1.size();j++){
+				for(int bx=-1;bx<2;bx++){
+					for(int by=-1;by<2;by++){
+						double xw = SubSys1[j].pos.x + AtSys1->getH1()[0]*bx + AtSys1->getH2()[0]*by;
+						double yw = SubSys1[j].pos.y + AtSys1->getH1()[1]*bx + AtSys1->getH2()[1]*by;
+						double zw = SubSys1[j].pos.z;
+						cur_at_sp += MT->gaussian(xw, yw, zw, xr, yr, zr, sigma);
+					}
+				}
+			}
+			if( cur_at_sp < min_sp ) return false;
+		}
+	}
+	return true;
+}
+
+
 ComputeAuxiliary::~ComputeAuxiliary(){
 	delete MT;
 	if( this->Reference_AtomicStrain_Computed ){

@@ -35,6 +35,7 @@
 #include "MathTools.h"
 #include <cmath>
 #include <unordered_set>
+#include <algorithm>
 
 using namespace std;
 
@@ -987,11 +988,24 @@ void Crystal::read_database(){
 			if(pos_DNS!=string::npos){
 				this->IsDoNotSep = true;
 				istringstream text(line);
-				text >> buffer_s >> buffer_uint >> buffer_uint_1 >> buffer_uint_2;
+				string buffer_site;
+				text >> buffer_s >> buffer_uint >> buffer_uint_1 >> buffer_site;
 				this->DoNotSep.push_back(vector<unsigned int> ());
 				this->DoNotSep[this->DoNotSep.size()-1].push_back(buffer_uint);
 				this->DoNotSep[this->DoNotSep.size()-1].push_back(buffer_uint_1);
-				this->DoNotSep[this->DoNotSep.size()-1].push_back(buffer_uint_2);
+				size_t pos_und = buffer_site.find("_");
+				if( pos_und!=string::npos ){
+					replace(buffer_site.begin(), buffer_site.end(), '_', ' ');
+					istringstream text2(buffer_site);
+					text2 >> buffer_uint_2;
+					this->DoNotSep[this->DoNotSep.size()-1].push_back(buffer_uint_2);
+					text2 >> buffer_uint_2;
+					this->DoNotSep[this->DoNotSep.size()-1].push_back(buffer_uint_2);
+				}else{
+					istringstream text2(buffer_site);
+					text2 >> buffer_uint_2;
+					this->DoNotSep[this->DoNotSep.size()-1].push_back(buffer_uint_2);
+				}
 			}
 
 			// get lines where are the keywords Masses and Atoms to get atom type masses and positions

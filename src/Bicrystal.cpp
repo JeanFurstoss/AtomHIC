@@ -1211,7 +1211,7 @@ void Bicrystal::ShowPossibleFacets(unsigned int max_hkl_u){
 }
 
 // Constructor for bicrystal with plane GB with given misorientation and GB plane
-Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, double theta, int h_p, int k_p, int l_p, bool rationalize, vector<string> Properties, int h_px, int k_px, int l_px):h_a(h_a), k_a(k_a), l_a(l_a), theta(theta), h_p(h_p), k_p(k_p), l_p(l_p){
+Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, double theta, int h_p, int k_p, int l_p, bool rationalize, vector<string> Properties, int h_px, int k_px, int l_px, bool vacuum):h_a(h_a), k_a(k_a), l_a(l_a), theta(theta), h_p(h_p), k_p(k_p), l_p(l_p){
 	read_params();
 	this->MT = new MathTools;
 	setCrystal(crystalName);
@@ -1224,6 +1224,11 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	}
 	cout << "Constructing a GB misoriented by " << theta*180./M_PI << "° around [" << h_a << "_" << k_a << i_a_str << "_" << l_a << "] axis and one GB plane (" << h_p << "_" << k_p << i_p_str << "_" << l_p << ")" << endl;
 	setOrientedCrystals(crystalName, rationalize, Properties, h_px, k_px, l_px);
+	if( vacuum && _MyCrystal->getIsCharge() ){
+		cout << "Making surface charge neutral" << endl;
+		_MyCrystal->getOrientedSystem()->MakeSurfaceNeutral(false);
+		_MyCrystal2->getOrientedSystem()->MakeSurfaceNeutral(false);
+	}
 	_MyCrystal->ComputeOrthogonalPlanesAndDirections();
 	_MyCrystal2->ComputeOrthogonalPlanesAndDirections();
 	Dis->DisplayGB(_MyCrystal,_MyCrystal2);
@@ -1670,18 +1675,28 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 		i_p_2_y_str = "_"+to_string(-_MyCrystal2->getOrthogonalPlanes()[3]-_MyCrystal2->getOrthogonalPlanes()[4]);
 		i_p_2_z_str = "_"+to_string(-_MyCrystal2->getOrthogonalPlanes()[6]-_MyCrystal2->getOrthogonalPlanes()[7]);
 	}
-	this->File_Heading = " # ["+h_a_str+"_"+k_a_str+i_a_str+"_"+l_a_str+"]"+theta_str+"°("+h_p_str+"_"+k_p_str+i_p_str+"_"+l_p_str+") "+crystalName+" grain boundary\n # The present GB have plane ("+h_p_1_z_str+"_"+k_p_1_z_str+i_p_1_z_str+"_"+l_p_1_z_str+") for lower grain and ("+h_p_2_z_str+"_"+k_p_2_z_str+i_p_2_z_str+"_"+l_p_2_z_str+") for upper grain\n";
-	this->Grain1->set_File_Heading(" # Lower grain of the ["+h_a_str+"_"+k_a_str+i_a_str+"_"+l_a_str+"]"+theta_str+"°("+h_p_str+"_"+k_p_str+i_p_str+"_"+l_p_str+") "+crystalName+" grain boundary\n # This system has x <=> ["+h_d_1_x_str+"_"+k_d_1_x_str+i_d_1_x_str+"_"+l_d_1_x_str+"], y <=> ["+h_d_1_y_str+"_"+k_d_1_y_str+i_d_1_y_str+"_"+l_d_1_y_str+"], z <=> ["+h_d_1_z_str+"_"+k_d_1_z_str+i_d_1_z_str+"_"+l_d_1_z_str+"] and x <=> ("+h_p_1_x_str+"_"+k_p_1_x_str+i_p_1_x_str+"_"+l_p_1_x_str+"), y <=> ("+h_p_1_y_str+"_"+k_p_1_y_str+i_p_1_y_str+"_"+l_p_1_y_str+"), z <=> ("+h_p_1_z_str+"_"+k_p_1_z_str+i_p_1_z_str+"_"+l_p_1_z_str+")\n");
-	this->Grain2->set_File_Heading(" # Upper grain of the ["+h_a_str+"_"+k_a_str+i_a_str+"_"+l_a_str+"]"+theta_str+"°("+h_p_str+"_"+k_p_str+i_p_str+"_"+l_p_str+") "+crystalName+" grain boundary\n # This system has x <=> ["+h_d_2_x_str+"_"+k_d_2_x_str+i_d_2_x_str+"_"+l_d_2_x_str+"], y <=> ["+h_d_2_y_str+"_"+k_d_2_y_str+i_d_2_y_str+"_"+l_d_2_y_str+"], z <=> ["+h_d_2_z_str+"_"+k_d_2_z_str+i_d_2_z_str+"_"+l_d_2_z_str+"] and x <=> ("+h_p_2_x_str+"_"+k_p_2_x_str+i_p_2_x_str+"_"+l_p_2_x_str+"), y <=> ("+h_p_2_y_str+"_"+k_p_2_y_str+i_p_2_y_str+"_"+l_p_2_y_str+"), z <=> ("+h_p_2_z_str+"_"+k_p_2_z_str+i_p_2_z_str+"_"+l_p_2_z_str+")\n");
+
+        if( vacuum ){
+                double fac_vacuum = 1.5;
+                double zero = 0.;
+                double shift_z = H3[2] * ((fac_vacuum-1.)/2.);
+                H3[2] *= fac_vacuum;
+                ApplyShift(zero,zero,shift_z);
+        }
+
+
+	this->File_Heading = " # ["+h_a_str+"_"+k_a_str+i_a_str+"_"+l_a_str+"]"+theta_str+"°("+h_p_str+"_"+k_p_str+i_p_str+"_"+l_p_str+") "+crystalName+" grain boundary\n # The present GB have plane ("+h_p_1_z_str+"_"+k_p_1_z_str+i_p_1_z_str+"_"+l_p_1_z_str+") for upper grain and ("+h_p_2_z_str+"_"+k_p_2_z_str+i_p_2_z_str+"_"+l_p_2_z_str+") for lower grain\n";
+	this->Grain1->set_File_Heading(" # Upper grain of the ["+h_a_str+"_"+k_a_str+i_a_str+"_"+l_a_str+"]"+theta_str+"°("+h_p_str+"_"+k_p_str+i_p_str+"_"+l_p_str+") "+crystalName+" grain boundary\n # This system has x <=> ["+h_d_1_x_str+"_"+k_d_1_x_str+i_d_1_x_str+"_"+l_d_1_x_str+"], y <=> ["+h_d_1_y_str+"_"+k_d_1_y_str+i_d_1_y_str+"_"+l_d_1_y_str+"], z <=> ["+h_d_1_z_str+"_"+k_d_1_z_str+i_d_1_z_str+"_"+l_d_1_z_str+"] and x <=> ("+h_p_1_x_str+"_"+k_p_1_x_str+i_p_1_x_str+"_"+l_p_1_x_str+"), y <=> ("+h_p_1_y_str+"_"+k_p_1_y_str+i_p_1_y_str+"_"+l_p_1_y_str+"), z <=> ("+h_p_1_z_str+"_"+k_p_1_z_str+i_p_1_z_str+"_"+l_p_1_z_str+")\n");
+	this->Grain2->set_File_Heading(" # Lower grain of the ["+h_a_str+"_"+k_a_str+i_a_str+"_"+l_a_str+"]"+theta_str+"°("+h_p_str+"_"+k_p_str+i_p_str+"_"+l_p_str+") "+crystalName+" grain boundary\n # This system has x <=> ["+h_d_2_x_str+"_"+k_d_2_x_str+i_d_2_x_str+"_"+l_d_2_x_str+"], y <=> ["+h_d_2_y_str+"_"+k_d_2_y_str+i_d_2_y_str+"_"+l_d_2_y_str+"], z <=> ["+h_d_2_z_str+"_"+k_d_2_z_str+i_d_2_z_str+"_"+l_d_2_z_str+"] and x <=> ("+h_p_2_x_str+"_"+k_p_2_x_str+i_p_2_x_str+"_"+l_p_2_x_str+"), y <=> ("+h_p_2_y_str+"_"+k_p_2_y_str+i_p_2_y_str+"_"+l_p_2_y_str+"), z <=> ("+h_p_2_z_str+"_"+k_p_2_z_str+i_p_2_z_str+"_"+l_p_2_z_str+")\n");
 	this->xl1 *= Mx1; 
 	this->xl2 *= Mx2; 
 	this->yl1 *= My1; 
 	this->yl2 *= My2; 
 }
 //
-void Bicrystal::PasteGrains(AtomicSystem* Grain1, AtomicSystem* Grain2) {
-    unsigned int nbAtom1 = Grain1->getNbAtom();
-    unsigned int nbAtom2 = Grain2->getNbAtom();
+void Bicrystal::PasteGrains(AtomicSystem* _Grain1, AtomicSystem* _Grain2) {
+    unsigned int nbAtom1 = _Grain1->getNbAtom();
+    unsigned int nbAtom2 = _Grain2->getNbAtom();
 
     unsigned int new_nbAtom = nbAtom1 + nbAtom2;
     if( nbAtom != new_nbAtom ){
@@ -1692,14 +1707,14 @@ void Bicrystal::PasteGrains(AtomicSystem* Grain1, AtomicSystem* Grain2) {
 
     // Copy atoms from Grain1, + Z translation
     for (unsigned int i = 0; i < nbAtom1; ++i) {
-        Atom A = Grain1->getAtom(i);
-        A.pos.z += this->H3_G2[2] + (GBspace / 2.0);
+        Atom A = _Grain1->getAtom(i);
+        A.pos.z += _Grain2->getH3()[2] + (GBspace / 2.0);
         this->AtomList[i] = A;
     }
 
     // Copy atoms from Grain2 as they are
     for (unsigned int i = 0; i < nbAtom2; ++i) {
-        this->AtomList[nbAtom1 + i] = Grain2->getAtom(i);
+        this->AtomList[nbAtom1 + i] = _Grain2->getAtom(i);
     }
 }
 

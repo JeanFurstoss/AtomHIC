@@ -88,7 +88,7 @@ private:
 	bool IsMultisite = false;
 	AtomicSystem *OrientedSystem;
 	MathTools *MT;
-	std::vector<std::vector<unsigned int>> DoNotSep; // contain the number neighbour which should not be separe from a given atom type <=> do not separe atom type DoNotSep[i][0] from its DoNotSep[i][1] first neighbors of atom type DoNotSep[i][2]
+	std::vector<std::vector<unsigned int>> DoNotSep; // contain the number neighbour which should not be separe from a given atom type <=> do not separe atom type DoNotSep[i][0] from its DoNotSep[i][1] first neighbors of atom type DoNotSep[i][2] if DoNotSep[i].size() == 4 then DoNotSep[i][3] = crystallographic site of atom type DoNotSep[i][2]
 	std::vector<std::vector<int>> NotSepList; // contain the id of neighbors which should not be separe from the given atom, NotSepList[i][j*4] = id of neighbor j which should not be separe from atom i, NotSepList[i][j*4+k] = multiplicative coefficient with ak(a1, a2, a3) for this atom to be the neighbot
 	bool IsDoNotSep = false;
 	double *rot_mat_total; // rotation matrix used to pass from the database oriented crystal to the current orientation

@@ -133,7 +133,7 @@ public:
 	Bicrystal(const std::string& filename);
 	Bicrystal(const std::string& filename, const std::string CrystalName);
 	Bicrystal(const std::string& filename, const std::string NormalDir, const std::string CrystalName);
-	Bicrystal(const std::string& crystalName, int h_a, int k_a, int l_a, double theta, int h_p, int k_p, int l_p, bool rationalize, std::vector<std::string> Properties=std::vector<std::string>(), int h_px=0, int k_px=0, int l_px=0);// Constructor for bicrystal with plane GB with given misorientation and GB plane
+	Bicrystal(const std::string& crystalName, int h_a, int k_a, int l_a, double theta, int h_p, int k_p, int l_p, bool rationalize, std::vector<std::string> Properties=std::vector<std::string>(), int h_px=0, int k_px=0, int l_px=0, bool vacuum=false);// Constructor for bicrystal with plane GB with given misorientation and GB plane
 	Bicrystal(const std::string& crystalName, int h_a, int k_a, int l_a, double theta, int h_p, int k_p, int l_p, std::vector<int> FacetsType, double L_facet, std::vector<std::string> Properties=std::vector<std::string>(), int h_px=0, int k_px=0, int l_px=0);// Constructor for bicrystal with facetted GB with given misorientation and GB plane and facet type
 	Bicrystal(const std::string& crystalName, int h_a, int k_a, int l_a, double theta); // constructor using only misorientation freedom degree (bicrystallo analyzis)
 	// getters
@@ -147,13 +147,21 @@ public:
 	double getyl1(){ return this->yl1; }
 	double getxl2(){ return this->xl2; }
 	double getyl2(){ return this->yl2; }
+	double getDupX1(){ return this->dupX1; }
+	double getDupX2(){ return this->dupX2; }
+	double getDupY1(){ return this->dupY1; }
+	double getDupY2(){ return this->dupY2; }
+	double getMx1(){ return this->Mx1; }
+	double getMx2(){ return this->Mx2; }
+	double getMy1(){ return this->My1; }
+	double getMy2(){ return this->My2; }
+	double *getRotMatG2(){ return this->RotCartToGrain2; }
 	double getSigma(){ return this->sigma; }
 	double* getCSL_Basis(){ return this->CSL_Basis; }
 	//
 	double* getDSC_Basis() { return this->DSC_Basis; }
 	bool getIsDSC_Basis() { return this->IsDSC_Basis; }
 	void printDSC();
-	// Accesses the DSC_Basis data structure and checks its validity, with a method to display its contents.
 	// methods
 	void read_params();
 	void print_Grains(bool vacuum = false);
