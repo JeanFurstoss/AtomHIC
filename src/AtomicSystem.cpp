@@ -1364,8 +1364,6 @@ void AtomicSystem::ComputeNotSepList(){
 	for(unsigned int i=0;i<nbAtom;i++) NotSepTag[i].push_back(0);
 	this->IsNotSepTag = true;
 	double rcut = MT->min_p(_MyCrystal->getALength(),3);
-	rcut *= 2.;
-	rcut = 3.;
 	unsigned int DNS_size = _MyCrystal->getDoNotSep().size();
 	bool IsSite = false;
 	ComputeAuxiliary *CA;
@@ -1403,8 +1401,6 @@ void AtomicSystem::ComputeNotSepList(){
 				}
 			}
 		}
-		//if( AtomList[i].type_uint == 1 ){
-		//	for(unsigned int n=0;n<site2search.size();n++) cout << nbNeigh[n] << " " << type2search[n]
 		if( !ToTreat ) continue;
 		xpos = WrappedPos[i].x;
 		ypos = WrappedPos[i].y;
@@ -1476,9 +1472,9 @@ void AtomicSystem::ComputeNotSepList(){
 						NotSepTag[i][0]++;
 						NotSepTag[i].push_back((unsigned int) (ToSort[j*3+1]));
 						NotSepTag[(unsigned int) (ToSort[j*3+1])][0] = -1-i;
-						if( ToSort[j*3+2] == 0 && site2search[n] == 1 ){
-							cout << "WARNIGN" << endl;
-						}
+						//if( ToSort[j*3+2] == 0 && site2search[n] == 1 ){
+						//	cout << "WARNING" << endl;
+						//}
 						nbneighstored++;
 					}
 					j++;
@@ -1739,7 +1735,7 @@ unsigned int AtomicSystem::searchNeighbours(const double& rc){
 		if( Cells[i].size() > this->nbMaxN ) this->nbMaxN = Cells[i].size();
 	}
 	if( nbAt_test != this->nbAtom ) cout << "We miss atoms during cell list" << endl;
-	unsigned int facsec = (int) (2.5*4.*M_PI*pow(rc,3.)/(3.*CellSizeX*CellSizeY*CellSizeZ)); // 2. is a security factor TODO put it in FixedParameters
+	long unsigned int facsec = (long int) (2.5*4.*M_PI*pow(rc,3.)/(3.*CellSizeX*CellSizeY*CellSizeZ)); // 2. is a security factor TODO put it in FixedParameters
 	if( facsec == 0 ) facsec = 1;
 	this->nbMaxN *= facsec; 
 	if( this->IsNeighbours ){
@@ -4843,9 +4839,7 @@ void AtomicSystem::MakeSurfaceNeutral(vector<int> Oris, vector<double> shift, ve
 
 }	
 	
-double AtomicSystem::MakeSurfaceNeutral(bool verbose){
-	//double ztol_choose = 1.e-2;
-	double ztol_choose = .3; // to pass as argument
+double AtomicSystem::MakeSurfaceNeutral(bool verbose, double ztol_choose){
 	unsigned int seed = 0;
 	if( IsCharge == false ) return 0.;
 	bool Possible = false; // at least we should have two atom types having charge with opposite sign
@@ -4869,15 +4863,8 @@ double AtomicSystem::MakeSurfaceNeutral(bool verbose){
 	unsigned int MinNbMoveMax = 20;
 	double slab_width = ave_dist*2.;
 	double min_z = std::numeric_limits<double>::max();
-	double max_z = std::numeric_limits<double>::max();
-	for(unsigned int i=0;i<nbAtom;i++){
-		if( AtomList[i].pos.z < min_z ) min_z = AtomList[i].pos.z;
-		if( AtomList[i].pos.z > max_z ) max_z = AtomList[i].pos.z;
-	}
-
-	for(unsigned int i=0;i<nbAtom;i++){
-		if( AtomList[i].pos.z < min_z+slab_width ) nbMoveMax++;
-	}
+	for(unsigned int i=0;i<nbAtom;i++) if( AtomList[i].pos.z < min_z ) min_z = AtomList[i].pos.z;
+	for(unsigned int i=0;i<nbAtom;i++) if( AtomList[i].pos.z < min_z+slab_width ) nbMoveMax++;
 	if( nbMoveMax < MinNbMoveMax ) nbMoveMax = MinNbMoveMax;
 	if( verbose ) cout << "Trying to make charge neutral surfaces by moving " << nbMoveMax << " ions (or group of ions to be not separed) from the bottom surface to the upper one.." << endl;
 	// Increase H3 length to be sure to have free surfaces
@@ -4981,9 +4968,6 @@ double AtomicSystem::MakeSurfaceNeutral(bool verbose){
 			opt_ind = i+1;
 		}
 		z[ind_tomove] = AtomList[ind_tomove].pos.z;
-		//ind_tomove = MT->min_p_ind(z,nbAtom);
-		//
-		//
 		ind_tomove = MT->min_p_ind(z,nbAtom);
 		double current_zmin = z[ind_tomove];
 		ind_tomove_vec.clear();
@@ -5142,6 +5126,7 @@ bool AtomicSystem::SymmetrizeSurfaces(string surf2dup){ // TODO generalize with 
 	//}
 	//
 	//unsigned int nbAt_work = SubSys_work.size();
+	//#pragma omp parallel for 
 	//for(unsigned int i=1;i<SubSys_work.size();i++){
 	//	Dis.ProgressBar(nbAt_work,i);
 	//	for(unsigned int j=0;j<SubSys_ref.size();j++){

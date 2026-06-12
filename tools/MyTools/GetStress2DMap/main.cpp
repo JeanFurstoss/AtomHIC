@@ -49,63 +49,160 @@ int main(int argc, char *argv[])
 	Displays Dis;
 	Dis.Logo();
 	
-	string InputFilename, OutputFilename, crystalName;
-	if( argc >= 3 ){
-		InputFilename = argv[1];
-		crystalName = argv[2];
-		OutputFilename = argv[3];
-	}else{
-		cerr << "Usage: ./AdjustStoichiometry InputFilename OutputFilename AuxName2Print_1 AuxName2Print_2.." << endl;
-		cerr << "Adjsut the stoichiometry of Mg2SiO4 system by removing Si, Mg and O ions, if we have to remove Si ions we assume that SiO4 tetrahedra have not been separated" << endl;
-		cerr << "TODO AuxName2Print implementation" << endl;
+	string InputFilename, OutputFilename, crystalName, AuxAtVolName;
+	if( argc < 7 ){
+		cerr << "Usage: ./GetStress2DMap InputFilename CrystalName AuxAtVolumeName NumberOfStressComp StressCompName1 StressCompName2 .. OutputNameFile" << endl;
 		return EXIT_FAILURE;
 	}
+	InputFilename = argv[1];
+	crystalName = argv[2];
+	AuxAtVolName = argv[3];
+	unsigned int nbaux;
+	istringstream iss_nbaux(argv[4]);
+	iss_nbaux >> nbaux;
+	unsigned int current_read_ind = 5;
+	vector<string> aux2treat;
+	for(unsigned int i=0;i<nbaux;i++){
+		aux2treat.push_back(argv[current_read_ind]);
+		current_read_ind++;
+	}
+	OutputFilename = argv[current_read_ind];
+
 	AtomicSystem MySystem(InputFilename);
 	MySystem.setCrystal(crystalName);
+	bool DDNS = false;
+	vector<int> *DNS;
+	unsigned int *Neigh;
+	int *CLNeigh;
+	unsigned nbN;
 	cout << "Compute not sep list" << endl;
 	MySystem.ComputeNotSepList();
 	cout << "done" << endl;
-	vector<int> *DNS = MySystem.getNotSepTag();
-	unsigned int buffer;
+	DNS = MySystem.getNotSepTag();
+	
+	cout << "Compute neighbours.." << endl;
+	nbN = MySystem.searchNeighbours(7.);
+	cout << "done" << endl;
+	Neigh = MySystem.getNeighbours();
+	CLNeigh = MySystem.getCLNeighbours();
+	
 	cout << "Getting aux" << endl;
-	unsigned int ind_p = MySystem.getAuxIdAndSize("Pressure",buffer);
-	double *Press = MySystem.getAux(ind_p);
-	unsigned int ind_v = MySystem.getAuxIdAndSize("AtomicVolume",buffer);
+	unsigned int buffer;
+	unsigned int ind_v = MySystem.getAuxIdAndSize(AuxAtVolName,buffer);
 	double *Vol = MySystem.getAux(ind_v);
-	unsigned int ind_tau = MySystem.getAuxIdAndSize("ShearStress",buffer);
-	double *Tau = MySystem.getAux(ind_tau);
+	unsigned int fullauxsize = 0;
+	vector<unsigned int> aux_sizes(nbaux);
+	vector<double*> auxes(nbaux);
+	unsigned int count_a;
+	for(unsigned int i=0;i<nbaux;i++){
+		unsigned int ind = MySystem.getAuxIdAndSize(aux2treat[i],aux_sizes[i]);
+		fullauxsize += aux_sizes[i];
+		auxes[i] = MySystem.getAux(ind);
+	}
 	const unsigned int nbAt = MySystem.getNbAtom();
 	cout << "done" << endl;
 	vector<double> coords;
-	vector<double> PAndS;
-	cout << "Compute pressure and shear stress" << endl;
+	vector<double> toprint;
+	unsigned int count;
+	//unsigned int *Account = new unsigned int[nbAt];
+	//for(unsigned int i=0;i<nbAt;i++) Account[i] = 0;
 	for(unsigned int i=0;i<nbAt;i++){
 		if( DNS[i][0] <= 0 ) continue;
 		else{
+			if( DNS[i][0] != 6 ){ // TODO to generalized
+				//cout << "WARNING" << endl;
+				continue;
+			}
+			//Account[i] += 1;
+			count = 1;
+			count += DNS[i][0];
 			double mean_y = MySystem.getAtom(i).pos.y;
 			double mean_z = MySystem.getAtom(i).pos.z;
 			double cur_Vol = Vol[i];
-			double cur_Press = Press[i];
-			double cur_Tau = Tau[i];
+			vector<double> curaux;
+			for(unsigned int a=0;a<nbaux;a++){
+				for(unsigned int d=0;d<aux_sizes[a];d++) curaux.push_back(auxes[a][i*aux_sizes[a]+d]);
+			}
+			// acount for the DNS list
 			for(unsigned int n=0;n<DNS[i][0];n++){
+				//Account[DNS[i][n+1]] += 1;
 				cur_Vol += Vol[DNS[i][n+1]];
-				cur_Press += Press[DNS[i][n+1]];
-				cur_Tau += Tau[DNS[i][n+1]];
 				mean_y += MySystem.getAtom(DNS[i][n+1]).pos.y;
 				mean_z += MySystem.getAtom(DNS[i][n+1]).pos.z;
+				count_a = 0;
+				for(unsigned int a=0;a<nbaux;a++){
+					for(unsigned int d=0;d<aux_sizes[a];d++){
+						curaux[count_a] += auxes[a][i*aux_sizes[a]+d];
+						count_a++;
+					}
+				}
 			}
-			coords.push_back(mean_y / (DNS[i][0]+1));
-			coords.push_back(mean_z / (DNS[i][0]+1));
-			PAndS.push_back(cur_Press / cur_Vol);
-			PAndS.push_back(cur_Tau / cur_Vol);
+			// account for neighbours
+			for(unsigned int j=0;j<Neigh[i*(nbN+1)];j++){
+				unsigned int id=Neigh[i*(nbN+1)+1+j];
+				if( DNS[id][0] != 6 ) continue;
+				mean_y += MySystem.getAtom(id).pos.y;
+				mean_z += MySystem.getAtom(id).pos.z;
+				count++;
+				cur_Vol += Vol[id];
+				count_a = 0;
+				for(unsigned int a=0;a<nbaux;a++){
+					for(unsigned int d=0;d<aux_sizes[a];d++){
+						curaux[count_a] += auxes[a][id*aux_sizes[a]+d];
+						count_a++;
+					}
+				}
+				for(unsigned int n=0;n<DNS[id][0];n++){
+					cur_Vol += Vol[DNS[id][n+1]];
+					mean_y += MySystem.getAtom(DNS[id][n+1]).pos.y;
+					mean_z += MySystem.getAtom(DNS[id][n+1]).pos.z;
+					count++;
+					count_a = 0;
+					for(unsigned int a=0;a<nbaux;a++){
+						for(unsigned int d=0;d<aux_sizes[a];d++){
+							curaux[count_a] += auxes[a][id*aux_sizes[a]+d];
+							count_a++;
+						}
+					}
+				}
+			}
+
+			coords.push_back(mean_y / count);
+			coords.push_back(mean_z / count);
+			count_a = 0;
+			for(unsigned int a=0;a<nbaux;a++){
+				for(unsigned int d=0;d<aux_sizes[a];d++){
+					toprint.push_back(curaux[count_a] / cur_Vol);
+					count_a++;
+				}
+			}
 		}
 	}
-	cout << "done" << endl;
-
+	//MySystem.setAux(Account,"aux");
+	//MySystem.printSystem_aux("Verif.cfg","aux");
+	//cout << "done, NbAt treated =" << count << ", trueNbAt= " << nbAt << endl;
 	ofstream file(OutputFilename);
-	file << "Y Z Press(bar) Tau(bar)" << endl;
-	for(unsigned int i=0;i<coords.size()/2;i++) file << coords[i*2] << " " << coords[i*2+1] << " " << PAndS[i*2] << " " << PAndS[i*2+1] << endl;
+	file << "Y Z";
+	for(unsigned int a=0;a<nbaux;a++){
+		if( aux_sizes[a] > 1 ){
+			for(unsigned int d=0;d<aux_sizes[a];d++) file << " " << aux2treat[a] << "[" << d+1 << "]";
+		}else file << " " << aux2treat[a];
+	}
+	file << endl;
+	unsigned int nb2print = coords.size()/2;
+	for(unsigned int i=0;i<nb2print;i++){
+		file << coords[i*2] << " " << coords[i*2+1];
+		unsigned int count_a = 0;
+		for(unsigned int a=0;a<nbaux;a++){
+			for(unsigned int d=0;d<aux_sizes[a];d++){
+				file << " " << toprint[i*fullauxsize+count_a];
+				count_a++;
+			}
+		}
+		file << endl;
+	}
 	file.close();
+
 	Dis.ExecutionTime();	
 	return 0;
 }

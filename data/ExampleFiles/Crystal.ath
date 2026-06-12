@@ -2,7 +2,8 @@
 
 CRYSTAL Crystallographic_structure // could be Cubic, Hexagonal, Orthorhombic
 DONOTSEPARE i n_1 j // (optional) do not separe atom of type i from its n_1 first neighbors of atom j during construction of oriented system (free surface) or GBs
-DONOTSEPARE k n_2 l // if the atom style is full (i.e. with molecule id, see below) it will work similarly to the DOTNOTSEPARE feature, meaning that all atoms belonging to a given molecule cannot be separated. A difference is that with a molecule id no neighbour research is done and thus the atoms in the same molecule are linked together nevermind their positions (be aware of bondary conditions when providing atom list) 
+DONOTSEPARE i_k n_2 j_m // specific crystallographic site index could be specified in the do not sep list, here in the example atom of type i and site k wont be separated from n_2 first neighbours of atom of type j with site m
+DONOTSEPARE k n_3 l // if the atom style is full (i.e. with molecule id, see below) it will work similarly to the DOTNOTSEPARE feature, meaning that all atoms belonging to a given molecule cannot be separated. A difference is that with a molecule id no neighbour research is done and thus the atoms in the same molecule are linked together nevermind their positions (be aware of bondary conditions when providing atom list) 
 DONOTSEPARE ..
 
 	N_a atoms // where N_a is the number of atom in the unit cell motif

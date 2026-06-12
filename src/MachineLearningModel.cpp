@@ -66,8 +66,9 @@ void MachineLearningModel::setDescriptors(Descriptors *D){
 				}
 			}
 			if( !found ){
-				cerr << "The filter value are different between the decriptors and the read ML database, aborting" << endl;
-				exit(EXIT_FAILURE);
+				cout << "The filter value are different between the decriptors and the read ML database, aborting" << endl;
+				//cerr << "The filter value are different between the decriptors and the read ML database, aborting" << endl;
+				//exit(EXIT_FAILURE);
 			}
 		}
 	}else{

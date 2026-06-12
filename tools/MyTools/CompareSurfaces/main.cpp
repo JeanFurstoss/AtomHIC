@@ -45,7 +45,7 @@ int main(int argc, char *argv[])
 	Displays Dis;
 	Dis.Logo();
 	if( argc < 2 ){
-		cerr << "Usage: ./SymmetrizeSurfaces InputFilename Bottom/Upper OutputFilename" << endl;
+		cerr << "Usage: ./CompareSurfaces InputFilename1 up/down1 InputFilename2 up/down2" << endl;
 		cerr << "InputFilename should be an atomic system file" << endl;
 		cerr << "Bottom/Upper specify which surface should be duplicated" << endl;
 		Dis.Printer_FitAndSaveGMM();	
@@ -53,24 +53,26 @@ int main(int argc, char *argv[])
 	}
 
 	Dis.Printer_FitAndSaveGMM();	
-	string InputFilename = argv[1];
-	string surf2dup = argv[2];
-	if( surf2dup != "down" && surf2dup != "up" ){
+	string InputFilename1 = argv[1];
+	string surf2dup1 = argv[2];
+	if( surf2dup1 != "down" && surf2dup1 != "up" ){
 		cerr << "Second argument should be either \"down\" or \"up\"" << endl;
 		exit(EXIT_FAILURE);
 	}
-
-	AtomicSystem AtSys(InputFilename);
-	ComputeAuxiliary CA;
-	if( CA.AreSurfacesSame(&AtSys,"up",&AtSys,"down") ){
-		cout << "Surfaces are already symmetric, aborting.." << endl;
-		Dis.ExecutionTime();
-		return 0;
-	}
+	AtomicSystem AtSys1(InputFilename1);
 	
-	string OutputFilename = argv[3];
+	string InputFilename2 = argv[3];
+	string surf2dup2 = argv[4];
+	if( surf2dup2 != "down" && surf2dup2 != "up" ){
+		cerr << "Second argument should be either \"down\" or \"up\"" << endl;
+		exit(EXIT_FAILURE);
+	}
+	AtomicSystem AtSys2(InputFilename2);
 
-	if( AtSys.SymmetrizeSurfaces(surf2dup) ) AtSys.printSystem(OutputFilename);
+	ComputeAuxiliary CA;
+	if( CA.AreSurfacesSame(&AtSys1,surf2dup1,&AtSys2,surf2dup2) ) cout << "Surfaces are the same" << endl;
+	else cout << "Surfaces are not the same" << endl; 
+	
 	Dis.ExecutionTime();
 	return 0;
 }

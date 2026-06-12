@@ -200,7 +200,7 @@ public:
 	void setCrystal(const std::string& CrystalName);
 	void set_File_Heading(const std::string& Heading){ this->File_Heading = Heading; }
 	// methods
-	double MakeSurfaceNeutral(bool verbose=true); // try to have neutral surfaces (considering only z-oriented surface) the function returns the z shift applied to the system due to adjustment of surface
+	double MakeSurfaceNeutral(bool verbose=true, double ztol_choose=0.); // try to have neutral surfaces (considering only z-oriented surface) the function returns the z shift applied to the system due to adjustment of surface
 	// The two next functions have not been succesfully implemented one day may be pushed further
 	void MakeSurfaceNeutral_3dBased(std::string ext); // try to have neutral surfaces 
 	void MakeSurfaceNeutral_3dBased_bis(std::string ext); // try to have neutral surfaces 

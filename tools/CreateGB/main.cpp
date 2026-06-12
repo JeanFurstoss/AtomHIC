@@ -42,7 +42,7 @@ int main(int argc, char *argv[])
 {
 	Displays Dis;
 	Dis.Logo();
-	unsigned int vacuum = 0;
+	unsigned int vacuum_i = 0;
 	if( argc != 10 && argc != 12 && argc != 11 && argc != 13 ){
 		cerr << "Usage: CreateGB h_RotAxis k_RotAxis (i_RotAxis) l_RotAxis RotAngle(in degree) h_GBPlane k_GBPlane (i_GBPlane) l_GBPlane CrystalName(has to be defined in /data/Crystal/) Rationalize (Vacuum)" << endl;
 		cerr << "The i Miller indexes (for rotation axis and GB plane) should only be used if the crystal is hexagonal" << endl;
@@ -86,7 +86,7 @@ int main(int argc, char *argv[])
 		else rat_b = true;
 		if( argc == 11 ){
 			istringstream iss_vac(argv[10]);
-			iss_vac >> vacuum;
+			iss_vac >> vacuum_i;
 		}
 	}else{
 		int i_a, i_p;
@@ -119,18 +119,14 @@ int main(int argc, char *argv[])
 		else rat_b = true;
 		if( argc == 13 ){
 			istringstream iss_vac(argv[12]);
-			iss_vac >> vacuum;
+			iss_vac >> vacuum_i;
 		}
 	}
-	Bicrystal MyGB(crystalName,h_a,k_a,l_a,theta,h_p,k_p,l_p,rat_b);
-
-	if( vacuum == 1 ){
-		double fac_vacuum = 1.5;
-		double zero = 0.;
-		double shift_z = MyGB.getH3()[2] * ((fac_vacuum-1.)/2.);
-		MyGB.getH3()[2] *= fac_vacuum;
-		MyGB.ApplyShift(zero,zero,shift_z);
-	}
+	bool vacuum;
+	if( vacuum_i == 0 ) vacuum = false;
+	else vacuum = true;
+	vector<string> Prop;
+	Bicrystal MyGB(crystalName,h_a,k_a,l_a,theta,h_p,k_p,l_p,rat_b,Prop,0,0,0,vacuum);
 
 	MyGB.print_lmp("GB.lmp");
 	MyGB.printCSL("CSL.lmp");

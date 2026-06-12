@@ -82,7 +82,8 @@ int main(int argc, char *argv[])
 		iss_ny >> ny;
 		iss_nz >> nz;
 		AtSys.duplicate(nx,ny,nz);
-		AtSys.printSystem(argv[6]);
+		if( AtSys.getAuxProp2Print() == "" ) AtSys.printSystem(argv[6]);
+		else AtSys.printSystem_aux(argv[6],AtSys.getAuxProp2Print());
 	}else if( argc == 7 && firstarg == "-shift" ){
 		if( MyTraj.SearchIsTrajectory(argv[2]) ){
 			cerr << "The use of trajectory files (.lammpstrj) has not been implemented in this executable" << endl;

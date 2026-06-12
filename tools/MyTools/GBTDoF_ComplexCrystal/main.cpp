@@ -44,6 +44,11 @@ using namespace std;
 void ExecMsg(){
 	cerr << "Usage: ./GBTDoF_ComplexCrystal DiscretizationMode nx ny h_RotAxis k_RotAxis (i_RotAxis) l_RotAxis RotAngle(in degree) h_GBPlane k_GBPlane (i_GBPlane) l_GBPlane CrystalName(has to be defined in /data/Crystal/) Rationalize" << endl;
 	cerr << "This executable creates atomic systems containing a GB with a given misorientation and GB plane and varying the translational (i.e. shift) degree of freedom" << endl << endl;
+	cerr << "The program begins by searching all possible neutral free surfaces for the upper and lower grain, all combinations of these free surfaces are then used to construct the GB atomic systems" << endl;
+	cerr << "The execution will then produce file such as GB_PlaneLow_i_PlaneUp_j_Shift_k_l.lmp where i is the index of the free surface of the lower grain and j the index of the free surface of the upper grain" << endl;
+	cerr << "The corresponding free surface systems are output under the name LowerGrain_i.lmp and UpperGrain_j.lmp and permit to compute the free surface energies to remove to compute the GB energy" << endl;
+	cerr << "The bulk systems are also output in the file LowerGrainBulk.lmp and UpperGrainBulk.lmp" << endl;
+	cerr << "The program will alos output a NDup.dat file containing \"NDupLo NDupHi\" .... TODO" << endl;
 	cerr << "DiscretizationMode can be \"NbPts\" or \"Distance\":" << endl;
 	cerr << "\t - NbPts => nx, ny specify the number of shifts (sampling points) along each of the two vectors defining the GB plane" << endl;
 	cerr << "\t - Distance =>  nx, ny specify the distances between two shifts in each direction (then the number of shifts will be computed from these distances)" << endl << endl;
@@ -51,8 +56,6 @@ void ExecMsg(){
 	cerr << "Rationalize can be either 0 or 1" << endl;
 	cerr << "1 => rationalize the GB (i.e. search the closest CSL GB to the provided parameters, in this case the fixed parameters for CSL calculation can be important, they are read from FixedParameters.ath file if exist if not defaults values are used)" << endl;
 	cerr << "0 => do not rationalize the GB" << endl;
-	cerr << "Each configuration is saved as a separate dump file (e.g., GB_Shift_0_0.lmp or GB_DSC_Shift_0_0_0.lmp or GB_CSL_Shift_0_0_0.lmp, etc), also containing the values of the applied shift" << endl;
-	cerr << "In addition the program will also return 3 dump files containing the CSL lattice and the two grains (the two latters can be used to change shift between crystals), if vacuum = 1 Grain1_vacuum.lmp and Grain2_vacuum.lmp will be also generated" << endl;
 	
 	exit(EXIT_FAILURE);
 }
@@ -72,6 +75,7 @@ int main(int argc, char *argv[])
 	Dis.Printer_SampleGB_GammaSurface();
 
 	double z_step = 0.05; // step for searching different surfaces
+	double ztol_choose = 0.3; // tolerance for MakeNeutralSurface function 
 
 	// get parameters
 	int h_a, k_a ,l_a, h_p, k_p, l_p, i_a, i_p;
@@ -205,7 +209,7 @@ int main(int argc, char *argv[])
 		Cryst1[i]->RotateCrystal(GBPlane1[0],GBPlane1[1],GBPlane1[2],xPlane1[0],xPlane1[1],xPlane1[2]);
 		Cryst1[i]->ShiftMotif(zero,zero,i*true_z_step1);
 		Cryst1[i]->ConstructOrthogonalCell();
-		Cryst1[i]->getOrientedSystem()->MakeSurfaceNeutral(false);
+		Cryst1[i]->getOrientedSystem()->MakeSurfaceNeutral(false, ztol_choose);
 		bool already = false;
 		for(unsigned int j=0;j<CrystWithDiffSurf1.size();j++){
 			if( CA.AreSurfacesSame(Cryst1[i]->getOrientedSystem(),"down",Cryst1[CrystWithDiffSurf1[j]]->getOrientedSystem(),"down") ){
@@ -256,7 +260,7 @@ int main(int argc, char *argv[])
 		Cryst2[i]->RotateCrystal(refGB->getRotMatG2());
 		Cryst2[i]->ShiftMotif(zero,zero,i*true_z_step2);
 		Cryst2[i]->ConstructOrthogonalCell();
-		Cryst2[i]->getOrientedSystem()->MakeSurfaceNeutral(false);
+		Cryst2[i]->getOrientedSystem()->MakeSurfaceNeutral(false, ztol_choose);
 		bool already = false;
 		for(unsigned int j=0;j<CrystWithDiffSurf2.size();j++){
 			if( CA.AreSurfacesSame(Cryst2[i]->getOrientedSystem(),"down",Cryst2[CrystWithDiffSurf2[j]]->getOrientedSystem(),"down") ){
@@ -348,17 +352,21 @@ int main(int argc, char *argv[])
 
 	// print the different systems (with free surfaces) and then apply the misfit, the duplication and reduce the z cell size
 	double currentMx, currentMy, currentDupX, currentDupY;
+	ofstream filedup("NDup.dat"); // file containing the duplication applied to the lower and upper grain after being paste to be the GB
 	if( inv ){
 		currentMx = refGB->getMx1();
 		currentMy = refGB->getMy1();
 		currentDupX = refGB->getDupX1();
 		currentDupY = refGB->getDupY1();
+		filedup << currentDupX*currentDupY << " " << refGB->getDupY2()*refGB->getDupY2();
 	}else{
 		currentMx = refGB->getMx2();
 		currentMy = refGB->getMy2();
 		currentDupX = refGB->getDupX2();
 		currentDupY = refGB->getDupY2();
+		filedup << currentDupX*currentDupY << " " << refGB->getDupY1()*refGB->getDupY1();
 	}
+	filedup.close();
 	for(unsigned int il=0;il<(*indexesDown).size();il++){
 		AtomicSystem *currentAtSys = (*CrystDown)[(*indexesDown)[il]]->getOrientedSystem();
 		double min_z = std::numeric_limits<double>::max();
