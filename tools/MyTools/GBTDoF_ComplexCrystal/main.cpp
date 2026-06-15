@@ -230,12 +230,22 @@ int main(int argc, char *argv[])
 	unsigned int count = 0;
 	for(unsigned int i=0;i<z_shift_1.size();i++){
 		if( CA.AreSurfacesSame(Cryst1[CrystWithDiffSurf1[i]]->getOrientedSystem(),"up",Cryst1[CrystWithDiffSurf1[i]]->getOrientedSystem(),"down") ){
-			//Cryst1[CrystWithDiffSurf1[i]]->getOrientedSystem()->print_lmp("G1_"+to_string(count)+".lmp");
-			count++;
-		}else{
-			if( Cryst1[CrystWithDiffSurf1[i]]->getOrientedSystem()->SymmetrizeSurfaces("up") ){
+			if( Cryst1[CrystWithDiffSurf1[i]]->getOrientedSystem()->IsSystemStoichiometric() ){
 				//Cryst1[CrystWithDiffSurf1[i]]->getOrientedSystem()->print_lmp("G1_"+to_string(count)+".lmp");
 				count++;
+			}else{
+				cout << "One free surface system is not stoichiometric, removing it from the list" << endl;
+				surf2rm.push_back(i);
+			}
+		}else{
+			if( Cryst1[CrystWithDiffSurf1[i]]->getOrientedSystem()->SymmetrizeSurfaces("up") ){
+				if( Cryst1[CrystWithDiffSurf1[i]]->getOrientedSystem()->IsSystemStoichiometric() ){
+					//Cryst1[CrystWithDiffSurf1[i]]->getOrientedSystem()->print_lmp("G1_"+to_string(count)+".lmp");
+					count++;
+				}else{
+					cout << "One free surface system is not stoichiometric, removing it from the list" << endl;
+					surf2rm.push_back(i);
+				}
 			}else{
 				cout << "One free surface cannot be symmetrized, removing it from this system for the exploration of TDoF" << endl;
 				surf2rm.push_back(i);
@@ -246,7 +256,7 @@ int main(int argc, char *argv[])
 		z_shift_1.erase(z_shift_1.begin()+surf2rm[surf2rm.size()-1-i]);
 		CrystWithDiffSurf1.erase(CrystWithDiffSurf1.begin()+surf2rm[surf2rm.size()-1-i]);
 	}
-	cout << "\t\tDone ! " << endl;
+	cout << "\t\tDone ! (" << z_shift_1.size() << " different neutral surfaces have been found for upper grain)" << endl;
 
 	cout << "\t * * * Searching number of different surfaces of lower grain (z <=> (" << GBPlane2[0] << " " << GBPlane2[1] << " " << GBPlane2[2] << ") x <=> (" << xPlane2[0] << " " << xPlane2[1] << " " << xPlane2[2] << ")) * * *" << endl;
 	vector<Crystal*> Cryst2(nb_z_step2);
@@ -281,12 +291,22 @@ int main(int argc, char *argv[])
 	count = 0;
 	for(unsigned int i=0;i<z_shift_2.size();i++){
 		if( CA.AreSurfacesSame(Cryst2[CrystWithDiffSurf2[i]]->getOrientedSystem(),"up",Cryst2[CrystWithDiffSurf2[i]]->getOrientedSystem(),"down") ){
-			//Cryst2[CrystWithDiffSurf2[i]]->getOrientedSystem()->print_lmp("G2_"+to_string(count)+".lmp");
-			count++;
-		}else{
-			if( Cryst2[CrystWithDiffSurf2[i]]->getOrientedSystem()->SymmetrizeSurfaces("down") ){
+			if( Cryst2[CrystWithDiffSurf2[i]]->getOrientedSystem()->IsSystemStoichiometric() ){
 				//Cryst2[CrystWithDiffSurf2[i]]->getOrientedSystem()->print_lmp("G2_"+to_string(count)+".lmp");
 				count++;
+			}else{
+				cout << "One free surface system is not stoichiometric, removing it from the list" << endl;
+				surf2rm.push_back(i);
+			}
+		}else{
+			if( Cryst2[CrystWithDiffSurf2[i]]->getOrientedSystem()->SymmetrizeSurfaces("down") ){
+				if( Cryst2[CrystWithDiffSurf2[i]]->getOrientedSystem()->IsSystemStoichiometric() ){
+					//Cryst2[CrystWithDiffSurf2[i]]->getOrientedSystem()->print_lmp("G2_"+to_string(count)+".lmp");
+					count++;
+				}else{
+					cout << "One free surface system is not stoichiometric, removing it from the list" << endl;
+					surf2rm.push_back(i);
+				}
 			}else{
 				cout << "One free surface cannot be symmetrized, removing it from this system for the exploration of TDoF" << endl;
 				surf2rm.push_back(i);
@@ -297,7 +317,7 @@ int main(int argc, char *argv[])
 		z_shift_2.erase(z_shift_2.begin()+surf2rm[surf2rm.size()-1-i]);
 		CrystWithDiffSurf2.erase(CrystWithDiffSurf2.begin()+surf2rm[surf2rm.size()-1-i]);
 	}
-	cout << "\t\tDone ! " << endl;
+	cout << "\t\tDone ! (" << z_shift_2.size() << " different neutral surfaces have been found for upper grain)" << endl;
 
 	vector<Crystal*> *CrystUp;
 	vector<Crystal*> *CrystDown;

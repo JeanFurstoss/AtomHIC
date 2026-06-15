@@ -208,6 +208,7 @@ public:
 	void MakeSystemNeutral(std::vector<double> dirPoint, std::vector<double> DirVec, double mindist2lign); // try to have neutral surfaces
 	bool SymmetrizeSurfaces(std::string surf2dup);
 	void RemoveAtoms(std::vector<unsigned int> index2rm, bool DNS=false);
+	bool IsSystemStoichiometric();
 	double ComputeAverageDistance();
 	void ComputeNotSepList();
 	void UpdateTypes2Crystal();

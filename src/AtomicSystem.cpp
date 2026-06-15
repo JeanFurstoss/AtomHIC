@@ -5297,6 +5297,37 @@ double AtomicSystem::ComputeAverageDistance(){
 	return ave_dist/nbAtom;
 }
 
+bool AtomicSystem::IsSystemStoichiometric(){
+	if( !IsCrystalDefined ){
+		cout << "The crystal is not defined, cannot verify the stoichiometry" << endl;
+		return false;
+	}
+	unsigned int *currentStoich = new unsigned int[this->_MyCrystal->getNbAtomType()];
+	for(unsigned int i=0;i<this->_MyCrystal->getNbAtomType();i++) currentStoich[i] = 0;
+	for(unsigned int i=0;i<nbAtom;i++){
+		for(unsigned int t=0;t<this->_MyCrystal->getNbAtomType();t++){
+			if( AtomList[i].type_uint == t+1 ){
+				currentStoich[t] += 1;
+				break;
+			}
+		}
+	}
+	bool stoich = true;
+	for(unsigned int i=0;i<this->_MyCrystal->getNbAtomType();i++){
+		if( fabs(((double) currentStoich[i]/nbAtom) - ((double) this->_MyCrystal->getStoich()[i]/this->_MyCrystal->getNbAtom()) ) > 1e-9 ){
+			stoich = false;
+			cout << "The stoichiometry is not the same than parent crystal, ";
+			for(unsigned int t=0;t<this->_MyCrystal->getNbAtomType();t++){
+				cout << "number of " << this->_MyCrystal->getAtomType(t+1) << " : " << currentStoich[t] << ", ";
+			}
+			cout << endl;
+			return false;
+		}
+	}
+	return true;
+
+}
+
 AtomicSystem::~AtomicSystem(){
 	if( AtomList && this->IsAtomListMine ){
 		delete[] AtomList;
