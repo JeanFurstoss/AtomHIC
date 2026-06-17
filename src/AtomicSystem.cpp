@@ -1338,6 +1338,9 @@ void AtomicSystem::setCrystal(Crystal* MyCrystal){
 	this->_MyCrystal = MyCrystal;
 	this->IsCrystalDefined = true;
 	if( FilenameConstructed && nbAtomType > 1 ) UpdateTypes2Crystal();
+
+	if( FilenameConstructed ) for(unsigned int i=0;i<nbAtomType;i++) AtomMass[i] = _MyCrystal->getAtomMass(i+1);	
+	else this->AtomMass = _MyCrystal->getAtomMass();
 }
 
 void AtomicSystem::setCrystal(const std::string& CrystalName){
@@ -1346,6 +1349,8 @@ void AtomicSystem::setCrystal(const std::string& CrystalName){
 	this->IsCrystalDefined = true;
 	this->IsCrystalMine = true;
 	if( FilenameConstructed && nbAtomType > 1 ) UpdateTypes2Crystal();
+	if( FilenameConstructed ) for(unsigned int i=0;i<nbAtomType;i++) AtomMass[i] = _MyCrystal->getAtomMass(i+1);	
+	else this->AtomMass = _MyCrystal->getAtomMass();
 }
 
 void AtomicSystem::ComputeNotSepList(){
@@ -5178,6 +5183,7 @@ bool AtomicSystem::SymmetrizeSurfaces(string surf2dup){ // TODO generalize with 
 	if( max_test > TransVecsNorm.size() ) max_test = TransVecsNorm.size()-1;
 	unsigned int count = 0;
 	double *at_sp = new double[SubSys_ref.size()];
+	int max_bc = 2; // TODO compute based on max diff ?
 	while( !coincide ){
 		coincide = true;
 		unsigned int opt_ind = MT->max(count_TransVecs);
@@ -5196,8 +5202,9 @@ bool AtomicSystem::SymmetrizeSurfaces(string surf2dup){ // TODO generalize with 
 			double yr = SubSys_ref[i].pos.y;
 			double zr = SubSys_ref[i].pos.z;
 			for(unsigned int j=0;j<SubSys_work.size();j++){
-				for(int bx=-1;bx<2;bx++){
-					for(int by=-1;by<2;by++){
+				if( SubSys_work[j].type_uint != SubSys_ref[i].type_uint ) continue;
+				for(int bx=-max_bc;bx<=max_bc;bx++){
+					for(int by=-max_bc;by<=max_bc;by++){
 						double xw = SubSys_work[j].pos.x + H1[0]*bx + H2[0]*by;
 						double yw = SubSys_work[j].pos.y + H1[1]*bx + H2[1]*by;
 						double zw = SubSys_work[j].pos.z;
@@ -5251,8 +5258,9 @@ bool AtomicSystem::SymmetrizeSurfaces(string surf2dup){ // TODO generalize with 
 			double yr = SubSys_work[i].pos.y;
 			double zr = SubSys_work[i].pos.z;
 			for(unsigned int j=0;j<SubSys_ref.size();j++){
-				for(int bx=-1;bx<2;bx++){
-					for(int by=-1;by<2;by++){
+				if( SubSys_ref[j].type_uint != SubSys_work[i].type_uint ) continue;
+				for(int bx=-max_bc;bx<=max_bc;bx++){
+					for(int by=-max_bc;by<=max_bc;by++){
 						double xw = SubSys_ref[j].pos.x + H1[0]*bx + H2[0]*by;
 						double yw = SubSys_ref[j].pos.y + H1[1]*bx + H2[1]*by;
 						double zw = SubSys_ref[j].pos.z;
@@ -5271,6 +5279,318 @@ bool AtomicSystem::SymmetrizeSurfaces(string surf2dup){ // TODO generalize with 
 	delete[] at_sp;
 	return true;
 }
+
+bool AtomicSystem::SymmetrizeRelaxedSurfaces(string surf2dup, double zcut){ // TODO generalize with plane normal direction
+	// sometimes there is some issue but I don't understand, I suspect to remove too much atoms initially in the AtomicSystem but i cannot see how it happens, for the oment the thing to do is to wtest multiple zcut until it works..
+	if( surf2dup != "down" && surf2dup != "up" ){
+		cout << "The surface to symmetrize should be either \"down\" or \"up\"" << endl;
+		return false;		
+	}
+        // Remove ions below/above zcut
+        vector<unsigned int> index2rm;
+        if( surf2dup == "down" ){
+                for(unsigned int i=0;i<nbAtom;i++)
+			if( AtomList[i].pos.z > zcut ) index2rm.push_back(i);
+        }else{
+                for(unsigned int i=0;i<nbAtom;i++)
+			if( AtomList[i].pos.z < zcut ) index2rm.push_back(i);
+	}
+
+        RemoveAtoms(index2rm);
+
+	double slab_width = 10.;
+	// search min and max z pos of the system
+	double min_z = std::numeric_limits<double>::max();
+	double max_z = -std::numeric_limits<double>::max();
+	for(unsigned int i=0;i<nbAtom;i++){
+		if( AtomList[i].pos.z < min_z ) min_z = AtomList[i].pos.z;
+		if( AtomList[i].pos.z > max_z ) max_z = AtomList[i].pos.z;
+	}
+	if( max_z-min_z < 4*slab_width ) cout << "Warning the system is very thick, it may cause issues" << endl;
+
+	// construct subsystems to make coincide
+	vector<Atom> SubSys_ref; // reference one (the one to be duplicated)
+	vector<Atom> SubSys_work;
+	vector<unsigned int> work_ind;
+	for(unsigned int i=0;i<nbAtom;i++){
+		if( surf2dup == "down" ){
+			if( ( AtomList[i].pos.z < min_z+2.*slab_width ) && ( AtomList[i].pos.z > min_z+slab_width ) ) SubSys_ref.push_back(AtomList[i]);
+			else if( AtomList[i].pos.z > max_z-(2.*slab_width) ){
+				SubSys_work.push_back(AtomList[i]);
+				work_ind.push_back(i);
+			}
+		}else{
+			if( ( AtomList[i].pos.z > max_z-2.*slab_width ) && ( AtomList[i].pos.z < max_z-slab_width ) ) SubSys_ref.push_back(AtomList[i]);
+			else if( AtomList[i].pos.z < min_z+(2.*slab_width) ){
+				SubSys_work.push_back(AtomList[i]);
+				work_ind.push_back(i);
+			}
+		}
+	}
+	cout << "Nb atom in work sys = " << SubSys_work.size() << ", in ref sys = " << SubSys_ref.size() << endl;
+
+	// Apply rotation to the ref system
+	for(unsigned int i=0;i<SubSys_ref.size();i++) SubSys_ref[i].pos.z *= -1.;
+	double *vec = new double[3];
+	vec[0] = 0.;
+	vec[1] = 0.;
+	vec[2] = 1.;
+	double theta = M_PI;
+	double *rotmat = new double[9];
+	MT->Vec2rotMat(vec,theta,rotmat);
+
+	double small_shift = 0.1;
+	for(unsigned int i=0;i<SubSys_ref.size();i++){
+		MT->MatDotAt(rotmat,SubSys_ref[i],SubSys_ref[i]);
+		SubSys_ref[i].pos.x += small_shift;
+		SubSys_ref[i].pos.y += small_shift;
+	}
+	for(unsigned int i=0;i<SubSys_work.size();i++){
+		SubSys_work[i].pos.x += small_shift;
+		SubSys_work[i].pos.y += small_shift;
+	}
+
+	// wrap the two systems
+	double x,y,z;
+	for(unsigned int i=0;i<SubSys_ref.size();i++){
+		// compute reduced coordinates
+		x = SubSys_ref[i].pos.x*G1[0]+SubSys_ref[i].pos.y*G2[0]+SubSys_ref[i].pos.z*G3[0];
+		y = SubSys_ref[i].pos.x*G1[1]+SubSys_ref[i].pos.y*G2[1]+SubSys_ref[i].pos.z*G3[1];
+		z = SubSys_ref[i].pos.x*G1[2]+SubSys_ref[i].pos.y*G2[2]+SubSys_ref[i].pos.z*G3[2];
+		if( x >= 1. || x < 0. ) x = x-floor(x);
+		if( y >= 1. || y < 0. ) y = y-floor(y);
+		// cartesian coordinates
+		SubSys_ref[i].pos.x = x*H1[0]+y*H2[0]+z*H3[0];
+		SubSys_ref[i].pos.y = x*H1[1]+y*H2[1]+z*H3[1];
+	}
+	for(unsigned int i=0;i<SubSys_work.size();i++){
+		// compute reduced coordinates
+		x = SubSys_work[i].pos.x*G1[0]+SubSys_work[i].pos.y*G2[0]+SubSys_work[i].pos.z*G3[0];
+		y = SubSys_work[i].pos.x*G1[1]+SubSys_work[i].pos.y*G2[1]+SubSys_work[i].pos.z*G3[1];
+		z = SubSys_work[i].pos.x*G1[2]+SubSys_work[i].pos.y*G2[2]+SubSys_work[i].pos.z*G3[2];
+		if( x >= 1. || x < 0. ) x = x-floor(x);
+		if( y >= 1. || y < 0. ) y = y-floor(y);
+		// cartesian coordinates
+		SubSys_work[i].pos.x = x*H1[0]+y*H2[0]+z*H3[0];
+		SubSys_work[i].pos.y = x*H1[1]+y*H2[1]+z*H3[1];
+	}
+
+	//
+	// search translation vectors making systems coinciding (this may allow also to find cell vectors)
+	double tol = 1.e-1;
+	vector<double> TransVecs;
+	vector<double> TransVecsNorm;
+	vector<unsigned int> count_TransVecs;
+	int max_bc = 1;	
+	// better to do brut force to be sure to find the right place
+	unsigned int nbAt_work = SubSys_work.size();
+	for(unsigned int i=0;i<SubSys_ref.size();i++){
+		//Dis->ProgressBar(nbAt_work,i);
+		for(unsigned int j=0;j<SubSys_work.size();j++){
+			if( SubSys_work[j].type_uint != SubSys_ref[i].type_uint ) continue;
+			for(int bx=-max_bc;bx<=max_bc;bx++){
+				for(int by=-max_bc;by<=max_bc;by++){
+					double dx = SubSys_ref[i].pos.x - SubSys_work[j].pos.x + H1[0]*(double) bx + H2[0]*(double) by;
+					double dy = SubSys_ref[i].pos.y - SubSys_work[j].pos.y + H1[1]*(double) bx + H2[1]*(double) by;
+					double dz = SubSys_ref[i].pos.z - SubSys_work[j].pos.z;
+					double dist = dx*dx + dy*dy + dz*dz;
+					bool already = false;
+					for(unsigned int k=0;k<TransVecsNorm.size();k++){
+						//if( fabs(TransVecsNorm[k]-dist) < tol ){
+						if( ( fabs(TransVecs[k*3]-dx) < tol ) && ( fabs(TransVecs[k*3+1]-dy) < tol ) && ( fabs(TransVecs[k*3+2]-dz) < tol ) ){
+							already = true;
+							count_TransVecs[k]++;
+							break;
+						}
+					}
+					if( !already ){
+						TransVecs.push_back(dx);
+						TransVecs.push_back(dy);
+						TransVecs.push_back(dz);
+						TransVecsNorm.push_back(dist);
+						count_TransVecs.push_back(1);
+					}
+				}
+			}
+		}
+	}
+
+	// shift the ref system and verify that the ref system fully coincide with the working sys when apply x and y bc
+	bool coincide = false;
+	unsigned int max_test = 100;
+	if( max_test > TransVecsNorm.size() ) max_test = TransVecsNorm.size()-1;
+	unsigned int count = 0;
+	double *at_sp = new double[SubSys_ref.size()+SubSys_work.size()];
+	unsigned int opt_ind;
+	while( !coincide ){
+		coincide = true;
+		opt_ind = MT->max(count_TransVecs);
+		for(unsigned int j=0;j<SubSys_ref.size();j++){
+			SubSys_ref[j].pos.x -= TransVecs[opt_ind*3];
+			SubSys_ref[j].pos.y -= TransVecs[opt_ind*3+1];
+			SubSys_ref[j].pos.z -= TransVecs[opt_ind*3+2];
+		}
+
+		double sigma = 0.25;
+		double min_sp = 1.e-1;
+		tol = 1.e-1;
+		max_bc = 2;
+		for(unsigned int i=0;i<SubSys_ref.size();i++){
+			at_sp[i] = 0.;
+			double xr = SubSys_ref[i].pos.x;
+			double yr = SubSys_ref[i].pos.y;
+			double zr = SubSys_ref[i].pos.z;
+			for(unsigned int j=0;j<SubSys_work.size();j++){
+				if( SubSys_work[j].type_uint != SubSys_ref[i].type_uint ) continue;
+				for(int bx=-max_bc;bx<=max_bc;bx++){
+					for(int by=-max_bc;by<=max_bc;by++){
+						double xw = SubSys_work[j].pos.x + H1[0]*(double) bx + H2[0]*(double) by;
+						double yw = SubSys_work[j].pos.y + H1[1]*(double) bx + H2[1]*(double) by;
+						double zw = SubSys_work[j].pos.z;
+						at_sp[i] += MT->gaussian(xr, yr, zr, xw, yw, zw, sigma);
+					}
+				}
+			}
+			if( ( i != 0 && fabs((at_sp[i]-at_sp[i-1])/at_sp[i]) > tol ) || at_sp[i] < min_sp ){
+				coincide = false;
+				break;
+			}
+		}
+		if( !coincide ){
+			if( count >= max_test ) coincide = true;
+			else{
+				// remove the shift and erase the corresponding elements in vectors
+				for(unsigned int j=0;j<SubSys_ref.size();j++){
+					SubSys_ref[j].pos.x += TransVecs[opt_ind*3];
+					SubSys_ref[j].pos.y += TransVecs[opt_ind*3+1];
+					SubSys_ref[j].pos.z += TransVecs[opt_ind*3+2];
+				}
+				count_TransVecs.erase(count_TransVecs.begin()+opt_ind);
+				TransVecs.erase(TransVecs.begin()+opt_ind);
+				TransVecs.erase(TransVecs.begin()+opt_ind);
+				TransVecs.erase(TransVecs.begin()+opt_ind);
+				TransVecsNorm.erase(TransVecsNorm.begin()+opt_ind);
+				count++;
+			}
+		}
+	}
+	if( count >= max_test ){
+		cout << "Cannot align systems, aborting to make symmetric surfaces" << endl;
+		return false;
+	}
+		unsigned int sizesys = SubSys_ref.size()+SubSys_work.size();
+		//unsigned int sizesys = nbAtom1+nbAt_OriSys;
+		Atom *AtList_temp = new Atom[sizesys];
+		double *foraux = new double[sizesys];
+		for(unsigned int i=0;i<SubSys_ref.size();i++){
+			AtList_temp[i] = SubSys_ref[i];
+			//AtList_temp[i].pos.z += 350.;
+			foraux[i] = 0.;
+		}
+		for(unsigned int i=0;i<SubSys_work.size();i++){
+			AtList_temp[i+SubSys_ref.size()] = SubSys_work[i];
+			foraux[i+SubSys_ref.size()] = 1.;
+			at_sp[i+SubSys_ref.size()] = 0;
+		}
+		Crystal *test = new Crystal("Forsterite");
+		AtomicSystem *AtSysTemp = new AtomicSystem(AtList_temp,sizesys,test,this->H1,this->H2,this->H3);
+		//AtomicSystem *AtSysTemp = new AtomicSystem(AtList_temp,sizesys,_MyCrystal,this->H1,this->H2,this->H3);
+		AtSysTemp->setAux(foraux,"foraux");
+		AtSysTemp->setAux(at_sp,"at_sp");
+		AtSysTemp->printSystem_aux("TestCoincide.cfg","foraux at_sp");
+		delete[] AtList_temp;
+		delete[] foraux;
+
+	// reconstruct SubSys_ref with the surface to dup
+	SubSys_ref.clear();
+	for(unsigned int i=0;i<nbAtom;i++){
+		if( ( surf2dup == "down" ) && ( AtomList[i].pos.z < min_z+(2.*slab_width) ) ) SubSys_ref.push_back(AtomList[i]);
+		else if( ( surf2dup == "up" ) && ( AtomList[i].pos.z > max_z-(2.*slab_width) ) ) SubSys_ref.push_back(AtomList[i]);
+	}
+	for(unsigned int i=0;i<SubSys_ref.size();i++){
+		SubSys_ref[i].pos.z *= -1.;
+		MT->MatDotAt(rotmat,SubSys_ref[i],SubSys_ref[i]);
+		SubSys_ref[i].pos.x -= TransVecs[opt_ind*3];
+		SubSys_ref[i].pos.y -= TransVecs[opt_ind*3+1];
+		SubSys_ref[i].pos.z -= TransVecs[opt_ind*3+2];
+	}
+	for(unsigned int i=0;i<SubSys_work.size();i++){
+		SubSys_work[i].pos.x -= small_shift;
+		SubSys_work[i].pos.y -= small_shift;
+	}
+	vector<Atom> At2Add;
+	max_bc = 2;
+	for(unsigned int i=0;i<SubSys_ref.size();i++){
+		double sigma = 0.25;
+		double min_sp = .1;
+		double cur_at_sp = 0.;
+		double xr = SubSys_ref[i].pos.x;
+		double yr = SubSys_ref[i].pos.y;
+		double zr = SubSys_ref[i].pos.z;
+		for(unsigned int j=0;j<SubSys_work.size();j++){
+			if( SubSys_work[j].type_uint != SubSys_ref[i].type_uint ) continue;
+			for(int bx=-max_bc;bx<=max_bc;bx++){
+				for(int by=-max_bc;by<=max_bc;by++){
+					double xw = SubSys_work[j].pos.x + H1[0]*bx + H2[0]*by;
+					double yw = SubSys_work[j].pos.y + H1[1]*bx + H2[1]*by;
+					double zw = SubSys_work[j].pos.z;
+					cur_at_sp += MT->gaussian(xw, yw, zw, xr, yr, zr, sigma);
+				}
+			}
+		}
+		if( cur_at_sp < min_sp ) At2Add.push_back(SubSys_ref[i]);
+	}
+
+	AddAtoms(At2Add);
+
+	delete[] vec;
+	delete[] rotmat;
+	delete[] at_sp;
+	return true;
+}
+
+void AtomicSystem::AddAtoms(vector<Atom> At2Add){
+	if( !IsAtomListMine ){
+		cout << "The atom list does not belong to the atomic system, cannot delete atoms" << endl;
+		return;
+	}
+	if( IsWrappedPos ){
+		delete[] WrappedPos;
+		WrappedPos = nullptr;
+		IsWrappedPos = false;
+	}
+	if( IsNeighbours ){
+		delete[] Neighbours;
+		Neighbours = nullptr;
+		delete[] CLNeighbours;
+		CLNeighbours = nullptr;
+		IsNeighbours = false;
+	}
+	if( IsNotSepTag ){
+		delete[] NotSepTag;
+		NotSepTag = nullptr;
+		IsNotSepTag = false;
+	}
+
+	for(unsigned int a=0;a<Aux_size.size();a++) delete[] Aux[a];
+	Aux.clear();
+	
+	vector<Atom> tempAtomList;
+
+	for(unsigned int i=0;i<nbAtom;i++) tempAtomList.push_back(AtomList[i]);
+	for(unsigned int i=0;i<At2Add.size();i++) tempAtomList.push_back(At2Add[i]);
+	nbAtom += At2Add.size();
+	
+	delete[] AtomList;
+	AtomList = new Atom[nbAtom];
+	for(unsigned int i=0;i<nbAtom;i++) AtomList[i] = tempAtomList[i];
+
+	// TODO
+	//unsigned int *tempMolId, *tempBonds, *tempAngles, *tempBondType, *tempAngleType;
+	//int *tempPeriodicArr;
+	//
+}
+
 
 double AtomicSystem::ComputeAverageDistance(){
 	double rcut = 6.; // maybe try latter to have an more objective value for rcut

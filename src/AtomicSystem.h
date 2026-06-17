@@ -207,6 +207,8 @@ public:
 	void MakeSurfaceNeutral(std::vector<int> Oris, std::vector<double> shift, std::vector<double> Misfit, std::vector<double> PlaneNormal, double VertPlaneSlope, std::vector<double> VertPlaneEq, std::vector<double> FullPlaneEq, double shift_z_box, std::string outputfilename=""); // 
 	void MakeSystemNeutral(std::vector<double> dirPoint, std::vector<double> DirVec, double mindist2lign); // try to have neutral surfaces
 	bool SymmetrizeSurfaces(std::string surf2dup);
+	bool SymmetrizeRelaxedSurfaces(std::string surf2dup, double zcut);
+	void AddAtoms(std::vector<Atom> At2Add);
 	void RemoveAtoms(std::vector<unsigned int> index2rm, bool DNS=false);
 	bool IsSystemStoichiometric();
 	double ComputeAverageDistance();
