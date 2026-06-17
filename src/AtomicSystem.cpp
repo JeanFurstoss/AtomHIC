@@ -5327,7 +5327,7 @@ bool AtomicSystem::SymmetrizeRelaxedSurfaces(string surf2dup, double zcut){ // T
 			}
 		}
 	}
-	cout << "Nb atom in work sys = " << SubSys_work.size() << ", in ref sys = " << SubSys_ref.size() << endl;
+	//cout << "Nb atom in work sys = " << SubSys_work.size() << ", in ref sys = " << SubSys_ref.size() << endl;
 
 	// Apply rotation to the ref system
 	for(unsigned int i=0;i<SubSys_ref.size();i++) SubSys_ref[i].pos.z *= -1.;
@@ -5475,31 +5475,31 @@ bool AtomicSystem::SymmetrizeRelaxedSurfaces(string surf2dup, double zcut){ // T
 		}
 	}
 	if( count >= max_test ){
+		//unsigned int sizesys = SubSys_ref.size()+SubSys_work.size();
+		////unsigned int sizesys = nbAtom1+nbAt_OriSys;
+		//Atom *AtList_temp = new Atom[sizesys];
+		//double *foraux = new double[sizesys];
+		//for(unsigned int i=0;i<SubSys_ref.size();i++){
+		//	AtList_temp[i] = SubSys_ref[i];
+		//	//AtList_temp[i].pos.z += 350.;
+		//	foraux[i] = 0.;
+		//}
+		//for(unsigned int i=0;i<SubSys_work.size();i++){
+		//	AtList_temp[i+SubSys_ref.size()] = SubSys_work[i];
+		//	foraux[i+SubSys_ref.size()] = 1.;
+		//	at_sp[i+SubSys_ref.size()] = 0;
+		//}
+		//Crystal *test = new Crystal("Forsterite");
+		//AtomicSystem *AtSysTemp = new AtomicSystem(AtList_temp,sizesys,test,this->H1,this->H2,this->H3);
+		////AtomicSystem *AtSysTemp = new AtomicSystem(AtList_temp,sizesys,_MyCrystal,this->H1,this->H2,this->H3);
+		//AtSysTemp->setAux(foraux,"foraux");
+		//AtSysTemp->setAux(at_sp,"at_sp");
+		//AtSysTemp->printSystem_aux("TestCoincide.cfg","foraux at_sp");
+		//delete[] AtList_temp;
+		//delete[] foraux;
 		cout << "Cannot align systems, aborting to make symmetric surfaces" << endl;
 		return false;
 	}
-		unsigned int sizesys = SubSys_ref.size()+SubSys_work.size();
-		//unsigned int sizesys = nbAtom1+nbAt_OriSys;
-		Atom *AtList_temp = new Atom[sizesys];
-		double *foraux = new double[sizesys];
-		for(unsigned int i=0;i<SubSys_ref.size();i++){
-			AtList_temp[i] = SubSys_ref[i];
-			//AtList_temp[i].pos.z += 350.;
-			foraux[i] = 0.;
-		}
-		for(unsigned int i=0;i<SubSys_work.size();i++){
-			AtList_temp[i+SubSys_ref.size()] = SubSys_work[i];
-			foraux[i+SubSys_ref.size()] = 1.;
-			at_sp[i+SubSys_ref.size()] = 0;
-		}
-		Crystal *test = new Crystal("Forsterite");
-		AtomicSystem *AtSysTemp = new AtomicSystem(AtList_temp,sizesys,test,this->H1,this->H2,this->H3);
-		//AtomicSystem *AtSysTemp = new AtomicSystem(AtList_temp,sizesys,_MyCrystal,this->H1,this->H2,this->H3);
-		AtSysTemp->setAux(foraux,"foraux");
-		AtSysTemp->setAux(at_sp,"at_sp");
-		AtSysTemp->printSystem_aux("TestCoincide.cfg","foraux at_sp");
-		delete[] AtList_temp;
-		delete[] foraux;
 
 	// reconstruct SubSys_ref with the surface to dup
 	SubSys_ref.clear();

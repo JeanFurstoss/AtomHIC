@@ -2751,7 +2751,15 @@ void Bicrystal::searchGBPos(){
 			if( this->density_prof[ind_AtDens][i*2+1] < this->VacuumLo ) this->VacuumLo = this->density_prof[ind_AtDens][i*2+1];
 		}
 	} // TODO non vacuum case ?
-	//if( this->IsVacuum ){
+	if( this->IsVacuum ){ // set to zero the diso dens near the vacuum to not impact the gaussian fit
+		double slab_width = 30.;
+		//TODO correct because it is not good for all cases
+		for(unsigned int i=0;i<this->density_nbPts[ind_DisoDens];i++){
+			if( this->density_prof[ind_DisoDens][i*2+1] < slab_width ) this->density_prof[ind_DisoDens][i*2] = 0.;
+			if( this->density_prof[ind_DisoDens][i*2+1] > VacuumLo-slab_width ) this->density_prof[ind_DisoDens][i*2] = 0.;
+		}
+		//Print1dDensity("dens","Disorder");
+	}
 		if( NormalDir == "x" ){
 			for(unsigned int i=0;i<this->nbAtom;i++){
 				if( this->WrappedPos[i].x < this->MinPos ) this->MinPos = this->WrappedPos[i].x;
@@ -2774,6 +2782,7 @@ void Bicrystal::searchGBPos(){
 			this->SystemLength = this->MaxPos-this->MinPos;
 			this->IsCentered = false;
 		}
+		cout << "CETER = " << IsCentered << " " << IsVacuum << endl;
 		// Search GB position by computing the mean of gaussian distrib in the center of the system
 		// compute the max and the mean of the disorder density 
 		unsigned int indMaxDiso = 0;
