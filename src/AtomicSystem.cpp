@@ -5433,7 +5433,7 @@ bool AtomicSystem::SymmetrizeRelaxedSurfaces(string surf2dup, double zcut){ // T
 
 		double sigma = 0.25;
 		double min_sp = 1.e-1;
-		tol = 1.e-1;
+		tol = 5.e-1;
 		max_bc = 2;
 		for(unsigned int i=0;i<SubSys_ref.size();i++){
 			at_sp[i] = 0.;
@@ -5451,7 +5451,8 @@ bool AtomicSystem::SymmetrizeRelaxedSurfaces(string surf2dup, double zcut){ // T
 					}
 				}
 			}
-			if( ( i != 0 && fabs((at_sp[i]-at_sp[i-1])/at_sp[i]) > tol ) || at_sp[i] < min_sp ){
+			//if( ( i != 0 && fabs((at_sp[i]-at_sp[i-1])/at_sp[i]) > tol ) || at_sp[i] < min_sp ){
+			if( at_sp[i] < min_sp ){
 				coincide = false;
 				break;
 			}
@@ -5475,28 +5476,28 @@ bool AtomicSystem::SymmetrizeRelaxedSurfaces(string surf2dup, double zcut){ // T
 		}
 	}
 	if( count >= max_test ){
-		//unsigned int sizesys = SubSys_ref.size()+SubSys_work.size();
-		////unsigned int sizesys = nbAtom1+nbAt_OriSys;
-		//Atom *AtList_temp = new Atom[sizesys];
-		//double *foraux = new double[sizesys];
-		//for(unsigned int i=0;i<SubSys_ref.size();i++){
-		//	AtList_temp[i] = SubSys_ref[i];
-		//	//AtList_temp[i].pos.z += 350.;
-		//	foraux[i] = 0.;
-		//}
-		//for(unsigned int i=0;i<SubSys_work.size();i++){
-		//	AtList_temp[i+SubSys_ref.size()] = SubSys_work[i];
-		//	foraux[i+SubSys_ref.size()] = 1.;
-		//	at_sp[i+SubSys_ref.size()] = 0;
-		//}
-		//Crystal *test = new Crystal("Forsterite");
-		//AtomicSystem *AtSysTemp = new AtomicSystem(AtList_temp,sizesys,test,this->H1,this->H2,this->H3);
-		////AtomicSystem *AtSysTemp = new AtomicSystem(AtList_temp,sizesys,_MyCrystal,this->H1,this->H2,this->H3);
-		//AtSysTemp->setAux(foraux,"foraux");
+		unsigned int sizesys = SubSys_ref.size()+SubSys_work.size();
+		//unsigned int sizesys = nbAtom1+nbAt_OriSys;
+		Atom *AtList_temp = new Atom[sizesys];
+		double *foraux = new double[sizesys];
+		for(unsigned int i=0;i<SubSys_ref.size();i++){
+			AtList_temp[i] = SubSys_ref[i];
+			//AtList_temp[i].pos.z += 350.;
+			foraux[i] = 0.;
+		}
+		for(unsigned int i=0;i<SubSys_work.size();i++){
+			AtList_temp[i+SubSys_ref.size()] = SubSys_work[i];
+			foraux[i+SubSys_ref.size()] = 1.;
+			//at_sp[i+SubSys_ref.size()] = 0;
+		}
+		Crystal *test = new Crystal("Forsterite");
+		AtomicSystem *AtSysTemp = new AtomicSystem(AtList_temp,sizesys,test,this->H1,this->H2,this->H3);
+		//AtomicSystem *AtSysTemp = new AtomicSystem(AtList_temp,sizesys,_MyCrystal,this->H1,this->H2,this->H3);
+		AtSysTemp->setAux(foraux,"foraux");
 		//AtSysTemp->setAux(at_sp,"at_sp");
-		//AtSysTemp->printSystem_aux("TestCoincide.cfg","foraux at_sp");
-		//delete[] AtList_temp;
-		//delete[] foraux;
+		AtSysTemp->printSystem_aux("TestCoincide.cfg","foraux at_sp");
+		delete[] AtList_temp;
+		delete[] foraux;
 		cout << "Cannot align systems, aborting to make symmetric surfaces" << endl;
 		return false;
 	}
@@ -5510,14 +5511,48 @@ bool AtomicSystem::SymmetrizeRelaxedSurfaces(string surf2dup, double zcut){ // T
 	for(unsigned int i=0;i<SubSys_ref.size();i++){
 		SubSys_ref[i].pos.z *= -1.;
 		MT->MatDotAt(rotmat,SubSys_ref[i],SubSys_ref[i]);
+	}
+	for(unsigned int i=0;i<SubSys_ref.size();i++){
+		// compute reduced coordinates
+		x = SubSys_ref[i].pos.x*G1[0]+SubSys_ref[i].pos.y*G2[0]+SubSys_ref[i].pos.z*G3[0];
+		y = SubSys_ref[i].pos.x*G1[1]+SubSys_ref[i].pos.y*G2[1]+SubSys_ref[i].pos.z*G3[1];
+		z = SubSys_ref[i].pos.x*G1[2]+SubSys_ref[i].pos.y*G2[2]+SubSys_ref[i].pos.z*G3[2];
+		if( x >= 1. || x < 0. ) x = x-floor(x);
+		if( y >= 1. || y < 0. ) y = y-floor(y);
+		// cartesian coordinates
+		SubSys_ref[i].pos.x = x*H1[0]+y*H2[0]+z*H3[0];
+		SubSys_ref[i].pos.y = x*H1[1]+y*H2[1]+z*H3[1];
 		SubSys_ref[i].pos.x -= TransVecs[opt_ind*3];
 		SubSys_ref[i].pos.y -= TransVecs[opt_ind*3+1];
 		SubSys_ref[i].pos.z -= TransVecs[opt_ind*3+2];
 	}
-	for(unsigned int i=0;i<SubSys_work.size();i++){
-		SubSys_work[i].pos.x -= small_shift;
-		SubSys_work[i].pos.y -= small_shift;
+
+	// compute mean z pos of SubSys_ref and remove atoms below/above and reconstruct the SubSys_work to be sure that the surface of ref sys exceed surface of work sys
+	double mean_z_pos = 0.;	
+	double minmax;
+        if( surf2dup == "down" ) minmax = std::numeric_limits<double>::max();	
+	else minmax = -std::numeric_limits<double>::max();	
+	for(unsigned int i=0;i<SubSys_ref.size();i++){
+		mean_z_pos += SubSys_ref[i].pos.z;
+		if( surf2dup == "down" && SubSys_ref[i].pos.z < minmax ) minmax = SubSys_ref[i].pos.z;
+		if( surf2dup == "up" && SubSys_ref[i].pos.z > minmax ) minmax = SubSys_ref[i].pos.z;
 	}
+	mean_z_pos /= SubSys_ref.size();
+	SubSys_work.clear();
+	index2rm.clear();
+	double tolrm = 5.;
+	for(unsigned int i=0;i<nbAtom;i++){
+		if( surf2dup == "down" ){
+			if( AtomList[i].pos.z > mean_z_pos ) index2rm.push_back(i);
+			else if( AtomList[i].pos.z > minmax-tolrm ) SubSys_work.push_back(AtomList[i]);
+		}else if( surf2dup == "up" ){
+			if( AtomList[i].pos.z < mean_z_pos ) index2rm.push_back(i);
+			else if( AtomList[i].pos.z < minmax+tolrm ) SubSys_work.push_back(AtomList[i]);
+		}
+	}
+	RemoveAtoms(index2rm);
+
+
 	vector<Atom> At2Add;
 	max_bc = 2;
 	for(unsigned int i=0;i<SubSys_ref.size();i++){
