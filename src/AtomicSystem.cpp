@@ -1143,7 +1143,7 @@ unsigned int AtomicSystem::Compute2dDensity(std::string auxname, std::string dir
 }
 
 unsigned int AtomicSystem::Compute1dDensity(std::string auxname, std::string dir, double sigma, unsigned int nbPts){
-	if( !IsWrappedPos ) computeWrap();
+	computeWrap();
 	// search if this density has already been computed or not
 	bool already_stored = false;
 	unsigned int ind_dens = 0;
@@ -1157,7 +1157,11 @@ unsigned int AtomicSystem::Compute1dDensity(std::string auxname, std::string dir
 	if( !already_stored ){
 		density_prof.push_back(new double[nbPts*2]);
 		ind_dens = density_prof.size()-1;
+	}else if( nbPts != density_nbPts[ind_dens] ){
+		delete[] density_prof[ind_dens];
+		density_prof[ind_dens] = new double[nbPts*2];
 	}
+
 	int indexaux=-1;
 	for(unsigned int i=0;i<this->Aux_name.size();i++){
 		if( auxname == Aux_name[i] ){
@@ -1193,7 +1197,12 @@ unsigned int AtomicSystem::Compute1dDensity(std::string auxname, std::string dir
 				for(unsigned int i=0;i<nbPts;i++){
 					this->density_prof[ind_dens][i*2] = 0;
 					this->density_prof[ind_dens][i*2+1] = this->H3[2]*i/(nbPts-1.);
-					for(unsigned int j=0;j<this->nbAtom;j++) this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].z, sigma)*(this->AtomMass[this->AtomList[j].type_uint-1]);
+					for(unsigned int j=0;j<this->nbAtom;j++){
+						this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].z, sigma)*(this->AtomMass[this->AtomList[j].type_uint-1]);
+						// BC
+						this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].z+this->H3[2], sigma)*(this->AtomMass[this->AtomList[j].type_uint-1]);
+						this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].z-this->H3[2], sigma)*(this->AtomMass[this->AtomList[j].type_uint-1]);
+					}
 				}
 			}else{
 			        cout << "The provided direction \"" << dir << "\" for density computation has not been recognize" << endl;
@@ -1204,19 +1213,34 @@ unsigned int AtomicSystem::Compute1dDensity(std::string auxname, std::string dir
 				for(unsigned int i=0;i<nbPts;i++){
 					this->density_prof[ind_dens][i*2] = 0;
 					this->density_prof[ind_dens][i*2+1] = this->H1[0]*i/(nbPts-1.);
-					for(unsigned int j=0;j<this->nbAtom;j++) this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].x, sigma)*(this->AtomCharge[this->AtomList[j].type_uint-1]);
+					for(unsigned int j=0;j<this->nbAtom;j++){
+						this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].x, sigma)*(this->AtomCharge[this->AtomList[j].type_uint-1]);
+						// BC
+						this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].x+this->H1[0], sigma)*(this->AtomCharge[this->AtomList[j].type_uint-1]);
+						this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].x-this->H1[0], sigma)*(this->AtomCharge[this->AtomList[j].type_uint-1]);
+					}
 				}
 			}else if( dir == "y" ){
 				for(unsigned int i=0;i<nbPts;i++){
 					this->density_prof[ind_dens][i*2] = 0;
 					this->density_prof[ind_dens][i*2+1] = this->H2[1]*i/(nbPts-1.);
-					for(unsigned int j=0;j<this->nbAtom;j++) this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].y, sigma)*(this->AtomCharge[this->AtomList[j].type_uint-1]);
+					for(unsigned int j=0;j<this->nbAtom;j++){
+						this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].y, sigma)*(this->AtomCharge[this->AtomList[j].type_uint-1]);
+						// BC
+						this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].y+this->H2[1], sigma)*(this->AtomCharge[this->AtomList[j].type_uint-1]);
+						this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].y-this->H2[1], sigma)*(this->AtomCharge[this->AtomList[j].type_uint-1]);
+					}
 				}
 			}else if( dir == "z" ){
 				for(unsigned int i=0;i<nbPts;i++){
 					this->density_prof[ind_dens][i*2] = 0;
 					this->density_prof[ind_dens][i*2+1] = this->H3[2]*i/(nbPts-1.);
-					for(unsigned int j=0;j<this->nbAtom;j++) this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].z, sigma)*(this->AtomCharge[this->AtomList[j].type_uint-1]);
+					for(unsigned int j=0;j<this->nbAtom;j++){
+						this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].z, sigma)*(this->AtomCharge[this->AtomList[j].type_uint-1]);
+						// BC
+						this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].z+this->H3[2], sigma)*(this->AtomCharge[this->AtomList[j].type_uint-1]);
+						this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].z-this->H3[2], sigma)*(this->AtomCharge[this->AtomList[j].type_uint-1]);
+					}
 				}
 			}else{
 			        cout << "The provided direction \"" << dir << "\" for density computation has not been recognize" << endl;
@@ -1227,7 +1251,12 @@ unsigned int AtomicSystem::Compute1dDensity(std::string auxname, std::string dir
 				for(unsigned int i=0;i<nbPts;i++){
 					this->density_prof[ind_dens][i*2] = 0;
 					this->density_prof[ind_dens][i*2+1] = this->H1[0]*i/(nbPts-1.);
-					for(unsigned int j=0;j<this->nbAtom;j++) this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].x, sigma);
+					for(unsigned int j=0;j<this->nbAtom;j++){
+						this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].x, sigma);
+						//BC
+						this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].x+this->H1[0], sigma);
+						this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].x-this->H1[0], sigma);
+					}
 				}
 			}else if( dir == "y" ){
 				for(unsigned int i=0;i<nbPts;i++){
@@ -1244,7 +1273,12 @@ unsigned int AtomicSystem::Compute1dDensity(std::string auxname, std::string dir
 				for(unsigned int i=0;i<nbPts;i++){
 					this->density_prof[ind_dens][i*2] = 0;
 					this->density_prof[ind_dens][i*2+1] = this->H3[2]*i/(nbPts-1.);
-					for(unsigned int j=0;j<this->nbAtom;j++) this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].z, sigma);
+					for(unsigned int j=0;j<this->nbAtom;j++){
+						this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].z, sigma);
+						//BC
+						this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].z+this->H3[2], sigma);
+						this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].z-this->H3[2], sigma);
+					}
 				}
 			}else{
 			        cout << "The provided direction \"" << dir << "\" for density computation has not been recognize (directions available : x y z)" << endl;
@@ -1261,7 +1295,12 @@ unsigned int AtomicSystem::Compute1dDensity(std::string auxname, std::string dir
 			for(unsigned int i=0;i<nbPts;i++){
 				this->density_prof[ind_dens][i*2] = 0;
 				this->density_prof[ind_dens][i*2+1] = this->H1[0]*i/(nbPts-1.);
-				for(unsigned int j=0;j<this->nbAtom;j++) this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].x, sigma)*(this->Aux[indexaux][j]);
+				for(unsigned int j=0;j<this->nbAtom;j++){
+					this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].x, sigma)*(this->Aux[indexaux][j]);
+					//BC
+					this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].x+this->H1[0], sigma)*(this->Aux[indexaux][j]);
+					this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].x-this->H1[0], sigma)*(this->Aux[indexaux][j]);
+				}
 			}
 		}else if( dir == "y" ){
 			for(unsigned int i=0;i<nbPts;i++){
@@ -1278,7 +1317,12 @@ unsigned int AtomicSystem::Compute1dDensity(std::string auxname, std::string dir
 			for(unsigned int i=0;i<nbPts;i++){
 				this->density_prof[ind_dens][i*2] = 0;
 				this->density_prof[ind_dens][i*2+1] = this->H3[2]*i/(nbPts-1.);
-				for(unsigned int j=0;j<this->nbAtom;j++) this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].z, sigma)*(this->Aux[indexaux][j]);
+				for(unsigned int j=0;j<this->nbAtom;j++){
+					this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].z, sigma)*(this->Aux[indexaux][j]);
+					//BC
+					this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].z+this->H3[2], sigma)*(this->Aux[indexaux][j]);
+					this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].z-this->H3[2], sigma)*(this->Aux[indexaux][j]);
+				}
 			}
 		}else{
 		        cout << "The provided direction \"" << dir << "\" for density computation has not been recognize (directions available : x y z)" << endl;
@@ -1303,7 +1347,10 @@ void AtomicSystem::Print1dDensity(string filename, string auxname){
 			break;
 		}
 	}
-	if( indexaux == -1 ) cout << "The density property to print does not exist" << endl;
+	if( indexaux == -1 ){
+		cout << "The density property to print does not exist" << endl;
+		return;
+	}
 	ofstream writefile(filename);
 	writefile << this->density_name[indexaux][1] << " " << this->density_name[indexaux][0] << "Density" << endl;
 	for(unsigned int i=0;i<this->density_nbPts[indexaux];i++) writefile << this->density_prof[indexaux][i*2+1] << " " << this->density_prof[indexaux][i*2] << endl; 
@@ -1319,7 +1366,10 @@ void AtomicSystem::Print2dDensity(string filename, string auxname){
 			break;
 		}
 	}
-	if( indexaux == -1 ) cout << "The density property to print does not exist" << endl;
+	if( indexaux == -1 ){
+		cout << "The density property to print does not exist" << endl;
+		return;
+	}
 	ofstream writefile(filename);
 	writefile << "#" << this->density_name_2D[indexaux][1] << " " << this->density_name_2D[indexaux][0] << "Density" << endl;
 	unsigned int count = 0;

@@ -2736,7 +2736,6 @@ void Bicrystal::searchGBPos(){
 	
 	this->VacuumLo = this->Ldir;
 	this->MinPos = this->Ldir;
-	this->SystemLength = this->Ldir;
 	this->VacuumHi = 0.;
 	this->MaxPos = 0.;
 	this->IsVacuum = false;
@@ -2750,16 +2749,14 @@ void Bicrystal::searchGBPos(){
 			if( this->density_prof[ind_AtDens][i*2+1] > this->VacuumHi ) this->VacuumHi = this->density_prof[ind_AtDens][i*2+1];
 			if( this->density_prof[ind_AtDens][i*2+1] < this->VacuumLo ) this->VacuumLo = this->density_prof[ind_AtDens][i*2+1];
 		}
-	} // TODO non vacuum case ?
-	if( this->IsVacuum ){ // set to zero the diso dens near the vacuum to not impact the gaussian fit
-		double slab_width = 30.;
-		//TODO correct because it is not good for all cases
-		for(unsigned int i=0;i<this->density_nbPts[ind_DisoDens];i++){
-			if( this->density_prof[ind_DisoDens][i*2+1] < slab_width ) this->density_prof[ind_DisoDens][i*2] = 0.;
-			if( this->density_prof[ind_DisoDens][i*2+1] > VacuumLo-slab_width ) this->density_prof[ind_DisoDens][i*2] = 0.;
-		}
-		//Print1dDensity("dens","Disorder");
 	}
+	
+	double shift_sys = 0.; // shift applied to the system for being centered in the box
+	double zero = 0.;
+	double slab_width = 20.;
+	unsigned int nbGB = 1;
+	unsigned int max1_novac(0),max2_novac(0);
+	if( this->IsVacuum ){ // set to zero the diso dens near the vacuum to not impact the gaussian fit
 		if( NormalDir == "x" ){
 			for(unsigned int i=0;i<this->nbAtom;i++){
 				if( this->WrappedPos[i].x < this->MinPos ) this->MinPos = this->WrappedPos[i].x;
@@ -2777,12 +2774,99 @@ void Bicrystal::searchGBPos(){
 			}
 		}
 		if( fabs(this->MaxPos-this->MinPos-this->Ldir) < 1. ){
-			this->MinPos = this->VacuumHi-this->Ldir;
-			this->MaxPos = this->VacuumLo;
-			this->SystemLength = this->MaxPos-this->MinPos;
 			this->IsCentered = false;
+			shift_sys = Ldir - ( (VacuumHi + VacuumLo) / 2.);
+			// update pos and vacuum
+			this->MinPos = (VacuumHi-VacuumLo)/2.;
+			this->MaxPos = Ldir+((VacuumLo-VacuumHi)/2.);
+			VacuumHi = Ldir;
+			VacuumLo = 0.;
+
 		}
-		cout << "CETER = " << IsCentered << " " << IsVacuum << endl;
+	}else{
+		// search a first estimate of the GB positions by computing a sliding average over disorder density
+		vector<double> slide_ave(this->density_nbPts[ind_DisoDens],0.);
+		int win = round(this->density_nbPts[ind_DisoDens]*0.05);
+		for(int i=0;i<this->density_nbPts[ind_DisoDens];i++){
+			for(int j=-win;j<=win;j++){
+				int current_ind = i+j;
+				if( current_ind < 0 ) current_ind = this->density_nbPts[ind_DisoDens]-i-j;
+				else if( current_ind > this->density_nbPts[ind_DisoDens]-1 ) current_ind -= this->density_nbPts[ind_DisoDens];
+				slide_ave[i] += this->density_prof[ind_DisoDens][i*2];
+			}
+		}
+		// search two maximum separated at list by a slab_width
+		for(unsigned int i=1;i<this->density_nbPts[ind_DisoDens];i++)
+			if( slide_ave[i] > slide_ave[max1_novac] ) max1_novac = i;
+
+		bool firstfound = false;
+		for(unsigned int i=0;i<this->density_nbPts[ind_DisoDens];i++){
+			double cur_dist = fabs(this->density_prof[ind_DisoDens][max1_novac*2+1]-this->density_prof[ind_DisoDens][i*2+1]);
+			if( cur_dist > slab_width && fabs(Ldir-cur_dist) > slab_width ){
+				if( !firstfound ){
+					max2_novac = i;
+					firstfound = true;
+				}else if( slide_ave[i] > slide_ave[max2_novac] ){
+					max2_novac = i;
+				}
+			}
+		}
+		shift_sys = (Ldir/2.)-this->density_prof[ind_DisoDens][max1_novac*2+1];
+		// compute min and max pos
+		if( this->density_prof[ind_DisoDens][max2_novac*2+1]+shift_sys > Ldir ){
+			MinPos = this->density_prof[ind_DisoDens][max2_novac*2+1]+shift_sys - Ldir;
+			MaxPos = Ldir;
+		}else if( this->density_prof[ind_DisoDens][max2_novac*2+1]+shift_sys < 0 ){
+			MaxPos = this->density_prof[ind_DisoDens][max2_novac*2+1]+shift_sys + Ldir;
+			MinPos = 0;
+		}else if( this->density_prof[ind_DisoDens][max2_novac*2+1] > this->density_prof[ind_DisoDens][max1_novac*2+1] ){
+			MaxPos = this->density_prof[ind_DisoDens][max2_novac*2+1]+shift_sys;
+			MinPos = 0;
+		}else{
+			MinPos = this->density_prof[ind_DisoDens][max2_novac*2+1]+shift_sys;
+			MaxPos = Ldir;
+		}
+		nbGB = 2;
+
+	} // end if IsVacuum
+	double tot_shift_sys = shift_sys;
+	double MeanNormFacGauss = 0.;
+	unsigned int size_GBProf_Gauss;
+	for(unsigned int ng=0;ng<nbGB;ng++){
+		// no vacuum case and second GB => compute new shift
+		if( ng == 1 ){
+			double current_max2_pos;
+			if( MinPos > 0 ) current_max2_pos = MinPos;
+			else current_max2_pos = MaxPos;
+			shift_sys = (Ldir/2.) - current_max2_pos;
+			tot_shift_sys += shift_sys;
+			double current_max1_pos = Ldir - current_max2_pos;
+			if( current_max1_pos > Ldir ){
+				MinPos = current_max1_pos - Ldir;
+				MaxPos = Ldir;
+			}else if( current_max1_pos < 0 ){
+				MaxPos = current_max1_pos + Ldir;
+				MinPos = 0;
+			}else if( current_max1_pos > Ldir/2. ){
+				MaxPos = current_max1_pos;
+				MinPos = 0;
+			}else{
+				MinPos = current_max1_pos;
+				MaxPos = Ldir;
+			}
+		}
+		if( NormalDir == "x" ) ApplyShift(shift_sys,zero,zero);
+		else if( NormalDir == "y" ) ApplyShift(zero,shift_sys,zero);
+		else if( NormalDir == "z" ) ApplyShift(zero,zero,shift_sys);
+		// recompute disorder density
+		ind_DisoDens = Compute1dDensity("Disorder", NormalDir, sigma, nbPts_i);
+
+		// set disorder density at zero near the surfaces (as below we are searchin the maximum of diso dens for initialization of gaussian fitting
+		for(unsigned int i=0;i<this->density_nbPts[ind_DisoDens];i++){
+			if( this->density_prof[ind_DisoDens][i*2+1] < MinPos+slab_width ) this->density_prof[ind_DisoDens][i*2] = 0.;
+			if( this->density_prof[ind_DisoDens][i*2+1] > MaxPos-slab_width ) this->density_prof[ind_DisoDens][i*2] = 0.;
+		}
+
 		// Search GB position by computing the mean of gaussian distrib in the center of the system
 		// compute the max and the mean of the disorder density 
 		unsigned int indMaxDiso = 0;
@@ -2839,7 +2923,6 @@ void Bicrystal::searchGBPos(){
 		unsigned int max_min_search = 250;
 		unsigned int count_min_search = 0;
 		bool maxfound;
-		cout << "Mean diso : " << MeanDiso << endl;
 		while( rightMin > MeanDiso*facMean && count_min_search < max_min_search ){
 			maxfound = false;
 			count_equal = 0;
@@ -2858,7 +2941,6 @@ void Bicrystal::searchGBPos(){
 			}
 			count_min_search++;
 		}
-		cout << "right min : " << rightMin << " " << count_min_search << endl;
 		count_min_search = 0;
 		while( leftMin > MeanDiso*facMean && count_min_search < max_min_search ){
 			maxfound = false;
@@ -2878,7 +2960,6 @@ void Bicrystal::searchGBPos(){
 			}
 			count_min_search++;
 		}		
-		cout << "left min : " << leftMin << " " << count_min_search << endl;
 		for(unsigned int i=indLeft;i<indRight+1;i++){
 			density_red_forfit.push_back(density_red[i*2]);
 			density_red_forfit.push_back(density_red[i*2+1]);
@@ -2893,6 +2974,7 @@ void Bicrystal::searchGBPos(){
 			density_red_forfit[i*2] -= MinDiso;
 			NormFacGauss += density_red_forfit[i*2];
 		}
+		MeanNormFacGauss += NormFacGauss;
 		for(unsigned int i=0;i<density_red.size()/2;i++){
 			density_red[i*2] -= MinDiso;
 			density_red[i*2] /= NormFacGauss;
@@ -2902,73 +2984,183 @@ void Bicrystal::searchGBPos(){
 			density_red_forfit[i*2] /= NormFacGauss;
 		}
 
-		// set the GB profile of AtomicSystem class
-		this->density_prof.push_back(new double[density_red.size()]);
-		for(unsigned int i=0;i<density_red.size();i++) this->density_prof[density_prof.size()-1][i] = density_red[i];
-		this->density_name.push_back(new string[2]);
-		this->density_name[density_name.size()-1][0] = "GBProfile";
-		this->density_name[density_name.size()-1][1] = this->NormalDir;
-		this->density_nbPts.push_back(density_red.size()/2);
-
 		// estimate the GB position 
-		this->GBPos1 = 0;
-		for(unsigned int i=0;i<(density_red_forfit.size()/2);i++) this->GBPos1 += density_red_forfit[i*2]*density_red_forfit[i*2+1];
+		double GBPos_temp = 0.;
+		for(unsigned int i=0;i<(density_red_forfit.size()/2);i++) GBPos_temp += density_red_forfit[i*2]*density_red_forfit[i*2+1];
 
 		// estimate the GB width 
-		this->GBwidth1 = 0;
-		for(unsigned int i=0;i<(density_red_forfit.size()/2);i++) this->GBwidth1 += density_red_forfit[i*2]*pow(density_red_forfit[i*2+1]-this->GBPos1,2.);
-		this->GBwidth1 = sqrt(this->GBwidth1);
-	//} // end if IsVacuum
-	double sigma_fit, mu_fit, prefac;
-	sigma_fit = this->GBwidth1;
-	mu_fit = this->GBPos1;
-	prefac = 1.;
-	// fit a gaussian to rafine the estimation of GB width and position
-	MT->gaussian_fit(density_red_forfit, mu_fit, sigma_fit, prefac);
-	this->GBwidth1 = 2.355*sigma_fit;
-	this->GBPos1 = mu_fit;
-	// set the gaussian GB profile of AtomicSystem class (without prefac for the distribution to be normalized and for different system to be compared to each others)
-	this->density_prof.push_back(new double[density_red.size()]);
-	for(unsigned int i=0;i<density_red.size()/2;i++){
-		//this->density_prof[density_prof.size()-1][i*2] = MT->gaussian_prefac(density_red[i*2+1], mu_fit, sigma_fit, prefac);
-		this->density_prof[density_prof.size()-1][i*2] = MT->gaussian(density_red[i*2+1], mu_fit, sigma_fit);
-		this->density_prof[density_prof.size()-1][i*2+1] = density_red[i*2+1];
+		double GBwidth_temp = 0.;
+		for(unsigned int i=0;i<(density_red_forfit.size()/2);i++) GBwidth_temp += density_red_forfit[i*2]*pow(density_red_forfit[i*2+1]-GBPos_temp,2.);
+		GBwidth_temp = sqrt(GBwidth_temp);
+		double sigma_fit, mu_fit, prefac;
+		sigma_fit = GBwidth_temp;
+		mu_fit = GBPos_temp;
+		prefac = 1.;
+		// fit a gaussian to rafine the estimation of GB width and position
+		MT->gaussian_fit(density_red_forfit, mu_fit, sigma_fit, prefac);
+		GBwidth_temp = 2.355*sigma_fit;
+		GBPos_temp = mu_fit;
+		GBPos_temp -= tot_shift_sys;
+		if( GBPos_temp < 0. ) GBPos_temp += Ldir;
+		else if( GBPos_temp > Ldir ) GBPos_temp -= Ldir;
+		if( ng == 0 ){
+			GBPos1 = GBPos_temp;
+			GBwidth1 = GBwidth_temp;
+		}else{
+			GBPos2 = GBPos_temp;
+			GBwidth2 = GBwidth_temp;
+		}
+		// set the gaussian GB profile of AtomicSystem class (without prefac for the distribution to be normalized and for different system to be compared to each others)
+		if( ng == 0 ){
+			this->density_prof.push_back(new double[density_red.size()]);
+			for(unsigned int i=0;i<density_red.size()/2;i++){
+				this->density_prof[density_prof.size()-1][i*2] = MT->gaussian_prefac(density_red[i*2+1], mu_fit, sigma_fit,prefac);
+				this->density_prof[density_prof.size()-1][i*2+1] = density_red[i*2+1];
+			}
+			size_GBProf_Gauss = density_red.size()/2;
+			if( nbGB == 1 ){
+				for(unsigned int i=0;i<density_red.size()/2;i++){
+					this->density_prof[density_prof.size()-1][i*2+1] = density_red[i*2+1] - shift_sys;
+					if( this->density_prof[density_prof.size()-1][i*2+1] > Ldir ) this->density_prof[density_prof.size()-1][i*2+1] -= Ldir;
+					if( this->density_prof[density_prof.size()-1][i*2+1] < 0. ) this->density_prof[density_prof.size()-1][i*2+1] += Ldir;
+				}
+			}
+		}else{
+			for(unsigned int i=0;i<size_GBProf_Gauss;i++){
+				double cur_pos = density_red[i*2+1]+shift_sys;
+				if( cur_pos > Ldir ) cur_pos -= Ldir;
+				else if( cur_pos < 0. ) cur_pos += Ldir;
+				this->density_prof[density_prof.size()-1][i*2] += MT->gaussian_prefac(cur_pos, mu_fit, sigma_fit,prefac);
+				this->density_prof[density_prof.size()-1][i*2+1] = density_red[i*2+1] + shift_sys - tot_shift_sys;
+				if( this->density_prof[density_prof.size()-1][i*2+1] > Ldir ) this->density_prof[density_prof.size()-1][i*2+1] -= Ldir;
+				if( this->density_prof[density_prof.size()-1][i*2+1] < 0. ) this->density_prof[density_prof.size()-1][i*2+1] += Ldir;
+			}
+		}
 	}
 	this->density_name.push_back(new string[2]);
 	this->density_name[density_name.size()-1][0] = "GBProfile_Gauss";
 	this->density_name[density_name.size()-1][1] = this->NormalDir;
-	this->density_nbPts.push_back(density_red.size()/2);
+	this->density_nbPts.push_back(size_GBProf_Gauss);
+	
+	if( NormalDir == "x" ) ApplyShift(-tot_shift_sys,zero,zero);
+	else if( NormalDir == "y" ) ApplyShift(zero,-tot_shift_sys,zero);
+	else if( NormalDir == "z" ) ApplyShift(zero,zero,-tot_shift_sys);
+	// recompute disorder density
+	ind_DisoDens = Compute1dDensity("Disorder", NormalDir, sigma, nbPts_i);
+
+	// set the GB profile of AtomicSystem class
+	MeanNormFacGauss /= nbGB;
+	this->density_prof.push_back(new double[density_nbPts[ind_DisoDens]*2]);
+	for(unsigned int i=0;i<this->density_nbPts[ind_DisoDens];i++){
+		this->density_prof[density_prof.size()-1][i*2] = density_prof[ind_DisoDens][i*2]/MeanNormFacGauss;
+		this->density_prof[density_prof.size()-1][i*2+1] = density_prof[ind_DisoDens][i*2+1];
+	}
+	this->density_name.push_back(new string[2]);
+	this->density_name[density_name.size()-1][0] = "GBProfile";
+	this->density_name[density_name.size()-1][1] = this->NormalDir;
+	this->density_nbPts.push_back(this->density_nbPts[ind_DisoDens]);
+
+
+
 }
 
 void Bicrystal::ComputeExcessVolume(){
 	// Compute mass density along GB normal direction
-	double sigma = 2.; // TODO once again to see if a file can be define for those vars or static vars.. ?
+	double sigma = 2.;
+        double slab_width = 20.; // TODO make something with this width which also used in the function above	
 	unsigned int nbPts = 500;
 	unsigned int index;
-	index = this->Compute1dDensity("Mass", this->NormalDir, sigma, nbPts);
-	double PC_dens = 0.;
-	unsigned int count = 0;
-	double buffer;
-	this->ExcessVol = 0.;
-	// compute density of perfect crystal assuming that there is perfect crystal between MinPos+GBwidth and GBPos-GBwidth and same above GBPos
-	if( IsVacuum ){
+	index = this->Compute1dDensity("Atomic", this->NormalDir, sigma, nbPts);
+	double step_dens = this->density_prof[index][3]-this->density_prof[index][1];
+	double pos;
+	unsigned int nbGB = 1;
+	if( !IsVacuum ) nbGB = 2;
+	double curGBPos, curGBwidth;
+	for(unsigned int ng=0;ng<nbGB;ng++){
+		double ExcessVol = 0.;
+		double PC_dens = 0.;
+		unsigned int count = 0;
+		// compute density of perfect crystal assuming that there is perfect crystal between GBPos-GBwidth-slab_width and GBPos-GBwidth and same above GBPos
 		vector<double> dens_GB;
-		for(unsigned int i=0;i<this->density_nbPts[index];i++){
-			buffer = this->density_prof[index][i*2+1];
-			if( !this->IsCentered && buffer > this->VacuumHi ) buffer -= this->Ldir;
-			if( ( buffer > MinPos+GBwidth1 && buffer < GBPos1-GBwidth1 ) || ( buffer < MaxPos-GBwidth1 && buffer > GBPos1+GBwidth1 ) ){
-				PC_dens += this->density_prof[index][i*2];
-				count += 1;
-			}else if( buffer > GBPos1-GBwidth1 && buffer < GBPos1+GBwidth1 ){
-				dens_GB.push_back(density_prof[index][i*2]);
-				dens_GB.push_back(buffer);
+		vector<double> bonds;
+		if( ng == 0 ){
+			curGBPos = GBPos1;
+			curGBwidth = GBwidth1;
+		}else{
+			curGBPos = GBPos2;
+			curGBwidth = GBwidth2;
+		}
+		if( curGBPos-curGBwidth-slab_width < 0. ) bonds.push_back(-(curGBPos-curGBwidth-slab_width+Ldir));
+		else bonds.push_back(curGBPos-curGBwidth-slab_width);
+		if( curGBPos-curGBwidth < 0. ) bonds.push_back(-(curGBPos-curGBwidth+Ldir));
+		else bonds.push_back(curGBPos-curGBwidth);
+		if( curGBPos+curGBwidth > Ldir ) bonds.push_back(-(curGBPos+curGBwidth-Ldir));
+		else bonds.push_back(curGBPos+curGBwidth);
+		if( curGBPos+curGBwidth+slab_width > Ldir ) bonds.push_back(-(curGBPos+curGBwidth+slab_width-Ldir));
+		else bonds.push_back(curGBPos+curGBwidth+slab_width);
+		for(unsigned int i=1;i<this->density_nbPts[index];i++){
+			pos = this->density_prof[index][i*2+1];
+			// lower part of GB
+			if( bonds[0] > 0 ){
+				if( pos > bonds[0] && pos < bonds[1] ){
+					PC_dens += this->density_prof[index][i*2];
+					count += 1;
+				}else if( pos >= bonds[1] && pos <= curGBPos ){
+					dens_GB.push_back(density_prof[index][i*2]);
+					dens_GB.push_back(pos);
+				}
+			}else if( bonds[1] > 0 ){
+				if( pos > -bonds[0] || pos < bonds[1] ){
+					PC_dens += this->density_prof[index][i*2];
+					count += 1;
+				}else if( pos <= curGBPos && pos >= bonds[1] ){
+					dens_GB.push_back(density_prof[index][i*2]);
+					dens_GB.push_back(pos);
+				}
+			}else{
+				if( pos > -bonds[0] && pos < -bonds[1] ){
+					PC_dens += this->density_prof[index][i*2];
+					count += 1;
+				}else if( pos <= curGBPos || pos >= -bonds[1] ){
+					dens_GB.push_back(density_prof[index][i*2]);
+					dens_GB.push_back(pos);
+				}
+			}
+			// upper part of GB
+			if( bonds[2] < 0 ){
+				if( pos > -bonds[2] && pos < -bonds[3] ){
+					PC_dens += this->density_prof[index][i*2];
+					count += 1;
+				}else if( pos > curGBPos || pos < -bonds[2] ){
+					dens_GB.push_back(density_prof[index][i*2]);
+					dens_GB.push_back(pos);
+				}
+			}else if( bonds[3] > 0 ){
+				if( pos > bonds[2] && pos < bonds[3] ){
+					PC_dens += this->density_prof[index][i*2];
+					count += 1;
+				}else if( pos > curGBPos && pos < bonds[2] ){
+					dens_GB.push_back(density_prof[index][i*2]);
+					dens_GB.push_back(pos);
+				}
+			}else{
+				if( pos > bonds[2] || pos < -bonds[3] ){
+					PC_dens += this->density_prof[index][i*2];
+					count += 1;
+				}else if(  pos < bonds[2] && pos > curGBPos ){
+					dens_GB.push_back(density_prof[index][i*2]);
+					dens_GB.push_back(pos);
+				}
 			}
 		}
 		PC_dens /= count;
 		// compute excess volume by integrating density in the GB region
-		for(unsigned int i=0;i<(dens_GB.size()/2)-2;i++) this->ExcessVol += ((2.*PC_dens/(dens_GB[i*2]+dens_GB[(i+1)*2]))-1.)*fabs((dens_GB[(i+1)*2+1]-dens_GB[i*2+1]));
-
+		//for(unsigned int i=0;i<(dens_GB.size()/2)-2;i++) ExcessVol += ((2.*PC_dens/(dens_GB[i*2]+dens_GB[(i+1)*2]))-1.)*fabs((dens_GB[(i+1)*2+1]-dens_GB[i*2+1]));
+		for(unsigned int i=0;i<(dens_GB.size()/2);i++) ExcessVol += ((PC_dens/dens_GB[i*2])-1.)*step_dens;
+		if( ng == 0 ) ExcessVol1 = ExcessVol;
+		else ExcessVol2 = ExcessVol;
 	}
+
 }
 
 void Bicrystal::print_Grains(bool vacuum, string fnameG1, string fnameG2){

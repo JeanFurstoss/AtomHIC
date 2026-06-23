@@ -48,9 +48,9 @@ int main(int argc, char *argv[])
 		cerr << "This executable allows to analyze a bicrystalline system using the bond orientational parameters" << endl;
 		cerr << "It first computes the order parameters and print it in the AtomicOutputFilename dump file" << endl;
 		cerr << "Then it computes the 1D density profile of the order parameter along the direction normal to the GB (this profile is printed in the OrderParamererDensityFilename)" << endl;
-		cerr << "Then it fits this profile with a single Gaussian (this Gaussian is given in the GaussianOrderParameterDensityFilename file) allowing to retrive the GB position" << endl;
-		cerr << "Finally it computes the GB position and width (mu and sigma of the Gaussian) and the GB excess volume using the expression of Furstoss et al. 2022 Am. Min." << endl;
-	        cerr << "The StatDataFilename finally contains the GB position width and excess volume" << endl;	
+		cerr << "Then it fits this profile with a single (or two when there is two GB due to PBC) Gaussian (this Gaussian is given in the GaussianOrderParameterDensityFilename file) allowing to retrive the GB position" << endl;
+		cerr << "Finally it computes the GB position(s) and width(s) (mu and sigma of the Gaussian) and the GB excess volume using the expression of Furstoss et al. 2022 Am. Min." << endl;
+	        cerr << "The StatDataFilename finally contains the GB position(s) width(s) and excess volume(s)" << endl;	
 		return EXIT_FAILURE;
 	}
 	string InputFilename = argv[1];
@@ -65,7 +65,11 @@ int main(int argc, char *argv[])
 	MySystem.Print1dDensity(DensityFilename, "GBProfile");
 	MySystem.Print1dDensity(GaussDensityFilename, "GBProfile_Gauss");
 	ofstream writefile(StatdataFilename);
-	writefile << MySystem.getGBPos1() << " " << MySystem.getGBwidth1() << " " << MySystem.getExcessVol();
+	writefile << MySystem.getGBPos1() << " " << MySystem.getGBwidth1() << " " << MySystem.getExcessVol1();
+	if( MySystem.getGBwidth2() > 0. ){
+		cout << "Two GB found" << endl;
+		writefile << endl << MySystem.getGBPos2() << " " << MySystem.getGBwidth2() << " " << MySystem.getExcessVol2();
+	}
 	writefile.close();
 	Dis.ExecutionTime();	
 	return 0;
