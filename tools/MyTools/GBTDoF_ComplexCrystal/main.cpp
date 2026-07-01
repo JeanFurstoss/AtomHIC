@@ -378,13 +378,13 @@ int main(int argc, char *argv[])
 		currentMy = refGB->getMy1();
 		currentDupX = refGB->getDupX1();
 		currentDupY = refGB->getDupY1();
-		filedup << currentDupX*currentDupY << " " << refGB->getDupY2()*refGB->getDupY2();
+		filedup << currentDupX*currentDupY << " " << refGB->getDupX2()*refGB->getDupY2();
 	}else{
 		currentMx = refGB->getMx2();
 		currentMy = refGB->getMy2();
 		currentDupX = refGB->getDupX2();
 		currentDupY = refGB->getDupY2();
-		filedup << currentDupX*currentDupY << " " << refGB->getDupY1()*refGB->getDupY1();
+		filedup << currentDupX*currentDupY << " " << refGB->getDupX1()*refGB->getDupY1();
 	}
 	filedup.close();
 	for(unsigned int il=0;il<(*indexesDown).size();il++){
