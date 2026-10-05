@@ -43,6 +43,13 @@ protected:
 	double *buffer_vec_2;
 	double *buffer_vec_3;
 	double *buffer_vec_4;
+	double *buffer_vec_par_1;
+	double *buffer_vec_par_2;
+	double *buffer_vec_par_3;
+	double *buffer_vec_par_4;
+	double *buffer_vec_par_5;
+	double *buffer_vec_par_6;
+	double *buffer_vec_par_7;
 	unsigned int *buffer_vec_uint;
 	int *buffer_vec_int;
 	double *buffer_mat_1;
@@ -95,6 +102,7 @@ public:
 	void gaussian_fit(const std::vector<double> data, double &mu, double &sigma, double &prefac);
 	void Vec2rotMat(const double *vec, const double &theta, double *rotMat);
 	void MatDotVec(const double *mat, const double *vec, double *prod);
+	void Transpose3x3(const double *mat1, double *mat2);
 	void MatDotRawVec(const double *mat, const double *vec, double *prod);
 	void MatDotRawVec_vec(const std::vector<std::vector<double>> mat, const std::vector<double> vec, std::vector<double> &prod);
 	void OuterVecProduct(const std::vector<double> vec1, const std::vector<double> vec2, std::vector<std::vector<double>> &prod);
@@ -108,6 +116,7 @@ public:
 	void printMat(const double *mat);
 	void printMatVec(const std::vector<std::vector<double>> mat);
 	void printVec(const double *vec);
+	void printVec(const int *vec);
 	void printVec(const std::vector<double> vec);
 	void crossProd(const double *vec1, const double *vec2, double *Prod);
 	void dia_sym_mtx(const double *Mat, double *Prod); // compute the symmetric over the second diagonal
@@ -119,7 +128,7 @@ public:
 	void Gram_Schmidt(const double *Mat, double *Prod); // orthogonalized basis
 	void sort(const std::vector<double> vec, const unsigned int col, const unsigned int NbCol, std::vector<double> &sorted); // sort a vector with respect to a given column (col), giving the number of column in the vector
 	void sort_abs(const std::vector<double> vec, const unsigned int col, const unsigned int NbCol, std::vector<double> &sorted); // sort a vector with respect to a given column (col), giving the number of column in the vector
-	void computeTiltTrans(const double *xh, const double *yh, const double  *zh, double *TiltTrans); // compute a transformation matrix permitting to transform an inclined parallelepiped (with xh, yh and zh its cell parameters) into an orthogonal cell with dimension |xh| |yh| and |zh|
+	void computeTiltTrans(const double *xh, const double *yh, const double  *zh, double *TiltTrans, bool AllowTilt=false); // compute a transformation matrix permitting to transform an inclined parallelepiped (with xh, yh and zh its cell parameters) into an orthogonal cell with dimension |xh| |yh| and |zh|
 	void MultidimGaussian(const std::vector<std::vector<double>> data, std::vector<double> &mu, std::vector<std::vector<double>> &C); // compute the esperance and covariance of multidimensionnal data assuming normal law
 	long double Prob_MultidimGaussian(const std::vector<std::vector<double>> C_inv, std::vector<double> mu, const long double det_C, const std::vector<double> X); // compute the probability associated to a multidim gaussian with a given esperance, inverse covariant matrix and determinant of covariant matrix 
 	long double LogLikelihoodMultidimGaussian(const std::vector<std::vector<double>> C_inv, std::vector<double> mu, const long double det_C, const std::vector<std::vector<double>> data, double &BIC); // compute the log likelihood of a Gaussian distribution regarding a dataset and the Bayes Informed Criteria (BIC) 
@@ -136,6 +145,10 @@ public:
 	std::vector<std::vector<int>> GenerateNDCombinations(int dim, int minValue, int maxValue);
 	std::vector<std::vector<int>> GenerateHKLCombinations(int minHKL, int maxHKL);
 	int gcd3(int a, int b, int c);
+	void solve_DSC(const int *u, const unsigned int L, const double *B, double *DSC_Base, double tol);
+	void ComputeReciproqual(double *mat1, double *mat2);
+	bool IsInParallelepiped(double *basis, double *origin, double *point, const bool &Opt=false);
+	bool IsInParallelepiped(double *vecbox1, double *vecbox2, double *vecbox3, double &detbase, double *point, const bool &Opt=false);
 	~MathTools();
 };
 

@@ -1,6 +1,6 @@
  # FCC gold crystal relaxed using EAM potential of Grochola-JCP05
 
-CRYSTAL Cubic 
+CRYSTAL FCC 
   
            4  atoms
            1  atom types

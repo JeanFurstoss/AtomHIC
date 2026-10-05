@@ -1,6 +1,6 @@
  # FCC copper crystal relaxed using EAM potential of Mishin-et-al-2001-PRB
 
-CRYSTAL Cubic 
+CRYSTAL FCC 
    
            4  atoms
            1  atom types

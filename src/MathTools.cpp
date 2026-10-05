@@ -38,6 +38,13 @@ MathTools::MathTools(){
 	this->buffer_vec_2 = new double[3];
 	this->buffer_vec_3 = new double[3];
 	this->buffer_vec_4 = new double[3];
+	this->buffer_vec_par_1 = new double[3];
+	this->buffer_vec_par_2 = new double[3];
+	this->buffer_vec_par_3 = new double[3];
+	this->buffer_vec_par_4 = new double[3];
+	this->buffer_vec_par_5 = new double[3];
+	this->buffer_vec_par_6 = new double[3];
+	this->buffer_vec_par_7 = new double[3];
 	this->buffer_vec_int = new int[3];
 	this->buffer_vec_uint = new unsigned int[3];
 	this->buffer_mat_1 = new double[9];
@@ -418,6 +425,19 @@ void MathTools::Vec2rotMat(const double *vec, const double &theta, double *rotMa
 	rotMat[8] = pow(vec[2],2.)*(1.-c)+c;
 }
 
+void MathTools::Transpose3x3(const double *mat1, double *mat2){
+	double xy = mat1[1];
+	double xz = mat1[2];
+	double yz = mat1[5];
+	mat2[1] = mat1[3];
+	mat2[2] = mat1[6];
+	mat2[5] = mat1[7];
+	mat2[3] = xy;
+	mat2[6] = xz;
+	mat2[7] = yz;
+	for(unsigned int i=0;i<3;i++) mat2[i*3+i] = mat1[i*3+i];
+}
+
 void MathTools::MatDotVec(const double *mat, const double *vec, double *prod){
 	for(unsigned int i=0;i<3;i++){
 		this->buffer_vec_1[i] = vec[i];
@@ -583,7 +603,10 @@ void MathTools::printVec(const double *vec){
 	for(unsigned int i=0;i<3;i++) cout << vec[i] << " " ;
 	cout << endl;
 }
-
+void MathTools::printVec(const int *vec){
+	for(unsigned int i=0;i<3;i++) cout << vec[i] << " " ;
+	cout << endl;
+}
 void MathTools::printVec(const vector<double> vec){
 	for(unsigned int i=0;i<3;i++) cout << vec[i] << " " ;
 	cout << endl;
@@ -819,34 +842,52 @@ void MathTools::get_right_hand(const double *Mat, double *Prod){
 	}
 }
 // compute a transformation matrix permitting to transform an inclined parallelepiped (with xh, yh and zh its cell parameters) into an orthogonal cell with dimension |xh| |yh| and |zh|
-void MathTools::computeTiltTrans(const double *xh, const double *yh, const double  *zh, double *TiltTrans){
+void MathTools::computeTiltTrans(const double *xh, const double *yh, const double  *zh, double *TiltTrans, bool AllowTilt){
+	double prec = 1.e-15;
+	if( fabs(xh[0]) < prec || fabs(yh[1]) < prec || fabs(zh[2]) < prec ){
+		cout << "Warning one of the diagonal component of the provided basis is null, returning identity matrix for TiltTrans" << endl;
+		for(unsigned int i=0;i<3;i++){
+			TiltTrans[i*3+i] = 1.;
+			for(unsigned int j=i+1;i<3;i++){
+				TiltTrans[i*3+j] = 0.;
+				TiltTrans[j*3+i] = 0.;
+			}
+		}
+		return;
+	}
+	double *a_init = new double[9];
+	double *a_end = new double[9];
+	for(unsigned int i=0;i<3;i++){
+		a_init[i*3] = xh[i];
+		a_init[i*3+1] = yh[i];
+		a_init[i*3+2] = zh[i];
+	}
+	a_end[3] = 0.;
+	a_end[6] = 0.;
+	a_end[7] = 0.;
 	// box dimension
-	double xbox = sqrt( pow(xh[0],2.) + pow(xh[1],2.) + pow(xh[2],2.));
-	double ybox = sqrt( pow(yh[0],2.) + pow(yh[1],2.) + pow(yh[2],2.));
-	double zbox = sqrt( pow(zh[0],2.) + pow(zh[1],2.) + pow(zh[2],2.));
-	// compute corrections to apply to the cell vectors and atomic positions to have an orthogonal cell
-	buffer_mat_1[0] = 1.;
-	buffer_mat_1[1] = -yh[0]/yh[1]+((zh[0]-(yh[0]*zh[1]/yh[1]))*yh[2]/((zh[2]-(yh[2]*zh[1]/yh[1]))*yh[1]));
-	buffer_mat_1[2] = -(zh[0]-(yh[0]*zh[1]/yh[1]))/(zh[2]-(yh[2]*zh[1]/yh[1]));
-	buffer_mat_1[3] = 0.;
-	buffer_mat_1[4] = ybox/yh[1]+(zh[1]*(ybox/yh[1])*yh[2]/((zh[2]-(yh[2]*zh[1]/yh[1]))*yh[1]));
-	buffer_mat_1[5] = -zh[1]*(ybox/yh[1])/(zh[2]-(yh[2]*zh[1]/yh[1]));
-	buffer_mat_1[6] = 0.;
-	buffer_mat_1[7] = -yh[2]*zbox/(yh[1]*(zh[2]-(yh[2]*zh[1]/yh[1])));
-	buffer_mat_1[8] = zbox/(zh[2]-(yh[2]*zh[1]/yh[1]));
-	
-	TiltTrans[0] = xbox/(xh[0]+buffer_mat_1[1]*xh[1]+buffer_mat_1[2]*xh[2]);
-	TiltTrans[1] = buffer_mat_1[1]*xbox/(xh[0]+buffer_mat_1[1]*xh[1]+buffer_mat_1[2]*xh[2]);
-	TiltTrans[2] = buffer_mat_1[2]*xbox/(xh[0]+buffer_mat_1[1]*xh[1]+buffer_mat_1[2]*xh[2]);
-	TiltTrans[3] = -(xh[1]*buffer_mat_1[4]+buffer_mat_1[5]*xh[2])/(xh[0]+buffer_mat_1[1]*xh[1]+buffer_mat_1[2]*xh[2]);
-	//TiltTrans[3] = TiltTrans[1];
-	TiltTrans[4] = buffer_mat_1[4]-(xh[1]*buffer_mat_1[4]+buffer_mat_1[5]*xh[2])*buffer_mat_1[1]/(xh[0]+buffer_mat_1[1]*xh[1]+buffer_mat_1[2]*xh[2]);
-	TiltTrans[5] = buffer_mat_1[5]-(xh[1]*buffer_mat_1[4]+buffer_mat_1[5]*xh[2])*buffer_mat_1[2]/(xh[0]+buffer_mat_1[1]*xh[1]+buffer_mat_1[2]*xh[2]);
-	TiltTrans[6] = -(xh[2]*buffer_mat_1[8]+buffer_mat_1[7]*xh[1])/(xh[0]+buffer_mat_1[1]*xh[1]+buffer_mat_1[2]*xh[2]);
-	//TiltTrans[6] = TiltTrans[2];
-	TiltTrans[7] = buffer_mat_1[7]-(xh[2]*buffer_mat_1[8]+buffer_mat_1[7]*xh[1])*buffer_mat_1[1]/(xh[0]+buffer_mat_1[1]*xh[1]+buffer_mat_1[2]*xh[2]);
-	//TiltTrans[7] = TiltTrans[5];
-	TiltTrans[8] = buffer_mat_1[8]-(xh[2]*buffer_mat_1[8]+buffer_mat_1[7]*xh[1])*buffer_mat_1[2]/(xh[0]+buffer_mat_1[1]*xh[1]+buffer_mat_1[2]*xh[2]);
+	double xbox = ( xh[0] / fabs(xh[0]) ) * sqrt( pow(xh[0],2.) + pow(xh[1],2.) + pow(xh[2],2.));
+	a_end[0] = xbox;
+	double ybox, zbox; 
+	if( AllowTilt ){
+		ybox = ( yh[1] / fabs(yh[1]) ) * sqrt( pow(yh[1],2.) + pow(yh[2],2.));
+		zbox = zh[2];
+		a_end[1] = yh[0];
+		a_end[2] = zh[0];
+		a_end[5] = zh[1];
+	}else{
+		ybox = ( yh[1] / fabs(yh[1]) ) * sqrt( pow(yh[0],2.) + pow(yh[1],2.) + pow(yh[2],2.));
+		zbox = ( zh[2] / fabs(zh[2]) ) * sqrt( pow(zh[0],2.) + pow(zh[1],2.) + pow(zh[2],2.));
+		a_end[1] = 0.;
+		a_end[2] = 0.;
+		a_end[5] = 0.;
+	}
+	a_end[4] = ybox;
+	a_end[8] = zbox;
+	invert3x3(a_init,a_init);
+	MatDotMat(a_end,a_init,TiltTrans);
+	delete[] a_init;
+	delete[] a_end;
 }
 
 void MathTools::MultidimGaussian(const vector<vector<double>> data, vector<double> &mu, vector<vector<double>> &C){
@@ -1240,7 +1281,9 @@ void MathTools::GenerateCombinationsFromList(const vector<vector<unsigned int>>&
 }
 
 int MathTools::gcd3(int a, int b, int c){
-	return std::gcd(std::gcd(abs(a), abs(b)), abs(c));
+	int gcd = std::gcd(std::gcd(abs(a), abs(b)), abs(c));
+	if( gcd != 0 ) return gcd;
+	else return 1;
 }
 
 // Generate non redondant hkl combinations between min and maxhkl
@@ -1296,6 +1339,111 @@ vector<vector<int>> MathTools::GenerateHKLCombinations(int minHKL, int maxHKL){
 	return results;
 }
 
+// solve DSC equation based on the work of Bonnet and Durand 1975
+void MathTools::solve_DSC(const int *u, const unsigned int L, const double *B, double *DSC_Base, double tol){
+	unsigned int *GCD = new unsigned int[3];
+	unsigned int g_v, g_lambda, g_mu, gamma, alpha, beta;
+	double buffer;
+	bool found = false;
+	unsigned int count = 0;
+	g_v = L/gcd(abs(u[2]), L);
+	GCD[0] = abs(u[1]);
+	GCD[1] = abs(u[2]);
+	GCD[2] = L;
+	g_lambda = gcd_mult(GCD,3);
+	g_mu = gcd(abs(u[2]), L)/g_lambda;
+	for(unsigned int i=0;i<g_v+1;i++){
+		gamma = i;
+		buffer = (double) ((int) g_mu*u[1]- (int) gamma*u[2])/ (int) L;
+		if( fabs(buffer-round(buffer)) < tol ) break;
+	}
+	alpha = 0;
+	while( !found && alpha < g_mu+1 ){
+		for(unsigned int i=0;i<g_v+1;i++){
+			beta = i;
+			buffer = (double) ((int) g_lambda*u[0] - (int) alpha*u[1] - (int) beta*u[2]) / (int) L;
+			if( fabs(buffer-round(buffer)) < tol ){
+				found = true;
+				break;
+			}
+		}
+		if( found ) break;
+		else alpha++;
+	}
+	if( !found ) cout << "Failed to find DSC basis !" << endl;
+	for(unsigned int i=0;i<3;i++){
+		DSC_Base[i*3] = B[i*3] / ((double) g_lambda);
+		DSC_Base[i*3+1] = (((double) alpha)*B[i*3]/(((double) g_lambda * g_mu))) + (B[i*3+1]/((double) g_mu));
+		DSC_Base[i*3+2] = (B[i*3]*((double) (alpha*gamma+beta*g_mu))/((double) (g_mu*g_v*g_lambda))) + (B[i*3+1]*((double) gamma)/((double) g_mu* g_v)) + (B[i*3+2]/((double) g_v));
+	}
+	delete[] GCD;
+}
+
+void MathTools::ComputeReciproqual(double *mat1, double *mat2){
+	double *a1r = new double[3];
+	double *a2r = new double[3];
+	double *a3r = new double[3];
+	for(unsigned int i=0;i<3;i++){
+		a1r[i] = mat1[i*3]; 
+		a2r[i] = mat1[i*3+1]; 
+		a3r[i] = mat1[i*3+2]; 
+	}
+	double *buffer = new double[3];
+	mixedProd(a2r,a3r,buffer);
+	double Vr = dotProd(a1r,buffer);
+	// compute reciproqual vectors
+	mixedProd(a2r,a3r,buffer);
+	for(unsigned int i=0;i<3;i++) mat2[i*3] = buffer[i] / Vr;
+	mixedProd(a3r,a1r,buffer);
+	for(unsigned int i=0;i<3;i++) mat2[i*3+1] = buffer[i] / Vr;
+	mixedProd(a1r,a2r,buffer);
+	for(unsigned int i=0;i<3;i++) mat2[i*3+2] = buffer[i] / Vr;
+	delete[] a1r;
+	delete[] a2r;
+	delete[] a3r;
+	delete[] buffer;
+}
+
+bool MathTools::IsInParallelepiped(double *basis, double *origin, double *point, const bool &Opt){
+	double det = MathTools::det(basis);
+	double tol = 1.e-10;
+	if( fabs(det) < tol ){
+		cout << "The provided vectors do not form a parallelepiped, aborting" << endl;
+		return false;
+	}
+	for(unsigned int d=0;d<3;d++){
+		buffer_vec_par_1[d] = basis[d*3];
+		buffer_vec_par_2[d] = basis[d*3+1];
+		buffer_vec_par_3[d] = basis[d*3+2];
+		buffer_vec_par_7[d] = point[d] - origin[d];
+	}
+	crossProd(buffer_vec_par_2,buffer_vec_par_3,buffer_vec_par_4);
+	crossProd(buffer_vec_par_3,buffer_vec_par_1,buffer_vec_par_5);
+	crossProd(buffer_vec_par_1,buffer_vec_par_2,buffer_vec_par_6);
+	return IsInParallelepiped(buffer_vec_par_4,buffer_vec_par_5,buffer_vec_par_6,det,buffer_vec_par_7,Opt);
+}
+
+bool MathTools::IsInParallelepiped(double *vecbox1, double *vecbox2, double *vecbox3, double &detbase, double *point, const bool &Opt){
+	double u(0.), v(0.), w(0.);
+	double tol = 1.e-6;
+	double OnePTol = 1.+tol;
+	if( Opt ){ // consider that the provided basis is restricted triclinic box (in the sense of lammps)
+		for(unsigned int d=0;d<3;d++) u += vecbox1[d]*point[d];
+		for(unsigned int d=1;d<3;d++) v += vecbox2[d]*point[d];
+		w = vecbox3[2]*point[2];
+	}else{
+		for(unsigned int d=0;d<3;d++){
+			u += vecbox1[d]*point[d];
+			v += vecbox2[d]*point[d];
+			w += vecbox3[d]*point[d];
+		}
+	}
+	u /= detbase;
+	v /= detbase;
+	w /= detbase;
+	return (u >= tol && u < OnePTol && v >= tol && v < OnePTol && w >= tol && w < OnePTol );
+}
+
 MathTools::~MathTools(){
 	delete[] buffer_mat_1;
 	delete[] buffer_mat_2;
@@ -1304,6 +1452,13 @@ MathTools::~MathTools(){
 	delete[] buffer_vec_2;
 	delete[] buffer_vec_3;
 	delete[] buffer_vec_4;
+	delete[] buffer_vec_par_1;
+	delete[] buffer_vec_par_2;
+	delete[] buffer_vec_par_3;
+	delete[] buffer_vec_par_4;
+	delete[] buffer_vec_par_5;
+	delete[] buffer_vec_par_6;
+	delete[] buffer_vec_par_7;
 	delete[] buffer_vec_uint;
 	delete[] buffer_vec_int;
 }

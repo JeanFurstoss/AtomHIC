@@ -68,8 +68,9 @@ protected:
 	unsigned int *Neighbours = nullptr; // List of neigbors, structured as 2D array [ nbAtom x (nbMaxNeighbours+1) ] where the first value of each line corresponds to the number of neighbours for the ith atom, i.e. Neighbours[i*(nbMaxN+1)] = nb of neighbour of atom i, Neighbours[i*(nbMaxN+1)+j+1] = id of the jth neighbour of atom i
 	int *CLNeighbours = nullptr; // List of coefficient (NclX,Ncly,Nclz) applied to the atom position to be a neighbour [ nbAtom x (nbMaxNeighbours*3) ] where the first value of each line corresponds to the number of neighbours for the ith atom, i.e. CLNeighbours[i*nbMaxN*3+j*3] = integer applied to H1 to the jth neighbour of atom i for being its neighbour, CLNeighbours[i*nbMaxN*3+j*3+1] = integer applied to H2 to the jth neighbour of atom i for being its neighbour, CLNeighbours[i*nbMaxN*3+j*3+2] = integer applied to H3 to the jth neighbour of atom i for being its neighbour
 	bool IsNeighbours = false;
-	std::vector<int> *NotSepTag; // array containing the atom which should not be separated: NotSepTag[i][0] = -1 => the atom i is stored because of the NotSep list, 0 => this atom is not related to the NotSep list, n => the atom has stored n neighbour because of the NotSep list, in the latter case: NotSepTag[i][j+1] return the index of the jth atom which has been stored with the ith one due to the NotSepList // TEST NotSepTag[i][0] < 0 atom has been stored due to not sep list and the value correspond to 1-index of the associated neighbour
+	std::vector<int> *NotSepTag; // array containing the atom which should not be separated: NotSepTag[i][0] = -1 => the atom i is stored because of the NotSep list, 0 => this atom is not related to the NotSep list, n => the atom has stored n neighbour because of the NotSep list, in the latter case: NotSepTag[i][j+1] return the index of the jth atom which has been stored with the ith one due to the NotSepList // TEST NotSepTag[i][0] < 0 atom has been stored due to not sep list and the value correspond to -1-index of the associated neighbour
 	bool IsNotSepTag = false;
+	double *H = nullptr; // cell vectors of the system // TODO remove H1, H2, H3 all over the code as well as G1, G2, G3
 	double *H1 = nullptr; // cell vectors of the system
 	double *H2 = nullptr;
 	double *H3 = nullptr;
@@ -117,21 +118,21 @@ protected:
 	std::vector<int> density_nbPts_2D; // density_nbPts[i*2] = number of sampled point in dir 1 [i*2+1] in dir2
 	std::vector<std::string*> density_name_2D; // 
 	std::string File_Heading; // head of lmp printed file
+	double current_rc_neigh;
 	// Parameters read from Fixed_Parameter.dat file
 	std::string FixedParam_Filename = "FixedParameters.ath";
 	std::string AuxProp2Print = "";
-	double r_cut_n;
-	double current_rc_neigh;
-	int l_sph_st;
+	double MinBoxSizes[3] = {3., 3., 20.};
 public:
 	AtomicSystem();
 	AtomicSystem(const AtomicSystem &AtSys); // copy constructor
 	void swap(AtomicSystem &AtSys); // copy constructor
 	AtomicSystem& operator=(AtomicSystem AtSys); // copy constructor
-	AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double zhi, std::vector<int> cl_box); // construct atomic system from crystal and cell size
+	AtomicSystem(Crystal *_MyCrystal, double *xh, double *yh, double *zh, std::vector<int> cl_box); // construct atomic system from crystal and cell size
 	AtomicSystem(const std::string& filename, const int &_timestep=-1); // construct AtomicSystem by reading file
 	AtomicSystem(AtomicSystem *AtSys, unsigned int &nbSys, std::string &dir); // construct AtomicSystem with multiple AtomicSystems by merging along a given direction (to be used for replacing bicrystal construction in addition with the new duplicate method)
 	AtomicSystem(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3, bool deepCopyAtList=false); // construct AtomicSystem giving AtomList and cell vectors deepCopyAtList should be used if the RemoveAtoms method is then used
+	AtomicSystem(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3, std::vector<std::vector<int>> NST, bool deepCopyAtList=false); // construct AtomicSystem giving AtomList and cell vectors deepCopyAtList should be used if the RemoveAtoms method is then used
 	AtomicSystem(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3, unsigned int *MolId); // construct AtomicSystem giving AtomList and cell vectors 
 	AtomicSystem(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3, unsigned int *MolId, unsigned int nbBonds, unsigned int nbBondType, unsigned int *Bonds, unsigned int *BondType); // construct AtomicSystem giving AtomList and cell vectors 
 	AtomicSystem(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3, unsigned int *MolId, unsigned int nbBonds, unsigned int nbBondType, unsigned int *Bonds, unsigned int *BondType, unsigned int nbAngles, unsigned int nbAngleType, unsigned int *Angles, unsigned int *AngleType); // construct AtomicSystem giving AtomList and cell vectors 
@@ -187,8 +188,7 @@ public:
 	double* getG1(){ return this->G1; }
 	double* getG2(){ return this->G2; }
 	double* getG3(){ return this->G3; }
-	double get_rcut(){ return this->r_cut_n; }
-	int get_lsph(){ return this->l_sph_st; }
+	double* getMinBoxSizes(){ return MinBoxSizes; }
 	// setters
 	void setAux(const double* aux, const std::string& AuxName);
 	void setAux_vec(const double* aux, const unsigned int size, const std::string& AuxName);
@@ -214,7 +214,8 @@ public:
 	double ComputeAverageDistance();
 	void ComputeNotSepList();
 	void UpdateTypes2Crystal();
-	void read_params_atsys();
+	void read_params();
+	void ReadProperties(std::vector<std::string> Properties);
 	void computeInverseCellVec();
 	bool ReadAtomicFile(const std::string& filename, const int &_timestep=-1);
 	bool read_lmp_file(const std::string& filename);
@@ -236,7 +237,7 @@ public:
 	void ApplyShift(const double &shift_x, const double &shift_y, const double &shift_z);
 	void duplicate(const unsigned int &nx, const unsigned int &ny, const unsigned int &nz);
 	Position getWrappedPosition(unsigned int &i) const { return this->WrappedPos[i]; }
-	void ComputePeriodicArr();
+	void ComputePeriodicArr(bool force_delete=false);
 	Atom& getAtomRef(unsigned int &i) { return this->AtomList[i]; }
 	//
 	void deleteNeighList(){
@@ -246,6 +247,7 @@ public:
 		}
 	}
 	std::vector<unsigned int> selectAtomInBox(const double x_lo,const double x_hi,const double y_lo,const double y_hi,const double z_lo,const double z_hi, bool OnWrap=true);
+	void SetSystemSizeAccordingToFixedParam(bool setx=true, bool sety=true, bool setz=true);
 	~AtomicSystem();
 };
 

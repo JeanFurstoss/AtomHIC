@@ -49,7 +49,7 @@ AtomicSystem::AtomicSystem(){
 AtomicSystem::AtomicSystem(const AtomicSystem &AtSys){ // TODO better implementation
 	cout << "copy constructor" << endl;
 	Dis = new Displays;
-	read_params_atsys();
+	read_params();
 	nbAtom = AtSys.nbAtom;
 	this->AtomList = new Atom[this->nbAtom];
 	for(unsigned int i=0;i<nbAtom;i++) AtomList[i] = AtSys.AtomList[i];
@@ -114,29 +114,39 @@ AtomicSystem& AtomicSystem::operator=(AtomicSystem AtSys){
 	//if( AtomMass ) delete[] AtomMass;
 }
 
-AtomicSystem::AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double zhi, vector<int> cl_box):_MyCrystal(_MyCrystal){
+AtomicSystem::AtomicSystem(Crystal *_MyCrystal, double *xh, double *yh, double *zh, vector<int> cl_box):_MyCrystal(_MyCrystal){
 	Dis = new Displays;
-	read_params_atsys();
+	read_params();
 	this->IsCrystalDefined = true;
+	H = new double[9];
+	this->H1 = new double[3]; 
+	this->H2 = new double[3]; 
+	this->H3 = new double[3];
+	// TODO add verification that xh[1],2 = 0, yh[2] = 0
+	for(unsigned int i=0;i<3;i++){
+		H[i*3] = xh[i];
+		H[i*3+1] = yh[i];
+		H[i*3+2] = zh[i];
+		H1[i] = xh[i];
+		H2[i] = yh[i];
+		H3[i] = zh[i];
+	}
+	this->MT = new MathTools;
+	double det_base = MT->det(H);
+	double Vol = fabs(det_base);
+	// compute vectors used for searching if atom is inside the box
+	double *vecbox1 = new double[3];
+	double *vecbox2 = new double[3];
+	double *vecbox3 = new double[3];
+	MT->crossProd(H2,H3,vecbox1);
+	MT->crossProd(H3,H1,vecbox2);
+	MT->crossProd(H1,H2,vecbox3);
 	// Compute the number of atom and verify it gives an integer number
-	double nbAt_d = _MyCrystal->getNbAtom()*xhi*yhi*zhi/_MyCrystal->getVol();
+	double nbAt_d = (double) _MyCrystal->getNbAtom() * Vol / _MyCrystal->getVol();
 	if( fabs(nbAt_d-round(nbAt_d)) > 1e-3 ) cout << "Warning the cell dimension does not correspond to integer number of atom" << endl;
 	this->nbAtom = round(nbAt_d);
 	// initialize pointers
 	this->AtomList = new Atom[this->nbAtom];
-	this->H1 = new double[3]; 
-	this->H2 = new double[3]; 
-	this->H3 = new double[3]; 
-	this->H1[0] = xhi;
-	this->H1[1] = 0.;
-	this->H1[2] = 0.;
-	this->H2[0] = 0.;
-	this->H2[1] = yhi;
-	this->H2[2] = 0.;
-	this->H3[0] = 0.;
-	this->H3[1] = 0.;
-	this->H3[2] = zhi;
-	this->MT = new MathTools;
 	this->nbAtomType = _MyCrystal->getNbAtomType();
 	this->AtomType = _MyCrystal->getAtomType();
 	this->IsElem = true;
@@ -148,18 +158,18 @@ AtomicSystem::AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double z
 	this->IsBond = _MyCrystal->getIsBond();
 	if( this->IsBond ){
 		this->nbBondType = _MyCrystal->getNbBondType();
-		this->nbBonds = round(_MyCrystal->getNbBond()*xhi*yhi*zhi/_MyCrystal->getVol());
+		this->nbBonds = round(_MyCrystal->getNbBond()*Vol/_MyCrystal->getVol());
 		Bonds = new unsigned int[this->nbBonds*2];
 		BondType = new unsigned int[this->nbBonds];
 	}
 	this->IsAngle = _MyCrystal->getIsAngle();
 	if( this->IsAngle ){
 		this->nbAngleType = _MyCrystal->getNbAngleType();
-		this->nbAngles = round(_MyCrystal->getNbAngle()*xhi*yhi*zhi/_MyCrystal->getVol());
+		this->nbAngles = round(_MyCrystal->getNbAngle()*Vol/_MyCrystal->getVol());
 		Angles = new unsigned int[this->nbAngles*3];
 		AngleType = new unsigned int[this->nbAngles];
 	}
-	this->IsTilted = false;
+	if( H2[0] != 0. || H3[0] != 0. || H3[1] != 0 ) this->IsTilted = true;
 	this->G1 = new double[3];
 	this->G2 = new double[3];
 	this->G3 = new double[3];
@@ -167,38 +177,9 @@ AtomicSystem::AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double z
 	computeInverseCellVec();
 	// compute the atomic positions by testing linear combination of unit cell crystal
 	double cla1, cla2, cla3;
-       	int arr[3];
-	if( _MyCrystal->getCrystallo() == "Cubic" || _MyCrystal->getCrystallo() == "Orthorhombic" || _MyCrystal->getCrystallo() == "Tetragonal" ){
-		if( fabs(_MyCrystal->getA1()[0]) >1e-3 ) arr[0] = round(xhi/fabs(_MyCrystal->getA1()[0]));
-		else arr[0] = 0;
-		if( fabs(_MyCrystal->getA1()[1]) >1e-3 ) arr[1] = round(yhi/fabs(_MyCrystal->getA1()[1]));
-		else arr[1] = 0;
-		if( fabs(_MyCrystal->getA1()[2]) >1e-3 ) arr[2] = round(zhi/fabs(_MyCrystal->getA1()[2]));
-		else arr[2] = 0;
-		cla1 = MT->max(arr,3)+2;
-		if( fabs(_MyCrystal->getA2()[0]) >1e-3 ) arr[0] = round(xhi/fabs(_MyCrystal->getA2()[0]));
-		else arr[0] = 0;
-		if( fabs(_MyCrystal->getA2()[1]) >1e-3 ) arr[1] = round(yhi/fabs(_MyCrystal->getA2()[1]));
-		else arr[1] = 0;
-		if( fabs(_MyCrystal->getA2()[2]) >1e-3 ) arr[2] = round(zhi/fabs(_MyCrystal->getA2()[2]));
-		else arr[2] = 0;
-		cla2 = MT->max(arr,3)+2;
-		if( fabs(_MyCrystal->getA3()[0]) >1e-3 ) arr[0] = round(xhi/fabs(_MyCrystal->getA3()[0]));
-		else arr[0] = 0;
-		if( fabs(_MyCrystal->getA3()[1]) >1e-3 ) arr[1] = round(yhi/fabs(_MyCrystal->getA3()[1]));
-		else arr[1] = 0;
-		if( fabs(_MyCrystal->getA3()[2]) >1e-3 ) arr[2] = round(zhi/fabs(_MyCrystal->getA3()[2]));
-		else arr[2] = 0;
-		cla3 = MT->max(arr,3)+2;
-	}else{
-		arr[0] = round(xhi/fabs(_MyCrystal->getA1()[0] + _MyCrystal->getA2()[0] + _MyCrystal->getA3()[0]));
-		arr[1] = round(yhi/fabs(_MyCrystal->getA1()[1] + _MyCrystal->getA2()[1] + _MyCrystal->getA3()[1]));
-		arr[2] = round(zhi/fabs(_MyCrystal->getA1()[2] + _MyCrystal->getA2()[2] + _MyCrystal->getA3()[2]));
-		cla1 = MT->max(arr,3)+2;
-		cla2 = cla1;
-		cla3 = cla1;
-	}
-
+	cla1 = cl_box[0] + 1;
+	cla2 = cl_box[1] + 1;
+	cla3 = cl_box[2] + 1;
 	double delta_x, delta_y, delta_z, xpos, ypos, zpos;
 	unsigned int count;
 	double tolIonPos = 1e-9;
@@ -206,6 +187,11 @@ AtomicSystem::AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double z
 	bool box_fill = false;
 	unsigned int count_box_fill = 0;
 	unsigned int max_count_box_fill = 10;
+	double *cur_pos = new double[3];
+	double *cur_pos_n = new double[3];
+	double *cur_pos_n_w = new double[3];
+	double *cur_delta = new double[3];
+	bool optpara=true;
 	while( !box_fill && count_box_fill < max_count_box_fill ){
 		count = 0;
 		if( !_MyCrystal->getIsDoNotSep() ){
@@ -213,22 +199,20 @@ AtomicSystem::AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double z
 			for(int i=-cla1;i<cla1+1;i++){
 				for(int j=-cla2;j<cla2+1;j++){
 					for(int k=-cla3;k<cla3+1;k++){
-						delta_x = i*_MyCrystal->getA1()[0]+j*_MyCrystal->getA2()[0]+k*_MyCrystal->getA3()[0];
-						delta_y = i*_MyCrystal->getA1()[1]+j*_MyCrystal->getA2()[1]+k*_MyCrystal->getA3()[1];
-						delta_z = i*_MyCrystal->getA1()[2]+j*_MyCrystal->getA2()[2]+k*_MyCrystal->getA3()[2];
+						for(unsigned int d=0;d<3;d++) cur_delta[d] = i*_MyCrystal->getA1()[d]+j*_MyCrystal->getA2()[d]+k*_MyCrystal->getA3()[d];
 						for(unsigned int n=0;n<_MyCrystal->getNbAtom();n++){
-							xpos = _MyCrystal->getMotif()[n].pos.x + delta_x;
-							ypos = _MyCrystal->getMotif()[n].pos.y + delta_y;
-							zpos = _MyCrystal->getMotif()[n].pos.z + delta_z;
-							if( xpos > -tolIonPos && xpos < xhi-tolIonPos && ypos > -tolIonPos && ypos < yhi-tolIonPos && zpos > -tolIonPos && zpos < zhi-tolIonPos ){
+							cur_pos[0] = _MyCrystal->getMotif()[n].pos.x + cur_delta[0];
+							cur_pos[1] = _MyCrystal->getMotif()[n].pos.y + cur_delta[1];
+							cur_pos[2] = _MyCrystal->getMotif()[n].pos.z + cur_delta[2];
+							if( MT->IsInParallelepiped(vecbox1,vecbox2,vecbox3,det_base,cur_pos,optpara) ){
 								if( count == this->nbAtom ){
 									break_comp = true;
 									break;
 								}
 								this->AtomList[count] = _MyCrystal->getMotif()[n];
-								this->AtomList[count].pos.x = xpos;
-								this->AtomList[count].pos.y = ypos;
-								this->AtomList[count].pos.z = zpos;
+								this->AtomList[count].pos.x = cur_pos[0];
+								this->AtomList[count].pos.y = cur_pos[1];
+								this->AtomList[count].pos.z = cur_pos[2];
 								count += 1;
 							}
 						}
@@ -270,9 +254,7 @@ AtomicSystem::AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double z
 			for(int i=-cla1;i<cla1+1;i++){
 				for(int j=-cla2;j<cla2+1;j++){
 					for(int k=-cla3;k<cla3+1;k++){
-						delta_x = i*_MyCrystal->getA1()[0]+j*_MyCrystal->getA2()[0]+k*_MyCrystal->getA3()[0];
-						delta_y = i*_MyCrystal->getA1()[1]+j*_MyCrystal->getA2()[1]+k*_MyCrystal->getA3()[1];
-						delta_z = i*_MyCrystal->getA1()[2]+j*_MyCrystal->getA2()[2]+k*_MyCrystal->getA3()[2];
+						for(unsigned int d=0;d<3;d++) cur_delta[d] = i*_MyCrystal->getA1()[d]+j*_MyCrystal->getA2()[d]+k*_MyCrystal->getA3()[d];
 						for(unsigned int n=0;n<_MyCrystal->getNbAtom();n++){
 							ToTreat = true;
 							for(unsigned int sep=0;sep<AtType_stored.size();sep++){
@@ -283,18 +265,18 @@ AtomicSystem::AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double z
 							}
 							if( IsMolId &&  _MyCrystal->getNotSepList_size(n) == 0 ) ToTreat = false;
 							if( ToTreat ){
-								xpos = _MyCrystal->getMotif()[n].pos.x + delta_x;
-								ypos = _MyCrystal->getMotif()[n].pos.y + delta_y;
-								zpos = _MyCrystal->getMotif()[n].pos.z + delta_z;
-								if( xpos > -tolIonPos && xpos < xhi-tolIonPos && ypos > -tolIonPos && ypos < yhi-tolIonPos && zpos > -tolIonPos && zpos < zhi-tolIonPos ){
+								cur_pos[0] = _MyCrystal->getMotif()[n].pos.x + cur_delta[0];
+								cur_pos[1] = _MyCrystal->getMotif()[n].pos.y + cur_delta[1];
+								cur_pos[2] = _MyCrystal->getMotif()[n].pos.z + cur_delta[2];
+								if( MT->IsInParallelepiped(vecbox1,vecbox2,vecbox3,det_base,cur_pos,optpara) ){
 									if( count == this->nbAtom ){
 										break_comp = true;
 										break;
 									}
 									this->AtomList[count] = _MyCrystal->getMotif()[n];
-									this->AtomList[count].pos.x = xpos;
-									this->AtomList[count].pos.y = ypos;
-									this->AtomList[count].pos.z = zpos;
+									this->AtomList[count].pos.x = cur_pos[0];
+									this->AtomList[count].pos.y = cur_pos[1];
+									this->AtomList[count].pos.z = cur_pos[2];
 									this->NotSepTag[count].push_back(0);
 									if( IsMolId ) MolId[count] = count_mol;
 									id_notsep = count;
@@ -332,27 +314,42 @@ AtomicSystem::AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double z
 										complete_angles = 0;
 									}
 									count += 1;
-									// store all its neighboring atoms which should not be separeted from him
+									// store all its neighboring atoms which should not be separeted from him // TODO search if this part is really needed
 									for(unsigned int s=0;s<_MyCrystal->getNotSepList_size(n);s++){
 										id_s = _MyCrystal->getNotSepList(n,s*4);
-										xpos_n = _MyCrystal->getMotif()[id_s].pos.x + (i+_MyCrystal->getNotSepList(n,s*4+1))*_MyCrystal->getA1()[0] + (j+_MyCrystal->getNotSepList(n,s*4+2))*_MyCrystal->getA2()[0] + (k+_MyCrystal->getNotSepList(n,s*4+3))*_MyCrystal->getA3()[0];
-										ypos_n = _MyCrystal->getMotif()[id_s].pos.y + (i+_MyCrystal->getNotSepList(n,s*4+1))*_MyCrystal->getA1()[1] + (j+_MyCrystal->getNotSepList(n,s*4+2))*_MyCrystal->getA2()[1] + (k+_MyCrystal->getNotSepList(n,s*4+3))*_MyCrystal->getA3()[1];
-										zpos_n = _MyCrystal->getMotif()[id_s].pos.z + (i+_MyCrystal->getNotSepList(n,s*4+1))*_MyCrystal->getA1()[2] + (j+_MyCrystal->getNotSepList(n,s*4+2))*_MyCrystal->getA2()[2] + (k+_MyCrystal->getNotSepList(n,s*4+3))*_MyCrystal->getA3()[2];
-										if( xpos_n < -tolIonPos ) xpos_n_w = xpos_n+xhi;
-										else if(xpos_n > xhi-tolIonPos ) xpos_n_w = xpos_n-xhi;
-										else xpos_n_w = xpos_n;
-										if( ypos_n < -tolIonPos ) ypos_n_w = ypos_n+yhi;
-										else if(ypos_n > yhi-tolIonPos ) ypos_n_w = ypos_n-yhi;
-										else ypos_n_w = ypos_n;
-										if( zpos_n < -tolIonPos ) zpos_n_w = zpos_n+zhi;
-										else if(zpos_n > zhi-tolIonPos ) zpos_n_w = zpos_n-zhi;
-										else zpos_n_w = zpos_n;
+										cur_pos_n[0] = _MyCrystal->getMotif()[id_s].pos.x + (i+_MyCrystal->getNotSepList(n,s*4+1))*_MyCrystal->getA1()[0] + (j+_MyCrystal->getNotSepList(n,s*4+2))*_MyCrystal->getA2()[0] + (k+_MyCrystal->getNotSepList(n,s*4+3))*_MyCrystal->getA3()[0];
+										cur_pos_n[1] = _MyCrystal->getMotif()[id_s].pos.y + (i+_MyCrystal->getNotSepList(n,s*4+1))*_MyCrystal->getA1()[1] + (j+_MyCrystal->getNotSepList(n,s*4+2))*_MyCrystal->getA2()[1] + (k+_MyCrystal->getNotSepList(n,s*4+3))*_MyCrystal->getA3()[1];
+										cur_pos_n[2] = _MyCrystal->getMotif()[id_s].pos.z + (i+_MyCrystal->getNotSepList(n,s*4+1))*_MyCrystal->getA1()[2] + (j+_MyCrystal->getNotSepList(n,s*4+2))*_MyCrystal->getA2()[2] + (k+_MyCrystal->getNotSepList(n,s*4+3))*_MyCrystal->getA3()[2];
+										double u(0.), v(0.), w(0.);
+										for(unsigned int d=0;d<3;d++){
+											u += vecbox1[d]*cur_pos_n[d];
+											v += vecbox2[d]*cur_pos_n[d];
+											w += vecbox3[d]*cur_pos_n[d];
+											cur_pos_n_w[d] = cur_pos_n[d];
+										}
+										u /= det_base;
+										v /= det_base;
+										w /= det_base;
+										if( u < -tolIonPos ){
+											cur_pos_n_w[0] += H1[0];
+										}else if( u > 1. ){
+											cur_pos_n_w[0] -= H1[0];
+										}
+										if( v < -tolIonPos ){
+											for(unsigned int d=0;d<2;d++) cur_pos_n_w[d] += H2[d];
+										}else if( v > 1. ){
+											for(unsigned int d=0;d<2;d++) cur_pos_n_w[d] -= H2[d];
+										}
+										if( w < -tolIonPos ){
+											for(unsigned int d=0;d<3;d++) cur_pos_n_w[d] += H3[d];
+										}else if( w > 1. ){
+											for(unsigned int d=0;d<3;d++) cur_pos_n_w[d] -= H3[d];
+										}
 										ToStore = true;
 										for(unsigned int t=0;t<AlreadyStored[id_s].size()/3;t++){
-											xdiff = fabs(xpos_n_w-AlreadyStored[id_s][t*3]);
-											ydiff = fabs(ypos_n_w-AlreadyStored[id_s][t*3+1]);
-											zdiff = fabs(zpos_n_w-AlreadyStored[id_s][t*3+2]);
-											if( xdiff < tol && ydiff < tol && zdiff < tol ){
+											bool cur_cond = true;
+											for(unsigned int d=0;d<3;d++) cur_cond = cur_cond && ( fabs(cur_pos_n_w[d]-AlreadyStored[id_s][t*3+d]) < tol );
+											if( cur_cond ){
 												ToStore = false;
 												break;
 											}
@@ -363,12 +360,10 @@ AtomicSystem::AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double z
 											break;
 										}
 										this->AtomList[count] = _MyCrystal->getMotif()[id_s];
-										AlreadyStored[id_s].push_back(xpos_n_w);
-										AlreadyStored[id_s].push_back(ypos_n_w);
-										AlreadyStored[id_s].push_back(zpos_n_w);
-										this->AtomList[count].pos.x = xpos_n;
-										this->AtomList[count].pos.y = ypos_n;
-										this->AtomList[count].pos.z = zpos_n;
+										for(unsigned int d=0;d<3;d++) AlreadyStored[id_s].push_back(cur_pos_n_w[d]);
+										this->AtomList[count].pos.x = cur_pos_n[0];
+										this->AtomList[count].pos.y = cur_pos_n[1];
+										this->AtomList[count].pos.z = cur_pos_n[2];
 										this->NotSepTag[count].push_back(-1-id_notsep);
 										this->NotSepTag[id_notsep].push_back(count);
 										this->NotSepTag[id_notsep][0] += 1;
@@ -453,9 +448,7 @@ AtomicSystem::AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double z
 				for(int i=-cla1;i<cla1+1;i++){
 					for(int j=-cla2;j<cla2+1;j++){
 						for(int k=-cla3;k<cla3+1;k++){
-							delta_x = i*_MyCrystal->getA1()[0]+j*_MyCrystal->getA2()[0]+k*_MyCrystal->getA3()[0];
-							delta_y = i*_MyCrystal->getA1()[1]+j*_MyCrystal->getA2()[1]+k*_MyCrystal->getA3()[1];
-							delta_z = i*_MyCrystal->getA1()[2]+j*_MyCrystal->getA2()[2]+k*_MyCrystal->getA3()[2];
+							for(unsigned int d=0;d<3;d++) cur_delta[d] = i*_MyCrystal->getA1()[d]+j*_MyCrystal->getA2()[d]+k*_MyCrystal->getA3()[d];
 							for(unsigned int n=0;n<_MyCrystal->getNbAtom();n++){
 								ToTreat = false;
 								for(unsigned int sep=0;sep<AtType_stored.size();sep++){
@@ -465,16 +458,16 @@ AtomicSystem::AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double z
 									}
 								}
 								if( ToTreat ){
-									xpos = _MyCrystal->getMotif()[n].pos.x + delta_x;
-									ypos = _MyCrystal->getMotif()[n].pos.y + delta_y;
-									zpos = _MyCrystal->getMotif()[n].pos.z + delta_z;
-									if( xpos > -tolIonPos && xpos < xhi-tolIonPos && ypos > -tolIonPos && ypos < yhi-tolIonPos && zpos > -tolIonPos && zpos < zhi-tolIonPos ){
+									cur_pos[0] = _MyCrystal->getMotif()[n].pos.x + cur_delta[0];
+									cur_pos[1] = _MyCrystal->getMotif()[n].pos.y + cur_delta[1];
+									cur_pos[2] = _MyCrystal->getMotif()[n].pos.z + cur_delta[2];
+									if( MT->IsInParallelepiped(vecbox1,vecbox2,vecbox3,det_base,cur_pos,optpara) ){
 									// search if this atom type is one of atom which could be stored without being inside the box
 										ToStore = true;
 										for(unsigned int t=0;t<AlreadyStored[n].size()/3;t++){ //TODO case for which ion is in (0,0,0)
-											xdiff = fabs(xpos-AlreadyStored[n][t*3]);
-											ydiff = fabs(ypos-AlreadyStored[n][t*3+1]);
-											zdiff = fabs(zpos-AlreadyStored[n][t*3+2]);
+											xdiff = fabs(cur_pos[0]-AlreadyStored[n][t*3]);
+											ydiff = fabs(cur_pos[1]-AlreadyStored[n][t*3+1]);
+											zdiff = fabs(cur_pos[2]-AlreadyStored[n][t*3+2]);
 											if( ( xdiff < tol && ydiff < tol && zdiff < tol ) ){
 												ToStore = false;
 												break;
@@ -487,9 +480,9 @@ AtomicSystem::AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double z
 												break;
 											}
 											this->AtomList[count] = _MyCrystal->getMotif()[n];
-											this->AtomList[count].pos.x = xpos;
-											this->AtomList[count].pos.y = ypos;
-											this->AtomList[count].pos.z = zpos;
+											this->AtomList[count].pos.x = cur_pos[0];
+											this->AtomList[count].pos.y = cur_pos[1];
+											this->AtomList[count].pos.z = cur_pos[2];
 											this->NotSepTag[count].push_back(0);
 											count += 1;
 										}
@@ -514,11 +507,34 @@ AtomicSystem::AtomicSystem(Crystal *_MyCrystal, double xhi, double yhi, double z
 	if( count < this->nbAtom ){
 		cout << "WARGNING :The number of atoms after constructing orthogonal cell is lower than expected !" << endl;
 	}
+	delete[] cur_pos;
+	delete[] cur_pos_n;
+	delete[] cur_pos_n_w;
+	delete[] cur_delta;
+	delete[] vecbox1;
+	delete[] vecbox2;
+	delete[] vecbox3;
 }
 // construct AtomicSystem giving AtomList, number of atom and cell vectors 
 AtomicSystem::AtomicSystem(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3, bool deepCopyAtList){
 	Dis = new Displays;
 	AtomListConstructor(AtomList,nbAtom,_MyCrystal,H1,H2,H3,deepCopyAtList);
+}
+
+AtomicSystem::AtomicSystem(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3, vector<vector<int>> NST, bool deepCopyAtList){
+	Dis = new Displays;
+	AtomListConstructor(AtomList,nbAtom,_MyCrystal,H1,H2,H3,deepCopyAtList);
+	if( NST.size() != nbAtom ) cout << "Warning the provided DoNotSep list don't have the same size than the AtomList, we'll don't store this list";
+	else{
+		IsNotSepTag = true;
+		NotSepTag = new vector<int>[nbAtom];
+		for(unsigned int i=0;i<nbAtom;i++){
+			NotSepTag[i].push_back(NST[i][0]);
+			if( NotSepTag[i][0] > 0 ){
+				for(unsigned int n=0;n<NotSepTag[i][0];n++) NotSepTag[i].push_back(NST[i][n+1]);
+			}
+		}
+	}
 }
 
 AtomicSystem::AtomicSystem(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3, unsigned int *MolId){
@@ -581,7 +597,7 @@ void AtomicSystem::AtomListConstructor(Atom *AtomList, unsigned int nbAtom, Crys
 	this->H1 = H1;
 	this->H2 = H2;
 	this->H3 = H3;
-	read_params_atsys();
+	read_params();
 	this->IsWrappedPos = false;
 	IsElem = true;
 	this->IsCellVecMine = false;
@@ -625,7 +641,7 @@ bool AtomicSystem::FilenameConstructor(const string& filename, const int &_times
 		MT->~MathTools();
 		delete[] AtomList; 
 	}
-	read_params_atsys();
+	read_params();
 	this->AreTypeMassChargeMine = true;
 	this->AtomType = new string[this->MaxAtomType];
 	this->AtomMass = new double[this->MaxAtomType];
@@ -1143,7 +1159,7 @@ unsigned int AtomicSystem::Compute2dDensity(std::string auxname, std::string dir
 }
 
 unsigned int AtomicSystem::Compute1dDensity(std::string auxname, std::string dir, double sigma, unsigned int nbPts){
-	computeWrap();
+	if( !IsWrappedPos ) computeWrap();
 	// search if this density has already been computed or not
 	bool already_stored = false;
 	unsigned int ind_dens = 0;
@@ -1157,11 +1173,7 @@ unsigned int AtomicSystem::Compute1dDensity(std::string auxname, std::string dir
 	if( !already_stored ){
 		density_prof.push_back(new double[nbPts*2]);
 		ind_dens = density_prof.size()-1;
-	}else if( nbPts != density_nbPts[ind_dens] ){
-		delete[] density_prof[ind_dens];
-		density_prof[ind_dens] = new double[nbPts*2];
 	}
-
 	int indexaux=-1;
 	for(unsigned int i=0;i<this->Aux_name.size();i++){
 		if( auxname == Aux_name[i] ){
@@ -1197,12 +1209,7 @@ unsigned int AtomicSystem::Compute1dDensity(std::string auxname, std::string dir
 				for(unsigned int i=0;i<nbPts;i++){
 					this->density_prof[ind_dens][i*2] = 0;
 					this->density_prof[ind_dens][i*2+1] = this->H3[2]*i/(nbPts-1.);
-					for(unsigned int j=0;j<this->nbAtom;j++){
-						this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].z, sigma)*(this->AtomMass[this->AtomList[j].type_uint-1]);
-						// BC
-						this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].z+this->H3[2], sigma)*(this->AtomMass[this->AtomList[j].type_uint-1]);
-						this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].z-this->H3[2], sigma)*(this->AtomMass[this->AtomList[j].type_uint-1]);
-					}
+					for(unsigned int j=0;j<this->nbAtom;j++) this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].z, sigma)*(this->AtomMass[this->AtomList[j].type_uint-1]);
 				}
 			}else{
 			        cout << "The provided direction \"" << dir << "\" for density computation has not been recognize" << endl;
@@ -1213,34 +1220,19 @@ unsigned int AtomicSystem::Compute1dDensity(std::string auxname, std::string dir
 				for(unsigned int i=0;i<nbPts;i++){
 					this->density_prof[ind_dens][i*2] = 0;
 					this->density_prof[ind_dens][i*2+1] = this->H1[0]*i/(nbPts-1.);
-					for(unsigned int j=0;j<this->nbAtom;j++){
-						this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].x, sigma)*(this->AtomCharge[this->AtomList[j].type_uint-1]);
-						// BC
-						this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].x+this->H1[0], sigma)*(this->AtomCharge[this->AtomList[j].type_uint-1]);
-						this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].x-this->H1[0], sigma)*(this->AtomCharge[this->AtomList[j].type_uint-1]);
-					}
+					for(unsigned int j=0;j<this->nbAtom;j++) this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].x, sigma)*(this->AtomCharge[this->AtomList[j].type_uint-1]);
 				}
 			}else if( dir == "y" ){
 				for(unsigned int i=0;i<nbPts;i++){
 					this->density_prof[ind_dens][i*2] = 0;
 					this->density_prof[ind_dens][i*2+1] = this->H2[1]*i/(nbPts-1.);
-					for(unsigned int j=0;j<this->nbAtom;j++){
-						this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].y, sigma)*(this->AtomCharge[this->AtomList[j].type_uint-1]);
-						// BC
-						this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].y+this->H2[1], sigma)*(this->AtomCharge[this->AtomList[j].type_uint-1]);
-						this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].y-this->H2[1], sigma)*(this->AtomCharge[this->AtomList[j].type_uint-1]);
-					}
+					for(unsigned int j=0;j<this->nbAtom;j++) this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].y, sigma)*(this->AtomCharge[this->AtomList[j].type_uint-1]);
 				}
 			}else if( dir == "z" ){
 				for(unsigned int i=0;i<nbPts;i++){
 					this->density_prof[ind_dens][i*2] = 0;
 					this->density_prof[ind_dens][i*2+1] = this->H3[2]*i/(nbPts-1.);
-					for(unsigned int j=0;j<this->nbAtom;j++){
-						this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].z, sigma)*(this->AtomCharge[this->AtomList[j].type_uint-1]);
-						// BC
-						this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].z+this->H3[2], sigma)*(this->AtomCharge[this->AtomList[j].type_uint-1]);
-						this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].z-this->H3[2], sigma)*(this->AtomCharge[this->AtomList[j].type_uint-1]);
-					}
+					for(unsigned int j=0;j<this->nbAtom;j++) this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].z, sigma)*(this->AtomCharge[this->AtomList[j].type_uint-1]);
 				}
 			}else{
 			        cout << "The provided direction \"" << dir << "\" for density computation has not been recognize" << endl;
@@ -1251,12 +1243,7 @@ unsigned int AtomicSystem::Compute1dDensity(std::string auxname, std::string dir
 				for(unsigned int i=0;i<nbPts;i++){
 					this->density_prof[ind_dens][i*2] = 0;
 					this->density_prof[ind_dens][i*2+1] = this->H1[0]*i/(nbPts-1.);
-					for(unsigned int j=0;j<this->nbAtom;j++){
-						this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].x, sigma);
-						//BC
-						this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].x+this->H1[0], sigma);
-						this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].x-this->H1[0], sigma);
-					}
+					for(unsigned int j=0;j<this->nbAtom;j++) this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].x, sigma);
 				}
 			}else if( dir == "y" ){
 				for(unsigned int i=0;i<nbPts;i++){
@@ -1273,12 +1260,7 @@ unsigned int AtomicSystem::Compute1dDensity(std::string auxname, std::string dir
 				for(unsigned int i=0;i<nbPts;i++){
 					this->density_prof[ind_dens][i*2] = 0;
 					this->density_prof[ind_dens][i*2+1] = this->H3[2]*i/(nbPts-1.);
-					for(unsigned int j=0;j<this->nbAtom;j++){
-						this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].z, sigma);
-						//BC
-						this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].z+this->H3[2], sigma);
-						this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].z-this->H3[2], sigma);
-					}
+					for(unsigned int j=0;j<this->nbAtom;j++) this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].z, sigma);
 				}
 			}else{
 			        cout << "The provided direction \"" << dir << "\" for density computation has not been recognize (directions available : x y z)" << endl;
@@ -1295,12 +1277,7 @@ unsigned int AtomicSystem::Compute1dDensity(std::string auxname, std::string dir
 			for(unsigned int i=0;i<nbPts;i++){
 				this->density_prof[ind_dens][i*2] = 0;
 				this->density_prof[ind_dens][i*2+1] = this->H1[0]*i/(nbPts-1.);
-				for(unsigned int j=0;j<this->nbAtom;j++){
-					this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].x, sigma)*(this->Aux[indexaux][j]);
-					//BC
-					this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].x+this->H1[0], sigma)*(this->Aux[indexaux][j]);
-					this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].x-this->H1[0], sigma)*(this->Aux[indexaux][j]);
-				}
+				for(unsigned int j=0;j<this->nbAtom;j++) this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].x, sigma)*(this->Aux[indexaux][j]);
 			}
 		}else if( dir == "y" ){
 			for(unsigned int i=0;i<nbPts;i++){
@@ -1317,12 +1294,7 @@ unsigned int AtomicSystem::Compute1dDensity(std::string auxname, std::string dir
 			for(unsigned int i=0;i<nbPts;i++){
 				this->density_prof[ind_dens][i*2] = 0;
 				this->density_prof[ind_dens][i*2+1] = this->H3[2]*i/(nbPts-1.);
-				for(unsigned int j=0;j<this->nbAtom;j++){
-					this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].z, sigma)*(this->Aux[indexaux][j]);
-					//BC
-					this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].z+this->H3[2], sigma)*(this->Aux[indexaux][j]);
-					this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].z-this->H3[2], sigma)*(this->Aux[indexaux][j]);
-				}
+				for(unsigned int j=0;j<this->nbAtom;j++) this->density_prof[ind_dens][i*2] += MT->gaussian(this->density_prof[ind_dens][i*2+1], this->WrappedPos[j].z, sigma)*(this->Aux[indexaux][j]);
 			}
 		}else{
 		        cout << "The provided direction \"" << dir << "\" for density computation has not been recognize (directions available : x y z)" << endl;
@@ -1347,10 +1319,7 @@ void AtomicSystem::Print1dDensity(string filename, string auxname){
 			break;
 		}
 	}
-	if( indexaux == -1 ){
-		cout << "The density property to print does not exist" << endl;
-		return;
-	}
+	if( indexaux == -1 ) cout << "The density property to print does not exist" << endl;
 	ofstream writefile(filename);
 	writefile << this->density_name[indexaux][1] << " " << this->density_name[indexaux][0] << "Density" << endl;
 	for(unsigned int i=0;i<this->density_nbPts[indexaux];i++) writefile << this->density_prof[indexaux][i*2+1] << " " << this->density_prof[indexaux][i*2] << endl; 
@@ -1366,10 +1335,7 @@ void AtomicSystem::Print2dDensity(string filename, string auxname){
 			break;
 		}
 	}
-	if( indexaux == -1 ){
-		cout << "The density property to print does not exist" << endl;
-		return;
-	}
+	if( indexaux == -1 ) cout << "The density property to print does not exist" << endl;
 	ofstream writefile(filename);
 	writefile << "#" << this->density_name_2D[indexaux][1] << " " << this->density_name_2D[indexaux][0] << "Density" << endl;
 	unsigned int count = 0;
@@ -2509,13 +2475,13 @@ bool AtomicSystem::read_lmp_file(const string& filename){
 		this->H1[0] = xhi-xlo;
 		this->H2[1] = yhi-ylo;
 		this->H3[2] = zhi-zlo;
-		if( IsPeriodicArr ){
-			for(unsigned int i=0;i<nbAtom;i++){
-				this->AtomList[i].pos.x += H1[0]*PeriodicArr[i*3] + H2[0]*PeriodicArr[i*3+1] + H3[0]*PeriodicArr[i*3+2];
-				this->AtomList[i].pos.y += H1[1]*PeriodicArr[i*3] + H2[1]*PeriodicArr[i*3+1] + H3[1]*PeriodicArr[i*3+2];
-				this->AtomList[i].pos.z += H1[2]*PeriodicArr[i*3] + H2[2]*PeriodicArr[i*3+1] + H3[2]*PeriodicArr[i*3+2];
-			}
-		}
+		//if( IsPeriodicArr ){
+		//	for(unsigned int i=0;i<nbAtom;i++){
+		//		this->AtomList[i].pos.x += H1[0]*PeriodicArr[i*3] + H2[0]*PeriodicArr[i*3+1] + H3[0]*PeriodicArr[i*3+2];
+		//		this->AtomList[i].pos.y += H1[1]*PeriodicArr[i*3] + H2[1]*PeriodicArr[i*3+1] + H3[1]*PeriodicArr[i*3+2];
+		//		this->AtomList[i].pos.z += H1[2]*PeriodicArr[i*3] + H2[2]*PeriodicArr[i*3+1] + H3[2]*PeriodicArr[i*3+2];
+		//	}
+		//}
 		ifstream file2;
 		file2.open(filename.c_str(), ifstream::in);
 		count = 0;
@@ -3063,7 +3029,11 @@ bool AtomicSystem::read_cfg_file(const string& filename,const int &_timestep){
 }
 
 // Compute periodic array (for atom_style full, allowing to get the right bond and angle relationship) assuming only that ions outside the box have non-null component of the periodic array
-void AtomicSystem::ComputePeriodicArr(){
+void AtomicSystem::ComputePeriodicArr(bool force_delete){
+	if( force_delete && IsPeriodicArr ){
+		delete[] PeriodicArr;
+		IsPeriodicArr = false;
+	}
 	if( !IsPeriodicArr ){
 		PeriodicArr = new int[nbAtom*3];
 		IsPeriodicArr = true;
@@ -3288,7 +3258,7 @@ void AtomicSystem::printSystem_aux(const string& filename, const string& AuxName
 	cout << ")" << endl;
 }
 
-void AtomicSystem::read_params_atsys(){
+void AtomicSystem::read_params(){
 	//string fp;
 	//#ifdef FIXEDPARAMETERS
 	//fp = FIXEDPARAMETERS;
@@ -3297,7 +3267,7 @@ void AtomicSystem::read_params_atsys(){
 	//string filename=fp+backslash+FixedParam_Filename;
 	//ifstream file(filename, ios::in);
 	ifstream file(FixedParam_Filename, ios::in);
-	size_t pos_auxprop;
+	size_t pos_minBoxSizes, pos_auxprop;
 	string buffer_s, line;
 	if(file){
 		while(file){
@@ -3311,12 +3281,58 @@ void AtomicSystem::read_params_atsys(){
 					AuxProp2Print += buffer_s+" ";
 				}
 			}
+			pos_minBoxSizes=line.find("MIN_BOX_SIZES");
+			if(pos_minBoxSizes!=string::npos){
+				istringstream text(line);
+				text >> buffer_s >> this->MinBoxSizes[0] >> this->MinBoxSizes[1] >> this->MinBoxSizes[2];
+			}
 		}
 	}
 	//else{
 	//	cerr << "Can't read /data/FixedParameters/Fixed_Parameters.dat file !" << endl;
 	//	exit(EXIT_FAILURE);
 	//}
+}
+
+void AtomicSystem::ReadProperties(vector<string> Properties){
+	size_t pos_minBoxSizes, pos_auxprop;
+	string buffer_s, line;
+	double buffer;
+	for(unsigned int i=0;i<Properties.size();i++){
+		pos_auxprop=Properties[i].find("AUX_PROPERTIES_TO_PRINT ");
+		if(pos_auxprop!=string::npos){
+			istringstream text(Properties[i]);
+			text >> buffer_s;
+			while( text >> buffer_s ){
+				if( buffer_s == "//" ) break;
+				AuxProp2Print += buffer_s+" ";
+			}
+		}
+		pos_minBoxSizes=Properties[i].find("MIN_BOX_SIZES");
+		if(pos_minBoxSizes!=string::npos){
+			istringstream text(Properties[i]);
+			text >> buffer_s;
+		        for(unsigned int d=0;d<3;d++){
+				text >> buffer;
+				if( buffer > 1.e-6 ) MinBoxSizes[d] = buffer;
+			}
+		}
+	}
+}
+
+void AtomicSystem::SetSystemSizeAccordingToFixedParam(bool setx, bool sety, bool setz){
+	unsigned int dupx(1), dupy(1), dupz(1);
+	if( setx ) dupx = ceil(MinBoxSizes[0] / H1[0]);
+	if( sety ){
+		double ly = sqrt(H2[0]*H2[0] + H2[1]*H2[1]);
+		dupy = ceil(MinBoxSizes[1]/ly);
+	}
+	if( setz ){
+		double lz = sqrt(H3[0]*H3[0] + H3[1]*H3[1] + H3[2]*H3[2]);
+		dupz = ceil(MinBoxSizes[2]/lz);
+	}
+	if( dupx == 1 && dupy == 1 && dupz == 1 ) return;
+	duplicate(dupx,dupy,dupz);
 }
 
 vector<unsigned int> AtomicSystem::selectAtomInBox(const double x_lo,const double x_hi,const double y_lo,const double y_hi,const double z_lo,const double z_hi, bool OnWrap){
@@ -3365,53 +3381,28 @@ void AtomicSystem::duplicate(const unsigned int& nx, const unsigned int& ny, con
 		cerr << "Cannot duplicate if one value is equal to zero, aborting" << endl;
 		exit(EXIT_FAILURE);
 	}
-	// TODO manage when IsAtomListMine is false and replace in bicrystal constructor with this method
-	if( !IsAtomListMine ){
-		cerr << "The AtomList array does not belong to the AtomicSystem object, cannot duplicate (to be implemented), aborting" << endl;
-		exit(EXIT_FAILURE);
-	}
+	if( nx == 1 && ny == 1 && nz == 1 ) return;
 	//cout << "Duplicating the system (" << nx << "," << ny << "," << nz << ")" << endl;
 	
 	unsigned int new_nbAtom = this->nbAtom*nx*ny*nz;
-	Atom *AtomList_temp = new Atom[nbAtom];
-	for(unsigned int i=0;i<nbAtom;i++) AtomList_temp[i] = AtomList[i];
-	delete[] AtomList;
-	AtomList = new Atom[new_nbAtom];
+	Atom *AtomList_temp = new Atom[new_nbAtom];
 	unsigned int new_nbBonds, new_nbAngles, nbMol;
 	unsigned int *MolId_temp, *Bonds_temp, *BondType_temp, *Angles_temp, *AngleType_temp;
+	vector<int> *NotSepTag_temp;
 	vector<double*> Aux_temp;
 	if( IsMolId ){
-		MolId_temp = new unsigned int[nbAtom];
-		for(unsigned int i=0;i<nbAtom;i++) MolId_temp[i] = MolId[i];
+		MolId_temp = new unsigned int[new_nbAtom];
 		nbMol = MT->max_p(MolId,nbAtom);
-		delete[] MolId;
-		MolId = new unsigned int[new_nbAtom];
 	}
 	if( IsBond ){
 		new_nbBonds = nbBonds*nx*ny*nz;
-		Bonds_temp = new unsigned int[nbBonds*2];
-		BondType_temp = new unsigned int[nbBonds];
-		for(unsigned int i=0;i<nbBonds;i++){
-			for(unsigned int d=0;d<2;d++) Bonds_temp[i*2+d] = Bonds[i*2+d];
-			BondType_temp[i] = BondType[i];
-		}
-		delete[] Bonds;
-		delete[] BondType;
-		Bonds = new unsigned int[new_nbBonds*2];
-		BondType = new unsigned int[new_nbBonds];
+		Bonds_temp = new unsigned int[new_nbBonds*2];
+		BondType_temp = new unsigned int[new_nbBonds];
 	}
 	if( IsAngle ){
 		new_nbAngles = nbAngles*nx*ny*nz;
-		Angles_temp = new unsigned int[nbAngles*3];
-		AngleType_temp = new unsigned int[nbAngles];
-		for(unsigned int i=0;i<nbAngles;i++){
-			for(unsigned int d=0;d<3;d++) Angles_temp[i*3+d] = Angles[i*3+d];
-			AngleType_temp[i] = AngleType[i];
-		}
-		delete[] Angles;
-		delete[] AngleType;
-		Angles = new unsigned int[new_nbAngles*3];
-		AngleType = new unsigned int[new_nbAngles];
+		Angles_temp = new unsigned int[new_nbAngles*3];
+		AngleType_temp = new unsigned int[new_nbAngles];
 	}
 	if( IsSetAux ){
 		for(unsigned int i=0;i<Aux.size();i++){
@@ -3425,10 +3416,9 @@ void AtomicSystem::duplicate(const unsigned int& nx, const unsigned int& ny, con
 			Aux[i] = new double[(new_nbAtom)*Aux_size[i]];
 		}
 	}
-	if( IsPeriodicArr ){
-		delete[] PeriodicArr;
-		PeriodicArr = new int[new_nbAtom*3];
-	}
+	if( IsNotSepTag ) NotSepTag_temp = new vector<int>[new_nbAtom];
+
+	if( ( IsNotSepTag || IsBond || IsAngle ) && !IsPeriodicArr ) ComputePeriodicArr();
 	
 	unsigned int ind, ind_a;
 	for(unsigned int i=0;i<nx;i++){
@@ -3437,14 +3427,25 @@ void AtomicSystem::duplicate(const unsigned int& nx, const unsigned int& ny, con
 				ind = i*ny*nz*nbAtom + j*nz*nbAtom + k*nbAtom;
 				for(unsigned int n=0;n<nbAtom;n++){
 					ind_a = ind + n;
-					AtomList[ind_a] = AtomList_temp[n];
-					AtomList[ind_a].pos.x += i*H1[0] + j*H2[0] + k*H3[0];
-					AtomList[ind_a].pos.y += i*H1[1] + j*H2[1] + k*H3[1];
-					AtomList[ind_a].pos.z += i*H1[2] + j*H2[2] + k*H3[2];
-					if( IsMolId ) MolId[ind_a] = MolId_temp[n] + i*ny*nz*nbMol + j*nz*nbMol + k*nbMol;
+					AtomList_temp[ind_a] = AtomList[n];
+					AtomList_temp[ind_a].pos.x += i*H1[0] + j*H2[0] + k*H3[0];
+					AtomList_temp[ind_a].pos.y += i*H1[1] + j*H2[1] + k*H3[1];
+					AtomList_temp[ind_a].pos.z += i*H1[2] + j*H2[2] + k*H3[2];
+					if( IsMolId ) MolId_temp[ind_a] = MolId[n] + i*ny*nz*nbMol + j*nz*nbMol + k*nbMol;
 					if( IsSetAux ){
 						for(unsigned int a=0;a<Aux_temp.size();a++){
 							for(unsigned int d=0;d<Aux_size[a];d++) Aux[a][ind_a*Aux_size[a]+d] = Aux_temp[a][n*Aux_size[a]+d];
+						}
+					}
+				}
+				if( IsNotSepTag ){
+					for(unsigned int n=0;n<nbAtom;n++){
+						ind_a = ind + n;
+						if( NotSepTag[n][0] == 0 ) NotSepTag_temp[ind_a].push_back(0);
+						else if( NotSepTag[n][0] < 0 ) NotSepTag_temp[ind_a].push_back(NotSepTag[n][0]-ind);
+						else{
+							NotSepTag_temp[ind_a].push_back(NotSepTag[n][0]);
+							for(unsigned int ne=0;ne<NotSepTag[n][0];ne++) NotSepTag_temp[ind_a].push_back(NotSepTag[n][ne+1]+ind);
 						}
 					}
 				}
@@ -3453,8 +3454,21 @@ void AtomicSystem::duplicate(const unsigned int& nx, const unsigned int& ny, con
 					ind_a = i*ny*nz*nbAtom + j*nz*nbAtom + k*nbAtom;
 					for(unsigned int n=0;n<nbBonds;n++){
 						unsigned int c_ind_n = ind+n;
-						for(unsigned int d=0;d<2;d++) Bonds[c_ind_n*2+d] = Bonds_temp[n*2+d] + ind_a;
-						BondType[c_ind_n] = BondType_temp[n];
+						//for(unsigned int d=0;d<2;d++){
+						//	unsigned int cur_ind_a = 0;
+						//	int ipp = i+PeriodicArr[Bonds[n*2+d]*3];
+						//	if( ipp >= 0 && ipp < nx ) cur_ind_a += ipp*ny*nz*nbAtom;
+						//	else if( ipp < 0 ) cur_ind_a += (nx-1)*ny*nz*nbAtom;
+						//	ipp = j+PeriodicArr[Bonds[n*2+d]*3+1];
+						//	if( ipp >= 0 && ipp < ny ) cur_ind_a += (ipp)*nz*nbAtom;
+						//	else if( ipp < 0 ) cur_ind_a += (ny-1)*nz*nbAtom;
+						//	ipp = k+PeriodicArr[Bonds[n*2+d]*3+2];
+						//	if( ipp >= 0 && ipp < nz ) cur_ind_a += (ipp)*nbAtom;
+						//	else if( ipp < 0 ) cur_ind_a += (nz-1)*nbAtom;
+						//	Bonds_temp[c_ind_n*2+d] = Bonds[n*2+d] + cur_ind_a;
+						//}	
+						for(unsigned int d=0;d<2;d++) Bonds_temp[c_ind_n*2+d] = Bonds[n*2+d] + ind_a;
+						BondType_temp[c_ind_n] = BondType[n];
 					}
 				}
 				if( IsAngle ){
@@ -3462,35 +3476,54 @@ void AtomicSystem::duplicate(const unsigned int& nx, const unsigned int& ny, con
 					ind_a = i*ny*nz*nbAtom + j*nz*nbAtom + k*nbAtom;
 					for(unsigned int n=0;n<nbAngles;n++){
 						unsigned int c_ind_n = ind+n;
-						for(unsigned int d=0;d<3;d++) Angles[c_ind_n*3+d] = Angles_temp[n*3+d] + ind_a;
-						AngleType[c_ind_n] = AngleType_temp[n];
+						for(unsigned int d=0;d<3;d++) Angles_temp[c_ind_n*3+d] = Angles[n*3+d] + ind_a;
+						AngleType_temp[c_ind_n] = AngleType[n];
 					}
 				}
 			}
 		}
 	}
 	nbAtom = new_nbAtom;
-	delete[] AtomList_temp;
-	if( IsMolId ) delete[] MolId_temp;
+	if( IsAtomListMine ) delete[] AtomList;
+	AtomList = AtomList_temp;
+	IsAtomListMine = true;
+	if( IsMolId ){
+		if( IsMolIdMine ) delete[] MolId;
+		MolId = MolId_temp;
+		IsMolIdMine = true;
+	}
 	if( IsBond ){
 		nbBonds = new_nbBonds;
-		delete[] Bonds_temp;
-		delete[] BondType_temp;
+		if( IsBondMine ){
+			delete[] Bonds;
+			delete[] BondType;
+		}
+		Bonds = Bonds_temp;
+		BondType = BondType_temp;
+		IsBondMine = true;
 	}
 	if( IsAngle ){
 		nbAngles = new_nbAngles;
-		delete[] Angles_temp;
-		delete[] AngleType_temp;
+		if( IsAngleMine ){
+			delete[] Angles;
+			delete[] AngleType;
+		}
+		Angles = Angles_temp;
+		AngleType = AngleType_temp;
+		IsAngleMine = true;
 	}
 	if( IsSetAux ) for(unsigned int i=0;i<Aux_temp.size();i++) delete[] Aux_temp[i];
-	
+	if( IsNotSepTag ){
+		delete[] NotSepTag;
+		NotSepTag = NotSepTag_temp;
+	}	
 	for(unsigned int i=0;i<3;i++){
 		this->H1[i] *= nx;
 		this->H2[i] *= ny;
 		this->H3[i] *= nz;
 	}
 	computeInverseCellVec();
-
+	ComputePeriodicArr(true);
 	if( this->IsWrappedPos ){
 		delete[] WrappedPos;
 		this->IsWrappedPos = false;
@@ -4222,6 +4255,7 @@ void AtomicSystem::MakeSurfaceNeutral_3dBased_bis(string ext){
 }
 
 void AtomicSystem::RemoveAtoms(vector<unsigned int> index2rm, bool DNS){
+	if( index2rm.size() == 0 ) return;
 	if( !IsAtomListMine ){
 		cout << "The atom list does not belong to the atomic system, cannot delete atoms" << endl;
 		return;
@@ -4462,7 +4496,7 @@ void AtomicSystem::MakeSystemNeutral(vector<double> dirPoint, vector<double> Dir
 	double block_charge;
 	vector<unsigned int> ionsRemoved;
 	while( fabs(total_charge) > 1e-8 && iter < maxIter ){
-		cout << "ITER " << iter << ", total charge = " << total_charge << endl;
+		//cout << "ITER " << iter << ", total charge = " << total_charge << endl;
 		vector<vector<unsigned int>> poss2rm;
 		vector<double> current_dist;
 		for(unsigned int i1=0;i1<index_totreat.size();i1++){
@@ -4500,20 +4534,22 @@ void AtomicSystem::MakeSystemNeutral(vector<double> dirPoint, vector<double> Dir
 			}
 		}
 		if( poss2rm.size() == 0 ) cout << "Warning, we don't find ions to adjust charges" << endl;
-		unsigned int torm = MT->min(current_dist);
-		block_charge = 0.;
-		for(unsigned int i2=0;i2<poss2rm[torm].size();i2++){
-			block_charge += AtomCharge[AtomList[poss2rm[torm][i2]].type_uint-1];
-			ionsRemoved.push_back(poss2rm[torm][i2]);
-		}
-		for(unsigned int i=0;i<index_totreat.size();i++){
-			if( index_totreat[i][0] == poss2rm[torm][0] ){
-				index_totreat.erase(index_totreat.begin()+i);
-				dist_totreat.erase(dist_totreat.begin()+i);
-				break;
+		else{
+			unsigned int torm = MT->min(current_dist);
+			block_charge = 0.;
+			for(unsigned int i2=0;i2<poss2rm[torm].size();i2++){
+				block_charge += AtomCharge[AtomList[poss2rm[torm][i2]].type_uint-1];
+				ionsRemoved.push_back(poss2rm[torm][i2]);
 			}
+			for(unsigned int i=0;i<index_totreat.size();i++){
+				if( index_totreat[i][0] == poss2rm[torm][0] ){
+					index_totreat.erase(index_totreat.begin()+i);
+					dist_totreat.erase(dist_totreat.begin()+i);
+					break;
+				}
+			}
+			total_charge -= block_charge;
 		}
-		total_charge -= block_charge;
 		iter++;
 	}
 	if( fabs(total_charge) < 1e-8 ){
@@ -4536,352 +4572,352 @@ void AtomicSystem::MakeSurfaceNeutral(vector<int> Oris, vector<double> shift, ve
 	vector<AtomicSystem*> OriSys_2Print(nbSample_S_z);
 	#pragma omp parallel for
 	for(unsigned int s_z_i=0;s_z_i<nbSample_S_z;s_z_i++){
-	double s_z = max_s_z*(double) s_z_i/((double) nbSample_S_z - 1.);
-	Crystal OriCryst_f1(_MyCrystal->getName());
-	OriCryst_f1.RotateCrystal(Oris[0], Oris[1], Oris[2], Oris[3], Oris[4], Oris[5]);
-	OriCryst_f1.ShiftMotif(shift[0], shift[1], shift[2]);
-	OriCryst_f1.ConstructOrthogonalCell();
-	AtomicSystem *OriSys_f1 = OriCryst_f1.getOrientedSystem();
-	double *invTiltTrans = new double[9];
-	double *invRotMat = new double[9];
-	MT->invert3x3(OriCryst_f1.getTiltTrans(),invTiltTrans);
-	MT->invert3x3(OriCryst_f1.getRotMat(),invRotMat);
-	OriSys_f1->ApplyShift(zero, zero, s_z);
-	double z_shift_OriSys = OriSys_f1->MakeSurfaceNeutral(false);
-	//if( outputfilename != "" ) OriSys_f1->print_lmp("G2_"+to_string(s_z_i)+outputfilename); 
-	if( outputfilename != "" ) OriSys_2Print[s_z_i] = new AtomicSystem(OriSys_f1,one,teststring); // TODO work on copy constructor and operator= to make cleaner stuff here
-	// keep only a small part of the system near to the surface to limit computational cost
-	double select_width = 10.;
-	double zero_num = 1.e-8;
-	bool xpar = false; // TODO
-	double hi_nb = 1.e8;
-	// test whether we should keep the bottom or the top surface to be aligned with the normal plane
-	double *zaxis = new double[3];
-	zaxis[0] = 0.;
-	zaxis[1] = 0.;
-	zaxis[2] = 1.;
-	MT->MatDotRawVec(invTiltTrans,zaxis,zaxis);
-	MT->MatDotRawVec(invRotMat,zaxis,zaxis);
-	MT->MatDotRawVec(_MyCrystal->getRotMat(),zaxis,zaxis);
-	MT->MatDotRawVec(_MyCrystal->getTiltTrans(),zaxis,zaxis);
-        double sp_z = 0.;
-	for(unsigned int i=0;i<3;i++) sp_z += zaxis[i]*PlaneNormal[i];
-	vector<unsigned int> index2rm;
-	// remove z shift from the MakeSurfaceNeutral function
-	OriSys_f1->ApplyShift(zero, zero, -s_z);
-	if( sp_z > 0 ) index2rm = OriSys_f1->selectAtomInBox(-hi_nb, hi_nb, -hi_nb, hi_nb, -hi_nb, OriSys_f1->getH3()[2]-select_width, false);
-	else index2rm = OriSys_f1->selectAtomInBox(-hi_nb, hi_nb, -hi_nb, hi_nb, select_width, hi_nb, false);
-	OriSys_f1->RemoveAtoms(index2rm);
-	unsigned int nbAt_OriSys = OriSys_f1->getNbAtom();
-	// remove z shift from the MakeSurfaceNeutral function
-	OriSys_f1->ApplyShift(zero, zero, z_shift_OriSys);
-	// ** Set the curent grain def and misfit to the OriSys ** //
-	// 1. remove the crystal def to the ori sys
-	for(unsigned int i=0;i<nbAt_OriSys;i++) MT->MatDotAt(invTiltTrans, OriSys_f1->getAtomRef(i), OriSys_f1->getAtomRef(i));
-	for(unsigned int i=0;i<nbAt_OriSys;i++) MT->MatDotAt(invRotMat, OriSys_f1->getAtomRef(i), OriSys_f1->getAtomRef(i));
-	// 2. Rotate the Ori sys for the plane normal to be aligned with the facet normal 
-	for(unsigned int i=0;i<nbAt_OriSys;i++) MT->MatDotAt(_MyCrystal->getRotMat(), OriSys_f1->getAtomRef(i), OriSys_f1->getAtomRef(i));
-	// 3. Apply grain1 def
-	for(unsigned int i=0;i<nbAt_OriSys;i++) MT->MatDotAt(_MyCrystal->getTiltTrans(), OriSys_f1->getAtomRef(i), OriSys_f1->getAtomRef(i));
-	// 4. Apply misfit
-	double *mean_pos_orisys = new double[3];
-	for(unsigned int i=0;i<3;i++) mean_pos_orisys[i] = 0.;
-	for(unsigned int i=0;i<nbAt_OriSys;i++){
-		OriSys_f1->getAtomRef(i).pos.x *= Misfit[0];
-		OriSys_f1->getAtomRef(i).pos.y *= Misfit[1];
-		OriSys_f1->getAtomRef(i).pos.z *= Misfit[2];
-		mean_pos_orisys[0] += OriSys_f1->getAtomRef(i).pos.x;
-		mean_pos_orisys[1] += OriSys_f1->getAtomRef(i).pos.y;
-		mean_pos_orisys[2] += OriSys_f1->getAtomRef(i).pos.z;
-	}
-	for(unsigned int i=0;i<3;i++) mean_pos_orisys[i] /= nbAt_OriSys;
+		double s_z = max_s_z*(double) s_z_i/((double) nbSample_S_z - 1.);
+		Crystal OriCryst_f1(_MyCrystal->getName());
+		OriCryst_f1.RotateCrystal(Oris[0], Oris[1], Oris[2], Oris[3], Oris[4], Oris[5]);
+		OriCryst_f1.ShiftMotif(shift[0], shift[1], shift[2]);
+		OriCryst_f1.ConstructOrthogonalCell();
+		AtomicSystem *OriSys_f1 = OriCryst_f1.getOrientedSystem();
+		double *invTiltTrans = new double[9];
+		double *invRotMat = new double[9];
+		MT->invert3x3(OriCryst_f1.getTiltTrans(),invTiltTrans);
+		MT->invert3x3(OriCryst_f1.getRotMat(),invRotMat);
+		OriSys_f1->ApplyShift(zero, zero, s_z);
+		double z_shift_OriSys = OriSys_f1->MakeSurfaceNeutral(false);
+		//if( outputfilename != "" ) OriSys_f1->print_lmp("G2_"+to_string(s_z_i)+outputfilename); 
+		if( outputfilename != "" ) OriSys_2Print[s_z_i] = new AtomicSystem(OriSys_f1,one,teststring); // TODO work on copy constructor and operator= to make cleaner stuff here
+		// keep only a small part of the system near to the surface to limit computational cost
+		double select_width = 10.;
+		double zero_num = 1.e-8;
+		bool xpar = false; // TODO
+		double hi_nb = 1.e8;
+		// test whether we should keep the bottom or the top surface to be aligned with the normal plane
+		double *zaxis = new double[3];
+		zaxis[0] = 0.;
+		zaxis[1] = 0.;
+		zaxis[2] = 1.;
+		MT->MatDotRawVec(invTiltTrans,zaxis,zaxis);
+		MT->MatDotRawVec(invRotMat,zaxis,zaxis);
+		MT->MatDotRawVec(_MyCrystal->getRotMat(),zaxis,zaxis);
+		MT->MatDotRawVec(_MyCrystal->getTiltTrans(),zaxis,zaxis);
+        	double sp_z = 0.;
+		for(unsigned int i=0;i<3;i++) sp_z += zaxis[i]*PlaneNormal[i];
+		vector<unsigned int> index2rm;
+		// remove z shift from the MakeSurfaceNeutral function
+		OriSys_f1->ApplyShift(zero, zero, -s_z);
+		if( sp_z > 0 ) index2rm = OriSys_f1->selectAtomInBox(-hi_nb, hi_nb, -hi_nb, hi_nb, -hi_nb, OriSys_f1->getH3()[2]-select_width, false);
+		else index2rm = OriSys_f1->selectAtomInBox(-hi_nb, hi_nb, -hi_nb, hi_nb, select_width, hi_nb, false);
+		OriSys_f1->RemoveAtoms(index2rm);
+		unsigned int nbAt_OriSys = OriSys_f1->getNbAtom();
+		// remove z shift from the MakeSurfaceNeutral function
+		OriSys_f1->ApplyShift(zero, zero, z_shift_OriSys);
+		// ** Set the curent grain def and misfit to the OriSys ** //
+		// 1. remove the crystal def to the ori sys
+		for(unsigned int i=0;i<nbAt_OriSys;i++) MT->MatDotAt(invTiltTrans, OriSys_f1->getAtomRef(i), OriSys_f1->getAtomRef(i));
+		for(unsigned int i=0;i<nbAt_OriSys;i++) MT->MatDotAt(invRotMat, OriSys_f1->getAtomRef(i), OriSys_f1->getAtomRef(i));
+		// 2. Rotate the Ori sys for the plane normal to be aligned with the facet normal 
+		for(unsigned int i=0;i<nbAt_OriSys;i++) MT->MatDotAt(_MyCrystal->getRotMat(), OriSys_f1->getAtomRef(i), OriSys_f1->getAtomRef(i));
+		// 3. Apply grain1 def
+		for(unsigned int i=0;i<nbAt_OriSys;i++) MT->MatDotAt(_MyCrystal->getTiltTrans(), OriSys_f1->getAtomRef(i), OriSys_f1->getAtomRef(i));
+		// 4. Apply misfit
+		double *mean_pos_orisys = new double[3];
+		for(unsigned int i=0;i<3;i++) mean_pos_orisys[i] = 0.;
+		for(unsigned int i=0;i<nbAt_OriSys;i++){
+			OriSys_f1->getAtomRef(i).pos.x *= Misfit[0];
+			OriSys_f1->getAtomRef(i).pos.y *= Misfit[1];
+			OriSys_f1->getAtomRef(i).pos.z *= Misfit[2];
+			mean_pos_orisys[0] += OriSys_f1->getAtomRef(i).pos.x;
+			mean_pos_orisys[1] += OriSys_f1->getAtomRef(i).pos.y;
+			mean_pos_orisys[2] += OriSys_f1->getAtomRef(i).pos.z;
+		}
+		for(unsigned int i=0;i<3;i++) mean_pos_orisys[i] /= nbAt_OriSys;
 
-	// ** Make coincide the ori system with the atomic system ** //
-	// Set a subsystem of the atomic system
-	double para_width = 2.*OriSys_f1->getH2()[1];
-	double *mean_pos_subsys = new double[3];
-	for(unsigned int i=0;i<3;i++) mean_pos_subsys[i] = 0.;
-
-	double *diff_orisubsys = new double[3];
-	double *at_sp = new double[nbAt_OriSys];
-	double *current_shift = new double[3];
-	double *swap_shift = new double[3];
-
-	// loop on number of plane 
-	for(unsigned int f=0;f<FullPlaneEq.size();f++){
-	//for(unsigned int f=0;f<1;f++){
-		vector<Atom> SubSys;
+		// ** Make coincide the ori system with the atomic system ** //
+		// Set a subsystem of the atomic system
+		double para_width = 2.*OriSys_f1->getH2()[1];
+		double *mean_pos_subsys = new double[3];
 		for(unsigned int i=0;i<3;i++) mean_pos_subsys[i] = 0.;
-		for(unsigned int i=0;i<nbAtom;i++){
-			double xpos = AtomList[i].pos.x;
-			double ypos = AtomList[i].pos.y;
-			double zpos = AtomList[i].pos.z;
-			double buffer_v;
-			if( xpar ) buffer_v = xpos;
-			else buffer_v = ypos - VertPlaneSlope*xpos;
-			if( ( buffer_v > VertPlaneEq[f*2] ) && ( buffer_v < VertPlaneEq[2*f+1] ) ){
-				// Then test if atom is bellow the real plane
-				double buffer_f = xpos*PlaneNormal[0] + ypos*PlaneNormal[1] + (zpos-shift_z_box)*PlaneNormal[2];
-				if( buffer_f > FullPlaneEq[f]-(select_width*3.) ){
-					SubSys.push_back(AtomList[i]);
-					mean_pos_subsys[0] += AtomList[i].pos.x;
-					mean_pos_subsys[1] += AtomList[i].pos.y;
-					mean_pos_subsys[2] += AtomList[i].pos.z;
-				}
-			}
-		}
 
-		// shift orisys using cell vec to be inside the subsys
-		for(unsigned int i=0;i<3;i++){
-			mean_pos_subsys[i] /= SubSys.size();
-			diff_orisubsys[i] = mean_pos_subsys[i] - mean_pos_orisys[i];
-		}
-		int max_hkl_search = 150;
-		vector<unsigned int> search_hkl;
-		for(unsigned int i=0;i<3;i++){
-			if( fabs(_MyCrystal->getA1()[i]) > zero_num ) search_hkl.push_back(round(fabs(diff_orisubsys[i]/_MyCrystal->getA1()[i])));
-			if( fabs(_MyCrystal->getA2()[i]) > zero_num ) search_hkl.push_back(round(fabs(diff_orisubsys[i]/_MyCrystal->getA2()[i])));
-			if( fabs(_MyCrystal->getA3()[i]) > zero_num ) search_hkl.push_back(round(fabs(diff_orisubsys[i]/_MyCrystal->getA3()[i])));
-		}
-		int hkl_search = (int) MT->max_vec(search_hkl)+3;
-		if( hkl_search > max_hkl_search ) hkl_search = max_hkl_search;
-		vector<double> optshift(3);
-		double min_dist = std::numeric_limits<double>::max();
-		for(int i=-hkl_search;i<=hkl_search;i++){
-			for(int j=-hkl_search;j<=hkl_search;j++){
-				for(int k=-hkl_search;k<=hkl_search;k++){
-					double cur_dist = 0.;
-					for(unsigned int d=0;d<3;d++){
-						double cur_vec = _MyCrystal->getA1()[d]*i + _MyCrystal->getA2()[d]*j + _MyCrystal->getA3()[d]*k;
-						cur_dist += (cur_vec-diff_orisubsys[d])*(cur_vec-diff_orisubsys[d]); 
-					}
-					if( cur_dist < min_dist ){
-						for(unsigned int d=0;d<3;d++) optshift[d] = _MyCrystal->getA1()[d]*i + _MyCrystal->getA2()[d]*j + _MyCrystal->getA3()[d]*k;
-						min_dist = cur_dist;
+		double *diff_orisubsys = new double[3];
+		double *at_sp = new double[nbAt_OriSys];
+		double *current_shift = new double[3];
+		double *swap_shift = new double[3];
+
+		// loop on number of plane 
+		for(unsigned int f=0;f<FullPlaneEq.size();f++){
+		//for(unsigned int f=0;f<1;f++){
+			vector<Atom> SubSys;
+			for(unsigned int i=0;i<3;i++) mean_pos_subsys[i] = 0.;
+			for(unsigned int i=0;i<nbAtom;i++){
+				double xpos = AtomList[i].pos.x;
+				double ypos = AtomList[i].pos.y;
+				double zpos = AtomList[i].pos.z;
+				double buffer_v;
+				if( xpar ) buffer_v = xpos;
+				else buffer_v = ypos - VertPlaneSlope*xpos;
+				if( ( buffer_v > VertPlaneEq[f*2] ) && ( buffer_v < VertPlaneEq[2*f+1] ) ){
+					// Then test if atom is bellow the real plane
+					double buffer_f = xpos*PlaneNormal[0] + ypos*PlaneNormal[1] + (zpos-shift_z_box)*PlaneNormal[2];
+					if( buffer_f > FullPlaneEq[f]-(select_width*3.) ){
+						SubSys.push_back(AtomList[i]);
+						mean_pos_subsys[0] += AtomList[i].pos.x;
+						mean_pos_subsys[1] += AtomList[i].pos.y;
+						mean_pos_subsys[2] += AtomList[i].pos.z;
 					}
 				}
 			}
-		}
-		OriSys_f1->ApplyShift(optshift[0],optshift[1],optshift[2]);
-		for(unsigned int i=0;i<3;i++) mean_pos_orisys[i] += optshift[i];
 
-
-		double sigma = 0.25;
-		double tol = 1.e-3;
-		double init_sp_sum;
-		double min_sp = 1.e-1;
-		bool coincide = false;
-		unsigned int count_shift = 0;
-		unsigned int max_shift = 3*3*3;
-		int i_s = -1;
-		while( !coincide ){
-			coincide = true;
-			init_sp_sum = 0.;
-			for(unsigned int i=0;i<nbAt_OriSys;i++){
-				at_sp[i] = 0.;
-				for(unsigned int j=0;j<SubSys.size();j++) at_sp[i] += MT->gaussian(OriSys_f1->getAtomRef(i).pos.x, OriSys_f1->getAtomRef(i).pos.y, OriSys_f1->getAtomRef(i).pos.z, SubSys[j].pos.x, SubSys[j].pos.y, SubSys[j].pos.z, sigma);
-				if( ( i != 0 && fabs(at_sp[i]-at_sp[i-1]) > tol ) || at_sp[i] < min_sp ){
-					//cout << "WARNING the oriented system seems to not coincide with grain 1" << endl;
-					coincide = false;
-					break;
-				}
-				init_sp_sum += at_sp[i];
+			// shift orisys using cell vec to be inside the subsys
+			for(unsigned int i=0;i<3;i++){
+				mean_pos_subsys[i] /= SubSys.size();
+				diff_orisubsys[i] = mean_pos_subsys[i] - mean_pos_orisys[i];
 			}
-			if( coincide ) break;
-			for(int i=-1;i<=1;i++){
-				for(int j=-1;j<=1;j++){
-					for(int k=-1;k<=1;k++){
-						init_sp_sum = 0.;
-						coincide = true;
-						for(unsigned int d=0;d<3;d++) optshift[d] = _MyCrystal->getA1()[d]*i + _MyCrystal->getA2()[d]*j + _MyCrystal->getA3()[d]*k;
-						OriSys_f1->ApplyShift(optshift[0],optshift[1],optshift[2]);
-						for(unsigned int i=0;i<nbAt_OriSys;i++){
-							at_sp[i] = 0.;
-							for(unsigned int j=0;j<SubSys.size();j++) at_sp[i] += MT->gaussian(OriSys_f1->getAtomRef(i).pos.x, OriSys_f1->getAtomRef(i).pos.y, OriSys_f1->getAtomRef(i).pos.z, SubSys[j].pos.x, SubSys[j].pos.y, SubSys[j].pos.z, sigma);
-							if( ( i != 0 && fabs(at_sp[i]-at_sp[i-1]) > tol ) || at_sp[i] < min_sp ){
-								//cout << "WARNING the oriented system seems to not coincide with grain 1" << endl;
-								coincide = false;
-								break;
+			int max_hkl_search = 150;
+			vector<unsigned int> search_hkl;
+			for(unsigned int i=0;i<3;i++){
+				if( fabs(_MyCrystal->getA1()[i]) > zero_num ) search_hkl.push_back(round(fabs(diff_orisubsys[i]/_MyCrystal->getA1()[i])));
+				if( fabs(_MyCrystal->getA2()[i]) > zero_num ) search_hkl.push_back(round(fabs(diff_orisubsys[i]/_MyCrystal->getA2()[i])));
+				if( fabs(_MyCrystal->getA3()[i]) > zero_num ) search_hkl.push_back(round(fabs(diff_orisubsys[i]/_MyCrystal->getA3()[i])));
+			}
+			int hkl_search = (int) MT->max_vec(search_hkl)+3;
+			if( hkl_search > max_hkl_search ) hkl_search = max_hkl_search;
+			vector<double> optshift(3);
+			double min_dist = std::numeric_limits<double>::max();
+			for(int i=-hkl_search;i<=hkl_search;i++){
+				for(int j=-hkl_search;j<=hkl_search;j++){
+					for(int k=-hkl_search;k<=hkl_search;k++){
+						double cur_dist = 0.;
+						for(unsigned int d=0;d<3;d++){
+							double cur_vec = _MyCrystal->getA1()[d]*i + _MyCrystal->getA2()[d]*j + _MyCrystal->getA3()[d]*k;
+							cur_dist += (cur_vec-diff_orisubsys[d])*(cur_vec-diff_orisubsys[d]); 
+						}
+						if( cur_dist < min_dist ){
+							for(unsigned int d=0;d<3;d++) optshift[d] = _MyCrystal->getA1()[d]*i + _MyCrystal->getA2()[d]*j + _MyCrystal->getA3()[d]*k;
+							min_dist = cur_dist;
+						}
+					}
+				}
+			}
+			OriSys_f1->ApplyShift(optshift[0],optshift[1],optshift[2]);
+			for(unsigned int i=0;i<3;i++) mean_pos_orisys[i] += optshift[i];
+
+
+			double sigma = 0.25;
+			double tol = 1.e-3;
+			double init_sp_sum;
+			double min_sp = 1.e-1;
+			bool coincide = false;
+			unsigned int count_shift = 0;
+			unsigned int max_shift = 3*3*3;
+			int i_s = -1;
+			while( !coincide ){
+				coincide = true;
+				init_sp_sum = 0.;
+				for(unsigned int i=0;i<nbAt_OriSys;i++){
+					at_sp[i] = 0.;
+					for(unsigned int j=0;j<SubSys.size();j++) at_sp[i] += MT->gaussian(OriSys_f1->getAtomRef(i).pos.x, OriSys_f1->getAtomRef(i).pos.y, OriSys_f1->getAtomRef(i).pos.z, SubSys[j].pos.x, SubSys[j].pos.y, SubSys[j].pos.z, sigma);
+					if( ( i != 0 && fabs(at_sp[i]-at_sp[i-1]) > tol ) || at_sp[i] < min_sp ){
+						//cout << "WARNING the oriented system seems to not coincide with grain 1" << endl;
+						coincide = false;
+						break;
+					}
+					init_sp_sum += at_sp[i];
+				}
+				if( coincide ) break;
+				for(int i=-1;i<=1;i++){
+					for(int j=-1;j<=1;j++){
+						for(int k=-1;k<=1;k++){
+							init_sp_sum = 0.;
+							coincide = true;
+							for(unsigned int d=0;d<3;d++) optshift[d] = _MyCrystal->getA1()[d]*i + _MyCrystal->getA2()[d]*j + _MyCrystal->getA3()[d]*k;
+							OriSys_f1->ApplyShift(optshift[0],optshift[1],optshift[2]);
+							for(unsigned int i=0;i<nbAt_OriSys;i++){
+								at_sp[i] = 0.;
+								for(unsigned int j=0;j<SubSys.size();j++) at_sp[i] += MT->gaussian(OriSys_f1->getAtomRef(i).pos.x, OriSys_f1->getAtomRef(i).pos.y, OriSys_f1->getAtomRef(i).pos.z, SubSys[j].pos.x, SubSys[j].pos.y, SubSys[j].pos.z, sigma);
+								if( ( i != 0 && fabs(at_sp[i]-at_sp[i-1]) > tol ) || at_sp[i] < min_sp ){
+									//cout << "WARNING the oriented system seems to not coincide with grain 1" << endl;
+									coincide = false;
+									break;
+								}
+								init_sp_sum += at_sp[i];
 							}
-							init_sp_sum += at_sp[i];
+							if( coincide ) break;
+							else OriSys_f1->ApplyShift(-optshift[0],-optshift[1],-optshift[2]);
 						}
 						if( coincide ) break;
-						else OriSys_f1->ApplyShift(-optshift[0],-optshift[1],-optshift[2]);
 					}
 					if( coincide ) break;
 				}
-				if( coincide ) break;
+				break;
 			}
-			break;
-		}
-		if( !coincide ){
-			cout << diff_orisubsys[0] << " "<< diff_orisubsys[1] << " "<< diff_orisubsys[2] << endl; 
-			// BEGIN  PRINTING
-			//OriSys->setAux(at_sp,"foraux");
-			//OriSys->printSystem_aux("SP.cfg","foraux");
-			unsigned int sizesys = SubSys.size()+nbAt_OriSys;
-			//unsigned int sizesys = nbAtom1+nbAt_OriSys;
-			Atom *AtList_temp = new Atom[sizesys];
-			double *foraux = new double[sizesys];
-			for(unsigned int i=0;i<SubSys.size();i++){
-				AtList_temp[i] = SubSys[i];
-				foraux[i] = 0.;
-			}
-			//for(unsigned int i=0;i<nbAtom1;i++){
-			//	AtList_temp[i] = Grain1->getAtom(i);
-			//	foraux[i] = 0.;
-			//}
-			for(unsigned int i=0;i<nbAt_OriSys;i++){
-				AtList_temp[i+SubSys.size()] = OriSys_f1->getAtom(i);
-				foraux[i+SubSys.size()] = 1.;
-				//AtList_temp[i+nbAtom1] = OriSys_f1->getAtom(i);
-				//foraux[i+nbAtom1] = 1.;
-			}
-			AtomicSystem *AtSysTemp = new AtomicSystem(AtList_temp,sizesys,_MyCrystal,this->H1,this->H2,this->H3);
-			AtSysTemp->setAux(foraux,"foraux");
-			AtSysTemp->printSystem_aux("FORAUX_"+to_string(f)+"_"+to_string(s_z_i)+".cfg","foraux");
-			delete[] AtList_temp;
-			delete[] foraux;
-			delete AtSysTemp;
-			// END PRINTING
+			if( coincide ){
+				//cout << diff_orisubsys[0] << " "<< diff_orisubsys[1] << " "<< diff_orisubsys[2] << endl; 
+				//// BEGIN  PRINTING
+				////OriSys->setAux(at_sp,"foraux");
+				////OriSys->printSystem_aux("SP.cfg","foraux");
+				//unsigned int sizesys = SubSys.size()+nbAt_OriSys;
+				////unsigned int sizesys = nbAtom1+nbAt_OriSys;
+				//Atom *AtList_temp = new Atom[sizesys];
+				//double *foraux = new double[sizesys];
+				//for(unsigned int i=0;i<SubSys.size();i++){
+				//	AtList_temp[i] = SubSys[i];
+				//	foraux[i] = 0.;
+				//}
+				////for(unsigned int i=0;i<nbAtom1;i++){
+				////	AtList_temp[i] = Grain1->getAtom(i);
+				////	foraux[i] = 0.;
+				////}
+				//for(unsigned int i=0;i<nbAt_OriSys;i++){
+				//	AtList_temp[i+SubSys.size()] = OriSys_f1->getAtom(i);
+				//	foraux[i+SubSys.size()] = 1.;
+				//	//AtList_temp[i+nbAtom1] = OriSys_f1->getAtom(i);
+				//	//foraux[i+nbAtom1] = 1.;
+				//}
+				//AtomicSystem *AtSysTemp = new AtomicSystem(AtList_temp,sizesys,_MyCrystal,this->H1,this->H2,this->H3);
+				//AtSysTemp->setAux(foraux,"foraux");
+				//AtSysTemp->printSystem_aux("FORAUX_"+to_string(f)+"_"+to_string(s_z_i)+".cfg","foraux");
+				//delete[] AtList_temp;
+				//delete[] foraux;
+				//delete AtSysTemp;
+				// END PRINTING
 
 
-		}
-		// shift the OriSys using _Crystal cell vecs and choose the fully coinciding system being the closest to the surface
-		hkl_search = 10;
-		vector<int> hkl_shift;
-		vector<double> z_shift;
-		for(int i=-hkl_search;i<=hkl_search;i++){
-			for(int j=-hkl_search;j<=hkl_search;j++){
-				for(int k=-hkl_search;k<=hkl_search;k++){
-					for(unsigned int d=0;d<3;d++) current_shift[d] = _MyCrystal->getA1()[d]*i + _MyCrystal->getA2()[d]*j + _MyCrystal->getA3()[d]*k;
-				        OriSys_f1->ApplyShift(current_shift[0], current_shift[1], current_shift[2]);
-					double current_sp_sum = 0.;
-					for(unsigned int n1=0;n1<nbAt_OriSys;n1++){
-						at_sp[n1] = 0.;
-						for(unsigned int n2=0;n2<SubSys.size();n2++) at_sp[n1] += MT->gaussian(OriSys_f1->getAtomRef(n1).pos.x, OriSys_f1->getAtomRef(n1).pos.y, OriSys_f1->getAtomRef(n1).pos.z, SubSys[n2].pos.x, SubSys[n2].pos.y, SubSys[n2].pos.z, sigma);
-						current_sp_sum += at_sp[n1];
+			}
+			// shift the OriSys using _Crystal cell vecs and choose the fully coinciding system being the closest to the surface
+			hkl_search = 10;
+			vector<int> hkl_shift;
+			vector<double> z_shift;
+			for(int i=-hkl_search;i<=hkl_search;i++){
+				for(int j=-hkl_search;j<=hkl_search;j++){
+					for(int k=-hkl_search;k<=hkl_search;k++){
+						for(unsigned int d=0;d<3;d++) current_shift[d] = _MyCrystal->getA1()[d]*i + _MyCrystal->getA2()[d]*j + _MyCrystal->getA3()[d]*k;
+					        OriSys_f1->ApplyShift(current_shift[0], current_shift[1], current_shift[2]);
+						double current_sp_sum = 0.;
+						for(unsigned int n1=0;n1<nbAt_OriSys;n1++){
+							at_sp[n1] = 0.;
+							for(unsigned int n2=0;n2<SubSys.size();n2++) at_sp[n1] += MT->gaussian(OriSys_f1->getAtomRef(n1).pos.x, OriSys_f1->getAtomRef(n1).pos.y, OriSys_f1->getAtomRef(n1).pos.z, SubSys[n2].pos.x, SubSys[n2].pos.y, SubSys[n2].pos.z, sigma);
+							current_sp_sum += at_sp[n1];
+						}
+						if( fabs(current_sp_sum-init_sp_sum) < tol ){
+							hkl_shift.push_back(i);
+							hkl_shift.push_back(j);
+							hkl_shift.push_back(k);
+							double buffer_f = current_shift[0]*PlaneNormal[0] + current_shift[1]*PlaneNormal[1] + (current_shift[2]-shift_z_box)*PlaneNormal[2];
+							z_shift.push_back(-buffer_f+FullPlaneEq[f]);
+						}
+					        OriSys_f1->ApplyShift(-current_shift[0], -current_shift[1], -current_shift[2]);
 					}
-					if( fabs(current_sp_sum-init_sp_sum) < tol ){
-						hkl_shift.push_back(i);
-						hkl_shift.push_back(j);
-						hkl_shift.push_back(k);
-						double buffer_f = current_shift[0]*PlaneNormal[0] + current_shift[1]*PlaneNormal[1] + (current_shift[2]-shift_z_box)*PlaneNormal[2];
-						z_shift.push_back(-buffer_f+FullPlaneEq[f]);
-					}
-				        OriSys_f1->ApplyShift(-current_shift[0], -current_shift[1], -current_shift[2]);
 				}
 			}
-		}
-		if( z_shift.size() == 0 ){
-			cout << "An issue occured when translating the oriented system to search the optimal postion with grain 1" << endl;
+			if( z_shift.size() == 0 ){
+				cout << "An issue occured when translating the oriented system to search the optimal postion with grain 1" << endl;
 
-			unsigned int sizesys = SubSys.size()+nbAt_OriSys;
-			//unsigned int sizesys = nbAtom1+nbAt_OriSys;
-			Atom *AtList_temp = new Atom[sizesys];
-			double *foraux = new double[sizesys];
-			for(unsigned int i=0;i<SubSys.size();i++){
-				AtList_temp[i] = SubSys[i];
-				foraux[i] = 0.;
+				//unsigned int sizesys = SubSys.size()+nbAt_OriSys;
+				////unsigned int sizesys = nbAtom1+nbAt_OriSys;
+				//Atom *AtList_temp = new Atom[sizesys];
+				//double *foraux = new double[sizesys];
+				//for(unsigned int i=0;i<SubSys.size();i++){
+				//	AtList_temp[i] = SubSys[i];
+				//	foraux[i] = 0.;
+				//}
+				////for(unsigned int i=0;i<nbAtom1;i++){
+				////	AtList_temp[i] = Grain1->getAtom(i);
+				////	foraux[i] = 0.;
+				////}
+				//for(unsigned int i=0;i<nbAt_OriSys;i++){
+				//	AtList_temp[i+SubSys.size()] = OriSys_f1->getAtom(i);
+				//	foraux[i+SubSys.size()] = 1.;
+				//	//AtList_temp[i+nbAtom1] = OriSys_f1->getAtom(i);
+				//	//foraux[i+nbAtom1] = 1.;
+				//}
+				//AtomicSystem *AtSysTemp = new AtomicSystem(AtList_temp,sizesys,_MyCrystal,this->H1,this->H2,this->H3);
+				//AtSysTemp->setAux(foraux,"foraux");
+				//AtSysTemp->printSystem_aux("FORAUXbis_"+to_string(f)+"_"+to_string(s_z_i)+".cfg","foraux");
+				//delete[] AtList_temp;
+				//delete[] foraux;
+				//delete AtSysTemp;
+				// END PRINTING
+
+
+
+			}else{
+				unsigned int opt_ind = MT->min(z_shift);
+				for(unsigned int d=0;d<3;d++) current_shift[d] = _MyCrystal->getA1()[d]*hkl_shift[opt_ind*3] + _MyCrystal->getA2()[d]*hkl_shift[opt_ind*3+1] + _MyCrystal->getA3()[d]*hkl_shift[opt_ind*3+2];
+				OriSys_f1->ApplyShift(current_shift[0], current_shift[1], current_shift[2]);
+				for(unsigned int i=0;i<3;i++) mean_pos_orisys[i] += current_shift[i];
 			}
-			//for(unsigned int i=0;i<nbAtom1;i++){
-			//	AtList_temp[i] = Grain1->getAtom(i);
-			//	foraux[i] = 0.;
-			//}
+
+			
+
+			// now the ori sys is well positionned
+			// ** swap the surface of the system and remove the ions not coinciding with ori sys ** //
+			//
+			for(unsigned int i=0;i<3;i++) swap_shift[i] = OriSys_f1->getH2()[i];
+			MT->MatDotRawVec(invTiltTrans,swap_shift,swap_shift);
+			MT->MatDotRawVec(invRotMat,swap_shift,swap_shift);
+			MT->MatDotRawVec(_MyCrystal->getRotMat(),swap_shift,swap_shift);
+			MT->MatDotRawVec(_MyCrystal->getTiltTrans(),swap_shift,swap_shift);
+			if( swap_shift[1] < 0 ) for(unsigned int d=0;d<3;d++) swap_shift[d] *= -Misfit[d];
+			else for(unsigned int d=0;d<3;d++) swap_shift[d] *= Misfit[d];
+			// put the ori sys at minimum y pos
+			double min_y = std::numeric_limits<double>::max();
+			double mean_z_pos = 0.;
 			for(unsigned int i=0;i<nbAt_OriSys;i++){
-				AtList_temp[i+SubSys.size()] = OriSys_f1->getAtom(i);
-				foraux[i+SubSys.size()] = 1.;
-				//AtList_temp[i+nbAtom1] = OriSys_f1->getAtom(i);
-				//foraux[i+nbAtom1] = 1.;
-			}
-			AtomicSystem *AtSysTemp = new AtomicSystem(AtList_temp,sizesys,_MyCrystal,this->H1,this->H2,this->H3);
-			AtSysTemp->setAux(foraux,"foraux");
-			AtSysTemp->printSystem_aux("FORAUXbis_"+to_string(f)+"_"+to_string(s_z_i)+".cfg","foraux");
-			delete[] AtList_temp;
-			delete[] foraux;
-			delete AtSysTemp;
-			// END PRINTING
-
-
-
-		}else{
-			unsigned int opt_ind = MT->min(z_shift);
-			for(unsigned int d=0;d<3;d++) current_shift[d] = _MyCrystal->getA1()[d]*hkl_shift[opt_ind*3] + _MyCrystal->getA2()[d]*hkl_shift[opt_ind*3+1] + _MyCrystal->getA3()[d]*hkl_shift[opt_ind*3+2];
-			OriSys_f1->ApplyShift(current_shift[0], current_shift[1], current_shift[2]);
-			for(unsigned int i=0;i<3;i++) mean_pos_orisys[i] += current_shift[i];
-		}
-
-		
-
-		// now the ori sys is well positionned
-		// ** swap the surface of the system and remove the ions not coinciding with ori sys ** //
-		//
-		for(unsigned int i=0;i<3;i++) swap_shift[i] = OriSys_f1->getH2()[i];
-		MT->MatDotRawVec(invTiltTrans,swap_shift,swap_shift);
-		MT->MatDotRawVec(invRotMat,swap_shift,swap_shift);
-		MT->MatDotRawVec(_MyCrystal->getRotMat(),swap_shift,swap_shift);
-		MT->MatDotRawVec(_MyCrystal->getTiltTrans(),swap_shift,swap_shift);
-		if( swap_shift[1] < 0 ) for(unsigned int d=0;d<3;d++) swap_shift[d] *= -Misfit[d];
-		else for(unsigned int d=0;d<3;d++) swap_shift[d] *= Misfit[d];
-		// put the ori sys at minimum y pos
-		double min_y = std::numeric_limits<double>::max();
-		double mean_z_pos = 0.;
-		for(unsigned int i=0;i<nbAt_OriSys;i++){
-			double xpos = OriSys_f1->getAtom(i).pos.x;
-			double ypos = OriSys_f1->getAtom(i).pos.y;
-			double zpos = OriSys_f1->getAtom(i).pos.z;
-			double buffer_f = xpos*PlaneNormal[0] + ypos*PlaneNormal[1] + (zpos-shift_z_box)*PlaneNormal[2];
-			mean_z_pos += -FullPlaneEq[f]-buffer_f;
-			if( OriSys_f1->getAtom(i).pos.y < min_y ) min_y = OriSys_f1->getAtom(i).pos.y;
-		}
-		mean_z_pos /= nbAt_OriSys;
-		// min_y should be at most VertPlaneEq[2*f]
-		for(unsigned int i=0;i<3;i++) current_shift[i] = swap_shift[i]*((double) ceil((min_y-VertPlaneEq[2*f])/swap_shift[1]) + 1.);
-		OriSys_f1->ApplyShift(-current_shift[0], -current_shift[1], -current_shift[2]);
-		for(unsigned int i=0;i<3;i++) mean_pos_orisys[i] -= current_shift[i];
-		unsigned int nb_shift = round((VertPlaneEq[2*f+1]-VertPlaneEq[2*f]+fabs(min_y-VertPlaneEq[2*f]))/swap_shift[1])+2; //TODO warning for not 2D
-
-
-		index2rm.clear();
-		double tol_rmatom = 0.9*init_sp_sum/nbAt_OriSys;
-		for(unsigned int i=0;i<nbAtom;i++){
-			double xpos = AtomList[i].pos.x;
-			double ypos = AtomList[i].pos.y;
-			double zpos = AtomList[i].pos.z;
-			double buffer_v;
-			if( xpar ) buffer_v = xpos;
-			else buffer_v = ypos - VertPlaneSlope*xpos;
-			if( ( buffer_v > VertPlaneEq[f*2] ) && ( buffer_v < VertPlaneEq[2*f+1] ) ){
+				double xpos = OriSys_f1->getAtom(i).pos.x;
+				double ypos = OriSys_f1->getAtom(i).pos.y;
+				double zpos = OriSys_f1->getAtom(i).pos.z;
 				double buffer_f = xpos*PlaneNormal[0] + ypos*PlaneNormal[1] + (zpos-shift_z_box)*PlaneNormal[2];
-				double dist = -FullPlaneEq[f]-buffer_f;
-				if( dist < mean_z_pos ){
-					double cur_sp = 0.;
-					for(unsigned int j=0;j<nbAt_OriSys;j++){
-						for(unsigned int k=0;k<nb_shift;k++){
-							current_shift[0] = swap_shift[0]*k + OriSys_f1->getAtomRef(j).pos.x;
-							current_shift[1] = swap_shift[1]*k + OriSys_f1->getAtomRef(j).pos.y;
-							current_shift[2] = swap_shift[2]*k + OriSys_f1->getAtomRef(j).pos.z;
-							cur_sp += MT->gaussian(xpos, ypos, zpos, current_shift[0], current_shift[1], current_shift[2], sigma);
+				mean_z_pos += -FullPlaneEq[f]-buffer_f;
+				if( OriSys_f1->getAtom(i).pos.y < min_y ) min_y = OriSys_f1->getAtom(i).pos.y;
+			}
+			mean_z_pos /= nbAt_OriSys;
+			// min_y should be at most VertPlaneEq[2*f]
+			for(unsigned int i=0;i<3;i++) current_shift[i] = swap_shift[i]*((double) ceil((min_y-VertPlaneEq[2*f])/swap_shift[1]) + 1.);
+			OriSys_f1->ApplyShift(-current_shift[0], -current_shift[1], -current_shift[2]);
+			for(unsigned int i=0;i<3;i++) mean_pos_orisys[i] -= current_shift[i];
+			unsigned int nb_shift = round((VertPlaneEq[2*f+1]-VertPlaneEq[2*f]+fabs(min_y-VertPlaneEq[2*f]))/swap_shift[1])+2; //TODO warning for not 2D
+
+
+			index2rm.clear();
+			double tol_rmatom = 0.9*init_sp_sum/nbAt_OriSys;
+			for(unsigned int i=0;i<nbAtom;i++){
+				double xpos = AtomList[i].pos.x;
+				double ypos = AtomList[i].pos.y;
+				double zpos = AtomList[i].pos.z;
+				double buffer_v;
+				if( xpar ) buffer_v = xpos;
+				else buffer_v = ypos - VertPlaneSlope*xpos;
+				if( ( buffer_v > VertPlaneEq[f*2] ) && ( buffer_v < VertPlaneEq[2*f+1] ) ){
+					double buffer_f = xpos*PlaneNormal[0] + ypos*PlaneNormal[1] + (zpos-shift_z_box)*PlaneNormal[2];
+					double dist = -FullPlaneEq[f]-buffer_f;
+					if( dist < mean_z_pos ){
+						double cur_sp = 0.;
+						for(unsigned int j=0;j<nbAt_OriSys;j++){
+							for(unsigned int k=0;k<nb_shift;k++){
+								current_shift[0] = swap_shift[0]*k + OriSys_f1->getAtomRef(j).pos.x;
+								current_shift[1] = swap_shift[1]*k + OriSys_f1->getAtomRef(j).pos.y;
+								current_shift[2] = swap_shift[2]*k + OriSys_f1->getAtomRef(j).pos.z;
+								cur_sp += MT->gaussian(xpos, ypos, zpos, current_shift[0], current_shift[1], current_shift[2], sigma);
+							}
+						}
+						if( cur_sp < tol_rmatom ){
+							index2rm.push_back(i);
 						}
 					}
-					if( cur_sp < tol_rmatom ){
-						index2rm.push_back(i);
-					}
 				}
 			}
-		}
-		for(unsigned int i=0;i<index2rm.size();i++) opt_index2rm[s_z_i].push_back(index2rm[i]);
-	} // end loop on f
-	//cout << "Number of ions removed : " << index2rm.size() << endl;
-	delete[] invTiltTrans;
-	delete[] invRotMat;
-	delete[] zaxis;
-	delete[] mean_pos_orisys;
-	delete[] mean_pos_subsys;
-	delete[] diff_orisubsys;
-	delete[] at_sp;
-	delete[] current_shift;
-	delete[] swap_shift;
+			for(unsigned int i=0;i<index2rm.size();i++) opt_index2rm[s_z_i].push_back(index2rm[i]);
+		} // end loop on f
+		//cout << "Number of ions removed : " << index2rm.size() << endl;
+		delete[] invTiltTrans;
+		delete[] invRotMat;
+		delete[] zaxis;
+		delete[] mean_pos_orisys;
+		delete[] mean_pos_subsys;
+		delete[] diff_orisubsys;
+		delete[] at_sp;
+		delete[] current_shift;
+		delete[] swap_shift;
 	} // end loop on s_z
 	
 	unsigned int opt_ind = 0;
@@ -5048,15 +5084,18 @@ double AtomicSystem::MakeSurfaceNeutral(bool verbose, double ztol_choose){
 		ind_tomove = ind_tomove_vec[rand_index]; 
 
 	}
+	unsigned int nbmoved = 0;
 	for(unsigned int i=ind_moved.size()-1;i>opt_ind;i--){
 		AtomList[ind_moved[i]].pos.x -= InitH3[0];
 		AtomList[ind_moved[i]].pos.y -= InitH3[1];
 		AtomList[ind_moved[i]].pos.z -= InitH3[2];
+		nbmoved++;
 		if( IsNotSepTag){
 			for(unsigned int j=0;j<NotSepTag[ind_moved[i]][0];j++){
 				AtomList[NotSepTag[ind_moved[i]][j+1]].pos.x -= InitH3[0];
 				AtomList[NotSepTag[ind_moved[i]][j+1]].pos.y -= InitH3[1];
 				AtomList[NotSepTag[ind_moved[i]][j+1]].pos.z -= InitH3[2];
+		nbmoved++;
 			}
 		}
 	}
@@ -5072,7 +5111,7 @@ double AtomicSystem::MakeSurfaceNeutral(bool verbose, double ztol_choose){
 	delete[] z;
 	delete[] true_z;
 	if( verbose ){
-		cout << "Initial charge balance = " << init_charge_bal << ", final one = " << charge_bal << ", number of ions moved = " << nbIonsMoved[opt_ind] << endl;
+		cout << "Initial charge balance = " << init_charge_bal << ", final one = " << charge_bal << ", number of ions moved = " << nbIonsMoved[opt_ind] << " " << nbmoved << endl;
 		Print1dDensity("FinalChargeDensity.dat","Charge");
 	}
 	return final_zmin-init_zmin;
@@ -5483,7 +5522,7 @@ bool AtomicSystem::SymmetrizeRelaxedSurfaces(string surf2dup, double zcut){ // T
 
 		double sigma = 0.25;
 		double min_sp = 1.e-1;
-		tol = 5.e-1;
+		tol = 1.e-1;
 		max_bc = 2;
 		for(unsigned int i=0;i<SubSys_ref.size();i++){
 			at_sp[i] = 0.;
@@ -5501,8 +5540,7 @@ bool AtomicSystem::SymmetrizeRelaxedSurfaces(string surf2dup, double zcut){ // T
 					}
 				}
 			}
-			//if( ( i != 0 && fabs((at_sp[i]-at_sp[i-1])/at_sp[i]) > tol ) || at_sp[i] < min_sp ){
-			if( at_sp[i] < min_sp ){
+			if( ( i != 0 && fabs((at_sp[i]-at_sp[i-1])/at_sp[i]) > tol ) || at_sp[i] < min_sp ){
 				coincide = false;
 				break;
 			}
@@ -5526,28 +5564,28 @@ bool AtomicSystem::SymmetrizeRelaxedSurfaces(string surf2dup, double zcut){ // T
 		}
 	}
 	if( count >= max_test ){
-		unsigned int sizesys = SubSys_ref.size()+SubSys_work.size();
-		//unsigned int sizesys = nbAtom1+nbAt_OriSys;
-		Atom *AtList_temp = new Atom[sizesys];
-		double *foraux = new double[sizesys];
-		for(unsigned int i=0;i<SubSys_ref.size();i++){
-			AtList_temp[i] = SubSys_ref[i];
-			//AtList_temp[i].pos.z += 350.;
-			foraux[i] = 0.;
-		}
-		for(unsigned int i=0;i<SubSys_work.size();i++){
-			AtList_temp[i+SubSys_ref.size()] = SubSys_work[i];
-			foraux[i+SubSys_ref.size()] = 1.;
-			//at_sp[i+SubSys_ref.size()] = 0;
-		}
-		Crystal *test = new Crystal("Forsterite");
-		AtomicSystem *AtSysTemp = new AtomicSystem(AtList_temp,sizesys,test,this->H1,this->H2,this->H3);
-		//AtomicSystem *AtSysTemp = new AtomicSystem(AtList_temp,sizesys,_MyCrystal,this->H1,this->H2,this->H3);
-		AtSysTemp->setAux(foraux,"foraux");
+		//unsigned int sizesys = SubSys_ref.size()+SubSys_work.size();
+		////unsigned int sizesys = nbAtom1+nbAt_OriSys;
+		//Atom *AtList_temp = new Atom[sizesys];
+		//double *foraux = new double[sizesys];
+		//for(unsigned int i=0;i<SubSys_ref.size();i++){
+		//	AtList_temp[i] = SubSys_ref[i];
+		//	//AtList_temp[i].pos.z += 350.;
+		//	foraux[i] = 0.;
+		//}
+		//for(unsigned int i=0;i<SubSys_work.size();i++){
+		//	AtList_temp[i+SubSys_ref.size()] = SubSys_work[i];
+		//	foraux[i+SubSys_ref.size()] = 1.;
+		//	at_sp[i+SubSys_ref.size()] = 0;
+		//}
+		//Crystal *test = new Crystal("Forsterite");
+		//AtomicSystem *AtSysTemp = new AtomicSystem(AtList_temp,sizesys,test,this->H1,this->H2,this->H3);
+		////AtomicSystem *AtSysTemp = new AtomicSystem(AtList_temp,sizesys,_MyCrystal,this->H1,this->H2,this->H3);
+		//AtSysTemp->setAux(foraux,"foraux");
 		//AtSysTemp->setAux(at_sp,"at_sp");
-		AtSysTemp->printSystem_aux("TestCoincide.cfg","foraux at_sp");
-		delete[] AtList_temp;
-		delete[] foraux;
+		//AtSysTemp->printSystem_aux("TestCoincide.cfg","foraux at_sp");
+		//delete[] AtList_temp;
+		//delete[] foraux;
 		cout << "Cannot align systems, aborting to make symmetric surfaces" << endl;
 		return false;
 	}
@@ -5561,48 +5599,14 @@ bool AtomicSystem::SymmetrizeRelaxedSurfaces(string surf2dup, double zcut){ // T
 	for(unsigned int i=0;i<SubSys_ref.size();i++){
 		SubSys_ref[i].pos.z *= -1.;
 		MT->MatDotAt(rotmat,SubSys_ref[i],SubSys_ref[i]);
-	}
-	for(unsigned int i=0;i<SubSys_ref.size();i++){
-		// compute reduced coordinates
-		x = SubSys_ref[i].pos.x*G1[0]+SubSys_ref[i].pos.y*G2[0]+SubSys_ref[i].pos.z*G3[0];
-		y = SubSys_ref[i].pos.x*G1[1]+SubSys_ref[i].pos.y*G2[1]+SubSys_ref[i].pos.z*G3[1];
-		z = SubSys_ref[i].pos.x*G1[2]+SubSys_ref[i].pos.y*G2[2]+SubSys_ref[i].pos.z*G3[2];
-		if( x >= 1. || x < 0. ) x = x-floor(x);
-		if( y >= 1. || y < 0. ) y = y-floor(y);
-		// cartesian coordinates
-		SubSys_ref[i].pos.x = x*H1[0]+y*H2[0]+z*H3[0];
-		SubSys_ref[i].pos.y = x*H1[1]+y*H2[1]+z*H3[1];
 		SubSys_ref[i].pos.x -= TransVecs[opt_ind*3];
 		SubSys_ref[i].pos.y -= TransVecs[opt_ind*3+1];
 		SubSys_ref[i].pos.z -= TransVecs[opt_ind*3+2];
 	}
-
-	// compute mean z pos of SubSys_ref and remove atoms below/above and reconstruct the SubSys_work to be sure that the surface of ref sys exceed surface of work sys
-	double mean_z_pos = 0.;	
-	double minmax;
-        if( surf2dup == "down" ) minmax = std::numeric_limits<double>::max();	
-	else minmax = -std::numeric_limits<double>::max();	
-	for(unsigned int i=0;i<SubSys_ref.size();i++){
-		mean_z_pos += SubSys_ref[i].pos.z;
-		if( surf2dup == "down" && SubSys_ref[i].pos.z < minmax ) minmax = SubSys_ref[i].pos.z;
-		if( surf2dup == "up" && SubSys_ref[i].pos.z > minmax ) minmax = SubSys_ref[i].pos.z;
+	for(unsigned int i=0;i<SubSys_work.size();i++){
+		SubSys_work[i].pos.x -= small_shift;
+		SubSys_work[i].pos.y -= small_shift;
 	}
-	mean_z_pos /= SubSys_ref.size();
-	SubSys_work.clear();
-	index2rm.clear();
-	double tolrm = 5.;
-	for(unsigned int i=0;i<nbAtom;i++){
-		if( surf2dup == "down" ){
-			if( AtomList[i].pos.z > mean_z_pos ) index2rm.push_back(i);
-			else if( AtomList[i].pos.z > minmax-tolrm ) SubSys_work.push_back(AtomList[i]);
-		}else if( surf2dup == "up" ){
-			if( AtomList[i].pos.z < mean_z_pos ) index2rm.push_back(i);
-			else if( AtomList[i].pos.z < minmax+tolrm ) SubSys_work.push_back(AtomList[i]);
-		}
-	}
-	RemoveAtoms(index2rm);
-
-
 	vector<Atom> At2Add;
 	max_bc = 2;
 	for(unsigned int i=0;i<SubSys_ref.size();i++){
@@ -5738,6 +5742,7 @@ AtomicSystem::~AtomicSystem(){
 		delete[] AtomList;
 	}
 	if( this->IsCellVecMine ){
+		if( H ) delete[] H;
 		if( H1 ) delete[] H1;
 		if( H2 ) delete[] H2;
 		if( H3 ) delete[] H3;

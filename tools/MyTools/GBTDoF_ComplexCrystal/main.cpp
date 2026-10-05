@@ -148,7 +148,7 @@ int main(int argc, char *argv[])
 	
 	// set minimum aside to very small value to be sure that we only have the UC of the GB
 	vector<string> Properties;
-	Properties.push_back("MIN_BOX_ASIDE 2.");
+	Properties.push_back("MIN_BOX_SIZES 2. 2. 0.");
 	Properties.push_back("FULL_GRAINS 0");
 	
 	// set the initial z shift of upper and lower grain to 0 
@@ -378,13 +378,13 @@ int main(int argc, char *argv[])
 		currentMy = refGB->getMy1();
 		currentDupX = refGB->getDupX1();
 		currentDupY = refGB->getDupY1();
-		filedup << currentDupX*currentDupY << " " << refGB->getDupX2()*refGB->getDupY2();
+		filedup << currentDupX*currentDupY << " " << refGB->getDupY2()*refGB->getDupY2();
 	}else{
 		currentMx = refGB->getMx2();
 		currentMy = refGB->getMy2();
 		currentDupX = refGB->getDupX2();
 		currentDupY = refGB->getDupY2();
-		filedup << currentDupX*currentDupY << " " << refGB->getDupX1()*refGB->getDupY1();
+		filedup << currentDupX*currentDupY << " " << refGB->getDupY1()*refGB->getDupY1();
 	}
 	filedup.close();
 	for(unsigned int il=0;il<(*indexesDown).size();il++){
