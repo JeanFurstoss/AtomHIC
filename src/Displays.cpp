@@ -477,7 +477,7 @@ void Displays::ReadFixedParams(string filename){
 	// atomic systems
 	size_t pos_auxprop;
 	// crystal
-	size_t pos_tolOrthoBox, pos_tolOrthoBoxZ, pos_minBoxSizes, pos_shift, pos_nblc, pos_max_hkl_search;
+	size_t pos_tolOrthoBox, pos_minBoxSizes, pos_shift, pos_nblc, pos_max_hkl_search;
 	// bicrystals and CSL/DSC
 	size_t pos_thetamax, pos_MaxHKL, pos_toldist, pos_sigmamax, pos_MaxMisfit, pos_GBSpace, pos_MaxDup, pos_FullGrains, pos_maxvarfl, pos_maxdupf, pos_shift_grain, pos_shift_upgrain;
 	// descriptors and ML
@@ -510,19 +510,13 @@ void Displays::ReadFixedParams(string filename){
 			}
 
 			// crystal
-			pos_tolOrthoBox=line.find("TOL_ORTHO_BOX ");
+			pos_tolOrthoBox=line.find("TOL_SHEAR_CRYSTAL ");
 			if(pos_tolOrthoBox!=string::npos){
 				FixedParameters.push_back("");
 				FixedParameters.push_back("\t *** Parameters related to crystal (construction of orthogonal simulation cells): ***");
 				FixedParameters.push_back("");
 				istringstream text(line);
-				text >> buffer_s >> this->TolOrthoBox;
-				FixedParameters.push_back(line);
-			}
-			pos_tolOrthoBoxZ=line.find("TOL_ORTHO_BOX_Z ");
-			if(pos_tolOrthoBoxZ!=string::npos){
-				istringstream text(line);
-				text >> buffer_s >> this->TolOrthoBoxZ;
+				text >> buffer_s >> TolShearBox[0] >> TolShearBox[1] >> TolShearBox[2];
 				FixedParameters.push_back(line);
 			}
 			pos_minBoxSizes=line.find("MIN_BOX_SIZES");
@@ -531,16 +525,16 @@ void Displays::ReadFixedParams(string filename){
 				text >> buffer_s >> this->MinBoxSizes[0] >> this->MinBoxSizes[1] >> this->MinBoxSizes[2];
 				FixedParameters.push_back(line);
 			}
-			pos_shift=line.find("MOTIF_SHIFT");
-			if(pos_shift!=string::npos){
-				istringstream text(line);
-				text >> buffer_s >> shift_x >> shift_y >> shift_z;
-				FixedParameters.push_back(line);
-			}
 			pos_nblc=line.find("NB_MAX_LC");
 			if(pos_nblc!=string::npos){
 				istringstream text(line);
 				text >> buffer_s >> CLsearch;
+				FixedParameters.push_back(line);
+			}
+			pos_shift=line.find("MOTIF_SHIFT");
+			if(pos_shift!=string::npos){
+				istringstream text(line);
+				text >> buffer_s >> shift_x >> shift_y >> shift_z;
 				FixedParameters.push_back(line);
 			}
 			pos_max_hkl_search=line.find("MAX_HKL_SEARCH");
@@ -550,35 +544,11 @@ void Displays::ReadFixedParams(string filename){
 				FixedParameters.push_back(line);
 			}
 			// Bicrystal and CSL/DSC
-			pos_thetamax=line.find("THETA_MAX_ROT_ANGLE_RAT ");
-			if(pos_thetamax!=string::npos){
+			pos_GBSpace=line.find("GB_SPACE ");
+			if(pos_GBSpace!=string::npos){
 				FixedParameters.push_back("");
 				FixedParameters.push_back("\t *** Parameters related to CSL/DSC calculations and GB construction: ***");
 				FixedParameters.push_back("");
-				istringstream text(line);
-				text >> buffer_s >> this->theta_max_rot_ax_rat;
-				FixedParameters.push_back(line);
-			}
-			pos_MaxHKL=line.find("MAX_HKL_ROT_ANGLE ");
-			if(pos_MaxHKL!=string::npos){
-				istringstream text(line);
-				text >> buffer_s >> this->MaxHKL_rot_angle_rat;
-				FixedParameters.push_back(line);
-			}
-			pos_toldist=line.find("TOL_DIST_RAT_ANGLE ");
-			if(pos_toldist!=string::npos){
-				istringstream text(line);
-				text >> buffer_s >> this->tol_dist_rot_angle_rat;
-				FixedParameters.push_back(line);
-			}
-			pos_sigmamax=line.find("SIGMA_MAX ");
-			if(pos_sigmamax!=string::npos){
-				istringstream text(line);
-				text >> buffer_s >> this->SigmaMax;
-				FixedParameters.push_back(line);
-			}
-			pos_GBSpace=line.find("GB_SPACE ");
-			if(pos_GBSpace!=string::npos){
 				istringstream text(line);
 				text >> buffer_s >> this->GBspace;
 				FixedParameters.push_back(line);
@@ -605,6 +575,30 @@ void Displays::ReadFixedParams(string filename){
 			if(pos_MaxDup!=string::npos){
 				istringstream text(line);
 				text >> buffer_s >> this->MaxDup;
+				FixedParameters.push_back(line);
+			}
+			pos_sigmamax=line.find("SIGMA_MAX ");
+			if(pos_sigmamax!=string::npos){
+				istringstream text(line);
+				text >> buffer_s >> this->SigmaMax;
+				FixedParameters.push_back(line);
+			}
+			pos_thetamax=line.find("THETA_MAX_ROT_ANGLE_RAT ");
+			if(pos_thetamax!=string::npos){
+				istringstream text(line);
+				text >> buffer_s >> this->theta_max_rot_ax_rat;
+				FixedParameters.push_back(line);
+			}
+			pos_MaxHKL=line.find("MAX_HKL_ROT_ANGLE ");
+			if(pos_MaxHKL!=string::npos){
+				istringstream text(line);
+				text >> buffer_s >> this->MaxHKL_rot_angle_rat;
+				FixedParameters.push_back(line);
+			}
+			pos_toldist=line.find("TOL_DIST_RAT_ANGLE ");
+			if(pos_toldist!=string::npos){
+				istringstream text(line);
+				text >> buffer_s >> this->tol_dist_rot_angle_rat;
 				FixedParameters.push_back(line);
 			}
 			pos_FullGrains=line.find("FULL_GRAINS ");
@@ -856,8 +850,7 @@ void Displays::Printer_ComputeDescriptors_Steinhardt(){
 void Displays::Printer_CreateGB(){
 	ReadCurrentFixedParams();
 	PrintHeadExecMsg();
-	cout << "\t TOL_ORTHO_BOX " << TolOrthoBox << endl;
-	cout << "\t TOL_ORTHO_BOX_Z " << TolOrthoBoxZ << endl;
+	cout << "\t TOL_SHEAR_CRYSTAL " << TolShearBox[0] << " " << TolShearBox[1] << " " << TolShearBox[2] << endl;
 	cout << "\t MIN_BOX_SIZES " << MinBoxSizes[0] << " " << MinBoxSizes[1] << " " << MinBoxSizes[2] << endl;
 	cout << "\t NB_MAX_LC " << CLsearch << endl;
 	cout << "\t MAX_HKL_SEARCH " << max_hkl_search << endl;
@@ -878,8 +871,7 @@ void Displays::Printer_CreateGB(){
 void Displays::Printer_CreateFacetGB(){
 	ReadCurrentFixedParams();
 	PrintHeadExecMsg();
-	cout << "\t TOL_ORTHO_BOX " << TolOrthoBox << endl;
-	cout << "\t TOL_ORTHO_BOX_Z " << TolOrthoBoxZ << endl;
+	cout << "\t TOL_SHEAR_CRYSTAL " << TolShearBox[0] << " " << TolShearBox[1] << " " << TolShearBox[2] << endl;
 	cout << "\t MIN_BOX_SIZES " << MinBoxSizes[0] << " " << MinBoxSizes[1] << " " << MinBoxSizes[2] << endl;
 	cout << "\t NB_MAX_LC " << CLsearch << endl;
 	cout << "\t MAX_HKL_SEARCH " << max_hkl_search << endl;
@@ -901,8 +893,7 @@ void Displays::Printer_CreateFacetGB(){
 void Displays::Printer_CreateOrientedPlane(){
 	ReadCurrentFixedParams();
 	PrintHeadExecMsg();
-	cout << "\t TOL_ORTHO_BOX " << TolOrthoBox << endl;
-	cout << "\t TOL_ORTHO_BOX_Z " << TolOrthoBoxZ << endl;
+	cout << "\t TOL_SHEAR_CRYSTAL " << TolShearBox[0] << " " << TolShearBox[1] << " " << TolShearBox[2] << endl;
 	cout << "\t MIN_BOX_SIZES " << MinBoxSizes[0] << " " << MinBoxSizes[1] << " " << MinBoxSizes[2] << endl;
 	cout << "\t NB_MAX_LC " << CLsearch << endl;
 	cout << "\t MAX_HKL_SEARCH " << max_hkl_search << endl;
@@ -953,8 +944,7 @@ void Displays::Printer_FitAndSaveKMeans(){
 void Displays::Printer_SampleGB_GammaSurface(){
 	ReadCurrentFixedParams();
 	PrintHeadExecMsg();
-	cout << "\t TOL_ORTHO_BOX " << TolOrthoBox << endl;
-	cout << "\t TOL_ORTHO_BOX_Z " << TolOrthoBoxZ << endl;
+	cout << "\t TOL_SHEAR_CRYSTAL " << TolShearBox[0] << " " << TolShearBox[1] << " " << TolShearBox[2] << endl;
 	cout << "\t MIN_BOX_SIZES " << MinBoxSizes[0] << " " << MinBoxSizes[1] << " " << MinBoxSizes[2] << endl;
 	cout << "\t NB_MAX_LC " << CLsearch << endl;
 	cout << "\t MAX_HKL_SEARCH " << max_hkl_search << endl;

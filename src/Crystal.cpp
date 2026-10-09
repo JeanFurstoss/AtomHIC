@@ -119,6 +119,7 @@ void Crystal::InitVars(){
 	this->TiltTrans_xyz[7] = 0.;
 	this->TiltTrans_xyz[8] = 1.;
 	this->alength = new double[3];
+	this->a_star_length = new double[3];
 }
 
 string Crystal::getDatabasePath(string crystalName){
@@ -618,12 +619,12 @@ void Crystal::ConstructNotSepListFromMolId(){
 void Crystal::ConstructOrthogonalCell(bool AllowTilt){
 	// search the smallest orthogonal box for this orientation by testing linear combination of a1 a2 a3 giving cell vectors aligned with cartesian axis
 	// expect for the x axis which is already aligned with a crystallographic direction
-	vector<int> cl_box;
+	cl_box.clear();
 	vector<int> xh_list;
 	vector<int> yh_list;
 	vector<int> zh_list;
 	vector<double> buffer_vector_d_x, buffer_vector_d_y, buffer_vector_d_z;
-	double absX, absY, absZ, vecL;
+	double absX, absY, absZ, vecL, gamX, gamY, gamZ;
 	// search smallest lattice param
 	double min_length = MT->min_p(alength,3)*0.9;	
 	for(int i=-CLsearch;i<CLsearch+1;i++){ // TODO change this loop with a while to exit when vectors are found with a maximum number of search
@@ -632,26 +633,35 @@ void Crystal::ConstructOrthogonalCell(bool AllowTilt){
 				absX = i*this->a1[0]+j*this->a2[0]+k*this->a3[0];
 				absY = i*this->a1[1]+j*this->a2[1]+k*this->a3[1];
 				absZ = i*this->a1[2]+j*this->a2[2]+k*this->a3[2];
-				vecL = absX*absX + absY*absY + absZ*absZ;
+				vecL = sqrt(absX*absX + absY*absY + absZ*absZ);
 				absX = fabs(absX);
 				absY = fabs(absY);
 				absZ = fabs(absZ);
-				if( absY < TolOrthoBox && absZ < TolOrthoBox && absX > min_length ){ // TODO change tolerance for being a deformation more than a distance
+				gamX = absX / vecL;
+				gamY = absY / vecL;
+				gamZ = absZ / vecL;
+				if( (gamY+gamZ) < TolShearBox[0] && absX > min_length ){ // TODO change tolerance for being a deformation more than a distance
+				//if( gamY < TolShearBox[0] && gamZ < TolShearBox[0] && absX > min_length ){ // TODO change tolerance for being a deformation more than a distance
 					buffer_vector_d_x.push_back(vecL);
 					xh_list.push_back(i);
 					xh_list.push_back(j);
 					xh_list.push_back(k);
 				}
-				bool cond = absZ < TolOrthoBox;
-				if( !AllowTilt ) cond = cond && absX < TolOrthoBox;
+				//bool cond = gamZ < TolShearBox[1];
+				//if( !AllowTilt ) cond = cond && gamX < TolShearBox[1];
+				bool cond;
+			        if( AllowTilt ) cond = gamZ < TolShearBox[1];
+				else cond = (gamX+gamZ) < TolShearBox[1];
 				if( cond && absY > min_length ){
 					buffer_vector_d_y.push_back(vecL);
 					yh_list.push_back(i);
 					yh_list.push_back(j);
 					yh_list.push_back(k);
 				}
-				cond = true;
-				if( !AllowTilt ) cond = absX < TolOrthoBoxZ && absY < TolOrthoBoxZ;
+				//cond = true;
+				//if( !AllowTilt ) cond = gamX < TolShearBox[2] && gamY < TolShearBox[2];
+				if( AllowTilt ) cond = true;
+				else cond = (gamX+gamY) < TolShearBox[2];
 				if( cond && absZ > min_length ){
 					buffer_vector_d_z.push_back(vecL);
 					zh_list.push_back(i);
@@ -776,11 +786,16 @@ void Crystal::computeReciproqual(){
 	MT->mixedProd(this->a2,this->a3,this->a1_star);
 	MT->mixedProd(this->a3,this->a1,this->a2_star);
 	MT->mixedProd(this->a1,this->a2,this->a3_star);
+	for(unsigned int i=0;i<3;i++) a_star_length[i] = 0.;
 	for(unsigned int i=0;i<3;i++){
 		this->a1_star[i] /= this->V;
 		this->a2_star[i] /= this->V;
 		this->a3_star[i] /= this->V;
+		a_star_length[0] += a1_star[i]*a1_star[i];
+		a_star_length[1] += a2_star[i]*a2_star[i];
+		a_star_length[2] += a3_star[i]*a3_star[i];
 	}
+	for(unsigned int i=0;i<3;i++) a_star_length[i] = sqrt(a_star_length[i]);
 	delete[] mixedProd;
 }
 
@@ -961,30 +976,37 @@ void Crystal::ComputeOrthogonalPlanesAndDirections(){
 	vector<int> zh_list_p;
 	vector<double> buffer_vector_d_x, buffer_vector_d_y, buffer_vector_d_z, buffer_vector_d_x_p, buffer_vector_d_y_p, buffer_vector_d_z_p;
 	double absX, absY, absZ, X, Y, Z;
-	for(int i=-max_hkl_search;i<max_hkl_search+1;i++){
-		for(int j=-max_hkl_search;j<max_hkl_search+1;j++){
-			for(int k=-max_hkl_search;k<max_hkl_search+1;k++){
+	double min_length_dir = MT->min_p(alength,3)*0.9;	
+	double min_length_plane = MT->min_p(a_star_length,3)*0.9;
+	vector<int> cla(3,max_hkl_search);
+	if( cl_box.size() == 3 ){
+		for(unsigned int i=0;i<3;i++) if( cl_box[i] > max_hkl_search ) cla[i] = cl_box[i];
+	}
+	for(int i=-cla[0];i<cla[0]+1;i++){
+		for(int j=-cla[1];j<cla[1]+1;j++){
+			for(int k=-cla[2];k<cla[2]+1;k++){
 				if( i != 0 || j !=0 || k != 0 ){
 					// directions
 					X = i*this->a1[0]+j*this->a2[0]+k*this->a3[0];
 					Y = i*this->a1[1]+j*this->a2[1]+k*this->a3[1];
 					Z = i*this->a1[2]+j*this->a2[2]+k*this->a3[2];
-					absX = fabs(X);
-					absY = fabs(Y);
-					absZ = fabs(Z);
-					if( absY < TolOrthoBox && absZ < TolOrthoBoxZ && X > 0 ){
+					double len = sqrt(X*X + Y*Y + Z*Z);
+					absX = fabs(X) / len;
+					absY = fabs(Y) / len;
+					absZ = fabs(Z) / len;
+					if( absY < TolShearBox[0] && absZ < TolShearBox[0] && X > min_length_dir ){
 						buffer_vector_d_x.push_back(absY+absZ);
 						xh_list.push_back(i);
 						xh_list.push_back(j);
 						xh_list.push_back(k);
 					}
-					if( absX < TolOrthoBox && absY < TolOrthoBox && Z > 0 ){
+					if( absX < TolShearBox[2] && absY < TolShearBox[2] && Z > min_length_dir ){
 						buffer_vector_d_z.push_back(absX+absY);
 						zh_list.push_back(i);
 						zh_list.push_back(j);
 						zh_list.push_back(k);
 					}
-					if( absX < TolOrthoBox && absZ < TolOrthoBoxZ && Y > 0 ){
+					if( absX < TolShearBox[1] && absZ < TolShearBox[1] && Y > min_length_dir ){
 						buffer_vector_d_y.push_back(absX+absZ);
 						yh_list.push_back(i);
 						yh_list.push_back(j);
@@ -994,22 +1016,23 @@ void Crystal::ComputeOrthogonalPlanesAndDirections(){
 					X = i*this->a1_star[0]+j*this->a2_star[0]+k*this->a3_star[0];
 					Y = i*this->a1_star[1]+j*this->a2_star[1]+k*this->a3_star[1];
 					Z = i*this->a1_star[2]+j*this->a2_star[2]+k*this->a3_star[2];
-					absX = fabs(X);
-					absY = fabs(Y);
-					absZ = fabs(Z);
-					if( absY < TolOrthoBox && absZ < TolOrthoBoxZ && X > 0 ){
+					len = sqrt(X*X + Y*Y + Z*Z);
+					absX = fabs(X) / len;
+					absY = fabs(Y) / len;
+					absZ = fabs(Z) / len;
+					if( absY < TolShearBox[0] && absZ < TolShearBox[0] && X > min_length_plane ){
 						buffer_vector_d_x_p.push_back(absY+absZ);
 						xh_list_p.push_back(i);
 						xh_list_p.push_back(j);
 						xh_list_p.push_back(k);
 					}
-					if( absX < TolOrthoBox && absY < TolOrthoBox && Z > 0 ){
+					if( absX < TolShearBox[2] && absY < TolShearBox[2] && Z > min_length_plane ){
 						buffer_vector_d_z_p.push_back(absX+absY);
 						zh_list_p.push_back(i);
 						zh_list_p.push_back(j);
 						zh_list_p.push_back(k);
 					}
-					if( absX < TolOrthoBox && absZ < TolOrthoBoxZ && Y > 0 ){
+					if( absX < TolShearBox[1] && absZ < TolShearBox[1] && Y > min_length_plane ){
 						buffer_vector_d_y_p.push_back(absX+absZ);
 						yh_list_p.push_back(i);
 						yh_list_p.push_back(j);
@@ -1349,20 +1372,15 @@ void Crystal::read_params(){
 	//string filename=fp+backslash+FixedParam_Filename;
 	//ifstream file(filename, ios::in);
 	ifstream file(FixedParam_Filename, ios::in);
-	size_t pos_tolOrthoBox, pos_tolOrthoBoxZ, pos_shift, pos_nblc, pos_max_hkl_search;
+	size_t pos_tolOrthoBox, pos_shift, pos_nblc, pos_max_hkl_search;
 	string buffer_s, line;
 	if(file){
 		while(file){
 			getline(file,line);
-			pos_tolOrthoBox=line.find("TOL_ORTHO_BOX ");
+			pos_tolOrthoBox=line.find("TOL_SHEAR_CRYSTAL ");
 			if(pos_tolOrthoBox!=string::npos){
 				istringstream text(line);
-				text >> buffer_s >> this->TolOrthoBox;
-			}
-			pos_tolOrthoBoxZ=line.find("TOL_ORTHO_BOX_Z ");
-			if(pos_tolOrthoBoxZ!=string::npos){
-				istringstream text(line);
-				text >> buffer_s >> this->TolOrthoBoxZ;
+				text >> buffer_s >> TolShearBox[0] >> TolShearBox[1] >> TolShearBox[2];
 			}
 			pos_shift=line.find("MOTIF_SHIFT");
 			if(pos_shift!=string::npos){
@@ -1389,18 +1407,13 @@ void Crystal::read_params(){
 }
 
 void Crystal::ReadProperties(vector<string> Properties){
-	size_t pos_tolOrthoBox, pos_tolOrthoBoxZ, pos_shift, pos_nblc, pos_max_hkl_search;
+	size_t pos_tolOrthoBox, pos_shift, pos_nblc, pos_max_hkl_search;
 	string buffer_s;
 	for(unsigned int i=0;i<Properties.size();i++){
-		pos_tolOrthoBox=Properties[i].find("TOL_ORTHO_BOX ");
+		pos_tolOrthoBox=Properties[i].find("TOL_SHEAR_CRYSTAL ");
 		if(pos_tolOrthoBox!=string::npos){
 			istringstream text(Properties[i]);
-			text >> buffer_s >> this->TolOrthoBox;
-		}
-		pos_tolOrthoBoxZ=Properties[i].find("TOL_ORTHO_BOX_Z ");
-		if(pos_tolOrthoBoxZ!=string::npos){
-			istringstream text(Properties[i]);
-			text >> buffer_s >> this->TolOrthoBoxZ;
+			text >> buffer_s >> TolShearBox[0] >> TolShearBox[1] >> TolShearBox[2];
 		}
 		pos_shift=Properties[i].find("MOTIF_SHIFT");
 		if(pos_shift!=string::npos){
@@ -1507,6 +1520,7 @@ Crystal::~Crystal(){
 	delete[] rot_mat_total;
 	delete[] TiltTrans_xyz;
 	delete[] alength;
+	delete[] a_star_length;
 	delete[] Stoichiometry;
 	if( AtomSite ) delete[] AtomSite;
 	if( AtomCharge ) delete[] AtomCharge;
