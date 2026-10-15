@@ -25,7 +25,6 @@
 
 # Generic tools
 add_subdirectory(BasicManips)
-add_subdirectory(AnalyzeCSL)
 add_subdirectory(CreateOrientedPlane)
 add_subdirectory(CreateGB)
 add_subdirectory(CreateFacetGB)

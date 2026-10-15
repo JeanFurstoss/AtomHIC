@@ -347,5 +347,6 @@ for i in \`ls -d GB_*/\`;do
 	sbatch LaunchCalc_*.slurm
 	cd ../
 done
+cd ../
 EOF
 fi

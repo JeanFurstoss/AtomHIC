@@ -58,7 +58,7 @@ void ExecMsg(){
 	cerr << "VacuumOrNot could be 0 or 1, 0 => no vaccum is added to above and bellow the GB (i.e. the periodic BC will lead to 2 GBs in the system), 1 => add vacuum and center the GB in the middle of the cell" << endl;
 	cerr << "Each configuration is saved as a separate dump file (e.g., GB_Shift_0_0.lmp or GB_DSC_Shift_0_0_0.lmp or GB_CSL_Shift_0_0_0.lmp, etc), also containing the values of the applied shift" << endl;
 	cerr << "In addition the program will also return 3 dump files containing the CSL lattice and the two grains (the two latters can be used to change shift between crystals), if vacuum = 1 Grain1_vacuum.lmp and Grain2_vacuum.lmp will be also generated" << endl;
-	cerr << "When SamplingMode is InPlane, this program enforce the fixed parameter MIN_BOX_ASIDE to a value of 2A to be sure that the created GB has only one unit cell" << endl;
+	cerr << "When SamplingMode is InPlane, this program enforce the fixed parameter MIN_BOX_SIZES[0] and [1] to a value of 2A to be sure that the created GB has only one unit cell" << endl;
 	exit(EXIT_FAILURE);
 }
 
@@ -169,7 +169,7 @@ int main(int argc, char *argv[])
 	vector<string> Properties;
 	
 	// set minimum aside to very small value to be sure that we only have the UC of the GB
-	if( SampMode == "InPlane" ) Properties.push_back("MIN_BOX_ASIDE 2.");
+	if( SampMode == "InPlane" ) Properties.push_back("MIN_BOX_SIZES 2. 2. 0.");
 
 	Bicrystal MyGB(crystalName,h_a,k_a,l_a,theta,h_p,k_p,l_p,rat_b,Properties);
 	//
@@ -211,13 +211,10 @@ int main(int argc, char *argv[])
 	}
 		
 	if( SampMode == "InPlane" ) MyGB.ShiftGrainsAlongUCInPlane(nx, ny, vac_b);
-	else if( SampMode == "DSC" ){
-		MyGB.printDSC();
-		MyGB.ShiftGrainsAlongDSC(nx, ny, nz, vac_b); 
-	}else if( SampMode == "CSL" ) MyGB.ShiftGrainsAlongCSL(nx, ny, nz, vac_b); 
+	else if( SampMode == "DSC" ) MyGB.ShiftGrainsAlongDSC(nx, ny, nz, vac_b); 
+	else if( SampMode == "CSL" ) MyGB.ShiftGrainsAlongCSL(nx, ny, nz, vac_b); 
 
 	MyGB.print_lmp("GB.lmp");
-	MyGB.printCSL("CSL.lmp");
 	MyGB.print_Grains(vac_b);
 
 	Dis.ExecutionTime();	

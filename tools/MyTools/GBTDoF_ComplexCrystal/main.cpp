@@ -148,7 +148,7 @@ int main(int argc, char *argv[])
 	
 	// set minimum aside to very small value to be sure that we only have the UC of the GB
 	vector<string> Properties;
-	Properties.push_back("MIN_BOX_ASIDE 2.");
+	Properties.push_back("MIN_BOX_SIZES 2. 2. 0.");
 	Properties.push_back("FULL_GRAINS 0");
 	
 	// set the initial z shift of upper and lower grain to 0 

@@ -39,8 +39,7 @@ int main(int argc, char *argv[])
 	vector<string> Properties;
 	Properties.push_back("TOL_ORTHO_BOX 0.5");
 	Properties.push_back("TOL_ORTHO_BOX_Z 0.5");
-	Properties.push_back("MIN_BOX_HEIGHT 15.");
-	Properties.push_back("MIN_BOX_ASIDE 3.");
+	Properties.push_back("MIN_BOX_SIZES 3. 3. 15.");
 	Properties.push_back("NB_MAX_LC 50");
 	Properties.push_back("MOTIF_SHIFT 0 0 0");
 	Properties.push_back("MAX_MISFIT 0.02");

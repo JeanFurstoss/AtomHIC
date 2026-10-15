@@ -6,8 +6,7 @@ AUX_PROPERTIES_TO_PRINT // name of auxiliary properties present in a read atomic
 // Parameters for constructing crystals and bicrystals
 TOL_ORTHO_BOX 0.25 // tolerance (in A) for searching orthogonal box with inclined crystal cell vectors (default 0.25)
 TOL_ORTHO_BOX_Z 0.25 // tolerance (in A) for searching orthogonal box with inclined crystal cell vectors in Z direction (default 0.25)
-MIN_BOX_HEIGHT 20. // minimum box heigh (in A) (default 20)
-MIN_BOX_ASIDE 3. // minimum box aside (in A) (default 3)
+MIN_BOX_SIZES 3. 3. 20. // minimum box sizes in x, y and z direction (in A) (default 3. 3. 20.)
 NB_MAX_LC 150 // maximum number of linear combinations for searching an orthognal box when create oriented planes or GB (default 150)
 MAX_HKL_SEARCH 10 // maximum hkl indice for searching crystallographic planes or directions aligned with a given cartesian direction (default 10)
 MOTIF_SHIFT 0 0 0 // shift (in A) applied to the crystal motif before constructing orthogonal cells along [100], [010] and [001] crystallographic directions respectively (default values 0. 0. 0.)
@@ -24,9 +23,7 @@ MAX_DUP_FACET 10 // Maximum duplication of faceted GB system for finding the rea
 THETA_MAX_ROT_ANGLE_RAT 1.7e-2 // maximum angle deviation from the rationalized to the given rotation axis (in radian) (default 1.7e-2 which correspond to 1 degree)
 MAX_HKL_ROT_ANGLE 75 // maximum linear combination applied to vectors normal to rotation axis to search a rationalized rotation angle (default 75)
 TOL_DIST_RAT_ANGLE 5e-2 // distance (in A) bellow which two lattice points are considered at the same place (used for rationalized the rotation angle) (default 5e-2)
-TOL_POS_KNOWN_CSL_VEC 5e-1 // tolerance (in A) to know if the CSL basis gives the CSL vector known from the rationalization process (if yes keep the base) (default 0.5)
-TOL_CSL_INTEGER 1e-2 // tolerance for an element of U (CSL matrix) to be an integer (default 1e-2)
-TOL_ALIGNMENT_CSL 1e-1 // tolerance (in degree) to know if one of the CSL vector is aligned with the rotation axis (defaults 0.1) 
+SIGMA_MAX 500 // maximum sigma value when computing CSL of 2 lattices (default 500) 
 
 // Parameters for descriptors and machine learning
 DESCRIPTORS_FILTERING_TYPE element // could be none, type element or one of the auxiliary properties of the atomic system read, this parameter is only used for training of ML models (default element)

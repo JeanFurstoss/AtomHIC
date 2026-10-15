@@ -477,9 +477,9 @@ void Displays::ReadFixedParams(string filename){
 	// atomic systems
 	size_t pos_auxprop;
 	// crystal
-	size_t pos_tolOrthoBox, pos_tolOrthoBoxZ, pos_minBoxHeight, pos_minBoxAside, pos_shift, pos_nblc, pos_max_hkl_search;
+	size_t pos_tolOrthoBox, pos_tolOrthoBoxZ, pos_minBoxSizes, pos_shift, pos_nblc, pos_max_hkl_search;
 	// bicrystals and CSL/DSC
-	size_t pos_thetamax, pos_MaxHKL, pos_toldist, pos_tolpos_kC, pos_tolCSLint, pos_tolAlign, pos_MaxMisfit, pos_GBSpace, pos_MaxDup, pos_FullGrains, pos_maxvarfl, pos_maxdupf, pos_shift_grain, pos_shift_upgrain;
+	size_t pos_thetamax, pos_MaxHKL, pos_toldist, pos_sigmamax, pos_MaxMisfit, pos_GBSpace, pos_MaxDup, pos_FullGrains, pos_maxvarfl, pos_maxdupf, pos_shift_grain, pos_shift_upgrain;
 	// descriptors and ML
 	size_t pos_filter, pos_rattrain;
 	// Steinhardt descriptors
@@ -525,16 +525,10 @@ void Displays::ReadFixedParams(string filename){
 				text >> buffer_s >> this->TolOrthoBoxZ;
 				FixedParameters.push_back(line);
 			}
-			pos_minBoxHeight=line.find("MIN_BOX_HEIGHT");
-			if(pos_minBoxHeight!=string::npos){
+			pos_minBoxSizes=line.find("MIN_BOX_SIZES");
+			if(pos_minBoxSizes!=string::npos){
 				istringstream text(line);
-				text >> buffer_s >> this->MinBoxHeight;
-				FixedParameters.push_back(line);
-			}
-			pos_minBoxAside=line.find("MIN_BOX_ASIDE");
-			if(pos_minBoxAside!=string::npos){
-				istringstream text(line);
-				text >> buffer_s >> this->MinBoxAside;
+				text >> buffer_s >> this->MinBoxSizes[0] >> this->MinBoxSizes[1] >> this->MinBoxSizes[2];
 				FixedParameters.push_back(line);
 			}
 			pos_shift=line.find("MOTIF_SHIFT");
@@ -577,22 +571,10 @@ void Displays::ReadFixedParams(string filename){
 				text >> buffer_s >> this->tol_dist_rot_angle_rat;
 				FixedParameters.push_back(line);
 			}
-			pos_tolpos_kC=line.find("TOL_POS_KNOWN_CSL_VEC ");
-			if(pos_tolpos_kC!=string::npos){
+			pos_sigmamax=line.find("SIGMA_MAX ");
+			if(pos_sigmamax!=string::npos){
 				istringstream text(line);
-				text >> buffer_s >> this->tolpos_known_CSL;
-				FixedParameters.push_back(line);
-			}
-			pos_tolCSLint=line.find("TOL_CSL_INTEGER ");
-			if(pos_tolCSLint!=string::npos){
-				istringstream text(line);
-				text >> buffer_s >> this->tol_CSL_integer;
-				FixedParameters.push_back(line);
-			}
-			pos_tolAlign=line.find("TOL_ALIGNMENT_CSL ");
-			if(pos_tolAlign!=string::npos){
-				istringstream text(line);
-				text >> buffer_s >> this->tolAlignment_CSL;
+				text >> buffer_s >> this->SigmaMax;
 				FixedParameters.push_back(line);
 			}
 			pos_GBSpace=line.find("GB_SPACE ");
@@ -842,9 +824,7 @@ void Displays::Printer_AnalyzeCSL(){
 	cout << "\t THETA_MAX_ROT_ANGLE_RAT " << theta_max_rot_ax_rat << endl;
 	cout << "\t MAX_HKL_ROT_ANGLE " << MaxHKL_rot_angle_rat << endl;
 	cout << "\t TOL_DIST_RAT_ANGLE " << tol_dist_rot_angle_rat << endl;
-	cout << "\t TOL_POS_KNOWN_CSL_VEC " << tolpos_known_CSL << endl;
-	cout << "\t TOL_CSL_INTEGER " << tol_CSL_integer << endl;
-	cout << "\t TOL_ALIGNMENT_CSL " << tolAlignment_CSL << endl;
+	cout << "\t SIGMA_MAX " << SigmaMax << endl;
 	PrintFootExecMsg();
 }
 
@@ -878,8 +858,7 @@ void Displays::Printer_CreateGB(){
 	PrintHeadExecMsg();
 	cout << "\t TOL_ORTHO_BOX " << TolOrthoBox << endl;
 	cout << "\t TOL_ORTHO_BOX_Z " << TolOrthoBoxZ << endl;
-	cout << "\t MIN_BOX_HEIGHT " << MinBoxHeight << endl;
-	cout << "\t MIN_BOX_ASIDE " << MinBoxAside << endl;
+	cout << "\t MIN_BOX_SIZES " << MinBoxSizes[0] << " " << MinBoxSizes[1] << " " << MinBoxSizes[2] << endl;
 	cout << "\t NB_MAX_LC " << CLsearch << endl;
 	cout << "\t MAX_HKL_SEARCH " << max_hkl_search << endl;
 	cout << "\t MOTIF_SHIFT " << shift_x << " " << shift_y << " " << shift_z << endl;
@@ -892,9 +871,7 @@ void Displays::Printer_CreateGB(){
 	cout << "\t THETA_MAX_ROT_ANGLE_RAT " << theta_max_rot_ax_rat << endl;
 	cout << "\t MAX_HKL_ROT_ANGLE " << MaxHKL_rot_angle_rat << endl;
 	cout << "\t TOL_DIST_RAT_ANGLE " << tol_dist_rot_angle_rat << endl;
-	cout << "\t TOL_POS_KNOWN_CSL_VEC " << tolpos_known_CSL << endl;
-	cout << "\t TOL_CSL_INTEGER " << tol_CSL_integer << endl;
-	cout << "\t TOL_ALIGNMENT_CSL " << tolAlignment_CSL << endl;
+	cout << "\t SIGMA_MAX " << SigmaMax << endl;
 	PrintFootExecMsg();
 }
 
@@ -903,8 +880,7 @@ void Displays::Printer_CreateFacetGB(){
 	PrintHeadExecMsg();
 	cout << "\t TOL_ORTHO_BOX " << TolOrthoBox << endl;
 	cout << "\t TOL_ORTHO_BOX_Z " << TolOrthoBoxZ << endl;
-	cout << "\t MIN_BOX_HEIGHT " << MinBoxHeight << endl;
-	cout << "\t MIN_BOX_ASIDE " << MinBoxAside << endl;
+	cout << "\t MIN_BOX_SIZES " << MinBoxSizes[0] << " " << MinBoxSizes[1] << " " << MinBoxSizes[2] << endl;
 	cout << "\t NB_MAX_LC " << CLsearch << endl;
 	cout << "\t MAX_HKL_SEARCH " << max_hkl_search << endl;
 	cout << "\t MOTIF_SHIFT " << shift_x << " " << shift_y << " " << shift_z << endl;
@@ -917,9 +893,7 @@ void Displays::Printer_CreateFacetGB(){
 	cout << "\t THETA_MAX_ROT_ANGLE_RAT " << theta_max_rot_ax_rat << endl;
 	cout << "\t MAX_HKL_ROT_ANGLE " << MaxHKL_rot_angle_rat << endl;
 	cout << "\t TOL_DIST_RAT_ANGLE " << tol_dist_rot_angle_rat << endl;
-	cout << "\t TOL_POS_KNOWN_CSL_VEC " << tolpos_known_CSL << endl;
-	cout << "\t TOL_CSL_INTEGER " << tol_CSL_integer << endl;
-	cout << "\t TOL_ALIGNMENT_CSL " << tolAlignment_CSL << endl;
+	cout << "\t SIGMA_MAX " << SigmaMax << endl;
 	cout << "\t MAX_VAR_FACET_LENGTH " << maxVarL << endl;
 	cout << "\t MAX_DUP_FACET " << dupMaxFac << endl;
 	PrintFootExecMsg();
@@ -929,8 +903,7 @@ void Displays::Printer_CreateOrientedPlane(){
 	PrintHeadExecMsg();
 	cout << "\t TOL_ORTHO_BOX " << TolOrthoBox << endl;
 	cout << "\t TOL_ORTHO_BOX_Z " << TolOrthoBoxZ << endl;
-	cout << "\t MIN_BOX_HEIGHT " << MinBoxHeight << endl;
-	cout << "\t MIN_BOX_ASIDE " << MinBoxAside << endl;
+	cout << "\t MIN_BOX_SIZES " << MinBoxSizes[0] << " " << MinBoxSizes[1] << " " << MinBoxSizes[2] << endl;
 	cout << "\t NB_MAX_LC " << CLsearch << endl;
 	cout << "\t MAX_HKL_SEARCH " << max_hkl_search << endl;
 	cout << "\t MOTIF_SHIFT " << shift_x << " " << shift_y << " " << shift_z << endl;
@@ -982,7 +955,7 @@ void Displays::Printer_SampleGB_GammaSurface(){
 	PrintHeadExecMsg();
 	cout << "\t TOL_ORTHO_BOX " << TolOrthoBox << endl;
 	cout << "\t TOL_ORTHO_BOX_Z " << TolOrthoBoxZ << endl;
-	cout << "\t MIN_BOX_HEIGHT " << MinBoxHeight << endl;
+	cout << "\t MIN_BOX_SIZES " << MinBoxSizes[0] << " " << MinBoxSizes[1] << " " << MinBoxSizes[2] << endl;
 	cout << "\t NB_MAX_LC " << CLsearch << endl;
 	cout << "\t MAX_HKL_SEARCH " << max_hkl_search << endl;
 	cout << "\t MOTIF_SHIFT " << shift_x << " " << shift_y << " " << shift_z << endl;
@@ -995,9 +968,7 @@ void Displays::Printer_SampleGB_GammaSurface(){
 	cout << "\t THETA_MAX_ROT_ANGLE_RAT " << theta_max_rot_ax_rat << endl;
 	cout << "\t MAX_HKL_ROT_ANGLE " << MaxHKL_rot_angle_rat << endl;
 	cout << "\t TOL_DIST_RAT_ANGLE " << tol_dist_rot_angle_rat << endl;
-	cout << "\t TOL_POS_KNOWN_CSL_VEC " << tolpos_known_CSL << endl;
-	cout << "\t TOL_CSL_INTEGER " << tol_CSL_integer << endl;
-	cout << "\t TOL_ALIGNMENT_CSL " << tolAlignment_CSL << endl;
+	cout << "\t SIGMA_MAX " << SigmaMax << endl;
 	PrintFootExecMsg();
 }
 

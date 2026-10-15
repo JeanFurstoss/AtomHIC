@@ -34,6 +34,7 @@
 #include <sstream>
 #include <string>
 #include <Displays.h>
+#include <MathTools.h>
 
 using namespace std;
 
@@ -129,7 +130,6 @@ int main(int argc, char *argv[])
 	Bicrystal MyGB(crystalName,h_a,k_a,l_a,theta,h_p,k_p,l_p,rat_b,Prop,0,0,0,vacuum);
 
 	MyGB.print_lmp("GB.lmp");
-	MyGB.printCSL("CSL.lmp");
 	if( vacuum == 1 ) MyGB.print_Grains(true);
 	else MyGB.print_Grains();
 	Dis.ExecutionTime();	

@@ -39,7 +39,53 @@
 
 using namespace std;
 
+Crystal::Crystal(double *lattice_params, Atom *Motif_s, unsigned int nbAtom, unsigned int nbAtomType, string *AtomType_s, unsigned int *AtomType_uint_s, string name, string crystallo): nbAtom(nbAtom), nbAtomType(nbAtomType), name(name), crystallo(crystallo){
+	InitVars();
+	for(unsigned int i=0;i<3;i++){
+		a1[i] = lattice_params[i*3];
+		a2[i] = lattice_params[i*3+1];
+		a3[i] = lattice_params[i*3+2];
+	}
+	this->alength[0] = sqrt(pow(this->a1[0],2.)+pow(this->a1[1],2.)+pow(this->a1[2],2.));
+	this->alength[1] = sqrt(pow(this->a2[0],2.)+pow(this->a2[1],2.)+pow(this->a2[2],2.));
+	this->alength[2] = sqrt(pow(this->a3[0],2.)+pow(this->a3[1],2.)+pow(this->a3[2],2.));
+	Motif = new Atom[nbAtom];
+	for(unsigned int i=0;i<nbAtom;i++) Motif[i] = Motif_s[i];
+	AtomType = new string[nbAtomType];
+	AtomType_uint = new unsigned int[nbAtomType];
+	AtomMass = new double[nbAtomType];
+	for(unsigned int i=0;i<nbAtomType;i++){
+		AtomType[i] = AtomType_s[i];
+		AtomType_uint[i] = AtomType_uint_s[i];
+		AtomMass[i] = 0.;
+	}
+	computeStoich();
+	computeReciproqual();
+	IsMultisite = false;
+	NbAtomSite = new unsigned int[nbAtomType];
+	for(unsigned int i=0;i<nbAtomType;i++) NbAtomSite[i] = 1;
+}
+
 Crystal::Crystal(const string& crystalName){
+	InitVars();
+	this->path2database = getDatabasePath(crystalName);
+	read_database();
+	this->alength[0] = sqrt(pow(this->a1[0],2.)+pow(this->a1[1],2.)+pow(this->a1[2],2.));
+	this->alength[1] = sqrt(pow(this->a2[0],2.)+pow(this->a2[1],2.)+pow(this->a2[2],2.));
+	this->alength[2] = sqrt(pow(this->a3[0],2.)+pow(this->a3[1],2.)+pow(this->a3[2],2.));
+	computeStoich();
+	if( this->IsDoNotSep == true ) ConstructNotSepList();
+	if( this->IsMolId == true ) ConstructNotSepListFromMolId();
+	computeReciproqual();
+	for(unsigned int i=0;i<this->nbAtomType;i++){
+		if( this->NbAtomSite[i] > 1 ){
+			this->IsMultisite = true;
+			break;
+		}
+	}
+}
+
+void Crystal::InitVars(){
 	read_params();
 	crystal_def = new double[4];
 	this->a1 = new double[3];
@@ -51,7 +97,6 @@ Crystal::Crystal(const string& crystalName){
 	this->OrthogonalPlanes = new int[9];
 	this->OrthogonalDirs = new int[9];
 	this->MT = new MathTools;
-	this->IsCharge = false;
 	// initialize these matrix as identity
 	this->rot_mat_total = new double[9];
 	this->rot_mat_total[0] = 1.;
@@ -73,22 +118,7 @@ Crystal::Crystal(const string& crystalName){
 	this->TiltTrans_xyz[6] = 0.;
 	this->TiltTrans_xyz[7] = 0.;
 	this->TiltTrans_xyz[8] = 1.;
-	this->path2database = getDatabasePath(crystalName);
-	read_database();
 	this->alength = new double[3];
-	this->alength[0] = sqrt(pow(this->a1[0],2.)+pow(this->a1[1],2.)+pow(this->a1[2],2.));
-	this->alength[1] = sqrt(pow(this->a2[0],2.)+pow(this->a2[1],2.)+pow(this->a2[2],2.));
-	this->alength[2] = sqrt(pow(this->a3[0],2.)+pow(this->a3[1],2.)+pow(this->a3[2],2.));
-	computeStoich();
-	if( this->IsDoNotSep == true ) ConstructNotSepList();
-	if( this->IsMolId == true ) ConstructNotSepListFromMolId();
-	computeReciproqual();
-	for(unsigned int i=0;i<this->nbAtomType;i++){
-		if( this->NbAtomSite[i] > 1 ){
-			this->IsMultisite = true;
-			break;
-		}
-	}
 }
 
 string Crystal::getDatabasePath(string crystalName){
@@ -150,15 +180,25 @@ string Crystal::getDatabasePath(string crystalName){
 // construct a z oriented (hkl) unit cell plane
 void Crystal::RotateCrystal(const int& h_p, const int& k_p, const int& l_p, const int& h_px, const int& k_px, const int& l_px){
 	bool full_constrained = true;
+	int h_p_s, k_p_s, l_p_s, h_px_s(0), k_px_s(0), l_px_s(0);
 	if( h_px == 0 && k_px == 0 && l_px == 0 ) full_constrained = false;
 	else{
 		if( h_p*h_px + k_p*k_px + l_p*l_px != 0 ){
 			cout << "The provided planes for orienting the crystal (i.e. (" << h_p << "_" << k_p << "_" << l_p << ") oriented along z axis and (" << h_px << "_" << k_px << "_" << l_px << ") oriented along x axis) are not normal to each others, an orthogonal cell cannot then be constructed" << endl;
 			cout << "The crystal plane aligned with the x axis will thus be computed automatically" << endl;
 			full_constrained = false;
+		}else{
+			h_px_s = h_px;
+			k_px_s = k_px;
+			l_px_s = l_px;
+			if( IsPrimitive ) Convert2Primitive_plane(h_px_s,k_px_s,l_px_s);
 		}
 	}
-	int arr[3] = {abs(h_p),abs(k_p),abs(l_p)};
+	h_p_s = h_p;
+	k_p_s = k_p;
+	l_p_s = l_p;
+	if( IsPrimitive ) Convert2Primitive_plane(h_p_s,k_p_s,l_p_s);
+	int arr[3] = {abs(h_p_s),abs(k_p_s),abs(l_p_s)};
 	int maxhkl = MT->max(arr,3)*15;
 	int max_hkl_cryst = 100;
 	if( maxhkl > max_hkl_cryst ) maxhkl = max_hkl_cryst;
@@ -172,15 +212,15 @@ void Crystal::RotateCrystal(const int& h_p, const int& k_p, const int& l_p, cons
 	double *orthoDir = new double[3];
 	double xbox,ybox,zbox; // box dimension
 	// direction normal to the wanted plane
-	normalDir[0] = h_p*(this->a1_star[0]) + k_p*(this->a2_star[0]) + l_p*(this->a3_star[0]);	
-	normalDir[1] = h_p*(this->a1_star[1]) + k_p*(this->a2_star[1]) + l_p*(this->a3_star[1]);	
-	normalDir[2] = h_p*(this->a1_star[2]) + k_p*(this->a2_star[2]) + l_p*(this->a3_star[2]);
+	normalDir[0] = h_p_s*(this->a1_star[0]) + k_p_s*(this->a2_star[0]) + l_p_s*(this->a3_star[0]);	
+	normalDir[1] = h_p_s*(this->a1_star[1]) + k_p_s*(this->a2_star[1]) + l_p_s*(this->a3_star[1]);	
+	normalDir[2] = h_p_s*(this->a1_star[2]) + k_p_s*(this->a2_star[2]) + l_p_s*(this->a3_star[2]);
 	if( !full_constrained ){
 		// search the smallest orthogonal direction with integer Miller indices to the wanted one => to be aligned with the cartesian x axis
 		for(int i=-maxhkl;i<maxhkl;i++){
 			for(int j=-maxhkl;j<maxhkl;j++){
 				for(int k=-maxhkl;k<maxhkl;k++){
-					if( ( abs(i*h_p+j*k_p+k*l_p) < tolScalarProd ) && ( i != 0 || j != 0 || k!= 0 ) ){
+					if( ( abs(i*h_p_s+j*k_p_s+k*l_p_s) < tolScalarProd ) && ( i != 0 || j != 0 || k!= 0 ) ){
 						buffer_vector_d.push_back(pow(i,2.)+pow(j,2.)+pow(k,2.));
 						buffer_vector_i.push_back(i);
 						buffer_vector_i.push_back(j);
@@ -194,9 +234,9 @@ void Crystal::RotateCrystal(const int& h_p, const int& k_p, const int& l_p, cons
 		orthoDir[1] = (buffer_vector_i[minhkl*3]*(this->a1[1])) + (buffer_vector_i[minhkl*3+1]*(this->a2[1])) + (buffer_vector_i[minhkl*3+2]*(this->a3[1]));
 		orthoDir[2] = (buffer_vector_i[minhkl*3]*(this->a1[2])) + (buffer_vector_i[minhkl*3+1]*(this->a2[2])) + (buffer_vector_i[minhkl*3+2]*(this->a3[2]));
 	}else{
-		orthoDir[0] = h_px*(this->a1_star[0]) + k_px*(this->a2_star[0]) + l_px*(this->a3_star[0]);	
-		orthoDir[1] = h_px*(this->a1_star[1]) + k_px*(this->a2_star[1]) + l_px*(this->a3_star[1]);	
-		orthoDir[2] = h_px*(this->a1_star[2]) + k_px*(this->a2_star[2]) + l_px*(this->a3_star[2]);
+		orthoDir[0] = h_px_s*(this->a1_star[0]) + k_px_s*(this->a2_star[0]) + l_px_s*(this->a3_star[0]);	
+		orthoDir[1] = h_px_s*(this->a1_star[1]) + k_px_s*(this->a2_star[1]) + l_px_s*(this->a3_star[1]);	
+		orthoDir[2] = h_px_s*(this->a1_star[2]) + k_px_s*(this->a2_star[2]) + l_px_s*(this->a3_star[2]);
 	}
 	// compute the rotation angles needed to align the wanted direction with the cartesian z axis and have the x cartesian axis corresponding to the smallest crystallographic direction possible
 	// for rotation around the z axis to align the normal dir with x axis
@@ -237,7 +277,8 @@ void Crystal::RotateCrystal(const int& h_p, const int& k_p, const int& l_p, cons
 		cout << "The crystal basis cannot be aligned with the cartesian one, aborting calculation" << endl;
 		return;
 	}//else cout << "We are constructing a system with the (" << h_p << k_p << l_p << ") plane parallel with (xy) plane and the [" << buffer_vector_i[minhkl*3] << buffer_vector_i[minhkl*3+1] << buffer_vector_i[minhkl*3+2] << "] direction aligned with the x axis" << endl;
-
+	cout << "FIRST GRAIN : " << endl;
+	MT->printMat(rot_mat_total);
 	// rotate lattice vectors
 	MT->MatDotRawVec(this->rot_mat_total,this->a1,this->a1);
 	MT->MatDotRawVec(this->rot_mat_total,this->a2,this->a2);
@@ -250,6 +291,39 @@ void Crystal::RotateCrystal(const int& h_p, const int& k_p, const int& l_p, cons
 	delete[] rot_axis;
 	delete[] test_vec;
 	delete[] normalDir;
+}
+
+void Crystal::ComputeRotMat(int h, int k, int l, double theta, double *rotmat, bool IsDirOrPlane){
+	double *rot_ax = new double[3];
+	double *buffer = new double[9];
+	ComputeVec(h,k,l,rot_ax,IsDirOrPlane);
+	MT->Vec2rotMat(rot_ax,theta,buffer);
+	// add the second rotation to be in the cartesian frame
+	MT->MatDotMat(buffer,rot_mat_total,rotmat);
+	delete[] rot_ax;
+	delete[] buffer;
+}
+
+void Crystal::ComputeVec(int h, int k, int l, double *Vec, bool IsDirOrPlane, bool Normalize){
+	int h_s, k_s, l_s;
+	h_s = h;
+	k_s = k;
+	l_s = l;
+	if( !IsDirOrPlane ) computeReciproqual();
+	if( IsPrimitive ){
+		if( IsDirOrPlane ) Convert2Primitive_dir(h_s,k_s,l_s);
+		else Convert2Primitive_plane(h_s,k_s,l_s);
+	}	
+	double NormRotAx = 0.;
+	for(unsigned int i=0;i<3;i++){
+		if( IsDirOrPlane ) Vec[i] = a1[i]*h_s + a2[i]*k_s + a3[i]*l_s;
+		else Vec[i] = a1_star[i]*h_s + a2_star[i]*k_s + a3_star[i]*l_s;
+		if( Normalize ) NormRotAx += pow(Vec[i],2.);
+	}
+	if( Normalize ){
+		NormRotAx = sqrt(NormRotAx);
+		for(unsigned int i=0;i<3;i++) Vec[i] /= NormRotAx;
+	}
 }
 
 void Crystal::RotateCrystal(const double *RotMat){
@@ -542,7 +616,7 @@ void Crystal::ConstructNotSepListFromMolId(){
 
 }
 
-void Crystal::ConstructOrthogonalCell(){
+void Crystal::ConstructOrthogonalCell(bool AllowTilt){
 	// search the smallest orthogonal box for this orientation by testing linear combination of a1 a2 a3 giving cell vectors aligned with cartesian axis
 	// expect for the x axis which is already aligned with a crystallographic direction
 	vector<int> cl_box;
@@ -550,30 +624,40 @@ void Crystal::ConstructOrthogonalCell(){
 	vector<int> yh_list;
 	vector<int> zh_list;
 	vector<double> buffer_vector_d_x, buffer_vector_d_y, buffer_vector_d_z;
-	double absX, absY, absZ;
-	for(int i=-CLsearch;i<CLsearch+1;i++){
+	double absX, absY, absZ, vecL;
+	// search smallest lattice param
+	double min_length = MT->min_p(alength,3)*0.9;	
+	for(int i=-CLsearch;i<CLsearch+1;i++){ // TODO change this loop with a while to exit when vectors are found with a maximum number of search
 		for(int j=-CLsearch;j<CLsearch+1;j++){
 			for(int k=-CLsearch;k<CLsearch+1;k++){
-				absX = fabs(i*this->a1[0]+j*this->a2[0]+k*this->a3[0]);
-				absY = fabs(i*this->a1[1]+j*this->a2[1]+k*this->a3[1]);
-				absZ = fabs(i*this->a1[2]+j*this->a2[2]+k*this->a3[2]);
-				if( absY < TolOrthoBox && absZ < TolOrthoBox && i*this->a1[0]+j*this->a2[0]+k*this->a3[0] > MinBoxAside ){
-					buffer_vector_d_x.push_back(absX);
+				absX = i*this->a1[0]+j*this->a2[0]+k*this->a3[0];
+				absY = i*this->a1[1]+j*this->a2[1]+k*this->a3[1];
+				absZ = i*this->a1[2]+j*this->a2[2]+k*this->a3[2];
+				vecL = absX*absX + absY*absY + absZ*absZ;
+				absX = fabs(absX);
+				absY = fabs(absY);
+				absZ = fabs(absZ);
+				if( absY < TolOrthoBox && absZ < TolOrthoBox && absX > min_length ){ // TODO change tolerance for being a deformation more than a distance
+					buffer_vector_d_x.push_back(vecL);
 					xh_list.push_back(i);
 					xh_list.push_back(j);
 					xh_list.push_back(k);
 				}
-				if( absX < TolOrthoBoxZ && absY < TolOrthoBoxZ && i*this->a1[2]+j*this->a2[2]+k*this->a3[2] > MinBoxHeight ){
-					buffer_vector_d_z.push_back(absZ);
-					zh_list.push_back(i);
-					zh_list.push_back(j);
-					zh_list.push_back(k);
-				}
-				if( absX < TolOrthoBox && absZ < TolOrthoBox && i*this->a1[1]+j*this->a2[1]+k*this->a3[1] > MinBoxAside ){
-					buffer_vector_d_y.push_back(absY);
+				bool cond = absZ < TolOrthoBox;
+				if( !AllowTilt ) cond = cond && absX < TolOrthoBox;
+				if( cond && absY > min_length ){
+					buffer_vector_d_y.push_back(vecL);
 					yh_list.push_back(i);
 					yh_list.push_back(j);
 					yh_list.push_back(k);
+				}
+				cond = true;
+				if( !AllowTilt ) cond = absX < TolOrthoBoxZ && absY < TolOrthoBoxZ;
+				if( cond && absZ > min_length ){
+					buffer_vector_d_z.push_back(vecL);
+					zh_list.push_back(i);
+					zh_list.push_back(j);
+					zh_list.push_back(k);
 				}
 			}
 		}
@@ -588,9 +672,12 @@ void Crystal::ConstructOrthogonalCell(){
 	ind_y = MT->min(buffer_vector_d_y);
 	ind_z = MT->min(buffer_vector_d_z);
 	// fill the cl_box array
-	for(unsigned int i=0;i<3;i++) cl_box.push_back(xh_list[ind_x*3+i]);
-	for(unsigned int i=0;i<3;i++) cl_box.push_back(yh_list[ind_y*3+i]);
-	for(unsigned int i=0;i<3;i++) cl_box.push_back(zh_list[ind_z*3+i]);
+	int arr1[3] = {abs(xh_list[ind_x*3]), abs(yh_list[ind_y*3]), abs(zh_list[ind_z*3])};
+	cl_box.push_back(MT->max(arr1,3));
+	int arr2[3] = {abs(xh_list[ind_x*3+1]), abs(yh_list[ind_y*3+1]), abs(zh_list[ind_z*3+1])};
+	cl_box.push_back(MT->max(arr2,3));
+	int arr3[3] = {abs(xh_list[ind_x*3+2]), abs(yh_list[ind_y*3+2]), abs(zh_list[ind_z*3+2])};
+	cl_box.push_back(MT->max(arr3,3));
 	double *xh = new double[3];
 	double *yh = new double[3];
 	double *zh = new double[3];
@@ -599,12 +686,34 @@ void Crystal::ConstructOrthogonalCell(){
 		yh[i] = this->a1[i]*yh_list[ind_y*3]+this->a2[i]*yh_list[ind_y*3+1]+this->a3[i]*yh_list[ind_y*3+2];
 		zh[i] = this->a1[i]*zh_list[ind_z*3]+this->a2[i]*zh_list[ind_z*3+1]+this->a3[i]*zh_list[ind_z*3+2];
 	}
+	if( xh[0] < 0. ){
+		for(unsigned int i=0;i<3;i++){
+			xh_list[ind_x*3+i] *= -1;
+			xh[i] *= -1.;
+		}
+	}
+	if( yh[1] < 0. ){
+		for(unsigned int i=0;i<3;i++){
+			yh_list[ind_y*3+i] *= -1;
+			yh[i] *= -1.;
+		}
+	}
+	if( zh[2] < 0. ){
+		for(unsigned int i=0;i<3;i++){
+			zh_list[ind_z*3+i] *= -1;
+			zh[i] *= -1.;
+		}
+	}
+	// add conditions required by lammps for triclinic boxes TODO
+	if( AllowTilt ){
+		if( fabs(yh[0]) > xh[0]/2. || fabs(zh[0]) > xh[0]/2. || fabs(zh[1]) > yh[1]/2. ) cout << "Warning, the box is too skewed for being computed using LAMMPS.." << endl;
+	}
 
 	double xbox = sqrt( pow(xh[0],2.) + pow(xh[1],2.) + pow(xh[2],2.));
 	double ybox = sqrt( pow(yh[0],2.) + pow(yh[1],2.) + pow(yh[2],2.));
 	double zbox = sqrt( pow(zh[0],2.) + pow(zh[1],2.) + pow(zh[2],2.));
 
-	MT->computeTiltTrans(xh,yh,zh,this->TiltTrans_xyz);
+	MT->computeTiltTrans(xh,yh,zh,this->TiltTrans_xyz, AllowTilt);
 
 	// apply this transformation to the crystal vectors
 	MT->MatDotRawVec(TiltTrans_xyz,this->a1,this->a1);
@@ -617,8 +726,10 @@ void Crystal::ConstructOrthogonalCell(){
 		zh[i] = this->a1[i]*zh_list[ind_z*3]+this->a2[i]*zh_list[ind_z*3+1]+this->a3[i]*zh_list[ind_z*3+2];
 	}
 	double tolBase = 1e-10;
-	if( fabs(xh[1]) > tolBase || fabs(xh[2]) > tolBase || fabs(yh[0]) > tolBase || fabs(yh[2]) > tolBase || fabs(zh[0]) > tolBase || fabs(zh[1]) > tolBase || fabs(xh[0]-xbox) > tolBase || fabs(yh[1]-ybox) > tolBase || fabs(zh[2]-zbox) > tolBase ){
-		cout << "Warning there were issues during the construction of orthogonal cell" << endl;
+	if( AllowTilt ){
+		if( fabs(xh[1]) > tolBase || fabs(xh[2]) > tolBase || fabs(yh[2]) > tolBase ) cout << "Warning there were issues during the construction of orthogonal cell" << endl;
+	}else{
+		if( fabs(xh[1]) > tolBase || fabs(xh[2]) > tolBase || fabs(yh[0]) > tolBase || fabs(yh[2]) > tolBase || fabs(zh[0]) > tolBase || fabs(zh[1]) > tolBase || fabs(xh[0]-xbox) > tolBase || fabs(yh[1]-ybox) > tolBase || fabs(zh[2]-zbox) > tolBase ) cout << "Warning there were issues during the construction of orthogonal cell" << endl;
 	}
 	// recompute reciproqual space as cell parameters may have changed
 	computeReciproqual();
@@ -629,9 +740,8 @@ void Crystal::ConstructOrthogonalCell(){
 	ShiftMotif(shift_x,shift_y,shift_z);
 	// rotate the motif
 	for(unsigned int i=0;i<this->nbAtom;i++) MT->MatDotAt(TotalTrans,Motif[i],Motif[i]);	
-	
 	// construct the AtomicSystem
-	this->OrientedSystem = new AtomicSystem(this, xbox, ybox, zbox, cl_box);
+	this->OrientedSystem = new AtomicSystem(this, xh, yh, zh, cl_box);
 	// rescale the crystal vectors as they have been modified by the function
 	double *invTrans = new double[9];
 	MT->invert3x3(this->TiltTrans_xyz,invTrans);
@@ -639,7 +749,7 @@ void Crystal::ConstructOrthogonalCell(){
 	//MT->MatDotRawVec(invTrans,this->a2,this->a2);
 	//MT->MatDotRawVec(invTrans,this->a3,this->a3);
 	// recompute reciproqual space as cell parameters may have changed
-	computeReciproqual();
+	//computeReciproqual();
 	ComputeCrystalDef();
 	this->IsOrientedSystem = true;
 	delete[] invTrans;
@@ -662,7 +772,7 @@ void Crystal::computeReciproqual(){
 	// compute cell volume
 	double *mixedProd = new double[3];
 	MT->mixedProd(this->a2,this->a3,mixedProd);
-	this->V = MT->dotProd(this->a1,mixedProd);
+	this->V = fabs(MT->dotProd(this->a1,mixedProd));
 	// compute reciproqual vectors
 	MT->mixedProd(this->a2,this->a3,this->a1_star);
 	MT->mixedProd(this->a3,this->a1,this->a2_star);
@@ -757,9 +867,84 @@ void Crystal::SearchCrystallographicPlanesAndDirections(double *Dir, int &h, int
 		w = buffer_vec[2];
 		delete[] buffer_vec;
 	}
+	if( IsPrimitive ){
+		Convert2NonPrimitive_dir(h,k,l);
+		Convert2NonPrimitive_plane(u,v,w);
+	}
 	delete[] DirNorm;
 }
 
+void Crystal::Convert2NonPrimitive_dir(int &h, int &k, int &l){
+	int h_s, k_s, l_s;
+	h_s = h;
+	k_s = k;
+	l_s = l;
+	if( crystallo == "FCC" ){
+		h = 2 * k_s + 2 * h_s;
+		k = 2 * k_s + 2 * l_s;
+		l = 2 * h_s + 2 * l_s;
+		int gcd = MT->gcd3(h,k,l);
+		h /= gcd;
+		k /= gcd;
+		l /= gcd;
+	}else if( crystallo == "BCC" ){
+		cout << "BCC_conv <=> BCC_prim to be implemented TODO" << endl;
+	}
+}
+
+void Crystal::Convert2Primitive_dir(int &h, int &k, int &l){
+	int h_s, k_s, l_s;
+	h_s = h;
+	k_s = k;
+	l_s = l;
+	if( crystallo == "FCC" ){
+		h = h_s - k_s + l_s;
+		k = h_s + k_s - l_s;
+		l = -h_s + k_s + l_s;
+		int gcd = MT->gcd3(h,k,l);
+		h /= gcd;
+		k /= gcd;
+		l /= gcd;
+	}else if( crystallo == "BCC" ){
+		cout << "BCC_conv <=> BCC_prim to be implemented TODO" << endl;
+	}
+}
+
+void Crystal::Convert2NonPrimitive_plane(int &h, int &k, int &l){
+	int h_s, k_s, l_s;
+	h_s = h;
+	k_s = k;
+	l_s = l;
+	if( crystallo == "FCC" ){
+		h = h_s + k_s - l_s;
+		k = - h_s + k_s + l_s;
+		l = h_s - k_s + l_s;
+		int gcd = MT->gcd3(h,k,l);
+		h /= gcd;
+		k /= gcd;
+		l /= gcd;
+	}else if( crystallo == "BCC" ){
+		cout << "BCC_conv <=> BCC_prim to be implemented TODO" << endl;
+	}
+}
+
+void Crystal::Convert2Primitive_plane(int &h, int &k, int &l){
+	int h_s, k_s, l_s;
+	h_s = h;
+	k_s = k;
+	l_s = l;
+	if( crystallo == "FCC" ){
+		h = 2 * h_s + 2 * l_s;
+		k = 2 * h_s + 2 * k_s;
+		l = 2 * k_s + 2 * l_s;
+		int gcd = MT->gcd3(h,k,l);
+		h /= gcd;
+		k /= gcd;
+		l /= gcd;
+	}else if( crystallo == "BCC" ){
+		cout << "BCC_conv <=> BCC_prim to be implemented TODO" << endl;
+	}
+}
 void Crystal::ComputeOrthogonalPlanesAndDirections(){
 	// search which crystallographic planes are aligned with the x, y, and z planes and which crystallographic directions are aligned with the x, y and z directions
 	// initialize indices to zero (if not found the plane and dir will be zero)
@@ -767,6 +952,7 @@ void Crystal::ComputeOrthogonalPlanesAndDirections(){
 		OrthogonalPlanes[i] = 0;		
 		OrthogonalDirs[i] = 0;
 	}
+
 	computeReciproqual();
 	vector<int> xh_list;
 	vector<int> yh_list;
@@ -878,6 +1064,12 @@ void Crystal::ComputeOrthogonalPlanesAndDirections(){
 		MT->reduce_vec(buffer_vec,buffer_vec);
 		for(unsigned int j=0;j<3;j++) OrthogonalPlanes[j+6] = buffer_vec[j];
 	}
+	if( IsPrimitive ){
+		for(unsigned int i=0;i<3;i++){
+			Convert2NonPrimitive_plane(OrthogonalPlanes[i*3], OrthogonalPlanes[i*3+1], OrthogonalPlanes[i*3+2]);
+			Convert2NonPrimitive_dir(OrthogonalDirs[i*3], OrthogonalDirs[i*3+1], OrthogonalDirs[i*3+2]);
+		}
+	}
 	delete[] buffer_vec;
 }
 
@@ -888,6 +1080,11 @@ void Crystal::read_database(){
 	unsigned int line_Mass(h_uint), line_At(h_uint), buffer_uint, buffer_uint_1, buffer_uint_2, buffer_uint_3, buffer_uint_4, count(0), line_bondori(h_uint), nbref2read(0), buffer_molid, line_Bond(h_uint), line_Angle(h_uint);
 	double buffer_1, buffer_2, buffer_3, buffer_4;
 	string buffer_s, buffer_s_1, buffer_s_2, line;
+	for(unsigned int i=0;i<3;i++){
+		this->a1[i] = 0.;
+		this->a2[i] = 0.;
+		this->a3[i] = 0.;
+	}
 	if(file){
 		while(file){
 			getline(file,line);
@@ -961,13 +1158,13 @@ void Crystal::read_database(){
 				this->a3[2] = buffer_2-buffer_1;
 			}
 			// search tilt component for non cubic crystal
-			if( this->crystallo == "Hexagonal"){
-				pos_tilt=line.find("xy xz yz");
-				if(pos_tilt!=string::npos){
-					istringstream text(line);
-					text >> buffer_1 >> buffer_2 >> buffer_3;
-					this->a2[0] = buffer_1;
-				}
+			pos_tilt=line.find("xy xz yz");
+			if(pos_tilt!=string::npos){
+				istringstream text(line);
+				text >> buffer_1 >> buffer_2 >> buffer_3;
+				this->a2[0] = buffer_1;
+				this->a3[0] = buffer_2;
+				this->a3[1] = buffer_3;
 			}
 
 			// find nb atom type
@@ -1096,17 +1293,26 @@ void Crystal::read_database(){
 		}
 		if( !this->IsCharge ) for(unsigned int i=0;i<this->nbAtomType;i++) AtomCharge[i] = 0.;
 		file.close();
-		this->a1[1] = 0;
-		this->a1[2] = 0;
-		this->a2[2] = 0;
-		this->a3[0] = 0;
-		this->a3[1] = 0;
-		if( this->crystallo == "Cubic" || this->crystallo == "Orthorhombic" ){
-			this->a2[0] = 0;
-		}
 	}else{
 		cout << "The file " << this->path2database << " cannot be openned" << endl;
 	}
+	// check if the provided crystal is a primitive cell
+	// for the moment only consider monoatomic cubic cells:
+	// - check if there is only one atom and if cell vectors are not normals
+	if( ( crystallo == "FCC" || crystallo == "BCC" ) && nbAtom != 1 ){
+		double sp1(0.), sp2(0.), sp3(0.);
+		double tol_sp = 1e-3;
+		for(unsigned int i=0;i<3;i++){
+			sp1 += a1[i]*a2[i];
+			sp2 += a1[i]*a3[i];
+			sp3 += a3[i]*a2[i];
+		}
+		if( fabs(sp1) < tol_sp && fabs(sp2) < tol_sp && fabs(sp3) < tol_sp ){
+			cout << "Warning, the provided cubic crystal is not a primitive cell, which may lead to calculation of non-primitive lattices related to this crystal (e.g. CSL, DSC)" << endl;
+			IsPrimitive = false;
+		}
+	}
+
 }
 
 void Crystal::computeStoich(){
@@ -1123,9 +1329,14 @@ void Crystal::computeStoich(){
 }
 
 double Crystal::ComputeD_hkl(const int& h, const int& k, const int& l){
+	int h_s, k_s, l_s;
+	h_s = h;
+	k_s = k;
+	l_s = l;
+	if( IsPrimitive ) Convert2Primitive_plane(h_s,k_s,l_s);
 	double dist = 0.;
 	for(unsigned int i=0;i<3;i++)
-		dist += ((h*a1_star[i]) + (k*a2_star[i]) + (l*a3_star[i])) * ((h*a1_star[i]) + (k*a2_star[i]) + (l*a3_star[i]));
+		dist += ((h_s*a1_star[i]) + (k_s*a2_star[i]) + (l_s*a3_star[i])) * ((h_s*a1_star[i]) + (k_s*a2_star[i]) + (l_s*a3_star[i]));
 	dist = sqrt(dist);
 	return 1./dist;
 }
@@ -1139,7 +1350,7 @@ void Crystal::read_params(){
 	//string filename=fp+backslash+FixedParam_Filename;
 	//ifstream file(filename, ios::in);
 	ifstream file(FixedParam_Filename, ios::in);
-	size_t pos_tolOrthoBox, pos_tolOrthoBoxZ, pos_minBoxHeight, pos_minBoxAside, pos_shift, pos_nblc, pos_max_hkl_search;
+	size_t pos_tolOrthoBox, pos_tolOrthoBoxZ, pos_shift, pos_nblc, pos_max_hkl_search;
 	string buffer_s, line;
 	if(file){
 		while(file){
@@ -1153,16 +1364,6 @@ void Crystal::read_params(){
 			if(pos_tolOrthoBoxZ!=string::npos){
 				istringstream text(line);
 				text >> buffer_s >> this->TolOrthoBoxZ;
-			}
-			pos_minBoxHeight=line.find("MIN_BOX_HEIGHT");
-			if(pos_minBoxHeight!=string::npos){
-				istringstream text(line);
-				text >> buffer_s >> this->MinBoxHeight;
-			}
-			pos_minBoxAside=line.find("MIN_BOX_ASIDE");
-			if(pos_minBoxAside!=string::npos){
-				istringstream text(line);
-				text >> buffer_s >> this->MinBoxAside;
 			}
 			pos_shift=line.find("MOTIF_SHIFT");
 			if(pos_shift!=string::npos){
@@ -1189,7 +1390,7 @@ void Crystal::read_params(){
 }
 
 void Crystal::ReadProperties(vector<string> Properties){
-	size_t pos_tolOrthoBox, pos_tolOrthoBoxZ, pos_minBoxHeight, pos_minBoxAside, pos_shift, pos_nblc, pos_max_hkl_search;
+	size_t pos_tolOrthoBox, pos_tolOrthoBoxZ, pos_shift, pos_nblc, pos_max_hkl_search;
 	string buffer_s;
 	for(unsigned int i=0;i<Properties.size();i++){
 		pos_tolOrthoBox=Properties[i].find("TOL_ORTHO_BOX ");
@@ -1201,16 +1402,6 @@ void Crystal::ReadProperties(vector<string> Properties){
 		if(pos_tolOrthoBoxZ!=string::npos){
 			istringstream text(Properties[i]);
 			text >> buffer_s >> this->TolOrthoBoxZ;
-		}
-		pos_minBoxHeight=Properties[i].find("MIN_BOX_HEIGHT");
-		if(pos_minBoxHeight!=string::npos){
-			istringstream text(Properties[i]);
-			text >> buffer_s >> this->MinBoxHeight;
-		}
-		pos_minBoxAside=Properties[i].find("MIN_BOX_ASIDE");
-		if(pos_minBoxAside!=string::npos){
-			istringstream text(Properties[i]);
-			text >> buffer_s >> this->MinBoxAside;
 		}
 		pos_shift=Properties[i].find("MOTIF_SHIFT");
 		if(pos_shift!=string::npos){
@@ -1318,8 +1509,8 @@ Crystal::~Crystal(){
 	delete[] TiltTrans_xyz;
 	delete[] alength;
 	delete[] Stoichiometry;
-	delete[] AtomSite;
-	delete[] AtomCharge;
+	if( AtomSite ) delete[] AtomSite;
+	if( AtomCharge ) delete[] AtomCharge;
 	delete[] crystal_def;
 	if( IsBond ){
 		delete[] Bonds;

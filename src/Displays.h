@@ -47,8 +47,7 @@ private:
 		// for crystal 
 	double TolOrthoBox = 0.25;
 	double TolOrthoBoxZ = 0.25;
-	double MinBoxHeight = 20.;
-	double MinBoxAside = 3.;
+	double MinBoxSizes[3] = {3., 3., 20.};
 	unsigned int CLsearch = 150;
 	int max_hkl_search = 10;
 	double shift_x = 0.;
@@ -71,9 +70,7 @@ private:
 	double theta_max_rot_ax_rat = 1.7e-2;
 	unsigned int MaxHKL_rot_angle_rat = 75;
 	double tol_dist_rot_angle_rat = 5e-2;
-	double tolpos_known_CSL = 5e-1;
-	double tol_CSL_integer = 1e-2;
-	double tolAlignment_CSL = 0.1;
+	double SigmaMax = 500;
        		// for ML and descriptors
 	double RatioTestTrain = 0.1;
 	std::string FilteringType = "element";

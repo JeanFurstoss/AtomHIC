@@ -54,7 +54,7 @@ private:
 	unsigned int MaxAtomType = 15;
 	std::string *AtomType; // the different atom species present in the system
 	unsigned int *AtomType_uint;
-	unsigned int *AtomSite;
+	unsigned int *AtomSite = nullptr;
 	unsigned int *NbAtomSite; // array such as NbAtomSite[i] = number of site for atom type AtomType[i]
 	bool IsCharge = false;
 	bool IsMolId = false; // is molecule id (atom_style full in LAMMPS)
@@ -70,7 +70,7 @@ private:
 	unsigned int *Angles; // Angles[i*3], Angles[i*3+1], Angles[i*3+2], indexes-1 atom 1, 2 and 3 involved in angle i (atom 2 is the center of the angle)
 	unsigned int *AngleType;
 	double *AtomMass;
-	double *AtomCharge;
+	double *AtomCharge = nullptr;
 	// Cell vectors
 	double *a1;
 	double *a2;
@@ -98,12 +98,11 @@ private:
 	std::vector<double> *ReferenceBondOriParam; // ReferenceBondOriParam[t][s] = reference bond orientational parameter (used for searching atom site and computing order parameter of multisite and non centrosymmetric crystal) of atom type t and crystallographic site s
 	std::vector<std::string> BondOriParamProperties;
 	double *crystal_def; // contains the deformation applied to the crystal for creating orthogonal box (crystal_def[0,1,2] = compression/dilatation in x,y,z direction, crystal_def[3] = shear invariant)
+	bool IsPrimitive = true; // is the cell primitive (e.g. FCC, BCC)
 	// Parameters to read
 	std::string FixedParam_Filename = "FixedParameters.ath";
 	double TolOrthoBox = 0.25;
 	double TolOrthoBoxZ = 0.25;
-	double MinBoxHeight = 20.;
-	double MinBoxAside = 3.;
 	int CLsearch = 150;
 	int max_hkl_search = 10;
 	double shift_x = 0.;
@@ -113,6 +112,8 @@ public:
 	// constructors
 	Crystal(){};
 	Crystal(const std::string& crystalName); // constructor searching in the database the different parameter for the construction
+	Crystal(double *lattice_params, Atom *Motif, unsigned int nbAtom, unsigned int nbAtomType, std::string *AtomType, unsigned int *AtomType_uint, std::string name="none", std::string crystallo="none"); // constructor giving cell param and motif
+																								void InitVars();
 	// getters
 	const std::string& getName(){ return this->name; }
 	const std::string& getCrystallo(){ return this->crystallo; }
@@ -166,8 +167,6 @@ public:
 	bool getIsReferenceBondOriParam(){ return IsReferenceBondOriParam; }
 	double *GetCrystalDef(){ return crystal_def; }
 	int getNbCLSearch(){ return CLsearch; }
-	double getMinBoxHeight(){ return MinBoxHeight; }
-	double getMinBoxAside(){ return MinBoxAside; }
 	// methods
 	void read_params();
 	void ReadProperties(std::vector<std::string> Properties);
@@ -180,11 +179,17 @@ public:
 	void RotateCrystal(const double *RotMat);
 	void ConstructNotSepList();
 	void ConstructNotSepListFromMolId();
-	void ConstructOrthogonalCell();
+	void ConstructOrthogonalCell(bool AllowTilt=false);
 	void computeStoich();
 	void ChangeTypes(unsigned int *CorresArray);
 	void ShiftMotif(const double &_shift_x, const double &_shift_y, const double &_shift_z);
 	double ComputeD_hkl(const int& h, const int& k, const int& l);
+	void Convert2NonPrimitive_dir(int &h, int &k, int &l);
+	void Convert2Primitive_dir(int &h, int &k, int &l);
+	void Convert2NonPrimitive_plane(int &h, int &k, int &l);
+	void Convert2Primitive_plane(int &h, int &k, int &l);
+	void ComputeVec(int h, int k, int l, double *Vec, bool IsDirOrPlane = true, bool Normalize = true); // compute vector in the Cartesian frame given Miller indices, if IsDirOrPlane = true the Miller indices correspond to direction, if false they correpond to plane indices
+	void ComputeRotMat(int h, int k, int l, double theta, double *rotmat, bool IsDirOrPlane = true);
 	// destructor
 	~Crystal();
 	
