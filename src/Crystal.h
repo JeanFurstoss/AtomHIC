@@ -80,10 +80,12 @@ private:
 	double *a1_star;
 	double *a2_star;
 	double *a3_star;
+	double *a_star_length;
 	double V; // elementary volum
 	int *OrthogonalPlanes; // [i] for i = 0,1,2 => h,k,l Miller indices of plane normal to x cartesian axis, 3,4,5 normal to y and 6,7,8 normal to z
 	int *OrthogonalDirs;// [i] for i = 0,1,2 => h,k,l Miller indices of direction aligned with x cartesian axis, 3,4,5 aligned with y and 6,7,8 aligned with z
 	Atom *Motif;
+	std::vector<int> cl_box;
 	bool IsOrientedSystem = false;
 	bool IsMultisite = false;
 	AtomicSystem *OrientedSystem;
@@ -101,8 +103,7 @@ private:
 	bool IsPrimitive = true; // is the cell primitive (e.g. FCC, BCC)
 	// Parameters to read
 	std::string FixedParam_Filename = "FixedParameters.ath";
-	double TolOrthoBox = 0.25;
-	double TolOrthoBoxZ = 0.25;
+	double TolShearBox[3] = {0.005, 0.005, 0.005};
 	int CLsearch = 150;
 	int max_hkl_search = 10;
 	double shift_x = 0.;

@@ -593,6 +593,8 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	double hG2_sup= 2.*DeltaZ;
 	double eps_pos = 5e-2;
 	double eps_pos_z = 3e-1;
+	vector<vector<int>> cur_NotSepTag1;
+	vector<vector<int>> cur_NotSepTag2;
 	// TODO manage bonds and angle
 	if( !this->_MyCrystal->getIsDoNotSep() ){
 		// for crystals where ions can be separated
@@ -696,8 +698,14 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 								AtomList_temp[at_count].pos.y = ypos;
 								AtomList_temp[at_count].pos.z = zpos;
 								TagGrain[at_count] = 1;
+								cur_NotSepTag1.push_back(vector<int>());
+								int cur_at_count = at_count;
+								cur_NotSepTag1[at_count].push_back(NotSepTag1[n][0]);
 								at_count += 1;
 								for(unsigned int neigh=0;neigh<NotSepTag1[n][0];neigh++){
+									cur_NotSepTag1[(unsigned int) cur_at_count].push_back(at_count);
+									cur_NotSepTag1.push_back(vector<int>());
+									cur_NotSepTag1[at_count].push_back(-1-cur_at_count);
 									AtomList_temp[at_count] = this->_MyCrystal->getOrientedSystem()->getAtom(NotSepTag1[n][neigh+1]);
 									AtomList_temp[at_count].pos.x += i*xl1;
 									AtomList_temp[at_count].pos.y += j*yl1;
@@ -717,6 +725,9 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 										// Then test if atom is bellow the real plane
 										double buffer_f = eps_pos_z + xpos*NormalPlaneEq[f*3] + ypos*NormalPlaneEq[f*3+1] + (zpos-zboxG1+DeltaZ)*NormalPlaneEq[f*3+2];
 										if( buffer_f < FullPlaneEq[f] ){
+											cur_NotSepTag1.push_back(vector<int>());
+											int cur_at_count = at_count;
+											cur_NotSepTag1[at_count].push_back(NotSepTag1[n][0]);
 											AtomList_temp[at_count] = this->_MyCrystal->getOrientedSystem()->getAtom(n);
 											AtomList_temp[at_count].pos.x = xpos;
 											AtomList_temp[at_count].pos.y = ypos;
@@ -724,6 +735,9 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 											TagGrain[at_count] = 1;
 											at_count += 1;
 											for(unsigned int neigh=0;neigh<NotSepTag1[n][0];neigh++){
+												cur_NotSepTag1[(unsigned int) cur_at_count].push_back(at_count);
+												cur_NotSepTag1.push_back(vector<int>());
+												cur_NotSepTag1[at_count].push_back(-1-cur_at_count);
 												AtomList_temp[at_count] = this->_MyCrystal->getOrientedSystem()->getAtom(NotSepTag1[n][neigh+1]);
 												AtomList_temp[at_count].pos.x += i*xl1;
 												AtomList_temp[at_count].pos.y += j*yl1;
@@ -758,8 +772,15 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 								AtomList_temp[at_count].pos.y = ypos;
 								AtomList_temp[at_count].pos.z = zpos;
 								TagGrain[at_count] = 2;
+								cur_NotSepTag2.push_back(vector<int>());
+								int cur_at_count = at_count - trueNbAt1;
+								cur_NotSepTag2[(unsigned int) cur_at_count].push_back(NotSepTag2[n][0]);
 								at_count += 1;
 								for(unsigned int neigh=0;neigh<NotSepTag2[n][0];neigh++){
+									unsigned int cur_at_count_n = at_count - trueNbAt1;
+									cur_NotSepTag2[(unsigned int) cur_at_count].push_back(cur_at_count_n);
+									cur_NotSepTag2.push_back(vector<int>());
+									cur_NotSepTag2[cur_at_count_n].push_back(-1-cur_at_count);
 									AtomList_temp[at_count] = this->_MyCrystal2->getOrientedSystem()->getAtom(NotSepTag2[n][neigh+1]);
 									AtomList_temp[at_count].pos.x += i*xl2;
 									AtomList_temp[at_count].pos.y += j*yl2;
@@ -779,6 +800,9 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 										// Then test if atom is above the real plane
 										double buffer_f = eps_pos_z + xpos*NormalPlaneEq_2[f*3] + ypos*NormalPlaneEq_2[f*3+1] + (zpos-DeltaZ)*NormalPlaneEq_2[f*3+2];
 										if( buffer_f > FullPlaneEq_2[f] ){
+											cur_NotSepTag2.push_back(vector<int>());
+											int cur_at_count = at_count - trueNbAt1;
+											cur_NotSepTag2[(unsigned int) cur_at_count].push_back(NotSepTag2[n][0]);
 											AtomList_temp[at_count] = this->_MyCrystal2->getOrientedSystem()->getAtom(n);
 											AtomList_temp[at_count].pos.x = xpos;
 											AtomList_temp[at_count].pos.y = ypos;
@@ -786,6 +810,10 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 											TagGrain[at_count] = 2;
 											at_count += 1;
 											for(unsigned int neigh=0;neigh<NotSepTag2[n][0];neigh++){
+												unsigned int cur_at_count_n = at_count - trueNbAt1;
+												cur_NotSepTag2[(unsigned int) cur_at_count].push_back(cur_at_count_n);
+												cur_NotSepTag2.push_back(vector<int>());
+												cur_NotSepTag2[cur_at_count_n].push_back(-1-cur_at_count);
 												AtomList_temp[at_count] = this->_MyCrystal2->getOrientedSystem()->getAtom(NotSepTag2[n][neigh+1]);
 												AtomList_temp[at_count].pos.x += i*xl2;
 												AtomList_temp[at_count].pos.y += j*yl2;
@@ -824,10 +852,15 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 	}
 
 	// Initialize the two grains
-	this->Grain1 = new AtomicSystem(this->AtomList_G1,nbAtom1,_MyCrystal,this->H1_G1,this->H2_G1,this->H3_G1,true);
-	this->Grain2 = new AtomicSystem(this->AtomList_G2,nbAtom2,_MyCrystal2,this->H1_G2,this->H2_G2,this->H3_G2,true);
+	if( !this->_MyCrystal->getIsDoNotSep() ){
+		this->Grain1 = new AtomicSystem(this->AtomList_G1,nbAtom1,_MyCrystal,this->H1_G1,this->H2_G1,this->H3_G1,true);
+		this->Grain2 = new AtomicSystem(this->AtomList_G2,nbAtom2,_MyCrystal2,this->H1_G2,this->H2_G2,this->H3_G2,true);
+	}else{
+		this->Grain1 = new AtomicSystem(this->AtomList_G1,nbAtom1,_MyCrystal,this->H1_G1,this->H2_G1,this->H3_G1,cur_NotSepTag1,true);
+		this->Grain2 = new AtomicSystem(this->AtomList_G2,nbAtom2,_MyCrystal2,this->H1_G2,this->H2_G2,this->H3_G2,cur_NotSepTag2,true);
+	}
 	this->AreGrainsDefined = true;
-	if( !IsCharge ){ 
+	if( IsCharge ){ 
 		// idea here is to create oriented systems with the different free surfaces in presence
 		// adjust their surfaces with the MakeSurfaceNeutral function (1d-based the only one working well)
 		// rotate the systems and apply the given crystal def and misfits to align with Grain1 or 2
@@ -846,7 +879,7 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 		vector<double> currentVertPlaneEq = {-5.,this->H2_G1[1]+5.};
 		vector<double> currentFullPlaneEq = {0.};
 		double z_shift_box = 0.;
-		cout << "Adjusting grain 1 bottom surface" << endl;
+		cout << "Adjusting electroneutrality of grain 1 bottom surface" << endl;
 		Grain1->MakeSurfaceNeutral(Oris, shifts, Misfits, currentPlaneNormal, currentVertPlaneSlope, currentVertPlaneEq, currentFullPlaneEq, z_shift_box, "Grain1_neutral.lmp");
 		// Facet 1
 		for(unsigned int i=0;i<3;i++) Oris[i] = FacetsType[i];
@@ -867,7 +900,7 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 		//cout << "G1 facet1" << endl;
 		//for(unsigned int i=0;i<currentFullPlaneEq.size();i++) cout << currentVertPlaneEq[i*2] << " " << currentVertPlaneEq[i*2+1] << " " << currentFullPlaneEq[i] << endl;
 		z_shift_box = zboxG1-DeltaZ;
-		cout << "Adjusting grain 1 facet 1" << endl;
+		cout << "Adjusting electroneutrality of grain 1 facet 1" << endl;
 		Grain1->MakeSurfaceNeutral(Oris, shifts, Misfits, currentPlaneNormal, currentVertPlaneSlope, currentVertPlaneEq, currentFullPlaneEq, z_shift_box);
 		
 		// Facet 2
@@ -887,7 +920,7 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 		//cout << "G1 facet2" << endl;
 		//for(unsigned int i=0;i<currentFullPlaneEq.size();i++) cout << currentVertPlaneEq[i*2] << " " << currentVertPlaneEq[i*2+1] << " " << currentFullPlaneEq[i] << endl;
 		z_shift_box = zboxG1-DeltaZ;
-		cout << "Adjusting grain 1 facet 2" << endl;
+		cout << "Adjusting electroneutrality of grain 1 facet 2" << endl;
 		Grain1->MakeSurfaceNeutral(Oris, shifts, Misfits, currentPlaneNormal, currentVertPlaneSlope, currentVertPlaneEq, currentFullPlaneEq, z_shift_box);
 
 		nbAtom1 = Grain1->getNbAtom();
@@ -899,7 +932,7 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 		//cout << "Total charge 1 = " << total_charge_1 << endl;
 		//Grain1->print_lmp("Grain1_2.lmp");
 		if( fabs(total_charge_1) > 1e-8 ){
-			cout << "Adjusting electroneutrality of grain 1" << endl;
+			cout << "Adjusting total electroneutrality of grain 1" << endl;
 			unsigned int nbInters = (NbPlanes/2);
 			vector<double> dirPoint(3*nbInters);
 			double n1n1(0.), n2n2(0.), n1n2(0.);
@@ -947,7 +980,7 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 		total_charge_1 = 0.;
 		for(unsigned int i=0;i<nbAtom1;i++)
 			total_charge_1 += AtomCharge[Grain1->getAtom(i).type_uint-1];
-		//cout << "Total charge 1 = " << total_charge_1 << endl;
+		cout << "Total charge grain 1 = " << total_charge_1 << endl;
 
 
 		// ** Grain2 ** //
@@ -963,7 +996,7 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 		//cout << "G2 surface" << endl;
 		//for(unsigned int i=0;i<currentFullPlaneEq.size();i++) cout << currentVertPlaneEq[i*2] << " " << currentVertPlaneEq[i*2+1] << " " << currentFullPlaneEq[i] << endl;
 		z_shift_box = 0.;
-		cout << "Adjusting grain 2 bottom surface" << endl;
+		cout << "Adjusting electroneutrality of grain 2 bottom surface" << endl;
 		Grain2->MakeSurfaceNeutral(Oris, shifts, Misfits, currentPlaneNormal, currentVertPlaneSlope, currentVertPlaneEq, currentFullPlaneEq, z_shift_box, "Grain2_neutral.lmp");
 		// Facet 1
 		Oris[0] = u_c_1;
@@ -986,7 +1019,7 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 		//cout << "G2 facet1" << endl;
 		//for(unsigned int i=0;i<currentFullPlaneEq.size();i++) cout << currentVertPlaneEq[i*2] << " " << currentVertPlaneEq[i*2+1] << " " << currentFullPlaneEq[i] << endl;
 		z_shift_box = DeltaZ;
-		cout << "Adjusting grain 2 facet 1" << endl;
+		cout << "Adjusting electroneutrality of grain 2 facet 1" << endl;
 		Grain2->MakeSurfaceNeutral(Oris, shifts, Misfits, currentPlaneNormal, currentVertPlaneSlope, currentVertPlaneEq, currentFullPlaneEq, z_shift_box);
 
 		// Facet 2
@@ -1007,7 +1040,7 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 		}
 		//cout << "G2 facet2" << endl;
 		//for(unsigned int i=0;i<currentFullPlaneEq.size();i++) cout << currentVertPlaneEq[i*2] << " " << currentVertPlaneEq[i*2+1] << " " << currentFullPlaneEq[i] << endl;
-		cout << "Adjusting grain 2 facet 2" << endl;
+		cout << "Adjusting electroneutrality of grain 2 facet 2" << endl;
 		Grain2->MakeSurfaceNeutral(Oris, shifts, Misfits, currentPlaneNormal, currentVertPlaneSlope, currentVertPlaneEq, currentFullPlaneEq, z_shift_box);
 		nbAtom2 = Grain2->getNbAtom();
 
@@ -1018,7 +1051,7 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 			total_charge_2 += AtomCharge[Grain2->getAtom(i).type_uint-1];
 		//cout << "Total charge 2 = " << total_charge_2 << endl;
 		if( fabs(total_charge_2) > 1e-8 ){
-			cout << "Adjusting electroneutrality of grain 2" << endl;
+			cout << "Adjusting total electroneutrality of grain 2" << endl;
 			unsigned int nbInters = (NbPlanes/2);
 			vector<double> dirPoint(3*nbInters);
 			double n1n1(0.), n2n2(0.), n1n2(0.);
@@ -1062,7 +1095,7 @@ Bicrystal::Bicrystal(const string& crystalName, int h_a, int k_a, int l_a, doubl
 			total_charge_2 = 0.;
 			for(unsigned int i=0;i<nbAtom2;i++)
 				total_charge_2 += AtomCharge[Grain2->getAtom(i).type_uint-1];
-			cout << "Total charge 2 = " << total_charge_2 << endl;
+			cout << "Total charge grain 2 = " << total_charge_2 << endl;
 		
 		}
 		cout << "Sum = " << total_charge_1+total_charge_2 << endl;

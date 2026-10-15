@@ -45,8 +45,7 @@ private:
 		// for atomic system
 	std::string AuxProp2Print = "";
 		// for crystal 
-	double TolOrthoBox = 0.25;
-	double TolOrthoBoxZ = 0.25;
+	double TolShearBox[3] = {0.005, 0.005, 0.005};
 	double MinBoxSizes[3] = {3., 3., 20.};
 	unsigned int CLsearch = 150;
 	int max_hkl_search = 10;

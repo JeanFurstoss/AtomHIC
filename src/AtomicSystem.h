@@ -68,7 +68,7 @@ protected:
 	unsigned int *Neighbours = nullptr; // List of neigbors, structured as 2D array [ nbAtom x (nbMaxNeighbours+1) ] where the first value of each line corresponds to the number of neighbours for the ith atom, i.e. Neighbours[i*(nbMaxN+1)] = nb of neighbour of atom i, Neighbours[i*(nbMaxN+1)+j+1] = id of the jth neighbour of atom i
 	int *CLNeighbours = nullptr; // List of coefficient (NclX,Ncly,Nclz) applied to the atom position to be a neighbour [ nbAtom x (nbMaxNeighbours*3) ] where the first value of each line corresponds to the number of neighbours for the ith atom, i.e. CLNeighbours[i*nbMaxN*3+j*3] = integer applied to H1 to the jth neighbour of atom i for being its neighbour, CLNeighbours[i*nbMaxN*3+j*3+1] = integer applied to H2 to the jth neighbour of atom i for being its neighbour, CLNeighbours[i*nbMaxN*3+j*3+2] = integer applied to H3 to the jth neighbour of atom i for being its neighbour
 	bool IsNeighbours = false;
-	std::vector<int> *NotSepTag; // array containing the atom which should not be separated: NotSepTag[i][0] = -1 => the atom i is stored because of the NotSep list, 0 => this atom is not related to the NotSep list, n => the atom has stored n neighbour because of the NotSep list, in the latter case: NotSepTag[i][j+1] return the index of the jth atom which has been stored with the ith one due to the NotSepList // TEST NotSepTag[i][0] < 0 atom has been stored due to not sep list and the value correspond to 1-index of the associated neighbour
+	std::vector<int> *NotSepTag; // array containing the atom which should not be separated: NotSepTag[i][0] = -1 => the atom i is stored because of the NotSep list, 0 => this atom is not related to the NotSep list, n => the atom has stored n neighbour because of the NotSep list, in the latter case: NotSepTag[i][j+1] return the index of the jth atom which has been stored with the ith one due to the NotSepList // TEST NotSepTag[i][0] < 0 atom has been stored due to not sep list and the value correspond to -1-index of the associated neighbour
 	bool IsNotSepTag = false;
 	double *H = nullptr; // cell vectors of the system // TODO remove H1, H2, H3 all over the code as well as G1, G2, G3
 	double *H1 = nullptr; // cell vectors of the system
@@ -132,6 +132,7 @@ public:
 	AtomicSystem(const std::string& filename, const int &_timestep=-1); // construct AtomicSystem by reading file
 	AtomicSystem(AtomicSystem *AtSys, unsigned int &nbSys, std::string &dir); // construct AtomicSystem with multiple AtomicSystems by merging along a given direction (to be used for replacing bicrystal construction in addition with the new duplicate method)
 	AtomicSystem(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3, bool deepCopyAtList=false); // construct AtomicSystem giving AtomList and cell vectors deepCopyAtList should be used if the RemoveAtoms method is then used
+	AtomicSystem(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3, std::vector<std::vector<int>> NST, bool deepCopyAtList=false); // construct AtomicSystem giving AtomList and cell vectors deepCopyAtList should be used if the RemoveAtoms method is then used
 	AtomicSystem(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3, unsigned int *MolId); // construct AtomicSystem giving AtomList and cell vectors 
 	AtomicSystem(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3, unsigned int *MolId, unsigned int nbBonds, unsigned int nbBondType, unsigned int *Bonds, unsigned int *BondType); // construct AtomicSystem giving AtomList and cell vectors 
 	AtomicSystem(Atom *AtomList, unsigned int nbAtom, Crystal *_MyCrystal, double *H1, double *H2, double *H3, unsigned int *MolId, unsigned int nbBonds, unsigned int nbBondType, unsigned int *Bonds, unsigned int *BondType, unsigned int nbAngles, unsigned int nbAngleType, unsigned int *Angles, unsigned int *AngleType); // construct AtomicSystem giving AtomList and cell vectors 
@@ -236,7 +237,7 @@ public:
 	void ApplyShift(const double &shift_x, const double &shift_y, const double &shift_z);
 	void duplicate(const unsigned int &nx, const unsigned int &ny, const unsigned int &nz);
 	Position getWrappedPosition(unsigned int &i) const { return this->WrappedPos[i]; }
-	void ComputePeriodicArr();
+	void ComputePeriodicArr(bool force_delete=false);
 	Atom& getAtomRef(unsigned int &i) { return this->AtomList[i]; }
 	//
 	void deleteNeighList(){

@@ -37,8 +37,7 @@ int main(int argc, char *argv[])
 	Displays Dis;
 	Dis.Logo();
 	vector<string> Properties;
-	Properties.push_back("TOL_ORTHO_BOX 0.5");
-	Properties.push_back("TOL_ORTHO_BOX_Z 0.5");
+	Properties.push_back("TOL_SHEAR_CRYSTAL 0.02 0.02 0.02");
 	Properties.push_back("MIN_BOX_SIZES 3. 3. 15.");
 	Properties.push_back("NB_MAX_LC 50");
 	Properties.push_back("MOTIF_SHIFT 0 0 0");

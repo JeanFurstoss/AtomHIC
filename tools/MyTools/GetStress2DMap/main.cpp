@@ -132,7 +132,7 @@ int main(int argc, char *argv[])
 				count_a = 0;
 				for(unsigned int a=0;a<nbaux;a++){
 					for(unsigned int d=0;d<aux_sizes[a];d++){
-						curaux[count_a] += auxes[a][i*aux_sizes[a]+d];
+						curaux[count_a] += auxes[a][DNS[i][n+1]*aux_sizes[a]+d];
 						count_a++;
 					}
 				}
@@ -160,7 +160,7 @@ int main(int argc, char *argv[])
 					count_a = 0;
 					for(unsigned int a=0;a<nbaux;a++){
 						for(unsigned int d=0;d<aux_sizes[a];d++){
-							curaux[count_a] += auxes[a][id*aux_sizes[a]+d];
+							curaux[count_a] += auxes[a][DNS[id][n+1]*aux_sizes[a]+d];
 							count_a++;
 						}
 					}
