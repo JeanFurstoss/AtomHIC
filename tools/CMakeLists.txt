@@ -24,6 +24,7 @@
 #**********************************************************************************
 
 # Generic tools
+add_subdirectory(AnalyzeBicrystal)
 add_subdirectory(BasicManips)
 add_subdirectory(CreateOrientedPlane)
 add_subdirectory(CreateGB)

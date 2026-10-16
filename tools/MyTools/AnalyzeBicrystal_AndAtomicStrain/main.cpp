@@ -76,7 +76,7 @@ int main(int argc, char *argv[])
 	MySystem.Print1dDensity(DensityFilename, "Disorder");
 	MySystem.Print1dDensity(GaussDensityFilename, "GBProfile_Gauss");
 	ofstream writefile(StatdataFilename);
-	writefile << MySystem.getGBPos1() << " " << MySystem.getGBwidth1() << " " << MySystem.getExcessVol();
+	writefile << MySystem.getGBPos1() << " " << MySystem.getGBwidth1() << " " << MySystem.getExcessVol1();
 	writefile.close();
 	Dis.ExecutionTime();	
 	return 0;

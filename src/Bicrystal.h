@@ -47,15 +47,16 @@ protected:
 	BicrystalloTools *BT;
 	std::string NormalDir;
 	double Ldir; // box length in the GB normal direction
-	double ExcessVol;
+	double ExcessVol1 = 0.;
+	double ExcessVol2 = 0.;
 	bool IsVacuum;
 	bool IsCentered; // in the case where there is vacuum, is the system centered
 	double VacuumLo; // low bound coordinate of the vacuum
 	double VacuumHi; // high bound coordinate of the vacuum
-	double GBPos1; // position of the first GB
-	double GBPos2; // position of the second GB (if there is no vacuum)
-	double GBwidth1; // width of the first GB
-	double GBwidth2; // width of the second GB (if there is no vacuum)
+	double GBPos1 = 0.; // position of the first GB
+	double GBPos2 = 0.; // position of the second GB (if there is no vacuum)
+	double GBwidth1 = -1.; // width of the first GB
+	double GBwidth2 = -1.; // width of the second GB (if there is no vacuum)
 	double MaxPos; // maximum pos of atoms
 	double MinPos; // min --
 	int h_a, k_a, l_a; // miller indices of rotation axis
@@ -121,8 +122,11 @@ public:
 	ComputeAuxiliary *get_CA(){ return this->CA; }
 	double getGBPos1(){ return this->GBPos1; }
 	double getGBwidth1(){ return this->GBwidth1; }
+	double getExcessVol1() { return this->ExcessVol1; }
+	double getGBPos2(){ return this->GBPos2; }
+	double getGBwidth2(){ return this->GBwidth2; }
+	double getExcessVol2() { return this->ExcessVol2; }
 	double getPrefac1(){ return this->prefac_test; }
-	double getExcessVol() { return this->ExcessVol; }
 	Crystal* getCrystal2(){ return this->_MyCrystal2; }
 	double getxl1(){ return this->xl1; }
 	double getyl1(){ return this->yl1; }
@@ -146,6 +150,7 @@ public:
 	void print_Grains(bool vacuum = false, std::string filenameG1="Grain1.lmp", std::string filenameG2="Grain2.lmp");
 	void searchGBPos();
 	void ComputeExcessVolume();
+	void ComputeExcessProp(std::string PropName);
 	void setOrientedCrystals(const std::string& crystalName, bool rationalize, std::vector<std::string> Properties=std::vector<std::string>(), int h_px=0, int k_px=0, int l_px=0); // method initializing 2 crystals with a given misorientation relationship and plane
 	//
 	void ShiftGrainsAlongDSC(unsigned int n1, unsigned int n2, unsigned int n3, bool vacuum=false);

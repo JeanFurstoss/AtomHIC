@@ -128,7 +128,7 @@ int main(int argc, char *argv[])
 		//MySystem.setAux(nbT,"LinkedTetrahedra");
 		//MySystem.printSystem_aux(OutputFilename,"LinkedTetrahedra");
 		ofstream writefile(OutputFilename);
-		writefile << MySystem1.getGBPos1() << " " << MySystem1.getGBwidth1() << " " << MySystem1.getExcessVol() << " " << NbLinked << " " << nbSi;
+		writefile << MySystem1.getGBPos1() << " " << MySystem1.getGBwidth1() << " " << MySystem1.getExcessVol1() << " " << NbLinked << " " << nbSi;
 		writefile.close();
 	}
 

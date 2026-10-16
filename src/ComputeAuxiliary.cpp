@@ -730,6 +730,19 @@ bool ComputeAuxiliary::AreSurfacesSame(AtomicSystem *AtSys1, std::string updown1
 	delete[] refpos2;
 
 	int max_bc = 3; // TODO compute value based on max diff ?
+	double max_diff_x = 0.;
+	double max_diff_y = 0.;
+	for(unsigned int i=0;i<SubSys1.size();i++){
+		for(unsigned int j=0;j<SubSys2.size();j++){
+			double diff_x = fabs(SubSys1[i].pos.x - SubSys2[j].pos.x);
+			double diff_y = fabs(SubSys1[i].pos.y - SubSys2[j].pos.y);
+			if( diff_x > max_diff_x ) max_diff_x = diff_x;
+			if( diff_y > max_diff_y ) max_diff_y = diff_y;
+		}
+	}
+	int max_bc_x = ceil(max_diff_x/AtSys2->getH1()[0])+2;
+	int max_bc_y = ceil(max_diff_y/AtSys2->getH2()[1])+2;
+	cout << max_bc_x << " " << max_bc_y << endl;
 	// search if 1 coincide with 2 with bc
 	for(unsigned int i=0;i<SubSys1.size();i++){
 		if( ( ( updown1 == "down" && reverse ) || (updown1 == "up" && !reverse ) ) && SubSys1[i].pos.z < (minmax-(0.75*slab_width)) ) continue;
@@ -743,8 +756,8 @@ bool ComputeAuxiliary::AreSurfacesSame(AtomicSystem *AtSys1, std::string updown1
 			double zr = SubSys1[i].pos.z;
 			for(unsigned int j=0;j<SubSys2.size();j++){
 				if( SubSys2[j].type_uint != SubSys1[i].type_uint ) continue;
-				for(int bx=-max_bc;bx<=max_bc;bx++){
-					for(int by=-max_bc;by<=max_bc;by++){
+				for(int bx=-max_bc_x;bx<=max_bc_x;bx++){
+					for(int by=-max_bc_y;by<=max_bc_y;by++){
 						double xw = SubSys2[j].pos.x + AtSys2->getH1()[0]*bx + AtSys2->getH2()[0]*by;
 						double yw = SubSys2[j].pos.y + AtSys2->getH1()[1]*bx + AtSys2->getH2()[1]*by;
 						double zw = SubSys2[j].pos.z;
