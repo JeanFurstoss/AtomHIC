@@ -742,7 +742,6 @@ bool ComputeAuxiliary::AreSurfacesSame(AtomicSystem *AtSys1, std::string updown1
 	}
 	int max_bc_x = ceil(max_diff_x/AtSys2->getH1()[0])+2;
 	int max_bc_y = ceil(max_diff_y/AtSys2->getH2()[1])+2;
-	cout << max_bc_x << " " << max_bc_y << endl;
 	// search if 1 coincide with 2 with bc
 	for(unsigned int i=0;i<SubSys1.size();i++){
 		if( ( ( updown1 == "down" && reverse ) || (updown1 == "up" && !reverse ) ) && SubSys1[i].pos.z < (minmax-(0.75*slab_width)) ) continue;

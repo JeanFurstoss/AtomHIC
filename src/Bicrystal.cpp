@@ -2017,7 +2017,7 @@ void Bicrystal::searchGBPos(){
 	double shift_sys = 0.; // shift applied to the system for being centered in the box
 	double zero = 0.;
 	double slab_width = 20.;
-	unsigned int nbGB = 1;
+	nbGB = 1;
 	unsigned int max1_novac(0),max2_novac(0);
 	if( this->IsVacuum ){ // set to zero the diso dens near the vacuum to not impact the gaussian fit
 		if( NormalDir == "x" ){
@@ -2328,7 +2328,102 @@ void Bicrystal::searchGBPos(){
 }
 
 void Bicrystal::ComputeExcessProp(string PropName){
-
+	// Compute mass density along GB normal direction
+	double sigma = 2.;
+        double slab_width = 20.; // TODO make something with this width which also used in the function above	
+	unsigned int nbPts = 500;
+	int index;
+	index = this->Compute1dDensity(PropName, this->NormalDir, sigma, nbPts);
+	if( index < 0 ) exit(EXIT_FAILURE);
+	double step_dens = this->density_prof[index][3]-this->density_prof[index][1];
+	double pos;
+	double curGBPos, curGBwidth;
+	ExcessPropName.push_back(PropName);
+	for(unsigned int ng=0;ng<nbGB;ng++){
+		ExcessProp.push_back(0.);
+		double PC_dens = 0.;
+		unsigned int count = 0;
+		// compute density of perfect crystal assuming that there is perfect crystal between GBPos-GBwidth-slab_width and GBPos-GBwidth and same above GBPos
+		vector<double> dens_GB;
+		vector<double> bonds;
+		if( ng == 0 ){
+			curGBPos = GBPos1;
+			curGBwidth = GBwidth1*2.;
+		}else{
+			curGBPos = GBPos2;
+			curGBwidth = GBwidth2*2.;
+		}
+		if( curGBPos-curGBwidth-slab_width < 0. ) bonds.push_back(-(curGBPos-curGBwidth-slab_width+Ldir));
+		else bonds.push_back(curGBPos-curGBwidth-slab_width);
+		if( curGBPos-curGBwidth < 0. ) bonds.push_back(-(curGBPos-curGBwidth+Ldir));
+		else bonds.push_back(curGBPos-curGBwidth);
+		if( curGBPos+curGBwidth > Ldir ) bonds.push_back(-(curGBPos+curGBwidth-Ldir));
+		else bonds.push_back(curGBPos+curGBwidth);
+		if( curGBPos+curGBwidth+slab_width > Ldir ) bonds.push_back(-(curGBPos+curGBwidth+slab_width-Ldir));
+		else bonds.push_back(curGBPos+curGBwidth+slab_width);
+		for(unsigned int i=1;i<this->density_nbPts[index];i++){
+			pos = this->density_prof[index][i*2+1];
+			// lower part of GB
+			if( bonds[0] > 0 ){
+				if( pos > bonds[0] && pos < bonds[1] ){
+					PC_dens += this->density_prof[index][i*2];
+					count += 1;
+				}else if( pos >= bonds[1] && pos <= curGBPos ){
+					dens_GB.push_back(density_prof[index][i*2]);
+					dens_GB.push_back(pos);
+				}
+			}else if( bonds[1] > 0 ){
+				if( pos > -bonds[0] || pos < bonds[1] ){
+					PC_dens += this->density_prof[index][i*2];
+					count += 1;
+				}else if( pos <= curGBPos && pos >= bonds[1] ){
+					dens_GB.push_back(density_prof[index][i*2]);
+					dens_GB.push_back(pos);
+				}
+			}else{
+				if( pos > -bonds[0] && pos < -bonds[1] ){
+					PC_dens += this->density_prof[index][i*2];
+					count += 1;
+				}else if( pos <= curGBPos || pos >= -bonds[1] ){
+					dens_GB.push_back(density_prof[index][i*2]);
+					dens_GB.push_back(pos);
+				}
+			}
+			// upper part of GB
+			if( bonds[2] < 0 ){
+				if( pos > -bonds[2] && pos < -bonds[3] ){
+					PC_dens += this->density_prof[index][i*2];
+					count += 1;
+				}else if( pos > curGBPos || pos < -bonds[2] ){
+					dens_GB.push_back(density_prof[index][i*2]);
+					dens_GB.push_back(pos);
+				}
+			}else if( bonds[3] > 0 ){
+				if( pos > bonds[2] && pos < bonds[3] ){
+					PC_dens += this->density_prof[index][i*2];
+					count += 1;
+				}else if( pos > curGBPos && pos < bonds[2] ){
+					dens_GB.push_back(density_prof[index][i*2]);
+					dens_GB.push_back(pos);
+				}
+			}else{
+				if( pos > bonds[2] || pos < -bonds[3] ){
+					PC_dens += this->density_prof[index][i*2];
+					count += 1;
+				}else if(  pos < bonds[2] && pos > curGBPos ){
+					dens_GB.push_back(density_prof[index][i*2]);
+					dens_GB.push_back(pos);
+				}
+			}
+		}
+		PC_dens /= count;
+		cout << "PC dens = " << PC_dens << endl;
+		// compute excess volume by integrating density in the GB region
+		//for(unsigned int i=0;i<(dens_GB.size()/2)-2;i++) ExcessProp[ExcessProp.size()-1] += ((2.*PC_dens/(dens_GB[i*2]+dens_GB[(i+1)*2]))-1.)*fabs((dens_GB[(i+1)*2+1]-dens_GB[i*2+1]));
+		//for(unsigned int i=0;i<(dens_GB.size()/2);i++) ExcessProp[ExcessProp.size()-1] += ((PC_dens/dens_GB[i*2])-1.)*step_dens;
+		for(unsigned int i=0;i<(dens_GB.size()/2);i++) ExcessProp[ExcessProp.size()-1] += ((dens_GB[i*2]-PC_dens));
+		ExcessProp[ExcessProp.size()-1] /= H1[0]*H2[1];
+	}
 }
 
 void Bicrystal::ComputeExcessVolume(){
@@ -2340,8 +2435,6 @@ void Bicrystal::ComputeExcessVolume(){
 	index = this->Compute1dDensity("Atomic", this->NormalDir, sigma, nbPts);
 	double step_dens = this->density_prof[index][3]-this->density_prof[index][1];
 	double pos;
-	unsigned int nbGB = 1;
-	if( !IsVacuum ) nbGB = 2;
 	double curGBPos, curGBwidth;
 	for(unsigned int ng=0;ng<nbGB;ng++){
 		double ExcessVol = 0.;
@@ -2687,7 +2780,7 @@ void Bicrystal::ReadProperties(vector<string> Properties){
 //}
 
 Bicrystal::~Bicrystal(){
-	delete BT;
+	if( BT ) delete BT;
 	if( this->IsCrystal2 ) delete _MyCrystal2;
 	if( this->IsCA ) delete CA;
 	if( this->AreGrainsDefined ){

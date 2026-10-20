@@ -209,6 +209,7 @@ int main(int argc, char *argv[])
 		Cryst1[i]->RotateCrystal(GBPlane1[0],GBPlane1[1],GBPlane1[2],xPlane1[0],xPlane1[1],xPlane1[2]);
 		Cryst1[i]->ShiftMotif(zero,zero,i*true_z_step1);
 		Cryst1[i]->ConstructOrthogonalCell();
+		Cryst1[i]->getOrientedSystem()->SetSystemSizeAccordingToFixedParam(false,false,true);
 		Cryst1[i]->getOrientedSystem()->MakeSurfaceNeutral(false, ztol_choose);
 		bool already = false;
 		for(unsigned int j=0;j<CrystWithDiffSurf1.size();j++){
@@ -270,6 +271,7 @@ int main(int argc, char *argv[])
 		Cryst2[i]->RotateCrystal(refGB->getRotMatG2());
 		Cryst2[i]->ShiftMotif(zero,zero,i*true_z_step2);
 		Cryst2[i]->ConstructOrthogonalCell();
+		Cryst2[i]->getOrientedSystem()->SetSystemSizeAccordingToFixedParam(false,false,true);
 		Cryst2[i]->getOrientedSystem()->MakeSurfaceNeutral(false, ztol_choose);
 		bool already = false;
 		for(unsigned int j=0;j<CrystWithDiffSurf2.size();j++){

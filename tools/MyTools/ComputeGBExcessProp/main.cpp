@@ -52,8 +52,8 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 	string InputFilename = argv[1];
-	string NormalDir = argv[2];
-	string CN = argv[3];
+	string NormalDir = argv[3];
+	string CN = argv[2];
 	unsigned int nbaux;
 	istringstream iss_rc(argv[4]);
 	iss_rc >> nbaux;
@@ -65,10 +65,37 @@ int main(int argc, char *argv[])
 	}
 
 	Bicrystal MySystem(InputFilename, NormalDir, CN);
-
-	//ofstream writefile(StatdataFilename);
-	//writefile << MySystem.getGBPos1() << " " << MySystem.getGBwidth1() << " " << MySystem.getExcessVol1();
-	//writefile.close();
+	MySystem.Print1dDensity("ExcessVolume.dat", "GBProfile");
+	for(unsigned int i=0;i<nbaux;i++){
+		MySystem.ComputeExcessProp(aux2treat[i]);
+		MySystem.Print1dDensity("Density_"+aux2treat[i]+".dat", aux2treat[i]);
+	}
+	unsigned int nbGB = MySystem.getNbGB();
+	ofstream writefile("ExcessProperties.dat");
+	if( nbGB == 2 ) writefile << "\t GB1 \t GB2" << endl;
+	writefile << "Position\t" << MySystem.getGBPos1();
+        if( nbGB == 2 ) writefile << "\t" << MySystem.getGBPos2();
+        writefile << endl;
+	writefile << "Width\t" << "\t" << MySystem.getGBwidth1();
+        if( nbGB == 2 ) writefile << "\t" << MySystem.getGBwidth2();
+        writefile << endl;
+	writefile << "ExcessVolume\t" << MySystem.getExcessVol1();
+        if( nbGB == 2 ) writefile << "\t" << MySystem.getExcessVol2();
+        writefile << endl;
+	vector<string> PropName = MySystem.getGBExcessPropName();
+	vector<double> EP = MySystem.getGBExcessProp();
+	for(unsigned int i=0;i<nbaux;i++){
+		for(unsigned int j=0;j<PropName.size();j++){
+			if( PropName[j] == aux2treat[i] ){
+				writefile << "Excess_" << aux2treat[i] << "\t" << EP[j*nbGB];
+				if( nbGB == 2 ) writefile << "\t" << EP[j*2+1];
+				writefile << endl;
+				break;
+			}
+		}
+	}
+	writefile.close();
+	cout << "ExcessProperties.dat file successfully writted" << endl;
 	Dis.ExecutionTime();	
 	return 0;
 }

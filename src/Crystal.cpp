@@ -278,8 +278,6 @@ void Crystal::RotateCrystal(const int& h_p, const int& k_p, const int& l_p, cons
 		cout << "The crystal basis cannot be aligned with the cartesian one, aborting calculation" << endl;
 		return;
 	}//else cout << "We are constructing a system with the (" << h_p << k_p << l_p << ") plane parallel with (xy) plane and the [" << buffer_vector_i[minhkl*3] << buffer_vector_i[minhkl*3+1] << buffer_vector_i[minhkl*3+2] << "] direction aligned with the x axis" << endl;
-	cout << "FIRST GRAIN : " << endl;
-	MT->printMat(rot_mat_total);
 	// rotate lattice vectors
 	MT->MatDotRawVec(this->rot_mat_total,this->a1,this->a1);
 	MT->MatDotRawVec(this->rot_mat_total,this->a2,this->a2);

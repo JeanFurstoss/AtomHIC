@@ -1158,7 +1158,7 @@ unsigned int AtomicSystem::Compute2dDensity(std::string auxname, std::string dir
 	return ind_dens;
 }
 
-unsigned int AtomicSystem::Compute1dDensity(std::string auxname, std::string dir, double sigma, unsigned int nbPts){
+int AtomicSystem::Compute1dDensity(std::string auxname, std::string dir, double sigma, unsigned int nbPts){
 	computeWrap();
 	// search if this density has already been computed or not
 	bool already_stored = false;

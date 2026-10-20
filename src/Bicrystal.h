@@ -44,11 +44,14 @@
 
 class ATOMHIC_EXPORT Bicrystal : public AtomicSystem {
 protected:
-	BicrystalloTools *BT;
+	BicrystalloTools *BT = nullptr;
 	std::string NormalDir;
 	double Ldir; // box length in the GB normal direction
 	double ExcessVol1 = 0.;
 	double ExcessVol2 = 0.;
+	std::vector<double> ExcessProp;
+	std::vector<std::string> ExcessPropName;
+	unsigned int nbGB;
 	bool IsVacuum;
 	bool IsCentered; // in the case where there is vacuum, is the system centered
 	double VacuumLo; // low bound coordinate of the vacuum
@@ -120,6 +123,9 @@ public:
 	Bicrystal(const std::string& crystalName, int h_a, int k_a, int l_a, double theta); // constructor using only misorientation freedom degree (bicrystallo analyzis)
 	// getters
 	ComputeAuxiliary *get_CA(){ return this->CA; }
+	unsigned int getNbGB(){ return nbGB; }
+	std::vector<double> getGBExcessProp(){ return ExcessProp; }
+	std::vector<std::string> getGBExcessPropName(){ return ExcessPropName; }
 	double getGBPos1(){ return this->GBPos1; }
 	double getGBwidth1(){ return this->GBwidth1; }
 	double getExcessVol1() { return this->ExcessVol1; }
