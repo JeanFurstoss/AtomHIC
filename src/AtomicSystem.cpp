@@ -5177,7 +5177,7 @@ bool AtomicSystem::SymmetrizeSurfaces(string surf2dup){ // TODO generalize with 
 		if( AtomList[i].pos.z < min_z ) min_z = AtomList[i].pos.z;
 		if( AtomList[i].pos.z > max_z ) max_z = AtomList[i].pos.z;
 	}
-	if( max_z-min_z < 4*slab_width ) cout << "Warning the system is very thick, it may cause issues" << endl;
+	if( max_z-min_z < 4*slab_width ) cout << "Warning the system is very thin, it may cause issues" << endl;
 
 	// construct subsystems to make coincide
 	vector<Atom> SubSys_ref; // reference one (the one to be duplicated)
@@ -5442,7 +5442,7 @@ bool AtomicSystem::SymmetrizeRelaxedSurfaces(string surf2dup, double zcut){ // T
 		if( AtomList[i].pos.z < min_z ) min_z = AtomList[i].pos.z;
 		if( AtomList[i].pos.z > max_z ) max_z = AtomList[i].pos.z;
 	}
-	if( max_z-min_z < 4*slab_width ) cout << "Warning the system is very thick, it may cause issues" << endl;
+	if( max_z-min_z < 4*slab_width ) cout << "Warning the system is very thin, it may cause issues" << endl;
 
 	// construct subsystems to make coincide
 	vector<Atom> SubSys_ref; // reference one (the one to be duplicated)
