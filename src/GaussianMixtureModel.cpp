@@ -502,17 +502,24 @@ void GaussianMixtureModel::ChangeFilterIndex(){
 		}
 	}
 	for(unsigned int f=0;f<nbFilter;f++){
+		weights[f].clear();
+		ClusterLabel[f].clear();
+		mu[f].clear();
+		V[f].clear();
 		nbClust[f] = nbClust_tmp[FilterIndexToModify[f]];
 		FilterValue[f] = FilterValue_tmp[FilterIndexToModify[f]];
 		for(unsigned int k=0;k<nbClust[f];k++){
-			weights[f][k] = weights_tmp[FilterIndexToModify[f]][k];
-			ClusterLabel[f][k] = ClusterLabel_tmp[FilterIndexToModify[f]][k];
-			for(unsigned int d1=0;d1<dim;d1++){
-				mu[f][k][d1] = mu_tmp[FilterIndexToModify[f]][k][d1];
-				for(unsigned int d2=0;d2<dim;d2++) V[f][k][d1*dim+d2] = V_tmp[FilterIndexToModify[f]][k][d1*dim+d2];
-			}
+			weights[f].push_back(weights_tmp[FilterIndexToModify[f]][k]);
+			ClusterLabel[f].push_back(ClusterLabel_tmp[FilterIndexToModify[f]][k]);
+			mu[f].push_back(mu_tmp[FilterIndexToModify[f]][k]);
+			V[f].push_back(V_tmp[FilterIndexToModify[f]][k]);
+			//for(unsigned int d1=0;d1<dim;d1++){
+			//	mu[f][k][d1] = mu_tmp[FilterIndexToModify[f]][k][d1];
+			//	for(unsigned int d2=0;d2<dim;d2++) V[f][k][d1*dim+d2] = V_tmp[FilterIndexToModify[f]][k][d1*dim+d2];
+			//}
 		}
 	}
+	InitGMMTools();
 }
 
 // Readers and printers
@@ -921,28 +928,35 @@ void GaussianMixtureModel::ReadModelParamFromDatabase(const string &name_of_data
 				exit(EXIT_FAILURE);
 			}
 		}
-		// project covariances on SPD matrix because round from file writing can cause deviation to SPD leading to nan determinant
-		for(unsigned int f=0;f<nbFilter;f++){
-			for(unsigned int k=0;k<nbClust[f];k++){
-				MatrixXd tempmat(dim,dim);
-				for(unsigned int d1=0;d1<dim;d1++)
-					for(unsigned int d2=0;d2<dim;d2++) tempmat(d1,d2) = V[f][k][d1*dim+d2];
-				SelfAdjointEigenSolver<MatrixXd> es(tempmat);
-				VectorXd evals = es.eigenvalues().cwiseMax(1e-12);
-				tempmat = es.eigenvectors() * evals.asDiagonal() * es.eigenvectors().transpose();
-				for(unsigned int d1=0;d1<dim;d1++)
-					for(unsigned int d2=0;d2<dim;d2++) V[f][k][d1*dim+d2] = tempmat(d1,d2);
-			}
-		}
-		// initialize GMMTools
-		for(unsigned int f=0;f<nbFilter;f++) MyGMMTools[f] = new GMMTools(nbClust[f],dim,weights[f],mu[f],V[f]);
-		if( FixedSeed ) for(unsigned int f=0;f<nbFilter;f++) MyGMMTools[f]->setSeed(seed);
+		InitGMMTools();
 	}else{
 		cerr << "The database environment \"" << path2base << "\" cannot be openned, aborting" << endl;
 		exit(EXIT_FAILURE);
 	}
 	MachineLearningModel::ReadModelParamFromDatabase(path2base);
 	cout << path2base << " GMM model successfully read !" << endl;
+}
+
+void GaussianMixtureModel::InitGMMTools(){
+	// project covariances on SPD matrix because round from file writing can cause deviation to SPD leading to nan determinant
+	for(unsigned int f=0;f<nbFilter;f++){
+		for(unsigned int k=0;k<nbClust[f];k++){
+			MatrixXd tempmat(dim,dim);
+			for(unsigned int d1=0;d1<dim;d1++)
+				for(unsigned int d2=0;d2<dim;d2++) tempmat(d1,d2) = V[f][k][d1*dim+d2];
+			SelfAdjointEigenSolver<MatrixXd> es(tempmat);
+			VectorXd evals = es.eigenvalues().cwiseMax(1e-12);
+			tempmat = es.eigenvectors() * evals.asDiagonal() * es.eigenvectors().transpose();
+			for(unsigned int d1=0;d1<dim;d1++)
+				for(unsigned int d2=0;d2<dim;d2++) V[f][k][d1*dim+d2] = tempmat(d1,d2);
+		}
+	}
+	// initialize GMMTools
+	for(unsigned int f=0;f<nbFilter;f++){
+		if( IsGMMTools[f] ) delete MyGMMTools[f];
+		MyGMMTools[f] = new GMMTools(nbClust[f],dim,weights[f],mu[f],V[f]);
+	}
+	if( FixedSeed ) for(unsigned int f=0;f<nbFilter;f++) MyGMMTools[f]->setSeed(seed);
 }
 
 void GaussianMixtureModel::readFixedParams(){
